@@ -20,6 +20,7 @@
 | ADR-013 | Registro de tenants | Base de control compartida | Aceptada |
 | ADR-014 | Frontend base | Angular 22, Node 24 y SPA zoneless | Aceptada |
 | ADR-015 | Contenedores locales | Docker Desktop con WSL 2 | Aceptada |
+| ADR-016 | Routing tenant | Contexto por solicitud y datasource sin fallback | Aceptada |
 
 ## Plantilla ADR
 
@@ -181,3 +182,25 @@
 - **Consecuencias:** integración directa con Compose/Testcontainers y consumo de
   recursos local. La elegibilidad de licencia deberá revisarse si cambia el tamaño
   o naturaleza comercial de la organización.
+
+### ADR-016 — Routing tenant sin fallback
+
+- **Fecha:** 2026-07-27
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** CORE-01 debe seleccionar una base tenant después de resolver el
+  comercio, sin aceptar topología proporcionada por el cliente.
+- **Problema:** Mantener separado el datasource de control y elegir de forma segura
+  una conexión de negocio durante una solicitud.
+- **Alternativas:** router con `AbstractRoutingDataSource` y contexto acotado;
+  factoría explícita de repositorios por operación; cambiar el catálogo de un pool
+  compartido.
+- **Decisión:** JPA usa la base de control. El acceso tenant usa pools
+  independientes detrás de `AbstractRoutingDataSource`, sin datasource por defecto
+  y con fallback deshabilitado. Un filtro establece una clave validada en un
+  `ThreadLocal` y la elimina siempre al finalizar.
+- **Consecuencias:** los repositorios tenant futuros podrán trabajar contra una
+  abstracción estable y una ausencia de contexto falla cerrada. Deben limitarse
+  los pools por tenant, cerrar pools retirados y prohibir async tenant hasta
+  implementar propagación segura. Control y tenant no forman una transacción
+  atómica.

@@ -36,6 +36,8 @@ Abrir PowerShell en `backend/`:
 $env:SPRING_PROFILES_ACTIVE = "local"
 $env:CONTROL_DB_PASSWORD = "<MYSQL_APP_PASSWORD de infra/.env>"
 $env:MIGRATION_DB_PASSWORD = "<MYSQL_MIGRATION_PASSWORD de infra/.env>"
+$env:TENANT_A_DB_PASSWORD = "<MYSQL_APP_PASSWORD de infra/.env>"
+$env:TENANT_B_DB_PASSWORD = "<MYSQL_APP_PASSWORD de infra/.env>"
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -47,6 +49,31 @@ Verificar:
 ```powershell
 Invoke-RestMethod http://localhost:8080/actuator/health
 ```
+
+Para probar CORE-01, la base `comercio_flex_control` debe tener comercios activos
+con `database_key` `tenant-a` y `tenant-b`, y cada base tenant debe tener una fila
+en `store_settings`. Luego:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/v1/stores/tienda-a/settings
+Invoke-RestMethod http://localhost:8080/api/v1/stores/tienda-b/settings
+
+try {
+    Invoke-WebRequest http://localhost:8080/api/v1/stores/no-existe/settings
+} catch {
+    [int]$_.Exception.Response.StatusCode
+}
+```
+
+Las dos primeras respuestas deben mostrar comercios diferentes y la última debe
+mostrar `404`. Este intento no debe cambiar la conexión:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/v1/stores/tienda-a/settings `
+    -Headers @{ "X-Database-Key" = "tenant-b" }
+```
+
+Debe continuar respondiendo con los datos de `tienda-a`.
 
 ## 3. Ejecutar el frontend
 
@@ -73,6 +100,7 @@ npm.cmd run build
 ```
 
 Las pruebas backend necesitan Docker porque usan MySQL real mediante Testcontainers.
+La prueba de routing levanta control, tenant A y tenant B en contenedores separados.
 
 ## Convenciones
 

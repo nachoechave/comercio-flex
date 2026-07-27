@@ -74,6 +74,40 @@ obligatorias. La caché y el carrito frontend también se separan por comercio.
 Consecuencias aceptadas: mayor aislamiento y restauración individual, a cambio de
 más conexiones, provisión, migraciones, monitoreo, backups y costo operativo.
 
+### Routing implementado en CORE-01
+
+- La base de control usa JPA y permanece separada del acceso a datos de negocio.
+- Un slug `ACTIVE` se traduce a una `database_key` lógica.
+- Esa clave sólo puede resolverse contra la allowlist cargada desde configuración
+  externa del backend.
+- Cada conexión tenant tiene un pool Hikari independiente y acotado.
+- `AbstractRoutingDataSource` no tiene datasource por defecto y usa
+  `lenientFallback=false`.
+- El contexto vive en un `ThreadLocal` encapsulado y se elimina con `remove()` en
+  un bloque garantizado.
+- El acceso tenant comienza después de establecer el contexto y usa su propio
+  límite transaccional.
+
+```text
+slug público
+  → SELECT en control.tenants con estado ACTIVE
+  → database_key lógica
+  → allowlist externa de conexiones
+  → contexto de la solicitud
+  → datasource tenant
+  → transacción de negocio
+  → limpieza del contexto
+```
+
+No hay atomicidad distribuida entre la base de control y una base tenant. En el
+MVP se evita diseñar operaciones que necesiten confirmar ambas bases dentro de una
+misma transacción. Las tareas `@Async`, schedulers y paralelismo con contexto
+tenant quedan prohibidos hasta definir propagación y limpieza explícitas.
+
+En desarrollo todavía se comparte un usuario runtime con permisos sobre control,
+A y B. Antes de un cliente real se crearán usuarios de mínimo privilegio separados
+por base para agregar una segunda barrera ante un error de routing.
+
 ## Identidad y autorización
 
 La identidad es global y reside en la base de control. Una `membership` vincula a

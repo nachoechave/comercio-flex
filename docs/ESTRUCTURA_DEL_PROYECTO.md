@@ -1,6 +1,6 @@
 # Estructura del proyecto
 
-> Actualizado durante el Sprint 1 el 2026-07-27.
+> Actualizado durante el Sprint 2 el 2026-07-27.
 
 ```text
 comercio-flex/
@@ -45,8 +45,13 @@ Reglas de dependencia:
 ```text
 backend/src/main/
 ├── java/com/comercioflex/
-│   ├── config/                     # Seguridad, CORS y migración tenant
-│   ├── tenant/                     # Límite del módulo multiempresa
+│   ├── config/                     # Seguridad, datasources y migraciones
+│   ├── tenant/
+│   │   ├── api/                    # Endpoint, filtro y errores HTTP
+│   │   ├── application/            # Resolución, contexto y caso de consulta
+│   │   └── infrastructure/
+│   │       ├── control/            # Entity/repository de la base central
+│   │       └── routing/            # Pools y selección de conexión tenant
 │   └── shared/                     # Tipos transversales mínimos
 └── resources/
     ├── application.yml             # Configuración común sin secretos
@@ -102,29 +107,39 @@ Navegador
 → estado accesible en la pantalla
 ```
 
-## Flujo futuro de negocio
+## Flujo implementado de resolución multiempresa
 
 ```text
 Usuario
-→ página Angular
-→ data-access Angular
+→ GET /api/v1/stores/{slug}/settings
+→ TenantResolutionFilter
+→ TenantResolver
+→ TenantRepository
+→ base de control
+→ database_key lógica
+→ TenantContext
+→ TenantRoutingDataSource
+→ base MySQL del comercio
+→ StoreSettingsResponse
+→ Usuario
+```
+
+Al finalizar, `TenantContext.Scope.close()` elimina la clave del hilo aunque haya
+una excepción. `api` depende de `application`; `application` usa el puerto
+`TenantConnectionCatalog`; `infrastructure` implementa ese puerto. La capa de
+aplicación no conoce URLs JDBC ni contraseñas.
+
+## Flujo futuro completo
+
+```text
+Componente Angular
+→ servicio Angular
 → API REST
 → Controller
 → caso de uso
 → dominio
 → Repository
-→ base MySQL del comercio
-→ DTO de respuesta
+→ base MySQL del comercio resuelto
+→ DTO
 → Angular
-→ Usuario
-```
-
-La selección de base será:
-
-```text
-Path o sesión
-→ Tenant Resolver
-→ base de control
-→ Connection Router
-→ base registrada del comercio
 ```

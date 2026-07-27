@@ -17,6 +17,11 @@
 Las credenciales de conexión no se guardarán en texto plano en esta base. Serán
 secretos externos o valores cifrados con una clave externa.
 
+En CORE-01, `tenants.database_key` es la referencia lógica implementada. No es una
+URL ni un nombre de base proporcionado al navegador. La URL, usuario y contraseña
+se resuelven contra configuración externa del backend. `tenant_database_registry`
+permanece como evolución para metadatos operativos, no como almacén de secretos.
+
 ## Base de cada comercio
 
 | Entidad | Responsabilidad |
