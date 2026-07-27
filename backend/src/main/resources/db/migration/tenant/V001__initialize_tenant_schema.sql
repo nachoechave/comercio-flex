@@ -1,0 +1,10 @@
+CREATE TABLE store_settings (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    store_name VARCHAR(160) NOT NULL,
+    currency_code CHAR(3) NOT NULL DEFAULT 'ARS',
+    timezone VARCHAR(60) NOT NULL DEFAULT 'America/Argentina/Buenos_Aires',
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+        ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT pk_store_settings PRIMARY KEY (id)
+);

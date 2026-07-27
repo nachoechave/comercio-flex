@@ -1,0 +1,31 @@
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Java / Maven
+**/target/
+**/.classpath
+**/.project
+**/.settings/
+
+# Node / Angular
+**/node_modules/
+**/dist/
+**/.angular/
+**/coverage/
+
+# IDE y sistema operativo
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs y temporales
+*.log
+tmp/
+temp/

@@ -1,0 +1,8 @@
+spring:
+  flyway:
+    user: ${MIGRATION_DB_USER:comercio_flex_migration}
+    password: ${MIGRATION_DB_PASSWORD}
+
+app:
+  database:
+    tenant-migration-enabled: true

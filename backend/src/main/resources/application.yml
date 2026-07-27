@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: comercio-flex-backend
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: ${CONTROL_DB_URL:jdbc:mysql://localhost:3306/comercio_flex_control}
+    username: ${CONTROL_DB_USER:comercio_flex_app}
+    password: ${CONTROL_DB_PASSWORD}
+  flyway:
+    locations: classpath:db/migration/control
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  mvc:
+    problemdetails:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+app:
+  cors:
+    allowed-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
+  database:
+    tenant-migration-enabled: ${TENANT_MIGRATION_ENABLED:false}
+    tenant-urls: ${TENANT_DB_URLS:jdbc:mysql://localhost:3306/comercio_flex_tenant_a,jdbc:mysql://localhost:3306/comercio_flex_tenant_b}
+    migration-username: ${MIGRATION_DB_USER:comercio_flex_migration}
+    migration-password: ${MIGRATION_DB_PASSWORD}
