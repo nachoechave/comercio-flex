@@ -25,6 +25,7 @@ public class SecurityConfig {
 				.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+				.requestMatchers("/api/v1/stores/*/settings").permitAll()
 				.anyRequest().authenticated())
 			.build();
 	}

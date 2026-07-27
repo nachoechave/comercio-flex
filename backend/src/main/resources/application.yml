@@ -31,6 +31,6 @@ app:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
   database:
     tenant-migration-enabled: ${TENANT_MIGRATION_ENABLED:false}
-    tenant-urls: ${TENANT_DB_URLS:jdbc:mysql://localhost:3306/comercio_flex_tenant_a,jdbc:mysql://localhost:3306/comercio_flex_tenant_b}
-    migration-username: ${MIGRATION_DB_USER:comercio_flex_migration}
-    migration-password: ${MIGRATION_DB_PASSWORD}
+    migration-username: ${MIGRATION_DB_USER:}
+    migration-password: ${MIGRATION_DB_PASSWORD:}
+    tenant-connections: {}

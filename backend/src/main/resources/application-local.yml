@@ -6,3 +6,12 @@ spring:
 app:
   database:
     tenant-migration-enabled: true
+    tenant-connections:
+      tenant-a:
+        url: ${TENANT_A_DB_URL:jdbc:mysql://localhost:3306/comercio_flex_tenant_a}
+        username: ${TENANT_A_DB_USER:comercio_flex_app}
+        password: ${TENANT_A_DB_PASSWORD}
+      tenant-b:
+        url: ${TENANT_B_DB_URL:jdbc:mysql://localhost:3306/comercio_flex_tenant_b}
+        username: ${TENANT_B_DB_USER:comercio_flex_app}
+        password: ${TENANT_B_DB_PASSWORD}
