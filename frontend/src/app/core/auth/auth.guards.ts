@@ -15,6 +15,21 @@ function loginRedirect(router: Router, returnUrl: string) {
   });
 }
 
+export function routeParam(
+  route: ActivatedRouteSnapshot,
+  name: string,
+): string | null {
+  let current: ActivatedRouteSnapshot | null = route;
+  while (current) {
+    const value = current.paramMap.get(name);
+    if (value) {
+      return value;
+    }
+    current = current.parent;
+  }
+  return null;
+}
+
 export const authGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthService);
   const router = inject(Router);
@@ -76,7 +91,7 @@ export const membershipGuard: CanActivateFn = (
 ) => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  const storeSlug = route.paramMap.get('storeSlug');
+  const storeSlug = routeParam(route, 'storeSlug');
 
   return auth.loadSession().pipe(
     map((session) => {
@@ -97,7 +112,7 @@ export function allowedRolesGuard(allowedRoles: readonly AdminRole[]): CanActiva
   return (route, state) => {
     const auth = inject(AuthService);
     const router = inject(Router);
-    const storeSlug = route.paramMap.get('storeSlug');
+    const storeSlug = routeParam(route, 'storeSlug');
 
     return auth.loadSession().pipe(
       map((session) => {

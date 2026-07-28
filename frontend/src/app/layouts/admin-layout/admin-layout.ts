@@ -1,13 +1,19 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink, RouterOutlet } from '@angular/router';
+import {
+  ActivatedRoute,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
 import { finalize, map } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-admin-layout',
-  imports: [RouterLink, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <header class="admin-header">
       <div>
@@ -23,6 +29,23 @@ import { AuthService } from '../../core/auth/auth.service';
         </button>
       </div>
     </header>
+    @if (membership(); as currentMembership) {
+      <nav class="admin-nav" aria-label="Administración">
+        <a
+          [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin']"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
+          Inicio
+        </a>
+        <a
+          [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'categorias']"
+          routerLinkActive="active"
+        >
+          Categorías
+        </a>
+      </nav>
+    }
     @if (logoutError()) {
       <p class="logout-error" role="alert">{{ logoutError() }}</p>
     }
@@ -51,6 +74,26 @@ import { AuthService } from '../../core/auth/auth.service';
     .session-actions span {
       color: var(--color-muted);
       font-size: 0.875rem;
+    }
+
+    .admin-nav {
+      display: flex;
+      gap: 1rem;
+      max-width: 70rem;
+      margin: 0 auto;
+      padding: 0.75rem 1rem;
+    }
+
+    .admin-nav a {
+      padding: 0.35rem 0;
+      color: var(--color-muted);
+      text-decoration: none;
+    }
+
+    .admin-nav a.active {
+      color: var(--color-accent);
+      font-weight: 700;
+      box-shadow: inset 0 -2px var(--color-accent);
     }
 
     button {

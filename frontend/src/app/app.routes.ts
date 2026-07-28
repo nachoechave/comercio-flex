@@ -51,6 +51,7 @@ export const routes: Routes = [
   {
     path: 'tiendas/:storeSlug/admin',
     canActivate: [authGuard, membershipGuard, allowedRolesGuard(ADMIN_ROLES)],
+    canActivateChild: [authGuard, membershipGuard],
     loadComponent: () =>
       import('./layouts/admin-layout/admin-layout').then((module) => module.AdminLayout),
     children: [
@@ -59,6 +60,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/admin/dashboard/admin-dashboard').then(
             (module) => module.AdminDashboard,
+          ),
+      },
+      {
+        path: 'categorias',
+        loadChildren: () =>
+          import('./features/admin/categories/category.routes').then(
+            (module) => module.CATEGORY_ROUTES,
           ),
       },
     ],

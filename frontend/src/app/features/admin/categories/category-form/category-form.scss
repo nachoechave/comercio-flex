@@ -1,0 +1,138 @@
+.page {
+  width: min(100% - 2rem, 42rem);
+  margin: 0 auto;
+  padding: 2rem 0 5rem;
+}
+
+nav {
+  margin-bottom: 2rem;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-accent);
+  font-weight: 750;
+}
+
+h1 {
+  margin: 0.25rem 0;
+  font-size: clamp(2rem, 7vw, 3.5rem);
+  letter-spacing: -0.04em;
+}
+
+.intro {
+  margin: 0 0 2rem;
+  color: var(--color-muted);
+}
+
+form,
+.state {
+  padding: clamp(1.25rem, 5vw, 2rem);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+}
+
+.field {
+  margin-bottom: 1.25rem;
+}
+
+label,
+.read-only-field > span {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 700;
+}
+
+input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  font: inherit;
+}
+
+input:focus-visible {
+  border-color: var(--color-accent);
+  outline: 3px solid rgb(107 63 214 / 20%);
+}
+
+.help,
+.field-error,
+.read-only-field small {
+  display: block;
+  margin: 0.3rem 0 0;
+  font-size: 0.875rem;
+}
+
+.help,
+.read-only-field small {
+  color: var(--color-muted);
+}
+
+.field-error {
+  min-height: 1.25rem;
+  color: #a22323;
+}
+
+.read-only-field {
+  margin-bottom: 1.5rem;
+}
+
+code {
+  display: inline-block;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.35rem;
+  background: var(--color-background);
+}
+
+.form-error,
+.error {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  color: #8b2029;
+  background: #fbeaec;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.form-actions button {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  color: #fff;
+  background: var(--color-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.form-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+@media (max-width: 30rem) {
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .form-actions a,
+  .form-actions button {
+    width: 100%;
+    text-align: center;
+  }
+}

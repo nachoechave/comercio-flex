@@ -1,0 +1,88 @@
+<section class="page" [attr.aria-labelledby]="'category-form-title'">
+  <nav aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug(), 'admin']">Panel</a>
+    <span aria-hidden="true"> / </span>
+    <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'categorias']">Categorías</a>
+    <span aria-hidden="true"> / </span>
+    <span>{{ editing() ? 'Editar' : 'Nueva' }}</span>
+  </nav>
+
+  <p class="eyebrow">Catálogo</p>
+  <h1 id="category-form-title">
+    {{ editing() ? 'Editar categoría' : 'Crear categoría' }}
+  </h1>
+  <p class="intro">
+    {{
+      editing()
+        ? 'Cambiá el nombre sin alterar la dirección pública de la categoría.'
+        : 'Usá un nombre claro para que tus clientes encuentren los productos.'
+    }}
+  </p>
+
+  @if (loading()) {
+    <p class="state" role="status">Cargando categoría…</p>
+  } @else if (loadError()) {
+    <div class="state error" role="alert">
+      <p>{{ loadError() }}</p>
+      <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'categorias']">
+        Volver a categorías
+      </a>
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="field">
+        <label for="category-name">Nombre</label>
+        <input
+          #nameInput
+          id="category-name"
+          type="text"
+          formControlName="name"
+          maxlength="120"
+          autocomplete="off"
+          [attr.aria-invalid]="
+            (form.controls.name.invalid && form.controls.name.touched) || serverNameError()
+              ? 'true'
+              : 'false'
+          "
+          aria-describedby="category-name-help category-name-error"
+        />
+        <p id="category-name-help" class="help">Entre 2 y 120 caracteres.</p>
+        <p id="category-name-error" class="field-error">
+          @if (serverNameError()) {
+            {{ serverNameError() }}
+          } @else if (
+            form.controls.name.touched &&
+            (form.controls.name.hasError('required') || form.controls.name.hasError('pattern'))
+          ) {
+            Ingresá un nombre.
+          } @else if (form.controls.name.touched && form.controls.name.hasError('minlength')) {
+            El nombre debe tener al menos 2 caracteres.
+          } @else if (
+            form.controls.name.touched && form.controls.name.hasError('maxlength')
+          ) {
+            El nombre no puede superar los 120 caracteres.
+          }
+        </p>
+      </div>
+
+      @if (editing() && category(); as currentCategory) {
+        <div class="read-only-field">
+          <span>Slug público</span>
+          <code>{{ currentCategory.slug }}</code>
+          <small>No cambia al renombrar la categoría.</small>
+        </div>
+      }
+
+      @if (submitError()) {
+        <p class="form-error" role="alert">{{ submitError() }}</p>
+      }
+
+      <div class="form-actions">
+        <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'categorias']">Cancelar</a>
+        <button type="submit" [disabled]="saving()">
+          {{ saving() ? 'Guardando…' : editing() ? 'Guardar cambios' : 'Crear categoría' }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

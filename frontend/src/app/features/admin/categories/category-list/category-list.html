@@ -1,0 +1,143 @@
+<section class="page" aria-labelledby="categories-title">
+  <nav aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug(), 'admin']">Panel</a>
+    <span aria-hidden="true"> / </span>
+    <span>Categorías</span>
+  </nav>
+
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Catálogo</p>
+      <h1 id="categories-title">Categorías</h1>
+      <p class="intro">Organizá los productos que se mostrarán en la tienda.</p>
+    </div>
+    @if (canManage()) {
+      <a class="primary-action" routerLink="nueva">Crear categoría</a>
+    }
+  </div>
+
+  @if (!canManage()) {
+    <p class="notice" role="status">
+      Tenés acceso de lectura. Sólo propietarios y administradores pueden modificar categorías.
+    </p>
+  }
+
+  @if (statusMessage()) {
+    <p class="success" role="status">{{ statusMessage() }}</p>
+  }
+  @if (actionError()) {
+    <p class="error" role="alert">{{ actionError() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="state" role="status">Cargando categorías…</p>
+  } @else if (loadError()) {
+    <div class="state error-state" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" (click)="load()">Reintentar</button>
+    </div>
+  } @else if (categories().length === 0) {
+    <div class="state">
+      <h2>Todavía no hay categorías</h2>
+      @if (canManage()) {
+        <p>Creá la primera para empezar a organizar tu catálogo.</p>
+        <a class="primary-action" routerLink="nueva">Crear categoría</a>
+      } @else {
+        <p>Un propietario o administrador puede crear la primera categoría.</p>
+      }
+    </div>
+  } @else {
+    <div class="filter">
+      <label for="category-filter">Buscar categoría</label>
+      <input
+        id="category-filter"
+        type="search"
+        [value]="filter()"
+        (input)="updateFilter($event)"
+        placeholder="Nombre o slug"
+      />
+    </div>
+
+    @if (filteredCategories().length === 0) {
+      <p class="state" role="status">No encontramos categorías para esa búsqueda.</p>
+    } @else {
+      <div class="table-wrapper">
+        <table>
+          <caption class="visually-hidden">
+            Categorías del comercio y su estado
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Nombre</th>
+              <th scope="col">Estado</th>
+              @if (canManage()) {
+                <th scope="col"><span class="visually-hidden">Acciones</span></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (category of filteredCategories(); track category.id) {
+              <tr>
+                <td>
+                  <strong>{{ category.name }}</strong>
+                  <small>{{ category.slug }}</small>
+                </td>
+                <td>
+                  <span class="status" [class.inactive]="!category.active">
+                    {{ category.active ? 'Activa' : 'Inactiva' }}
+                  </span>
+                </td>
+                @if (canManage()) {
+                  <td class="actions">
+                    <a
+                      [routerLink]="[category.id, 'editar']"
+                      [attr.aria-label]="'Editar ' + category.name"
+                    >
+                      Editar
+                    </a>
+                    <button
+                      type="button"
+                      (click)="requestStatusChange(category, $event)"
+                      [disabled]="pendingCategoryId() === category.id"
+                      [attr.aria-label]="
+                        (category.active ? 'Desactivar ' : 'Activar ') + category.name
+                      "
+                    >
+                      {{
+                        pendingCategoryId() === category.id
+                          ? 'Guardando…'
+                          : category.active
+                            ? 'Desactivar'
+                            : 'Activar'
+                      }}
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  @if (categoryToDeactivate(); as category) {
+    <section
+      class="confirmation"
+      role="alertdialog"
+      aria-labelledby="deactivate-title"
+      aria-describedby="deactivate-description"
+    >
+      <h2 id="deactivate-title">¿Desactivar {{ category.name }}?</h2>
+      <p id="deactivate-description">
+        La categoría dejará de mostrarse en la navegación pública. Podrás reactivarla después.
+      </p>
+      <div>
+        <button type="button" (click)="cancelDeactivation()">Cancelar</button>
+        <button #confirmButton class="danger" type="button" (click)="confirmDeactivation()">
+          Desactivar
+        </button>
+      </div>
+    </section>
+  }
+</section>

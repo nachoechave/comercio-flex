@@ -10,7 +10,13 @@ import {
 import { firstValueFrom, Observable, of } from 'rxjs';
 
 import { AuthenticatedSession, CurrentSession } from './auth.models';
-import { adminEntryGuard, authGuard, membershipGuard, safeReturnUrl } from './auth.guards';
+import {
+  adminEntryGuard,
+  allowedRolesGuard,
+  authGuard,
+  membershipGuard,
+  safeReturnUrl,
+} from './auth.guards';
 import { AuthService } from './auth.service';
 
 const SESSION: AuthenticatedSession = {
@@ -89,5 +95,25 @@ describe('authentication guards', () => {
     expect(router.serializeUrl((await firstValueFrom(result)) as UrlTree)).toContain(
       '/admin/comercios?denied=true',
     );
+  });
+
+  it('finds the store slug in a parent route when guarding a child feature', async () => {
+    const parent = {
+      paramMap: convertToParamMap({ storeSlug: 'tienda-a' }),
+      parent: null,
+    } as unknown as ActivatedRouteSnapshot;
+    const child = {
+      paramMap: convertToParamMap({}),
+      parent,
+    } as unknown as ActivatedRouteSnapshot;
+
+    const result = TestBed.runInInjectionContext(() =>
+      allowedRolesGuard(['OWNER'])(
+        child,
+        { url: '/tiendas/tienda-a/admin/categorias/nueva' } as RouterStateSnapshot,
+      ),
+    ) as Observable<boolean | UrlTree>;
+
+    expect(await firstValueFrom(result)).toBe(true);
   });
 });
