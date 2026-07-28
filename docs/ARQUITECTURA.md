@@ -168,6 +168,11 @@ tenant sólo se abre después de comprobar la membresía.
 |---|---:|---:|---:|
 | Ver dashboard operativo | Sí | Sí | No |
 | Gestionar categorías, productos y precios | Sí | Sí | No |
+
+CAT-01 implementa la primera parte de `catalog`: `STAFF` puede consultar
+categorías mediante `VIEW_CATALOG`, mientras `OWNER` y `ADMIN` necesitan
+`MANAGE_CATALOG` para crear, renombrar, archivar o restaurar. La autorización se
+ejecuta antes del controller y se repite como defensa en el caso de uso HTTP.
 | Consultar catálogo e inventario | Sí | Sí | Sí |
 | Ajustar stock | Sí | Sí | Sí |
 | Ver pedidos y cambiar estados permitidos | Sí | Sí | Sí |

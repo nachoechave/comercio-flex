@@ -1,8 +1,7 @@
 # Estructura del proyecto
 
-> Actualizado durante CORE-02 el 2026-07-28. Las carpetas de identidad descritas a
-> continuación representan la estructura aprobada; su implementación y revisión
-> están en curso.
+> Actualizado durante CAT-01 el 2026-07-28. Identidad, routing tenant y gestión de
+> categorías ya están implementados y verificados.
 
 ```text
 comercio-flex/
@@ -32,6 +31,7 @@ frontend/
     │   ├── auth/                   # Pantalla de login global
     │   ├── storefront/home/        # Página pública inicial
     │   └── admin/
+    │       ├── categories/         # Listado, formulario y API de categorías
     │       ├── dashboard/          # Entrada administrativa protegida
     │       └── store-selector/     # Selector para usuarios con varias membresías
     ├── shared/ui/status-pill/      # UI reutilizable sin negocio
@@ -58,6 +58,11 @@ backend/src/main/
 │   │   ├── domain/                 # Usuario, membresía, roles y estados
 │   │   └── infrastructure/
 │   │       └── control/            # Persistencia de identidad en la base central
+│   ├── catalog/
+│   │   ├── api/                    # Contrato HTTP y Problem Details de categorías
+│   │   ├── application/            # Casos de uso, normalización y puertos
+│   │   ├── domain/                 # Categoría y estado del dominio
+│   │   └── infrastructure/jdbc/    # Persistencia en la base tenant seleccionada
 │   ├── tenant/
 │   │   ├── api/                    # Endpoint, filtro y errores HTTP
 │   │   ├── application/            # Resolución, contexto y caso de consulta
@@ -73,9 +78,9 @@ backend/src/main/
         └── tenant/                  # Esquema idéntico para cada comercio
 ```
 
-Los módulos `catalog`, `inventory`, `customer`, `order`, `delivery`, `payment` y
-`reporting` se crearán al comenzar sus historias. `identity` se incorpora en
-CORE-02. No se agregan carpetas vacías sólo para simular avance.
+`catalog` comienza en CAT-01 con categorías. Los módulos `inventory`, `customer`,
+`order`, `delivery`, `payment` y `reporting` se crearán al comenzar sus historias.
+No se agregan carpetas vacías sólo para simular avance.
 
 Dentro de un módulo de negocio se utilizarán, cuando hagan falta:
 
@@ -155,6 +160,28 @@ Componente Angular
 → DTO
 → Angular
 ```
+
+## Flujo implementado de categorías
+
+```text
+CategoryList o CategoryForm
+→ CategoryApiService
+→ proxy local /api
+→ sesión y CSRF
+→ TenantResolutionFilter valida comercio y membership
+→ TenantPermissionAuthorizationManager valida VIEW_CATALOG o MANAGE_CATALOG
+→ AdminCategoryController
+→ CategoryService abre la transacción tenant
+→ JdbcCategoryRepository
+→ TenantRoutingDataSource
+→ tabla categories de la base del comercio
+→ CategoryResponse con UUID público
+→ Angular actualiza el estado visible
+```
+
+`catalog` usa las capacidades de autorización de `identity` y la conexión ya
+seleccionada por `tenant`. No conoce la base de control, credenciales JDBC ni
+componentes Angular. El frontend nunca envía `tenant_id` ni `database_key`.
 
 ## Flujo de autenticación y autorización de CORE-02
 

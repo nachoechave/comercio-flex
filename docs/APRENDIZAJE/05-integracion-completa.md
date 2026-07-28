@@ -95,3 +95,30 @@ CORE-02 se marcó `Terminada` después de verificar, entre otros casos:
 - usuario bloqueado/deshabilitado o membership inactiva;
 - cada permiso de `OWNER`, `ADMIN` y `STAFF`;
 - límite temporal de intentos de login.
+
+## Flujo implementado en CAT-01
+
+```text
+Administrador abre /tiendas/tienda-a/admin/categorias
+→ Angular obtiene storeSlug desde la ruta activa
+→ solicita categorías mediante CategoryApiService
+→ Spring valida sesión y membresía de tienda-a
+→ VIEW_CATALOG permite lectura a OWNER, ADMIN y STAFF
+→ TenantContext selecciona la base A
+→ JdbcCategoryRepository consulta categories
+→ Angular muestra nombre, slug y estado
+```
+
+Para crear o modificar, Spring exige `MANAGE_CATALOG`, disponible sólo para
+`OWNER` y `ADMIN`, además del token CSRF. El guard Angular evita una navegación
+inútil, pero la autorización real siempre ocurre en el backend.
+
+Si Angular reutiliza el componente al navegar de tienda A a B, los parámetros se
+observan reactivamente: se cancela la solicitud anterior, se limpia el estado de
+A y recién después se consulta B. Esto evita mostrar o modificar accidentalmente
+información del comercio anterior.
+
+La categoría usa dos identificadores: un `BIGINT` eficiente dentro de MySQL y un
+UUID público para la API. Al crear, el backend normaliza el nombre y genera el
+slug. Al renombrar, conserva el slug para que futuras URLs no se rompan. Al
+desactivar, cambia el estado a `INACTIVE`; la fila puede reactivarse.

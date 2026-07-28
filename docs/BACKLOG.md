@@ -12,7 +12,7 @@
 | BT-04 | Datos | MySQL y Flyway multi-base | Compose, primera migración y Testcontainers | Alta | Terminada | BT-02 | Datos/Backend | Tres bases, misma versión, tests y prueba manual | Drift de esquema | L |
 | CORE-01 | Tenant | Resolver comercio y conexión | Resolver path, consultar control DB y enrutar a la base correcta | Alta | Terminada | BT-02, BT-04 | Backend | A/B aislados, fallo seguro y API documentada | Conexión incorrecta | XL |
 | CORE-02 | Identidad | Login y roles | Sesión JDBC segura, autorización por membresía y logout | Alta | Terminada | CORE-01 | Backend/Frontend/Calidad | Login global, roles fijos, CSRF, límite de intentos y pruebas negativas | Cookies, fuerza bruta y autorización tenant | L |
-| CAT-01 | Catálogo | Gestionar categorías | CRUD administrativo por tenant | Alta | Pendiente | CORE-02 | Backend/Frontend | Validación, aislamiento, pruebas y manual | Slugs duplicados | M |
+| CAT-01 | Catálogo | Gestionar categorías | CRUD administrativo por tenant | Alta | Terminada | CORE-02 | Backend/Frontend | Validación, aislamiento, pruebas y manual | Slugs duplicados | M |
 | CAT-02 | Catálogo | Gestionar productos de indumentaria | Alta/edición/publicación, talle, color, SKU y precio | Alta | Pendiente | CAT-01 | Backend/Frontend | Precio > 0, categoría y variante válidos | Combinaciones inválidas | XL |
 | INV-01 | Inventario | Ajustar stock | Existencia por variante y movimiento auditable | Alta | Pendiente | CAT-02 | Backend/Frontend | No negativo, concurrencia y pruebas | Sobreventa | L |
 | STORE-01 | Tienda | Navegar catálogo | Listar, buscar y ver detalle público | Alta | Pendiente | CAT-02 | Frontend/Backend | Responsive, estados y tenant correcto | Rendimiento/SEO | L |
@@ -22,6 +22,7 @@
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pendientes y stock bajo | Media | Pendiente | ORD-02 | Backend/Frontend | Datos por tenant y definiciones documentadas | Métricas inconsistentes | M |
 | OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | Pendiente | PAY-01 | Infraestructura | Smoke, backup y restauración probada | Costo/caída | L |
 | SEC-01 | Seguridad | Separar credenciales runtime por base | Usuario de mínimo privilegio para control y para cada tenant | Alta | Pendiente | CORE-01 | Datos/Infraestructura | Un usuario tenant no accede a control ni a otra base | Movimiento lateral | M |
+| AUTH-02 | Identidad | Evaluar Firebase Authentication | Analizarlo como proveedor externo para clientes y administradores sin trasladar membresías ni permisos | Baja | Pendiente | MVP validado | Arquitectura/Seguridad/PO | ADR de migración, costos, sesiones, revocación y coexistencia aprobado | Dependencia externa y migración de cuentas | L |
 
 ## Definición de terminado
 
@@ -113,3 +114,63 @@ Como integrante de un comercio quiero iniciar y cerrar sesión para operar
   rechazo `403` en `tienda-b` y sesión anónima después del logout.
 - Revisión: una cuenta deshabilitada se revalida antes de abrir el datasource
   tenant y la matriz fija de permisos tiene pruebas unitarias.
+
+## CAT-01 — Gestión de categorías
+
+> Estado: terminada el 2026-07-28 después de implementar, revisar, probar y
+> documentar el flujo completo. Las decisiones ADR-025 a ADR-028 fueron aprobadas
+> por el Product Owner antes de iniciar la implementación.
+
+### Historia
+
+Como administrador de un comercio quiero gestionar categorías para organizar los
+productos que luego publicaré en mi tienda.
+
+### Criterios de aceptación
+
+- `OWNER` y `ADMIN` pueden crear, consultar, renombrar, desactivar y reactivar
+  categorías únicamente dentro de un comercio con membresía activa.
+- `STAFF` puede consultar categorías, pero cualquier intento de modificarlas
+  devuelve `403`; una persona anónima recibe `401`.
+- El nombre es obligatorio, se normalizan espacios y admite entre 2 y 120
+  caracteres; una entrada inválida devuelve `400` con un error claro.
+- Nombre y slug son únicos dentro de cada base tenant. Una colisión concurrente
+  devuelve `409` y no sobrescribe datos.
+- El backend genera un slug válido al crear y no lo modifica cuando cambia el
+  nombre.
+- El alta devuelve `201`, ubicación e identificador UUID público; la API nunca
+  expone el `BIGINT`, `database_key` ni credenciales.
+- Desactivar no borra la fila, es reversible y deja de incluirla en las consultas
+  de categorías activas.
+- Una categoría creada en `tienda-a` no aparece ni puede consultarse o modificarse
+  desde `tienda-b`; el mismo nombre puede existir en ambos comercios.
+- Las operaciones de escritura requieren el mecanismo CSRF ya establecido.
+- La interfaz muestra estados de carga, vacío, error y éxito; evita doble envío,
+  funciona con teclado y no comunica estados únicamente mediante color.
+- La migración Flyway se aplica de forma consistente a las bases tenant y el
+  cambio persiste en MySQL.
+- Existen pruebas unitarias, de API, autorización, integración multiempresa y
+  frontend; también un procedimiento de prueba manual documentado.
+
+### Evidencia de cierre
+
+- Suite backend completa: 40 pruebas sin fallos ni errores.
+- CAT-01 backend: 3 pruebas unitarias y 8 pruebas de integración con MySQL 8.4,
+  seguridad, CSRF, permisos y dos bases tenant.
+- Frontend: 29 pruebas sin fallos y build de producción correcto; categorías se
+  entrega mediante rutas lazy.
+- Prueba manual en navegador: alta, slug automático, renombrado estable,
+  desactivación, reactivación, conflicto duplicado y rechazo de otro comercio.
+- Vista móvil verificada a 390 px sin desborde horizontal ni errores de consola.
+- Revisión independiente: sin defectos bloqueantes; aislamiento A/B, cambio
+  reactivo de tenant y carrera de duplicados verificados.
+
+### Deuda técnica registrada
+
+- Incorporar control de versión o `ETag` antes de operación multiadministrador
+  intensa para evitar que dos ediciones simultáneas se pisen.
+- Fijar o validar explícitamente la collation de cada nueva base tenant.
+- Agregar paginación cuando el volumen real deje de justificar una lista completa.
+- Mejorar el diálogo accesible de confirmación con contención de foco y Escape.
+- Reducir el ruido del scheduler de limpieza de Spring Session entre contextos de
+  Testcontainers.

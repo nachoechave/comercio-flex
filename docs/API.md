@@ -151,6 +151,87 @@ X-XSRF-TOKEN: <token>
 Invalida la sesión en el servidor. Reutilizar su cookie después del logout no debe
 dar acceso.
 
+## Administración de categorías
+
+Todas las rutas requieren sesión, membresía activa en `{storeSlug}` y autorización
+backend. `OWNER` y `ADMIN` pueden escribir; `STAFF` sólo puede consultar. Las
+mutaciones requieren `X-XSRF-TOKEN`.
+
+### Listar
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/categories?status=ALL
+```
+
+`status` admite `ALL`, `ACTIVE` o `INACTIVE`; el panel usa `ALL` por defecto.
+
+```json
+[
+  {
+    "id": "8ab5aef2-85f2-4ced-b864-1077ee1fd69c",
+    "name": "Remeras",
+    "slug": "remeras",
+    "active": true,
+    "createdAt": "2026-07-28T16:00:00Z",
+    "updatedAt": "2026-07-28T16:00:00Z"
+  }
+]
+```
+
+### Crear
+
+```http
+POST /api/v1/stores/{storeSlug}/admin/categories
+Content-Type: application/json
+X-XSRF-TOKEN: <token>
+```
+
+```json
+{
+  "name": "Remeras de Niño"
+}
+```
+
+Responde `201 Created`, header `Location` y la categoría. El backend normaliza
+espacios, genera `remeras-de-nino` y nunca acepta un slug enviado por el cliente.
+
+### Consultar y renombrar
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/categories/{categoryId}
+PUT /api/v1/stores/{storeSlug}/admin/categories/{categoryId}
+```
+
+El `PUT` recibe `{"name":"Remeras infantiles"}`. Renombrar no cambia el slug.
+
+### Archivar o restaurar
+
+```http
+PATCH /api/v1/stores/{storeSlug}/admin/categories/{categoryId}/status
+Content-Type: application/json
+X-XSRF-TOKEN: <token>
+```
+
+```json
+{
+  "active": false
+}
+```
+
+`false` archiva y `true` restaura. No existe borrado físico de categorías en el
+MVP.
+
+### Errores de categorías
+
+- `400 Bad Request`: nombre ausente o inválido, con `errors.name` cuando aplica.
+- `401 Unauthorized`: no existe una sesión válida.
+- `403 Forbidden`: falta CSRF, membresía o permiso.
+- `404 Not Found`: comercio o UUID público inexistente en la base seleccionada.
+- `409 Conflict`: nombre o slug duplicado.
+
+La API sólo expone el UUID público. No recibe ni devuelve `tenant_id`, clave
+interna `BIGINT`, `database_key`, URL JDBC ni credenciales.
+
 ## Errores de seguridad
 
 - `401 Unauthorized`: la operación exige una sesión válida.

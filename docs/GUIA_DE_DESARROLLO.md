@@ -105,6 +105,23 @@ Abrir `http://localhost:4200`. La página debe mostrar “Disponible”. El prox
 redirige `/actuator` y `/api` al backend y evita fijar una URL de desarrollo
 dentro de los servicios Angular. El login administrativo está en `/admin/login`.
 
+### Probar categorías manualmente
+
+1. Iniciar sesión con un `OWNER` local.
+2. Abrir `/tiendas/tienda-a/admin/categorias`.
+3. Crear `Remeras de Niño` y comprobar que el slug sea `remeras-de-nino`.
+4. Renombrarla y comprobar que el slug no cambie.
+5. Desactivarla, verificar el estado `Inactiva` y volver a activarla.
+6. Intentar crear un nombre equivalente y comprobar el error de duplicado.
+7. Cambiar a otro comercio autorizado y verificar que sus categorías sean
+   independientes.
+8. Con una membresía `STAFF`, comprobar que el listado sea visible pero no haya
+   acciones de alta, edición o cambio de estado.
+
+La API administrativa utilizada por la pantalla está documentada en `API.md`.
+Las operaciones de escritura requieren la cookie de sesión y el header CSRF; no
+deben probarse copiando credenciales o identificadores de base en la URL.
+
 ## Pruebas
 
 ```powershell

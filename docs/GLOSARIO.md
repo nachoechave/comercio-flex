@@ -6,6 +6,8 @@
 - **AbstractRoutingDataSource:** componente Spring que selecciona un datasource
   mediante una clave obtenida del contexto actual.
 - **API REST:** contrato HTTP mediante el cual Angular se comunica con el backend.
+- **Archivado lógico:** retiro reversible de un registro mediante un estado, sin
+  eliminar físicamente la fila ni romper referencias históricas.
 - **Controller:** entrada HTTP del backend; valida el formato y delega un caso de uso.
 - **CORS:** reglas que controlan qué orígenes web pueden llamar a la API.
 - **Cookie `HttpOnly`:** cookie que el navegador envía, pero JavaScript no puede
@@ -25,6 +27,8 @@
 - **Hash adaptativo:** transformación unidireccional de contraseña cuyo costo se
   ajusta para dificultar ataques de fuerza bruta.
 - **Idempotencia:** procesar repetidamente el mismo evento sin repetir su efecto.
+- **Identificador público:** UUID opaco expuesto por la API; evita revelar la
+  clave numérica interna utilizada por índices y relaciones.
 - **Interceptor:** pieza Angular que trata solicitudes/respuestas HTTP transversalmente.
 - **JWT:** token firmado con información verificable; no implica revocación automática.
 - **Membresía (`membership`):** vínculo que autoriza a un usuario global a operar
@@ -46,6 +50,8 @@
 - **Spring Session JDBC:** implementación que persiste sesiones HTTP en tablas de
   una base relacional para compartirlas entre instancias y sobrevivir reinicios.
 - **Signal:** primitiva reactiva de Angular para representar estado y valores derivados.
+- **Slug:** texto estable y seguro para URLs, por ejemplo `remeras-de-nino`. No es
+  un identificador de base de datos ni una autorización.
 - **SSR:** generación inicial de HTML en el servidor; puede mejorar SEO y primera carga.
 - **Tenant:** comercio cuyos datos y configuración deben mantenerse aislados.
 - **ThreadLocal:** almacenamiento asociado al hilo actual. Debe limpiarse porque

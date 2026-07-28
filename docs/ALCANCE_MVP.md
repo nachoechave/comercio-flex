@@ -43,6 +43,8 @@
 - Reportes y gráficos ampliados.
 - Mejoras del onboarding OAuth de Mercado Pago y renovación operativa.
 - Recuperación de contraseña, auditoría ampliada y carrito en servidor.
+- Evaluación de Firebase Authentication como proveedor de identidad, manteniendo
+  roles, membresías y autorización multiempresa en Comercio Flex.
 - Dominios propios, promociones, cupones y optimización de imágenes.
 
 ## Futuro

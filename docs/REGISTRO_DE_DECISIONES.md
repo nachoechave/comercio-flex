@@ -28,6 +28,11 @@
 | ADR-021 | Recuperación de contraseña | Autoservicio diferido a V2 | Aceptada |
 | ADR-022 | Protección del login | Límite básico por IP y cuenta | Aceptada |
 | ADR-023 | Expiración de sesión | 30 minutos de inactividad | Aceptada |
+| ADR-024 | Proveedor de identidad | Autenticación propia durante el MVP | Aceptada |
+| ADR-025 | Identificadores tenant | BIGINT interno y UUID público | Aceptada |
+| ADR-026 | Baja de categorías | Archivado lógico reversible | Aceptada |
+| ADR-027 | Slug de categoría | Automático, único e inmutable | Aceptada |
+| ADR-028 | Jerarquía de categorías | Categorías planas para el MVP | Aceptada |
 
 ## Plantilla ADR
 
@@ -328,3 +333,83 @@
   por ambiente sin cambiar código.
 - **Consecuencias:** una computadora abandonada conserva acceso durante menos
   tiempo, a cambio de requerir un nuevo login después de pausas prolongadas.
+
+### ADR-024 — Autenticación propia durante el MVP
+
+- **Fecha:** 2026-07-28
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** CORE-02 ya implementa autenticación propia, sesiones seguras,
+  identidades globales y membresías por comercio. Firebase Authentication podría
+  simplificar en el futuro el login social, la verificación de correo y la
+  recuperación de acceso para clientes y administradores.
+- **Problema:** decidir si incorporar ahora un proveedor externo de identidad o
+  completar primero el flujo comercial del MVP.
+- **Alternativas:** mantener autenticación propia para el MVP; sustituir ahora la
+  validación de credenciales por Firebase Authentication.
+- **Decisión:** conservar la autenticación propia durante el MVP y analizar
+  Firebase después, como proveedor de identidad desacoplado de los roles,
+  membresías y autorizaciones almacenados en Comercio Flex.
+- **Consecuencias:** no se agrega ahora el SDK, configuración, costo ni dependencia
+  operativa de Firebase. El modelo interno seguirá usando identificadores propios
+  para evitar que una integración futura condicione las claves del negocio. Una
+  eventual adopción deberá definir migración de cuentas, vinculación por UID,
+  sesiones, revocación y coexistencia de proveedores mediante un ADR específico.
+
+## ADR aceptadas el 2026-07-28 para Sprint 4
+
+### ADR-025 — Identificadores internos y públicos en bases tenant
+
+- **Fecha:** 2026-07-28
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** Categorías será la primera entidad comercial que establecerá el
+  patrón reutilizado por productos, variantes, inventario y pedidos.
+- **Problema:** definir una clave eficiente para relaciones internas sin exponer
+  identificadores correlativos en la API.
+- **Alternativas:** `BIGINT` interno más UUID público; UUID como clave primaria.
+- **Decisión:** usar `BIGINT` como clave primaria interna y UUID almacenado como
+  `BINARY(16)` como identificador público.
+- **Consecuencias:** los índices y claves foráneas permanecen compactos y las URLs
+  usan identificadores opacos. Los repositorios deben convertir ambos formatos y
+  la API nunca expone el `BIGINT`.
+
+### ADR-026 — Archivado lógico de categorías
+
+- **Fecha:** 2026-07-28
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una categoría podrá ser referenciada por productos e históricos.
+- **Problema:** definir cómo retirar una categoría sin perder trazabilidad.
+- **Alternativas:** activación/desactivación reversible; borrado físico cuando no
+  existan productos.
+- **Decisión:** retirar categorías mediante estado `INACTIVE`, permitiendo su
+  reactivación y sin exponer borrado físico en el MVP.
+- **Consecuencias:** el historial y las referencias futuras permanecen intactos.
+  Las consultas deben distinguir categorías activas e inactivas.
+
+### ADR-027 — Slug automático e inmutable
+
+- **Fecha:** 2026-07-28
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el slug podrá formar parte de navegación y URLs públicas futuras.
+- **Problema:** evitar enlaces rotos y colisiones al renombrar categorías.
+- **Alternativas:** slug generado e inmutable; slug editable o regenerado.
+- **Decisión:** el backend genera un slug único al crear la categoría y no lo
+  modifica cuando cambia el nombre.
+- **Consecuencias:** las URLs permanecen estables y el administrador no controla
+  SEO avanzado en el MVP. Una colisión se informa explícitamente.
+
+### ADR-028 — Categorías planas para el MVP
+
+- **Fecha:** 2026-07-28
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el piloto de indumentaria necesita organizar el catálogo sin que
+  se haya validado una necesidad concreta de subcategorías.
+- **Problema:** decidir si modelar desde ahora una jerarquía arbitraria.
+- **Alternativas:** categorías planas; árbol con relación padre.
+- **Decisión:** utilizar una lista plana durante el MVP.
+- **Consecuencias:** se evitan ciclos, profundidad, breadcrumbs y reglas de
+  archivado de ramas. Una jerarquía futura requerirá un nuevo ADR y migración.

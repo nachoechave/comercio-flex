@@ -1,6 +1,7 @@
-# Modelo de datos preliminar
+# Modelo de datos
 
-> Estado: conceptual; estrategia de una base por comercio aprobada.
+> Actualizado en CAT-01 el 2026-07-28. La estrategia de una base por comercio y
+> el patrón de identificadores internos/públicos están aprobados.
 
 ## Base de control
 
@@ -68,6 +69,25 @@ versionada; la inicialización automática de esquema no reemplaza a Flyway.
 | `merchant_payment_connections` | Conexión cifrada del comercio |
 | `audit_events` | Acciones administrativas sensibles |
 
+### Categorías
+
+`categories` se crea mediante la migración tenant
+`V002__create_categories.sql` en cada base de comercio:
+
+| Campo | Responsabilidad |
+|---|---|
+| `id` | `BIGINT` interno para relaciones e índices; nunca sale por la API |
+| `public_id` | UUID almacenado como `BINARY(16)`, único y expuesto como `id` HTTP |
+| `name` | Nombre visible, obligatorio y único dentro del comercio |
+| `slug` | Dirección técnica única, generada al crear e inmutable al renombrar |
+| `status` | `ACTIVE` o `INACTIVE`; representa archivado reversible |
+| `created_at`, `updated_at` | Timestamps técnicos en UTC |
+
+La tabla no contiene `tenant_id`: la base seleccionada después de autorizar la
+membresía es el límite de aislamiento. El mismo nombre puede existir en bases de
+comercios diferentes. Los índices únicos son la defensa final ante dos altas
+concurrentes.
+
 ## Reglas
 
 - Dinero usa `DECIMAL`, nunca punto flotante.
@@ -110,6 +130,7 @@ StoreSettings
 
 ## Identificadores
 
-Propuesta: `BIGINT` interno para índices y un `public_id` opaco para URLs públicas.
-La alternativa es UUIDv7 como clave primaria. La decisión se aprobará antes de la
-primera migración.
+ADR-025 fija `BIGINT` interno para índices y relaciones más un `public_id` UUID
+opaco para contratos y URLs. El patrón comienza en `categories` y se reutilizará
+en las entidades comerciales posteriores, salvo que un ADR futuro justifique una
+excepción.
