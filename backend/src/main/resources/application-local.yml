@@ -3,7 +3,19 @@ spring:
     user: ${MIGRATION_DB_USER:comercio_flex_migration}
     password: ${MIGRATION_DB_PASSWORD}
 
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
 app:
+  local-owner:
+    enabled: ${LOCAL_OWNER_ENABLED:false}
+    email: ${LOCAL_OWNER_EMAIL:}
+    password: ${LOCAL_OWNER_PASSWORD:}
+    display-name: ${LOCAL_OWNER_DISPLAY_NAME:}
+    store-slug: ${LOCAL_OWNER_STORE_SLUG:}
   database:
     tenant-migration-enabled: true
     tenant-connections:

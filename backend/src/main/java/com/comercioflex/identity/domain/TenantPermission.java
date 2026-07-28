@@ -1,0 +1,13 @@
+package com.comercioflex.identity.domain;
+
+public enum TenantPermission {
+	VIEW_DASHBOARD,
+	VIEW_CATALOG,
+	MANAGE_CATALOG,
+	VIEW_INVENTORY,
+	ADJUST_STOCK,
+	MANAGE_ORDERS,
+	MANAGE_BASIC_SETTINGS,
+	MANAGE_MEMBERSHIPS,
+	MANAGE_PAYMENTS
+}

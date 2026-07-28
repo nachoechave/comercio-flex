@@ -1,4 +1,8 @@
 package com.comercioflex.tenant.application;
 
-public record ResolvedTenant(String slug, String databaseKey) {
+public record ResolvedTenant(
+	Long id,
+	String slug,
+	String displayName,
+	String databaseKey) {
 }

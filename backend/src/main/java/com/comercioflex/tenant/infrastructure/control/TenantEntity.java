@@ -17,6 +17,9 @@ class TenantEntity {
 	@Column(nullable = false, unique = true, length = 100)
 	private String slug;
 
+	@Column(name = "display_name", nullable = false, length = 160)
+	private String displayName;
+
 	@Column(name = "database_key", nullable = false, unique = true, length = 100)
 	private String databaseKey;
 

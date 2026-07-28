@@ -10,7 +10,9 @@ public interface TenantRepository extends JpaRepository<TenantEntity, Long> {
 
 	@Query("""
 		SELECT new com.comercioflex.tenant.infrastructure.control.ActiveTenant(
+			tenant.id,
 			tenant.slug,
+			tenant.displayName,
 			tenant.databaseKey
 		)
 		FROM TenantEntity tenant

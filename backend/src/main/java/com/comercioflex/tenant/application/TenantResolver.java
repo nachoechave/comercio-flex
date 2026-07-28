@@ -30,7 +30,11 @@ public class TenantResolver {
 
 		return tenantRepository.findActiveBySlug(slug)
 			.filter(tenant -> connectionCatalog.contains(tenant.databaseKey()))
-			.map(tenant -> new ResolvedTenant(tenant.slug(), tenant.databaseKey()))
+			.map(tenant -> new ResolvedTenant(
+				tenant.id(),
+				tenant.slug(),
+				tenant.displayName(),
+				tenant.databaseKey()))
 			.orElseThrow(TenantNotFoundException::new);
 	}
 }

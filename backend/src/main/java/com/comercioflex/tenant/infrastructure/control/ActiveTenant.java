@@ -1,4 +1,4 @@
 package com.comercioflex.tenant.infrastructure.control;
 
-public record ActiveTenant(String slug, String databaseKey) {
+public record ActiveTenant(Long id, String slug, String displayName, String databaseKey) {
 }
