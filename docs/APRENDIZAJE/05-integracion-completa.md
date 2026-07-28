@@ -60,3 +60,38 @@ solicitudes concurrentes para detectar contaminación.
 La consulta de control termina antes de abrir la transacción tenant. No existe una
 transacción única que abarque ambas bases. Para el MVP evitamos casos de uso que
 necesiten confirmar cambios en control y tenant al mismo tiempo.
+
+## Flujo aprobado para CORE-02
+
+```text
+Usuario
+→ Angular solicita token CSRF
+→ usuario envía correo y contraseña
+→ Spring Security limita y verifica el intento
+→ control DB devuelve la identidad global
+→ Spring Session JDBC persiste la sesión
+→ Angular consulta usuario y memberships
+→ usuario selecciona tienda-a
+→ backend resuelve tienda-a en control DB
+→ verifica membership ACTIVE y rol
+→ abre TenantContext para tenant-a
+→ ejecuta el caso de uso autorizado
+→ limpia el contexto
+```
+
+Autenticar y autorizar no son lo mismo. La cookie demuestra que el navegador tiene
+una sesión válida, pero sólo una membresía activa concede acceso a un comercio.
+Además, el rol determina qué acciones puede ejecutar dentro de ese comercio.
+
+### Pruebas que cerraron la historia
+
+CORE-02 se marcó `Terminada` después de verificar, entre otros casos:
+
+- login válido e inválido sin enumeración de cuentas;
+- rechazo de POST sin CSRF;
+- persistencia e invalidación de la sesión;
+- usuario A rechazado en el comercio B;
+- una persona con roles distintos en dos comercios;
+- usuario bloqueado/deshabilitado o membership inactiva;
+- cada permiso de `OWNER`, `ADMIN` y `STAFF`;
+- límite temporal de intentos de login.

@@ -29,3 +29,27 @@ StorefrontHome
 
 Estudiar después: componentes, templates, Signals, inyección de dependencias,
 HttpClient, routing y pruebas con `HttpTestingController`.
+
+## Diseño aprobado para CORE-02
+
+Angular no guarda la cookie de sesión: el navegador la administra y no permite que
+JavaScript la lea porque es `HttpOnly`. La aplicación mantiene en memoria sólo el
+resultado de `GET /api/v1/auth/session`.
+
+```text
+arranque
+→ obtener cookie XSRF-TOKEN
+→ consultar sesión
+→ mostrar login o usuario
+→ una membership: navegar al comercio
+→ varias memberships: mostrar selector
+→ guard evita una navegación incoherente
+```
+
+El interceptor XSRF de `HttpClient` copia el token a `X-XSRF-TOKEN` en solicitudes
+que modifican datos. El guard mejora la experiencia, pero no es una barrera de
+seguridad: una persona puede modificar JavaScript en su navegador y por eso el
+backend siempre vuelve a autorizar.
+
+Conceptos para estudiar: cookies, credenciales HTTP, XSRF, interceptor, guard,
+estado de sesión y rutas protegidas.

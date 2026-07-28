@@ -25,3 +25,20 @@ de migraciones y conservar la misma versión.
 
 Estudiar después: esquema, tabla, clave primaria, índice, restricción, usuario,
 privilegio, transacción y migración.
+
+## Datos de identidad y sesión de CORE-02
+
+La base de control también contiene:
+
+- usuarios globales con correo normalizado y hash de contraseña;
+- membresías únicas por usuario y comercio;
+- rol y estado actual de cada membresía;
+- sesiones HTTP y sus atributos mínimos.
+
+Estas tablas no se duplican en cada base tenant. Así, una persona puede pertenecer
+a dos comercios sin tener dos contraseñas. Las claves foráneas y restricciones
+únicas impiden memberships huérfanas o duplicadas.
+
+Spring Session usa tablas relacionales con vencimiento. El navegador conserva
+sólo un identificador opaco; los datos reales permanecen del lado servidor. El
+esquema se administra con Flyway igual que el resto de la base de control.

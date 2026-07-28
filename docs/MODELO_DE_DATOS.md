@@ -13,6 +13,8 @@
 | `tenant_database_registry` | Identificador lógico de la base y estado de migración, sin contraseñas |
 | `platform_users` | Identidad global, credenciales y estado de la cuenta |
 | `memberships` | Relación usuario-comercio, rol y estado de acceso |
+| `SPRING_SESSION` | Metadatos y vencimiento de sesiones web persistentes |
+| `SPRING_SESSION_ATTRIBUTES` | Atributos mínimos asociados a cada sesión |
 
 Las credenciales de conexión no se guardarán en texto plano en esta base. Serán
 secretos externos o valores cifrados con una clave externa.
@@ -21,6 +23,34 @@ En CORE-01, `tenants.database_key` es la referencia lógica implementada. No es 
 URL ni un nombre de base proporcionado al navegador. La URL, usuario y contraseña
 se resuelven contra configuración externa del backend. `tenant_database_registry`
 permanece como evolución para metadatos operativos, no como almacén de secretos.
+
+### Identidad global
+
+Modelo aprobado para CORE-02:
+
+| Tabla | Campos conceptuales y restricciones |
+|---|---|
+| `platform_users` | `id`, `public_id` único, correo normalizado único, nombre visible, hash de contraseña, estado, fecha de cambio de contraseña y timestamps |
+| `memberships` | `id`, FK a usuario, FK a tenant, rol, estado y timestamps; combinación usuario-tenant única |
+| `SPRING_SESSION` | identificador opaco, creación, último acceso, vencimiento y referencia de principal |
+| `SPRING_SESSION_ATTRIBUTES` | atributos serializados de la sesión con FK y borrado en cascada |
+
+Estados iniciales:
+
+- usuario: `ACTIVE`, `LOCKED`, `DISABLED`;
+- membresía: `ACTIVE`, `INACTIVE`;
+- rol: `OWNER`, `ADMIN`, `STAFF`.
+
+El correo normalizado se usa para evitar dos cuentas equivalentes por diferencias
+de mayúsculas o espacios. El hash de contraseña utiliza un algoritmo adaptativo
+con identificador de formato; no existe una columna para contraseña plana. Los
+intentos de login del limitador básico son transitorios y no forman parte del
+modelo persistente del MVP.
+
+La sesión guarda una identidad global mínima. La membresía y el rol se leen desde
+la base de control al autorizar cada comercio, de modo que una revocación sea
+inmediata. Las tablas de Spring Session se crean con una migración MySQL
+versionada; la inicialización automática de esquema no reemplaza a Flyway.
 
 ## Base de cada comercio
 
@@ -54,6 +84,11 @@ permanece como evolución para metadatos operativos, no como almacén de secreto
 - Todas las bases de comercio deben mantener la misma versión de migración.
 - La sesión identifica un `platform_user`, pero una `membership` activa autoriza
   el acceso al comercio y determina el rol.
+- Un usuario sólo puede tener una membresía por comercio.
+- Una sesión expirada o invalidada no puede recuperar acceso mediante una cookie
+  antigua.
+- El primer `OWNER` se crea con un proceso operativo idempotente y secretos
+  externos, nunca mediante datos sensibles versionados.
 - Cada variante posee una única existencia en el MVP; no se modelan ubicaciones.
 - Cada cambio de existencia genera un movimiento de inventario auditable.
 

@@ -11,7 +11,7 @@
 | BT-03 | Base técnica | Inicializar frontend | Angular, shells, rutas y health UI | Alta | Terminada | F0-02 | Frontend | Build/test/responsive/documentación | SSR diferido por decisión | M |
 | BT-04 | Datos | MySQL y Flyway multi-base | Compose, primera migración y Testcontainers | Alta | Terminada | BT-02 | Datos/Backend | Tres bases, misma versión, tests y prueba manual | Drift de esquema | L |
 | CORE-01 | Tenant | Resolver comercio y conexión | Resolver path, consultar control DB y enrutar a la base correcta | Alta | Terminada | BT-02, BT-04 | Backend | A/B aislados, fallo seguro y API documentada | Conexión incorrecta | XL |
-| CORE-02 | Identidad | Login y roles | Sesión segura, autorización y logout | Alta | Pendiente | CORE-01 | Backend/Frontend | Roles, CSRF y pruebas negativas | Diseño de cookies | L |
+| CORE-02 | Identidad | Login y roles | Sesión JDBC segura, autorización por membresía y logout | Alta | Terminada | CORE-01 | Backend/Frontend/Calidad | Login global, roles fijos, CSRF, límite de intentos y pruebas negativas | Cookies, fuerza bruta y autorización tenant | L |
 | CAT-01 | Catálogo | Gestionar categorías | CRUD administrativo por tenant | Alta | Pendiente | CORE-02 | Backend/Frontend | Validación, aislamiento, pruebas y manual | Slugs duplicados | M |
 | CAT-02 | Catálogo | Gestionar productos de indumentaria | Alta/edición/publicación, talle, color, SKU y precio | Alta | Pendiente | CAT-01 | Backend/Frontend | Precio > 0, categoría y variante válidos | Combinaciones inválidas | XL |
 | INV-01 | Inventario | Ajustar stock | Existencia por variante y movimiento auditable | Alta | Pendiente | CAT-02 | Backend/Frontend | No negativo, concurrencia y pruebas | Sobreventa | L |
@@ -56,3 +56,60 @@ la URL para recibir únicamente su configuración y sus datos.
   configurada e intentos de influir en la selección desde el cliente.
 - La API, el flujo, las carpetas nuevas y los pasos de prueba manual quedan
   documentados.
+
+## CORE-02 — Login, sesión y roles
+
+> Estado: terminada el 2026-07-28 después de implementar, revisar, probar y
+> documentar el flujo manual completo.
+
+### Historia
+
+Como integrante de un comercio quiero iniciar y cerrar sesión para operar
+únicamente las tiendas y funciones autorizadas por mis membresías.
+
+### Criterios de aceptación
+
+- Un usuario activo puede iniciar sesión con correo y contraseña válidos sin que
+  la respuesta exponga el hash ni otros datos sensibles.
+- Un login inválido devuelve un error genérico que no revela si el correo existe.
+- La contraseña se guarda con un hash adaptativo y nunca en texto plano.
+- La sesión se persiste mediante Spring Session JDBC en la base de control y su
+  cookie es `HttpOnly`, `SameSite=Lax` y `Secure` fuera del perfil local.
+- El identificador de sesión se renueva al autenticar y el logout invalida la
+  sesión en el servidor.
+- `GET /api/v1/auth/session` devuelve `200` con `{"authenticated":false}` cuando
+  no existe una sesión, y cuando está autenticado devuelve el usuario y sólo sus
+  membresías activas.
+- Las operaciones con estado, incluidos login y logout, requieren un token CSRF
+  válido usando la cookie `XSRF-TOKEN` y el header `X-XSRF-TOKEN`.
+- El frontend ofrece login global, selecciona automáticamente una única membresía
+  o permite elegir entre varias, y no usa `localStorage` para guardar credenciales
+  o sesiones.
+- Antes de abrir una conexión tenant, el backend comprueba usuario, comercio,
+  membresía activa y permiso. Un usuario del comercio A no puede operar B.
+- `OWNER`, `ADMIN` y `STAFF` cumplen la matriz fija de ADR-019 y existen pruebas
+  negativas por rol.
+- Un usuario bloqueado o deshabilitado, una membresía inactiva o un comercio
+  inactivo pierde el acceso aunque todavía presente una cookie.
+- El login aplica un límite básico por IP y correo normalizado sin permitir que el
+  cliente elija una identidad, rol o tenant.
+- El primer `OWNER` puede provisionarse mediante un procedimiento operativo
+  idempotente y sin secretos versionados.
+- Las migraciones incluyen restricciones únicas para correo normalizado y para la
+  relación usuario-comercio.
+- Las pruebas cubren autenticación, CSRF, logout, persistencia de sesión,
+  membresías múltiples, roles, CORS y aislamiento entre dos tenants.
+- La API, estructura, conceptos, configuración y prueba manual quedan
+  documentados antes de marcar la historia como `Terminada`.
+
+### Evidencia de cierre
+
+- Suite backend completa: 29 pruebas sin fallos después de integrar identidad con
+  los health checks y el routing tenant existente.
+- Suite específica de identidad ampliada: 10 pruebas sin fallos para login, CSRF,
+  sesión JDBC, logout, CORS, rate limiting, membresías múltiples y aislamiento.
+- Frontend: 14 pruebas sin fallos y build de producción correcto.
+- Prueba manual local: `OWNER` autenticado en `tienda-a`; acceso a su comercio,
+  rechazo `403` en `tienda-b` y sesión anónima después del logout.
+- Revisión: una cuenta deshabilitada se revalida antes de abrir el datasource
+  tenant y la matriz fija de permisos tiene pruebas unitarias.

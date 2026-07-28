@@ -38,6 +38,7 @@ $env:CONTROL_DB_PASSWORD = "<MYSQL_APP_PASSWORD de infra/.env>"
 $env:MIGRATION_DB_PASSWORD = "<MYSQL_MIGRATION_PASSWORD de infra/.env>"
 $env:TENANT_A_DB_PASSWORD = "<MYSQL_APP_PASSWORD de infra/.env>"
 $env:TENANT_B_DB_PASSWORD = "<MYSQL_APP_PASSWORD de infra/.env>"
+$env:SESSION_TIMEOUT = "30m"
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -75,6 +76,22 @@ Invoke-RestMethod http://localhost:8080/api/v1/stores/tienda-a/settings `
 
 Debe continuar respondiendo con los datos de `tienda-a`.
 
+### Crear un `OWNER` sólo para desarrollo local
+
+El alta local está desactivada por defecto. Para crearla de forma idempotente,
+definir antes de iniciar Spring:
+
+```powershell
+$env:LOCAL_OWNER_ENABLED = "true"
+$env:LOCAL_OWNER_EMAIL = "owner.local@example.test"
+$env:LOCAL_OWNER_PASSWORD = "<contraseña local de al menos 12 caracteres>"
+$env:LOCAL_OWNER_DISPLAY_NAME = "Owner local"
+$env:LOCAL_OWNER_STORE_SLUG = "tienda-a"
+```
+
+La contraseña no debe escribirse en un archivo versionado. Si el correo ya
+existe, el proceso no reemplaza silenciosamente su contraseña.
+
 ## 3. Ejecutar el frontend
 
 En otra terminal, desde `frontend/`:
@@ -85,8 +102,8 @@ npm.cmd start
 ```
 
 Abrir `http://localhost:4200`. La página debe mostrar “Disponible”. El proxy
-redirige `/actuator` al backend y evita fijar una URL de desarrollo dentro del
-servicio Angular.
+redirige `/actuator` y `/api` al backend y evita fijar una URL de desarrollo
+dentro de los servicios Angular. El login administrativo está en `/admin/login`.
 
 ## Pruebas
 

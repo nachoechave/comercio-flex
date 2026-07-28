@@ -1,6 +1,8 @@
 # Estructura del proyecto
 
-> Actualizado durante el Sprint 2 el 2026-07-27.
+> Actualizado durante CORE-02 el 2026-07-28. Las carpetas de identidad descritas a
+> continuación representan la estructura aprobada; su implementación y revisión
+> están en curso.
 
 ```text
 comercio-flex/
@@ -21,13 +23,17 @@ frontend/
 ├── proxy.conf.json                 # Proxy local Angular → Spring Boot
 └── src/app/
     ├── core/
+    │   ├── auth/                   # Sesión global, CSRF, guards e interceptor
     │   └── health/                 # Cliente del health check backend
     ├── layouts/
     │   ├── storefront-layout/      # Marco de la tienda pública
     │   └── admin-layout/           # Marco del panel administrativo
     ├── features/
+    │   ├── auth/                   # Pantalla de login global
     │   ├── storefront/home/        # Página pública inicial
-    │   └── admin/dashboard/        # Placeholder administrativo
+    │   └── admin/
+    │       ├── dashboard/          # Entrada administrativa protegida
+    │       └── store-selector/     # Selector para usuarios con varias membresías
     ├── shared/ui/status-pill/      # UI reutilizable sin negocio
     ├── app.config.ts               # Proveedores globales
     └── app.routes.ts               # Rutas lazy
@@ -46,6 +52,12 @@ Reglas de dependencia:
 backend/src/main/
 ├── java/com/comercioflex/
 │   ├── config/                     # Seguridad, datasources y migraciones
+│   ├── identity/
+│   │   ├── api/                    # Contrato HTTP de sesión, login y logout
+│   │   ├── application/            # Autenticación y autorización de casos de uso
+│   │   ├── domain/                 # Usuario, membresía, roles y estados
+│   │   └── infrastructure/
+│   │       └── control/            # Persistencia de identidad en la base central
 │   ├── tenant/
 │   │   ├── api/                    # Endpoint, filtro y errores HTTP
 │   │   ├── application/            # Resolución, contexto y caso de consulta
@@ -61,9 +73,9 @@ backend/src/main/
         └── tenant/                  # Esquema idéntico para cada comercio
 ```
 
-Los módulos `identity`, `catalog`, `inventory`, `customer`, `order`, `delivery`,
-`payment` y `reporting` se crearán al comenzar sus historias. No se agregan
-carpetas vacías sólo para simular avance.
+Los módulos `catalog`, `inventory`, `customer`, `order`, `delivery`, `payment` y
+`reporting` se crearán al comenzar sus historias. `identity` se incorpora en
+CORE-02. No se agregan carpetas vacías sólo para simular avance.
 
 Dentro de un módulo de negocio se utilizarán, cuando hagan falta:
 
@@ -143,3 +155,30 @@ Componente Angular
 → DTO
 → Angular
 ```
+
+## Flujo de autenticación y autorización de CORE-02
+
+```text
+LoginComponent
+→ AuthService obtiene XSRF-TOKEN
+→ POST /api/v1/auth/login con X-XSRF-TOKEN
+→ Spring Security verifica credenciales
+→ PlatformUserRepository consulta control DB
+→ Spring Session guarda la sesión en control DB
+→ Angular consulta /api/v1/auth/session
+→ AuthService conserva usuario y memberships en memoria
+→ selector navega al slug elegido
+→ guard verifica el estado de navegación
+→ backend valida nuevamente membership y rol
+→ recién entonces TenantRoutingDataSource abre la base del comercio
+```
+
+Dependencias permitidas:
+
+- `identity` puede consultar `tenant` en la base de control para describir y
+  autorizar membresías, pero no accede a datos de negocio tenant.
+- `tenant` no conoce componentes Angular ni acepta roles provenientes del cliente.
+- `core/auth` puede ser usado por features y layouts; no depende de una pantalla
+  administrativa concreta.
+- `features/auth` usa `core/auth` y `shared`, pero ninguna feature de negocio debe
+  importar detalles internos de la pantalla de login.

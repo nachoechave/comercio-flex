@@ -1,6 +1,7 @@
 # API
 
-> Actualizado durante el Sprint 2 el 2026-07-27.
+> Actualizado al cerrar CORE-02 el 2026-07-28. Los contratos de autenticación
+> están implementados y verificados.
 
 ## Health check
 
@@ -58,5 +59,104 @@ Content-Type: application/problem+json
 ```
 
 Headers, query params o body con `database_key`, URL JDBC o nombres de base no se
-usan para el routing. Los demás endpoints continúan cerrados hasta implementar la
-sesión aprobada. No se exponen entidades JPA como respuestas HTTP.
+usan para el routing. Los endpoints administrativos permanecen cerrados salvo los
+contratos de autenticación incorporados en CORE-02. No se exponen entidades
+JPA como respuestas HTTP.
+
+## Autenticación administrativa
+
+La autenticación es global: primero identifica a la persona y luego informa sus
+membresías activas. La presencia de una sesión no autoriza por sí sola el acceso a
+una tienda.
+
+### Obtener token CSRF
+
+```http
+GET /api/v1/auth/csrf
+```
+
+Es público y materializa la cookie legible por Angular `XSRF-TOKEN`. Las
+solicitudes que cambian estado deben copiar su valor al header
+`X-XSRF-TOKEN`. Esta cookie no contiene la sesión ni reemplaza la cookie
+`HttpOnly` de autenticación.
+
+También devuelve los nombres del header y parámetro junto con el token. La
+interfaz usa el convenio de cookies; el cuerpo facilita diagnóstico y clientes
+que no sean un navegador.
+
+### Iniciar sesión
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+X-XSRF-TOKEN: <token>
+```
+
+```json
+{
+  "email": "persona@ejemplo.com",
+  "password": "valor-no-registrado-en-logs"
+}
+```
+
+Una autenticación válida renueva el identificador de sesión y devuelve el estado
+del usuario con sus membresías activas. Un fallo usa una respuesta genérica y no
+confirma si el correo existe. El endpoint está sujeto a un límite de intentos.
+
+### Consultar la sesión
+
+```http
+GET /api/v1/auth/session
+```
+
+El bootstrap anónimo responde `200`:
+
+```json
+{
+  "authenticated": false
+}
+```
+
+Una sesión válida responde `200` con identidad y membresías:
+
+```json
+{
+  "authenticated": true,
+  "user": {
+    "id": "identificador-opaco",
+    "email": "persona@ejemplo.com",
+    "displayName": "Ana"
+  },
+  "memberships": [
+    {
+      "storeSlug": "tienda-a",
+      "storeName": "Tienda A",
+      "role": "OWNER"
+    }
+  ]
+}
+```
+
+La respuesta no incluye hashes, identificadores internos, `database_key` ni
+credenciales. Una membresía sirve para presentar o seleccionar una tienda; cada
+endpoint administrativo vuelve a autorizarla en el servidor.
+
+### Cerrar sesión
+
+```http
+POST /api/v1/auth/logout
+X-XSRF-TOKEN: <token>
+```
+
+Invalida la sesión en el servidor. Reutilizar su cookie después del logout no debe
+dar acceso.
+
+## Errores de seguridad
+
+- `401 Unauthorized`: la operación exige una sesión válida.
+- `403 Forbidden`: la sesión existe, pero falta CSRF o permiso.
+- `429 Too Many Requests`: se superó temporalmente el límite de login.
+
+Los errores de login no distinguen cuenta inexistente, deshabilitada o contraseña
+incorrecta. Este comportamiento está confirmado por las pruebas de contrato de
+CORE-02.

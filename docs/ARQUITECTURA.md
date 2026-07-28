@@ -115,9 +115,11 @@ un usuario con un comercio y su rol. La sesión identifica al usuario, pero no
 autoriza por sí sola el acceso a una base de negocio.
 
 ```text
-Sesión autenticada
-  → resolver comercio por path
-  → comprobar membresía activa y rol
+Cookie de sesión
+  → recuperar sesión JDBC desde la base de control
+  → identificar usuario global activo
+  → resolver comercio por path en la base de control
+  → comprobar membresía activa y permiso
   → obtener referencia de conexión confiable
   → seleccionar base del comercio
   → ejecutar operación
@@ -126,6 +128,79 @@ Sesión autenticada
 
 El backend no aceptará un nombre de base, identificador interno de tenant ni rol
 enviado por el navegador como fuente de autoridad.
+
+### Sesión web
+
+Spring Session JDBC persiste las sesiones en la base de control. Esto permite que
+una sesión sobreviva al reinicio de una instancia y sea reconocida por más de una
+réplica. La cookie de sesión es opaca y `HttpOnly`; la contraseña, el rol activo y
+las credenciales tenant no se guardan en el navegador.
+
+La sesión conserva la identidad global mínima. Las membresías y sus roles se
+consultan en la base de control al autorizar una operación tenant. De este modo,
+deshabilitar un usuario o una membresía tiene efecto sin esperar a que expire una
+lista de permisos almacenada en la sesión.
+
+La sesión expira después de 30 minutos de inactividad según ADR-023. El valor se
+configura con `SESSION_TIMEOUT`; no existe una cookie persistente de “Recordarme”
+en el MVP.
+
+### Login global y selección
+
+```text
+Angular inicia la aplicación
+  → obtiene token CSRF
+  → consulta GET /api/v1/auth/session
+  → si es anónimo, presenta el login global
+  → si está autenticado, recibe membresías activas
+  → una membresía: navega directamente
+  → varias membresías: el usuario elige el comercio
+  → cada llamada administrativa incluye el slug en la URL
+  → el backend vuelve a autorizar usuario + membership + rol
+```
+
+La selección frontend es navegación, no una fuente de autoridad. El datasource
+tenant sólo se abre después de comprobar la membresía.
+
+### Matriz fija de roles del MVP
+
+| Capacidad | `OWNER` | `ADMIN` | `STAFF` |
+|---|---:|---:|---:|
+| Ver dashboard operativo | Sí | Sí | No |
+| Gestionar categorías, productos y precios | Sí | Sí | No |
+| Consultar catálogo e inventario | Sí | Sí | Sí |
+| Ajustar stock | Sí | Sí | Sí |
+| Ver pedidos y cambiar estados permitidos | Sí | Sí | Sí |
+| Cambiar configuración básica del comercio | Sí | Sí | No |
+| Gestionar conexión de pagos | Sí | No | No |
+| Gestionar membresías y propiedad | Sí | No | No |
+
+La interfaz oculta acciones no disponibles para mejorar la experiencia, pero el
+backend aplica esta matriz en todos los casos. Los permisos configurables quedan
+fuera del MVP.
+
+### CSRF, CORS y cookies
+
+- Las operaciones que cambian estado requieren el par `XSRF-TOKEN` /
+  `X-XSRF-TOKEN`.
+- La cookie de sesión usa `HttpOnly`, `SameSite=Lax` y `Secure` en ambientes con
+  HTTPS; el perfil local puede desactivar `Secure` para `http://localhost`.
+- CORS admite credenciales sólo desde orígenes explícitos, nunca con wildcard.
+- Login y logout también están protegidos por CSRF.
+- El identificador de sesión se renueva después de autenticar y se invalida en el
+  logout.
+
+El login aplica un límite básico, acotado en memoria, por IP confiable y correo
+normalizado. Es apropiado para la instancia única del MVP, pero no comparte
+contadores entre réplicas. Un limitador distribuido y Redis requieren una decisión
+futura sustentada por el despliegue y la carga.
+
+### Provisión y recuperación
+
+El primer `OWNER` se crea mediante un proceso operativo idempotente, deshabilitado
+por defecto y alimentado por variables de entorno. No se versionan contraseñas ni
+hashes reutilizables. La recuperación autoservicio por correo pertenece a V2; el
+piloto tendrá una rotación operativa controlada.
 
 ## Inventario del MVP
 

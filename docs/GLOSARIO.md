@@ -8,6 +8,12 @@
 - **API REST:** contrato HTTP mediante el cual Angular se comunica con el backend.
 - **Controller:** entrada HTTP del backend; valida el formato y delega un caso de uso.
 - **CORS:** reglas que controlan qué orígenes web pueden llamar a la API.
+- **Cookie `HttpOnly`:** cookie que el navegador envía, pero JavaScript no puede
+  leer directamente; reduce la exposición del identificador de sesión ante XSS.
+- **Correo normalizado:** representación canónica usada para comparar correos sin
+  diferencias irrelevantes de mayúsculas o espacios.
+- **Credential stuffing:** intentos automatizados con credenciales filtradas de
+  otros servicios.
 - **CSRF:** ataque que intenta ejecutar una acción aprovechando una sesión existente.
 - **Dependency Injection:** mecanismo que entrega dependencias sin crearlas manualmente.
 - **DTO:** objeto diseñado para transportar datos por una frontera, como la API.
@@ -16,6 +22,8 @@
 - **Fallo cerrado:** ante una ausencia o inconsistencia, negar la operación en vez
   de usar un valor predeterminado potencialmente inseguro.
 - **Guard:** control de navegación Angular; ayuda a la UX, no reemplaza seguridad backend.
+- **Hash adaptativo:** transformación unidireccional de contraseña cuyo costo se
+  ajusta para dificultar ataques de fuerza bruta.
 - **Idempotencia:** procesar repetidamente el mismo evento sin repetir su efecto.
 - **Interceptor:** pieza Angular que trata solicitudes/respuestas HTTP transversalmente.
 - **JWT:** token firmado con información verificable; no implica revocación automática.
@@ -29,10 +37,14 @@
 - **Connection routing:** selección segura de una conexión de base a partir del
   comercio resuelto por el servidor.
 - **OAuth:** autorización delegada sin pedir al comercio que entregue su contraseña.
+- **Rate limiting:** límite temporal de solicitudes para reducir abuso, fuerza
+  bruta y agotamiento de recursos.
 - **Repository:** abstracción para leer o guardar datos del dominio.
 - **Service / caso de uso:** coordina reglas y una operación de negocio.
 - **Sesión:** estado autenticado mantenido por el servidor y asociado a una cookie
   segura del navegador.
+- **Spring Session JDBC:** implementación que persiste sesiones HTTP en tablas de
+  una base relacional para compartirlas entre instancias y sobrevivir reinicios.
 - **Signal:** primitiva reactiva de Angular para representar estado y valores derivados.
 - **SSR:** generación inicial de HTML en el servidor; puede mejorar SEO y primera carga.
 - **Tenant:** comercio cuyos datos y configuración deben mantenerse aislados.
@@ -40,3 +52,7 @@
   los servidores reutilizan hilos entre solicitudes.
 - **Variable de entorno:** configuración externa al código, apropiada para secretos.
 - **Webhook:** solicitud enviada por un sistema externo para notificar un evento.
+- **XSS:** inyección de script en una página. Una cookie `HttpOnly` dificulta el
+  robo directo de sesión, pero no reemplaza la prevención de contenido inseguro.
+- **XSRF token:** valor que la SPA copia desde `XSRF-TOKEN` al header
+  `X-XSRF-TOKEN` para demostrar que una operación no proviene de un sitio externo.
