@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -32,6 +33,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.comercioflex.identity.application.LoginRateLimitProperties;
 import com.comercioflex.identity.application.PlatformUserDetailsService;
+import com.comercioflex.identity.application.TenantPermissionAuthorizationManager;
+import com.comercioflex.identity.domain.TenantPermission;
 import com.comercioflex.tenant.api.TenantResolutionFilter;
 
 @Configuration
@@ -61,6 +64,17 @@ public class SecurityConfig {
 					"/api/v1/auth/csrf",
 					"/api/v1/auth/login",
 					"/api/v1/auth/session").permitAll()
+				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/stores/*/admin/categories",
+					"/api/v1/stores/*/admin/categories/*")
+				.access(new TenantPermissionAuthorizationManager(
+					TenantPermission.VIEW_CATALOG))
+				.requestMatchers(
+					"/api/v1/stores/*/admin/categories",
+					"/api/v1/stores/*/admin/categories/**")
+				.access(new TenantPermissionAuthorizationManager(
+					TenantPermission.MANAGE_CATALOG))
 				.anyRequest().authenticated())
 			.addFilterAfter(tenantResolutionFilter, AnonymousAuthenticationFilter.class)
 			.build();
