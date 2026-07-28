@@ -1,0 +1,97 @@
+.login-page {
+  display: grid;
+  min-height: 100vh;
+  padding: 1rem;
+  place-items: center;
+}
+
+.login-card {
+  width: min(100%, 28rem);
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 1.5rem 4rem rgb(23 32 51 / 10%);
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 2rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 0.875rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0.4rem 0;
+  font-size: clamp(2rem, 8vw, 3rem);
+  letter-spacing: -0.04em;
+}
+
+.intro {
+  margin: 0 0 2rem;
+  color: var(--color-muted);
+}
+
+.field {
+  margin-bottom: 1rem;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 650;
+}
+
+input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  font: inherit;
+}
+
+input:focus-visible {
+  border-color: var(--color-accent);
+  outline: 3px solid rgb(107 63 214 / 20%);
+}
+
+.field-error {
+  min-height: 1.25rem;
+  margin: 0.25rem 0 0;
+  color: #a22323;
+  font-size: 0.875rem;
+}
+
+.form-error {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  color: #721c24;
+  background: #fbeaec;
+}
+
+button {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 0.5rem;
+  color: #fff;
+  background: var(--color-accent);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}

@@ -1,5 +1,14 @@
 import { Routes } from '@angular/router';
 
+import {
+  adminEntryGuard,
+  allowedRolesGuard,
+  authGuard,
+  membershipGuard,
+  membershipSelectionGuard,
+} from './core/auth/auth.guards';
+import { ADMIN_ROLES } from './core/auth/auth.models';
+
 export const routes: Routes = [
   {
     path: '',
@@ -18,7 +27,30 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'admin/login',
+    loadComponent: () =>
+      import('./features/auth/login/login').then((module) => module.Login),
+  },
+  {
+    path: 'admin/comercios',
+    canActivate: [authGuard, membershipSelectionGuard],
+    loadComponent: () =>
+      import('./features/admin/store-selector/store-selector').then(
+        (module) => module.StoreSelector,
+      ),
+  },
+  {
     path: 'admin',
+    pathMatch: 'full',
+    canActivate: [adminEntryGuard],
+    loadComponent: () =>
+      import('./features/admin/store-selector/store-selector').then(
+        (module) => module.StoreSelector,
+      ),
+  },
+  {
+    path: 'tiendas/:storeSlug/admin',
+    canActivate: [authGuard, membershipGuard, allowedRolesGuard(ADMIN_ROLES)],
     loadComponent: () =>
       import('./layouts/admin-layout/admin-layout').then((module) => module.AdminLayout),
     children: [
