@@ -19,10 +19,10 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
 
 import { routeParam } from '../../../../core/auth/auth.guards';
+import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
 import { CategoryApiService } from '../category-api.service';
 import { categoryErrorMessage, fieldProblem } from '../category-errors';
 import { Category } from '../category.models';
-import { inheritedRouteParam } from '../category-route-params';
 
 function trimmedNameLength(control: AbstractControl<string>): ValidationErrors | null {
   const length = control.value.trim().length;

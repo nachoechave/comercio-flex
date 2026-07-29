@@ -7,8 +7,8 @@ import { Component } from '@angular/core';
       <p>Panel administrativo</p>
       <h1>Base preparada</h1>
       <p>
-        La autenticación y la gestión de categorías ya están disponibles. Productos, inventario y
-        métricas se incorporarán en las próximas historias aprobadas.
+        La autenticación y la gestión de categorías, productos y variantes ya están disponibles.
+        Inventario y métricas se incorporarán en las próximas historias aprobadas.
       </p>
     </section>
   `,

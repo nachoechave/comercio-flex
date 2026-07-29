@@ -69,6 +69,13 @@ export const routes: Routes = [
             (module) => module.CATEGORY_ROUTES,
           ),
       },
+      {
+        path: 'productos',
+        loadChildren: () =>
+          import('./features/admin/products/product.routes').then(
+            (module) => module.PRODUCT_ROUTES,
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

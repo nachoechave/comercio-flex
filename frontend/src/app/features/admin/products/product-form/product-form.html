@@ -1,0 +1,107 @@
+<section class="page" aria-labelledby="product-form-title">
+  <nav aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'productos']">Productos</a>
+    <span aria-hidden="true"> / </span><span>{{ editing() ? 'Editar' : 'Nuevo' }}</span>
+  </nav>
+  <h1 id="product-form-title">{{ editing() ? 'Editar producto' : 'Crear producto' }}</h1>
+
+  @if (loading()) {
+    <p class="state" role="status">Cargando formulario…</p>
+  } @else if (loadError()) {
+    <p class="state error" role="alert">{{ loadError() }}</p>
+  } @else {
+    @if (archived()) {
+      <p class="notice" role="status">
+        Este producto está archivado. Restauralo a borrador desde el detalle para editarlo.
+      </p>
+    }
+    @if (successMessage()) { <p class="success" role="status">{{ successMessage() }}</p> }
+    @if (formError()) { <p class="error" role="alert">{{ formError() }}</p> }
+
+    <form [formGroup]="form" (ngSubmit)="submitProduct()" novalidate>
+      <fieldset [disabled]="archived()">
+        <legend>Datos del producto</legend>
+        <label for="product-name">Nombre</label>
+        <input id="product-name" formControlName="name" maxlength="160" [attr.aria-invalid]="form.controls.name.touched && form.controls.name.invalid" aria-describedby="product-name-error" />
+        @if (form.controls.name.touched && form.controls.name.invalid) {
+          <p id="product-name-error" class="field-error">Ingresá entre 2 y 160 caracteres.</p>
+        }
+
+        <label for="product-description">Descripción <small>(opcional)</small></label>
+        <textarea id="product-description" formControlName="description" maxlength="2000"></textarea>
+
+        <label for="product-category">Categoría</label>
+        <select id="product-category" formControlName="categoryId" [attr.aria-invalid]="form.controls.categoryId.touched && form.controls.categoryId.invalid" aria-describedby="product-category-error">
+          <option value="">Elegí una categoría</option>
+          @for (category of categories(); track category.id) {
+            @if (category.active || category.id === product()?.category?.id) {
+              <option [value]="category.id">{{ category.name }}{{ category.active ? '' : ' (inactiva)' }}</option>
+            }
+          }
+        </select>
+        @if (form.controls.categoryId.touched && form.controls.categoryId.invalid) {
+          <p id="product-category-error" class="field-error">Elegí una categoría.</p>
+        }
+      </fieldset>
+
+      @if (editing()) {
+        <button class="primary" type="submit" [disabled]="saving() || archived()">
+          {{ saving() ? 'Guardando…' : 'Guardar datos' }}
+        </button>
+      }
+    </form>
+
+    <section aria-labelledby="variants-title">
+      <header class="section-heading">
+        <div><h2 id="variants-title">Variantes</h2><p>Talle y color son opcionales. SKU y precio son obligatorios.</p></div>
+        @if (!archived()) { <button type="button" (click)="addVariant()">Agregar variante</button> }
+      </header>
+
+      <div class="variants">
+        @for (row of variants.controls; track row; let index = $index) {
+          <fieldset class="variant" [formGroup]="row" [disabled]="archived()">
+            <legend>Variante {{ index + 1 }}</legend>
+            <div class="variant-grid">
+              <div>
+                <label [for]="'sku-' + index">SKU</label>
+                <input [id]="'sku-' + index" formControlName="sku" maxlength="64" [attr.aria-invalid]="row.controls.sku.touched && row.controls.sku.invalid" [attr.aria-describedby]="'sku-error-' + index" />
+                @if (row.controls.sku.touched && row.controls.sku.invalid) { <p [id]="'sku-error-' + index" class="field-error">Usá hasta 64 caracteres: letras, números, punto, guion o guion bajo; comenzá con letra o número.</p> }
+              </div>
+              <div>
+                <label [for]="'price-' + index">Precio</label>
+                <input [id]="'price-' + index" formControlName="price" inputmode="decimal" placeholder="19999.90" [attr.aria-invalid]="row.controls.price.touched && row.controls.price.invalid" [attr.aria-describedby]="'price-error-' + index" />
+                @if (row.controls.price.touched && row.controls.price.invalid) { <p [id]="'price-error-' + index" class="field-error">Ingresá un precio mayor que cero, con punto y hasta 2 decimales.</p> }
+              </div>
+              <div><label [for]="'size-' + index">Talle <small>(opcional)</small></label><input [id]="'size-' + index" formControlName="size" maxlength="60" /></div>
+              <div><label [for]="'color-' + index">Color <small>(opcional)</small></label><input [id]="'color-' + index" formControlName="color" maxlength="60" /></div>
+            </div>
+            <div class="variant-actions">
+              @if (editing()) {
+                <span>{{ row.controls.active.value ? 'Activa' : 'Inactiva' }}</span>
+                <button type="button" (click)="saveVariant(index)" [disabled]="pendingVariantId() !== null">Guardar variante</button>
+                @if (row.controls.id.value) {
+                  <button type="button" (click)="toggleVariant(index)" [disabled]="pendingVariantId() !== null">
+                    {{ row.controls.active.value ? 'Desactivar' : 'Activar' }}
+                  </button>
+                } @else if (variants.length > 1) {
+                  <button type="button" (click)="removeUnsavedVariant(index)">Quitar</button>
+                }
+              } @else if (variants.length > 1) {
+                <button type="button" (click)="removeUnsavedVariant(index)">Quitar variante</button>
+              }
+            </div>
+          </fieldset>
+        }
+      </div>
+    </section>
+
+    @if (!editing()) {
+      <div class="footer-actions">
+        <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'productos']">Cancelar</a>
+        <button class="primary" type="button" (click)="submitProduct()" [disabled]="saving()">
+          {{ saving() ? 'Creando…' : 'Crear como borrador' }}
+        </button>
+      </div>
+    }
+  }
+</section>

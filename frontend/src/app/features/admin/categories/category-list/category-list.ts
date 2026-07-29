@@ -13,10 +13,10 @@ import { finalize, Subscription } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { routeParam } from '../../../../core/auth/auth.guards';
+import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
 import { CategoryApiService } from '../category-api.service';
 import { categoryErrorMessage } from '../category-errors';
 import { Category } from '../category.models';
-import { inheritedRouteParam } from '../category-route-params';
 
 @Component({
   selector: 'app-category-list',

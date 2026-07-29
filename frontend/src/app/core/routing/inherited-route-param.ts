@@ -1,7 +1,7 @@
 import { ActivatedRoute } from '@angular/router';
 import { combineLatest, distinctUntilChanged, map, Observable, of } from 'rxjs';
 
-import { routeParam } from '../../../core/auth/auth.guards';
+import { routeParam } from '../auth/auth.guards';
 
 export function inheritedRouteParam(
   route: ActivatedRoute,

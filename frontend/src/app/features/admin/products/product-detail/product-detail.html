@@ -1,0 +1,83 @@
+<section class="page" aria-labelledby="product-title">
+  <nav aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'productos']">Productos</a>
+    <span aria-hidden="true"> / </span><span>Detalle</span>
+  </nav>
+
+  @if (loading()) {
+    <p class="state" role="status">Cargando producto…</p>
+  } @else if (!product()) {
+    <p class="state error" role="alert">{{ errorMessage() }}</p>
+  } @else if (product(); as current) {
+    <header>
+      <div>
+        <span class="status">{{ statusLabel(current.status) }}</span>
+        <h1 id="product-title">{{ current.name }}</h1>
+        <p>{{ current.category.name }} · {{ current.slug }}</p>
+      </div>
+      @if (canManage() && current.status !== 'ARCHIVED') {
+        <a class="primary" routerLink="editar">Editar producto</a>
+      }
+    </header>
+
+    @if (!canManage()) {
+      <p class="notice" role="status">Vista de lectura: no podés modificar productos ni precios.</p>
+    }
+    @if (successMessage()) { <p class="success" role="status">{{ successMessage() }}</p> }
+    @if (errorMessage()) { <p class="error" role="alert">{{ errorMessage() }}</p> }
+
+    <section class="card" aria-labelledby="description-title">
+      <h2 id="description-title">Descripción</h2>
+      <p>{{ current.description || 'Sin descripción.' }}</p>
+    </section>
+
+    <section class="card" aria-labelledby="variant-list-title">
+      <h2 id="variant-list-title">Variantes</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>SKU</th><th>Talle</th><th>Color</th><th>Precio</th><th>Estado</th></tr></thead>
+          <tbody>
+            @for (variant of current.variants; track variant.id) {
+              <tr>
+                <td><strong>{{ variant.sku }}</strong></td>
+                <td>{{ variant.size || '—' }}</td>
+                <td>{{ variant.color || '—' }}</td>
+                <td>{{ variant.price }}</td>
+                <td>{{ variant.active ? 'Activa' : 'Inactiva' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (canManage()) {
+      <section class="card" aria-labelledby="publication-title">
+        <h2 id="publication-title">Publicación</h2>
+        <p>Publicar no modifica ni crea existencias de stock.</p>
+        <div class="actions">
+          @if (current.status === 'DRAFT') {
+            <button type="button" (click)="requestStatus('PUBLISHED', $event)">Publicar</button>
+            <button type="button" (click)="requestStatus('ARCHIVED', $event)">Archivar</button>
+          } @else if (current.status === 'PUBLISHED') {
+            <button type="button" (click)="requestStatus('DRAFT', $event)">Despublicar</button>
+            <button type="button" (click)="requestStatus('ARCHIVED', $event)">Archivar</button>
+          } @else {
+            <button type="button" (click)="requestStatus('DRAFT', $event)">Restaurar como borrador</button>
+          }
+        </div>
+      </section>
+    }
+
+    @if (requestedStatus(); as nextStatus) {
+      <section class="confirmation" role="alertdialog" aria-labelledby="status-confirm-title">
+        <h2 id="status-confirm-title">Confirmar cambio de estado</h2>
+        <p>El producto pasará a estado {{ statusLabel(nextStatus).toLowerCase() }}.</p>
+        <div class="actions">
+          <button type="button" (click)="cancelStatus()">Cancelar</button>
+          <button #statusConfirm type="button" class="primary" (click)="confirmStatus()">Confirmar</button>
+        </div>
+      </section>
+    }
+  }
+</section>
