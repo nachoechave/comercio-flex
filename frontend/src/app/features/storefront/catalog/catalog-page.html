@@ -1,0 +1,101 @@
+<section class="catalog" aria-labelledby="catalog-title">
+  <header class="hero">
+    <p class="eyebrow">Catálogo online</p>
+    <h1 id="catalog-title">{{ context.settings()?.storeName }}</h1>
+    <p>Encontrá productos, opciones y precios disponibles en nuestra tienda.</p>
+  </header>
+
+  <form class="filters" [formGroup]="filters" (ngSubmit)="search()" role="search">
+    <div class="search-field">
+      <label for="catalog-query">Buscar productos</label>
+      <input
+        id="catalog-query"
+        type="search"
+        formControlName="q"
+        maxlength="100"
+        placeholder="¿Qué estás buscando?"
+      />
+    </div>
+    <div>
+      <label for="catalog-category">Categoría</label>
+      <select id="catalog-category" formControlName="category">
+        <option value="">Todas las categorías</option>
+        @for (category of categories(); track category.id) {
+          <option [value]="category.slug">{{ category.name }}</option>
+        }
+      </select>
+    </div>
+    <button type="submit" [disabled]="loading()">Buscar</button>
+  </form>
+
+  @if (loading()) {
+    <div class="state" aria-busy="true">
+      <p role="status">Cargando productos…</p>
+      <div class="skeleton-grid" aria-hidden="true">
+        @for (item of [1, 2, 3, 4]; track item) {
+          <span></span>
+        }
+      </div>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="state state--message" role="alert">
+      <p class="eyebrow">Ocurrió un problema</p>
+      <h2>No pudimos cargar el catálogo</h2>
+      <p>{{ errorMessage() }}</p>
+      <button type="button" (click)="retry()">Reintentar</button>
+    </div>
+  } @else if (page().items.length === 0) {
+    <div class="state state--message">
+      @if (query() || selectedCategory()) {
+        <p class="eyebrow">Sin resultados</p>
+        <h2>No encontramos productos con esos filtros</h2>
+        <p>Probá otra búsqueda o volvé a ver el catálogo completo.</p>
+        <button type="button" (click)="clearFilters()">Limpiar filtros</button>
+      } @else {
+        <p class="eyebrow">Próximamente</p>
+        <h2>Esta tienda todavía no publicó productos</h2>
+        <p>Volvé pronto para conocer sus novedades.</p>
+      }
+    </div>
+  } @else {
+    <div class="results-heading">
+      <div>
+        <p class="eyebrow">Productos</p>
+        <h2>{{ page().totalItems }} {{ page().totalItems === 1 ? 'resultado' : 'resultados' }}</h2>
+      </div>
+      @if (query() || selectedCategory()) {
+        <button class="text-button" type="button" (click)="clearFilters()">Limpiar filtros</button>
+      }
+    </div>
+
+    <div class="product-grid">
+      @for (product of page().items; track product.id) {
+        <app-public-product-card
+          [product]="product"
+          [storeSlug]="storeSlug() ?? ''"
+          [currencyCode]="currencyCode()"
+        />
+      }
+    </div>
+
+    @if (page().totalPages > 1) {
+      <nav class="pagination" aria-label="Paginación del catálogo">
+        <button
+          type="button"
+          (click)="goToPage(page().page - 1)"
+          [disabled]="page().page === 0"
+        >
+          Anterior
+        </button>
+        <span>Página {{ page().page + 1 }} de {{ page().totalPages }}</span>
+        <button
+          type="button"
+          (click)="goToPage(page().page + 1)"
+          [disabled]="page().page + 1 >= page().totalPages"
+        >
+          Siguiente
+        </button>
+      </nav>
+    }
+  }
+</section>

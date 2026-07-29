@@ -1,0 +1,40 @@
+@if (context.loading()) {
+  <header class="site-header site-header--loading" aria-hidden="true">
+    <span class="brand-placeholder"></span>
+  </header>
+  <main id="main-content" class="store-state" aria-busy="true">
+    <p role="status">Cargando tienda…</p>
+  </main>
+} @else if (context.errorMessage()) {
+  <header class="site-header">
+    <a class="brand" routerLink="/">Comercio Flex</a>
+  </header>
+  <main id="main-content" class="store-state">
+    <p class="eyebrow">Tienda pública</p>
+    <h1>{{ context.notFound() ? 'No encontramos esta tienda' : 'No pudimos abrir la tienda' }}</h1>
+    <p>{{ context.errorMessage() }}</p>
+    @if (!context.notFound()) {
+      <button type="button" (click)="context.retry()">Reintentar</button>
+    }
+    <a routerLink="/">Volver a Comercio Flex</a>
+  </main>
+} @else if (context.settings(); as settings) {
+  <header class="site-header">
+    <a class="brand" [routerLink]="['/tiendas', settings.slug]">
+      <span class="brand-mark" aria-hidden="true">{{ settings.storeName.slice(0, 1) }}</span>
+      <span>{{ settings.storeName }}</span>
+    </a>
+    <nav aria-label="Navegación principal">
+      <a [routerLink]="['/tiendas', settings.slug]">Productos</a>
+    </nav>
+  </header>
+  <main id="main-content">
+    <router-outlet />
+  </main>
+  <footer class="site-footer">
+    <p>
+      Tienda creada con <a routerLink="/">Comercio Flex</a>
+    </p>
+    <a [routerLink]="['/tiendas', settings.slug, 'admin']">Administrar tienda</a>
+  </footer>
+}

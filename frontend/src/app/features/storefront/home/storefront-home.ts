@@ -1,25 +1,22 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
-
-import { HealthService } from '../../../core/health/health.service';
-import { StatusPill } from '../../../shared/ui/status-pill/status-pill';
-
-type BackendState = 'loading' | 'up' | 'error';
+import { Component, inject, OnInit } from '@angular/core';
+import { Meta, Title } from '@angular/platform-browser';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-storefront-home',
-  imports: [StatusPill],
+  imports: [RouterLink],
   templateUrl: './storefront-home.html',
   styleUrl: './storefront-home.scss',
 })
 export class StorefrontHome implements OnInit {
-  private readonly healthService = inject(HealthService);
-
-  protected readonly backendState = signal<BackendState>('loading');
+  private readonly title = inject(Title);
+  private readonly meta = inject(Meta);
 
   ngOnInit(): void {
-    this.healthService.getHealth().subscribe({
-      next: (response) => this.backendState.set(response.status === 'UP' ? 'up' : 'error'),
-      error: () => this.backendState.set('error'),
+    this.title.setTitle('Comercio Flex');
+    this.meta.updateTag({
+      name: 'description',
+      content: 'Comercio Flex, tiendas online simples y configurables para comercios.',
     });
   }
 }

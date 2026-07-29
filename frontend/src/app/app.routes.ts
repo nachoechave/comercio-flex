@@ -12,24 +12,13 @@ import { ADMIN_ROLES } from './core/auth/auth.models';
 export const routes: Routes = [
   {
     path: '',
+    pathMatch: 'full',
     loadComponent: () =>
-      import('./layouts/storefront-layout/storefront-layout').then(
-        (module) => module.StorefrontLayout,
-      ),
-    children: [
-      {
-        path: '',
-        loadComponent: () =>
-          import('./features/storefront/home/storefront-home').then(
-            (module) => module.StorefrontHome,
-          ),
-      },
-    ],
+      import('./features/storefront/home/storefront-home').then((module) => module.StorefrontHome),
   },
   {
     path: 'admin/login',
-    loadComponent: () =>
-      import('./features/auth/login/login').then((module) => module.Login),
+    loadComponent: () => import('./features/auth/login/login').then((module) => module.Login),
   },
   {
     path: 'admin/comercios',
@@ -84,6 +73,15 @@ export const routes: Routes = [
           ),
       },
     ],
+  },
+  {
+    path: 'tiendas/:storeSlug',
+    loadComponent: () =>
+      import('./layouts/storefront-layout/storefront-layout').then(
+        (module) => module.StorefrontLayout,
+      ),
+    loadChildren: () =>
+      import('./features/storefront/storefront.routes').then((module) => module.STOREFRONT_ROUTES),
   },
   { path: '**', redirectTo: '' },
 ];

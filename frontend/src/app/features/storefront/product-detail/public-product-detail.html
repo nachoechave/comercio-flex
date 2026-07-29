@@ -1,0 +1,67 @@
+<section class="product-page" aria-labelledby="product-title">
+  <nav class="breadcrumbs" aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug()]">Productos</a>
+    @if (product(); as currentProduct) {
+      <span aria-hidden="true">/</span>
+      <span>{{ currentProduct.name }}</span>
+    }
+  </nav>
+
+  @if (loading()) {
+    <div class="state" aria-busy="true">
+      <p role="status">Cargando producto…</p>
+      <div class="detail-skeleton" aria-hidden="true"><span></span><span></span></div>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="state state--message" role="alert">
+      <p class="eyebrow">{{ notFound() ? 'Producto no disponible' : 'Ocurrió un problema' }}</p>
+      <h1 id="product-title">
+        {{ notFound() ? 'No encontramos este producto' : 'No pudimos cargar el producto' }}
+      </h1>
+      <p>{{ errorMessage() }}</p>
+      <div class="state-actions">
+        @if (!notFound()) {
+          <button type="button" (click)="retry()">Reintentar</button>
+        }
+        <a [routerLink]="['/tiendas', storeSlug()]">Volver al catálogo</a>
+      </div>
+    </div>
+  } @else if (product(); as currentProduct) {
+    <div class="product-hero">
+      <div class="visual" aria-hidden="true"><span>{{ initial() }}</span></div>
+      <div class="summary">
+        <p class="eyebrow">{{ currentProduct.category.name }}</p>
+        <h1 id="product-title">{{ currentProduct.name }}</h1>
+        <p class="availability" [class.availability--out]="!available()">
+          {{ available() ? 'Disponible' : 'Sin stock' }}
+        </p>
+        @if (currentProduct.description) {
+          <p class="description">{{ currentProduct.description }}</p>
+        } @else {
+          <p class="description">Consultá las opciones y precios disponibles.</p>
+        }
+      </div>
+    </div>
+
+    <section class="variants" aria-labelledby="variants-title">
+      <header>
+        <p class="eyebrow">Opciones</p>
+        <h2 id="variants-title">
+          {{ currentProduct.variants.length === 1 ? 'Precio y disponibilidad' : 'Elegí tu variante' }}
+        </h2>
+        <p>El precio y la disponibilidad corresponden a cada combinación.</p>
+      </header>
+      <div class="variant-grid">
+        @for (variant of currentProduct.variants; track variant.id) {
+          <article class="variant-card" [class.variant-card--out]="!variant.available">
+            <div>
+              <h3>{{ variantLabel(variant) }}</h3>
+              <p>{{ variant.available ? 'Disponible' : 'Sin stock' }}</p>
+            </div>
+            <strong>{{ variant.price | storefrontMoney: context.currencyCode() }}</strong>
+          </article>
+        }
+      </div>
+    </section>
+  }
+</section>

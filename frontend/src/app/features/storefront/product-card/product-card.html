@@ -1,0 +1,30 @@
+<article class="product-card" [class.product-card--unavailable]="!product().available">
+  <a
+    class="visual"
+    [routerLink]="['/tiendas', storeSlug(), 'productos', product().slug]"
+    tabindex="-1"
+    aria-hidden="true"
+  >
+    <span>{{ initial() }}</span>
+  </a>
+  <div class="content">
+    <p class="category">{{ product().category.name }}</p>
+    <h2>
+      <a [routerLink]="['/tiendas', storeSlug(), 'productos', product().slug]">
+        {{ product().name }}
+      </a>
+    </h2>
+    <div class="footer">
+      <p class="price">
+        @if (product().priceFrom === product().priceTo) {
+          {{ product().priceFrom | storefrontMoney: currencyCode() }}
+        } @else {
+          Desde {{ product().priceFrom | storefrontMoney: currencyCode() }}
+        }
+      </p>
+      <p class="availability" [class.availability--out]="!product().available">
+        {{ product().available ? 'Disponible' : 'Sin stock' }}
+      </p>
+    </div>
+  </div>
+</article>

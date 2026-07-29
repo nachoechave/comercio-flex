@@ -1,27 +1,15 @@
-<section class="hero" aria-labelledby="page-title">
-  <p class="eyebrow">Sprint 1 · Base técnica</p>
-  <h1 id="page-title">Comercio Flex</h1>
-  <p class="summary">
-    La tienda pública se construirá aquí. Por ahora esta pantalla verifica la comunicación real
-    entre Angular y Spring Boot.
-  </p>
-
-  <div class="health-card" aria-live="polite">
-    <div>
-      <h2>Estado del backend</h2>
-      <p>Endpoint <code>/actuator/health</code></p>
-    </div>
-
-    @switch (backendState()) {
-      @case ('loading') {
-        <app-status-pill label="Comprobando…" />
-      }
-      @case ('up') {
-        <app-status-pill label="Disponible" tone="success" />
-      }
-      @case ('error') {
-        <app-status-pill label="Sin conexión" tone="danger" />
-      }
-    }
-  </div>
-</section>
+<header class="platform-header">
+  <a class="brand" routerLink="/">Comercio Flex</a>
+  <a class="admin-link" routerLink="/admin">Ingresar a administración</a>
+</header>
+<main id="main-content">
+  <section class="hero" aria-labelledby="page-title">
+    <p class="eyebrow">Ecommerce para comercios reales</p>
+    <h1 id="page-title">Una tienda clara, flexible y lista para crecer.</h1>
+    <p class="summary">
+      Comercio Flex reúne catálogo, inventario y operación en una experiencia simple para cada
+      comercio y sus clientes.
+    </p>
+    <a class="primary" routerLink="/admin">Administrar mi comercio</a>
+  </section>
+</main>

@@ -1,0 +1,238 @@
+.product-page {
+  width: min(100% - 2rem, 76rem);
+  margin: 0 auto;
+  padding: 1.5rem 0 2rem;
+}
+
+.breadcrumbs {
+  display: flex;
+  gap: 0.55rem;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.breadcrumbs a {
+  font-weight: 700;
+}
+
+.breadcrumbs span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-hero {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.05fr) minmax(18rem, 0.95fr);
+  align-items: center;
+  gap: clamp(2rem, 7vw, 6rem);
+  padding: clamp(2rem, 6vw, 5rem) 0;
+}
+
+.visual {
+  display: grid;
+  min-height: clamp(23rem, 50vw, 36rem);
+  place-items: center;
+  border-radius: 2rem;
+  color: #fff;
+  background:
+    radial-gradient(circle at 72% 24%, rgb(255 255 255 / 38%), transparent 22%),
+    linear-gradient(145deg, #d7c9fa, #7048cf);
+  box-shadow: 0 2rem 5rem rgb(60 34 120 / 18%);
+}
+
+.visual span {
+  display: grid;
+  width: clamp(7rem, 18vw, 11rem);
+  height: clamp(7rem, 18vw, 11rem);
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 65%);
+  border-radius: 2.7rem;
+  background: rgb(255 255 255 / 14%);
+  font-size: clamp(3rem, 8vw, 5rem);
+  font-weight: 850;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.summary h1,
+.state h1 {
+  margin: 0.4rem 0 0.8rem;
+  font-size: clamp(2.5rem, 7vw, 4.8rem);
+  letter-spacing: -0.05em;
+  line-height: 1.02;
+}
+
+.availability {
+  display: inline-block;
+  margin: 0.5rem 0 1rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  color: #195f3c;
+  background: #e1f5e9;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.availability--out {
+  color: #7c411a;
+  background: #fff0df;
+}
+
+.description,
+.variants header > p:last-child {
+  color: var(--color-muted);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.variants {
+  padding: clamp(2rem, 6vw, 4rem) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.variants h2 {
+  margin: 0.35rem 0;
+  font-size: clamp(1.8rem, 5vw, 2.7rem);
+}
+
+.variant-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+
+.variant-card {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #b8dcc8;
+  border-radius: 1rem;
+  background: var(--color-surface);
+}
+
+.variant-card h3,
+.variant-card p {
+  margin: 0;
+}
+
+.variant-card h3 {
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+}
+
+.variant-card p {
+  margin-top: 0.25rem;
+  color: #24724a;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.variant-card strong {
+  white-space: nowrap;
+}
+
+.variant-card--out {
+  border-color: var(--color-border);
+  background: #f6f6f7;
+}
+
+.variant-card--out p {
+  color: #8b4a20;
+}
+
+.state {
+  min-height: 60vh;
+  padding: 3rem 0;
+}
+
+.state--message {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+}
+
+.state--message > p:not(.eyebrow) {
+  max-width: 40rem;
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+.state-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.state-actions button {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: 0.65rem;
+  color: #fff;
+  background: var(--color-accent);
+  font: inherit;
+  font-weight: 750;
+}
+
+.detail-skeleton {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-top: 2rem;
+}
+
+.detail-skeleton span {
+  min-height: 28rem;
+  border-radius: 2rem;
+  background: #e8ebf1;
+}
+
+@media (max-width: 52rem) {
+  .product-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .visual {
+    min-height: min(105vw, 32rem);
+  }
+
+  .variant-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 34rem) {
+  .product-page {
+    width: min(100% - 1.25rem, 76rem);
+  }
+
+  .variant-grid,
+  .detail-skeleton {
+    grid-template-columns: 1fr;
+  }
+
+  .variant-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .state-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
