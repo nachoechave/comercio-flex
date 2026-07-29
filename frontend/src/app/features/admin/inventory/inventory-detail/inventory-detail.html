@@ -1,0 +1,63 @@
+<section class="page" aria-labelledby="inventory-detail-title">
+  <nav aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'inventario']">Inventario</a>
+    <span aria-hidden="true"> / </span><span>Detalle</span>
+  </nav>
+
+  @if (loading()) {
+    <p class="state" role="status">Cargando movimientos…</p>
+  } @else if (!inventory()) {
+    <p class="state error" role="alert">{{ errorMessage() }}</p>
+  } @else if (inventory(); as current) {
+    <header>
+      <div>
+        <p class="eyebrow">Inventario por variante</p>
+        <h1 id="inventory-detail-title">{{ current.productName }}</h1>
+        <p><strong>{{ current.sku }}</strong> · {{ current.size || 'Sin talle' }} · {{ current.color || 'Sin color' }}</p>
+      </div>
+      <a class="primary" routerLink="ajustar">Ajustar existencia</a>
+    </header>
+
+    @if (!current.variantActive || current.productStatus === 'ARCHIVED') {
+      <p class="warning" role="status">
+        Podés conciliar la existencia, pero {{ current.productStatus === 'ARCHIVED' ? 'el producto está archivado' : 'la variante está inactiva' }}.
+      </p>
+    }
+
+    <section class="quantity-card" aria-labelledby="current-quantity-title">
+      <h2 id="current-quantity-title">Existencia actual</h2>
+      <strong>{{ current.quantity }}</strong>
+      <small>Última actualización: {{ current.updatedAt | date: 'short' }}</small>
+    </section>
+
+    <section aria-labelledby="movements-title">
+      <h2 id="movements-title">Movimientos</h2>
+      @if (movements().items.length === 0) {
+        <p class="state">Todavía no hay movimientos registrados.</p>
+      } @else {
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Fecha</th><th>Variación</th><th>Antes</th><th>Después</th><th>Motivo</th><th>Actor</th></tr></thead>
+            <tbody>
+              @for (movement of movements().items; track movement.id) {
+                <tr>
+                  <td>{{ movement.createdAt | date: 'short' }}</td>
+                  <td><strong>{{ movement.delta }}</strong></td>
+                  <td>{{ movement.quantityBefore }}</td>
+                  <td>{{ movement.quantityAfter }}</td>
+                  <td>{{ reasonLabel(movement.reason) }}@if (movement.note) {<small>{{ movement.note }}</small>}</td>
+                  <td>{{ movement.actor.displayName }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <nav class="pagination" aria-label="Paginación de movimientos">
+          <button type="button" (click)="goToPage(movements().page - 1)" [disabled]="movements().page === 0">Anterior</button>
+          <span>Página {{ movements().page + 1 }} de {{ movements().totalPages }}</span>
+          <button type="button" (click)="goToPage(movements().page + 1)" [disabled]="movements().page + 1 >= movements().totalPages">Siguiente</button>
+        </nav>
+      }
+    </section>
+  }
+</section>

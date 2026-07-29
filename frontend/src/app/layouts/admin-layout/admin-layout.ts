@@ -50,6 +50,12 @@ import { AuthService } from '../../core/auth/auth.service';
         >
           Productos
         </a>
+        <a
+          [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'inventario']"
+          routerLinkActive="active"
+        >
+          Inventario
+        </a>
       </nav>
     }
     @if (logoutError()) {

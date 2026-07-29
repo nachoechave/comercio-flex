@@ -76,6 +76,13 @@ export const routes: Routes = [
             (module) => module.PRODUCT_ROUTES,
           ),
       },
+      {
+        path: 'inventario',
+        loadChildren: () =>
+          import('./features/admin/inventory/inventory.routes').then(
+            (module) => module.INVENTORY_ROUTES,
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

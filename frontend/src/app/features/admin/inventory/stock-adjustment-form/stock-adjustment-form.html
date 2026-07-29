@@ -1,0 +1,75 @@
+<section class="page" aria-labelledby="adjustment-title">
+  <nav aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'inventario']">Inventario</a>
+    <span aria-hidden="true"> / </span><a [routerLink]="['/tiendas', storeSlug(), 'admin', 'inventario', variantId()]">Detalle</a>
+    <span aria-hidden="true"> / </span><span>Ajustar</span>
+  </nav>
+
+  @if (loading()) {
+    <p class="state" role="status">Cargando existencia…</p>
+  } @else if (!inventory()) {
+    <p class="state error" role="alert">{{ errorMessage() }}</p>
+  } @else if (inventory(); as current) {
+    <p class="eyebrow">Ajuste auditable</p>
+    <h1 id="adjustment-title">Ajustar {{ current.sku }}</h1>
+    <p>{{ current.productName }} · Existencia actual: <strong>{{ current.quantity }}</strong></p>
+
+    @if (!current.variantActive || current.productStatus === 'ARCHIVED') {
+      <p class="warning" role="status">
+        La existencia puede conciliarse, pero {{ current.productStatus === 'ARCHIVED' ? 'el producto está archivado' : 'la variante está inactiva' }}.
+      </p>
+    }
+    @if (successMessage()) { <p class="success" role="status">{{ successMessage() }}</p> }
+    @if (errorMessage()) { <p class="error" role="alert">{{ errorMessage() }}</p> }
+    @if (uncertainResult()) {
+      <p class="warning" role="alert">
+        No reintentamos automáticamente. <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'inventario', variantId()]">Verificá movimientos y existencia</a> antes de decidir.
+      </p>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <fieldset>
+        <legend>Tipo de ajuste</legend>
+        <label><input type="radio" formControlName="direction" value="INCREASE" /> Entrada</label>
+        <label><input type="radio" formControlName="direction" value="DECREASE" /> Salida</label>
+      </fieldset>
+
+      <label for="adjustment-quantity">Cantidad de unidades</label>
+      <input id="adjustment-quantity" formControlName="quantity" inputmode="numeric" placeholder="1" [attr.aria-invalid]="form.controls.quantity.touched && form.controls.quantity.invalid" aria-describedby="quantity-help quantity-error" />
+      <p id="quantity-help" class="help">Ingresá un número entero positivo.</p>
+      @if (form.controls.quantity.touched && form.controls.quantity.invalid) {
+        <p id="quantity-error" class="field-error">Ingresá entre 1 y 999999999999 unidades.</p>
+      }
+
+      <label for="adjustment-reason">Motivo</label>
+      <select id="adjustment-reason" formControlName="reason">
+        <option value="RECEIPT">Recepción de mercadería</option>
+        <option value="CORRECTION">Corrección manual</option>
+        <option value="DAMAGE">Daño o pérdida</option>
+        <option value="RETURN">Devolución</option>
+        <option value="OTHER">Otro</option>
+      </select>
+
+      <label for="adjustment-note">Nota {{ form.controls.reason.value === 'OTHER' ? '(obligatoria)' : '(opcional)' }}</label>
+      <textarea id="adjustment-note" formControlName="note" maxlength="500" [attr.aria-invalid]="otherNoteMissing()" aria-describedby="note-error"></textarea>
+      @if (otherNoteMissing()) {
+        <p id="note-error" class="field-error">Explicá el motivo del ajuste.</p>
+      }
+
+      @if (preview(); as calculation) {
+        <p class="preview" [class.invalid]="!calculation.valid" aria-live="polite">
+          {{ calculation.current }} {{ calculation.operator }} {{ calculation.quantity }} =
+          <strong>{{ calculation.result }}</strong>
+          @if (!calculation.valid) { · Resultado no permitido }
+        </p>
+      }
+
+      <div class="actions">
+        <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'inventario', variantId()]">Cancelar</a>
+        <button type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Registrando…' : uncertainResult() ? 'Reintentar manualmente' : 'Registrar ajuste' }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

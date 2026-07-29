@@ -1,15 +1,18 @@
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-admin-dashboard',
+  imports: [RouterLink],
   template: `
     <section class="placeholder">
       <p>Panel administrativo</p>
       <h1>Base preparada</h1>
       <p>
-        La autenticación y la gestión de categorías, productos y variantes ya están disponibles.
-        Inventario y métricas se incorporarán en las próximas historias aprobadas.
+        La autenticación y la gestión de catálogo están disponibles. Ahora también podés
+        consultar y ajustar existencias por variante.
       </p>
+      <a routerLink="inventario">Ir al inventario</a>
     </section>
   `,
   styles: `

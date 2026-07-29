@@ -1,0 +1,73 @@
+<section class="page" aria-labelledby="inventory-title">
+  <nav aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug(), 'admin']">Panel</a>
+    <span aria-hidden="true"> / </span><span>Inventario</span>
+  </nav>
+  <header>
+    <div>
+      <p class="eyebrow">Operación</p>
+      <h1 id="inventory-title">Inventario</h1>
+      <p>Consultá y ajustá la existencia física de cada variante.</p>
+    </div>
+  </header>
+
+  <form class="filters" [formGroup]="filters" (ngSubmit)="search()">
+    <div>
+      <label for="inventory-q">Buscar</label>
+      <input id="inventory-q" type="search" formControlName="q" placeholder="Producto o SKU" />
+    </div>
+    <div>
+      <label for="inventory-availability">Disponibilidad</label>
+      <select id="inventory-availability" formControlName="availability">
+        <option value="ALL">Todas</option>
+        <option value="IN_STOCK">Con stock</option>
+        <option value="OUT_OF_STOCK">Sin stock</option>
+      </select>
+    </div>
+    <button type="submit" [disabled]="loading()">Aplicar filtros</button>
+  </form>
+
+  @if (loading()) {
+    <p class="state" role="status">Cargando inventario…</p>
+  } @else if (errorMessage()) {
+    <div class="state error" role="alert">
+      <p>{{ errorMessage() }}</p>
+      <button type="button" (click)="search()">Reintentar</button>
+    </div>
+  } @else if (page().items.length === 0) {
+    <div class="state"><h2>No encontramos variantes</h2><p>Probá otros filtros.</p></div>
+  } @else {
+    <div class="table-wrapper">
+      <table>
+        <caption class="sr-only">Existencias por variante</caption>
+        <thead><tr><th>Producto</th><th>SKU</th><th>Variante</th><th>Existencia</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+        <tbody>
+          @for (item of page().items; track item.variantId) {
+            <tr>
+              <td>{{ item.productName }}</td>
+              <td><strong>{{ item.sku }}</strong></td>
+              <td>{{ item.size || 'Sin talle' }} · {{ item.color || 'Sin color' }}</td>
+              <td class="quantity">{{ item.quantity }}</td>
+              <td>
+                @if (!item.variantActive || item.productStatus === 'ARCHIVED') {
+                  <span class="warning">{{ item.productStatus === 'ARCHIVED' ? 'Producto archivado' : 'Variante inactiva' }}</span>
+                } @else {
+                  Disponible
+                }
+              </td>
+              <td class="actions">
+                <a [routerLink]="[item.variantId]" [attr.aria-label]="'Ver movimientos de ' + item.sku">Ver</a>
+                <a [routerLink]="[item.variantId, 'ajustar']" [attr.aria-label]="'Ajustar stock de ' + item.sku">Ajustar</a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <nav class="pagination" aria-label="Paginación del inventario">
+      <button type="button" (click)="goToPage(page().page - 1)" [disabled]="page().page === 0">Anterior</button>
+      <span>Página {{ page().page + 1 }} de {{ page().totalPages }}</span>
+      <button type="button" (click)="goToPage(page().page + 1)" [disabled]="page().page + 1 >= page().totalPages">Siguiente</button>
+    </nav>
+  }
+</section>
