@@ -15,6 +15,13 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import com.comercioflex.catalog.application.CategoryConflictException;
 import com.comercioflex.catalog.application.CategoryNotFoundException;
 import com.comercioflex.catalog.application.InvalidCategoryNameException;
+import com.comercioflex.catalog.application.InvalidProductException;
+import com.comercioflex.catalog.application.ProductConflictException;
+import com.comercioflex.catalog.application.ProductNotFoundException;
+import com.comercioflex.catalog.application.ProductVariantNotFoundException;
+import com.comercioflex.catalog.application.StaleProductVersionException;
+
+import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice(basePackageClasses = AdminCategoryController.class)
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -59,6 +66,59 @@ public class CategoryErrorHandler {
 			"validation-failed");
 		problem.setProperty("errors", errors);
 		return problem;
+	}
+
+	@ExceptionHandler(ConstraintViolationException.class)
+	ProblemDetail constraintViolation(ConstraintViolationException exception) {
+		Map<String, String> errors = new LinkedHashMap<>();
+		exception.getConstraintViolations().forEach(violation -> {
+			String path = violation.getPropertyPath().toString();
+			String field = path.substring(path.lastIndexOf('.') + 1);
+			errors.putIfAbsent(field, violation.getMessage());
+		});
+		ProblemDetail problem = problem(
+			HttpStatus.BAD_REQUEST,
+			"Solicitud inválida",
+			"Revisá los parámetros indicados.",
+			"validation-failed");
+		problem.setProperty("errors", errors);
+		return problem;
+	}
+
+	@ExceptionHandler({ProductNotFoundException.class, ProductVariantNotFoundException.class})
+	ProblemDetail productNotFound() {
+		return problem(
+			HttpStatus.NOT_FOUND,
+			"Producto no encontrado",
+			"No existe el producto o la variante solicitada.",
+			"product-not-found");
+	}
+
+	@ExceptionHandler(ProductConflictException.class)
+	ProblemDetail productConflict(ProductConflictException exception) {
+		return problem(
+			HttpStatus.CONFLICT,
+			"Conflicto de producto",
+			exception.getMessage(),
+			"product-conflict");
+	}
+
+	@ExceptionHandler(StaleProductVersionException.class)
+	ProblemDetail staleProduct() {
+		return problem(
+			HttpStatus.CONFLICT,
+			"Versión desactualizada",
+			"El producto o variante cambió. Recargá los datos antes de guardar.",
+			"stale-product-version");
+	}
+
+	@ExceptionHandler(InvalidProductException.class)
+	ProblemDetail invalidProduct(InvalidProductException exception) {
+		return problem(
+			HttpStatus.BAD_REQUEST,
+			"Producto inválido",
+			exception.getMessage(),
+			"invalid-product");
 	}
 
 	private ProblemDetail problem(

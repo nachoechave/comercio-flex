@@ -75,6 +75,17 @@ public class SecurityConfig {
 					"/api/v1/stores/*/admin/categories/**")
 				.access(new TenantPermissionAuthorizationManager(
 					TenantPermission.MANAGE_CATALOG))
+				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/stores/*/admin/products",
+					"/api/v1/stores/*/admin/products/**")
+				.access(new TenantPermissionAuthorizationManager(
+					TenantPermission.VIEW_CATALOG))
+				.requestMatchers(
+					"/api/v1/stores/*/admin/products",
+					"/api/v1/stores/*/admin/products/**")
+				.access(new TenantPermissionAuthorizationManager(
+					TenantPermission.MANAGE_CATALOG))
 				.anyRequest().authenticated())
 			.addFilterAfter(tenantResolutionFilter, AnonymousAuthenticationFilter.class)
 			.build();
