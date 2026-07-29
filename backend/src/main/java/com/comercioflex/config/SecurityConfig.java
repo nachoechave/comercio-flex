@@ -61,6 +61,12 @@ public class SecurityConfig {
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers("/api/v1/stores/*/settings").permitAll()
 				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/stores/*/catalog/categories",
+					"/api/v1/stores/*/catalog/products",
+					"/api/v1/stores/*/catalog/products/*")
+				.permitAll()
+				.requestMatchers(
 					"/api/v1/auth/csrf",
 					"/api/v1/auth/login",
 					"/api/v1/auth/session").permitAll()
