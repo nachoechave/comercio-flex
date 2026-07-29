@@ -86,6 +86,17 @@ public class SecurityConfig {
 					"/api/v1/stores/*/admin/products/**")
 				.access(new TenantPermissionAuthorizationManager(
 					TenantPermission.MANAGE_CATALOG))
+				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/stores/*/admin/inventory",
+					"/api/v1/stores/*/admin/inventory/**")
+				.access(new TenantPermissionAuthorizationManager(
+					TenantPermission.VIEW_INVENTORY))
+				.requestMatchers(
+					HttpMethod.POST,
+					"/api/v1/stores/*/admin/inventory/**")
+				.access(new TenantPermissionAuthorizationManager(
+					TenantPermission.ADJUST_STOCK))
 				.anyRequest().authenticated())
 			.addFilterAfter(tenantResolutionFilter, AnonymousAuthenticationFilter.class)
 			.build();
@@ -142,7 +153,11 @@ public class SecurityConfig {
 		CorsConfiguration configuration = new CorsConfiguration();
 		configuration.setAllowedOrigins(List.of(allowedOrigin));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-		configuration.setAllowedHeaders(List.of("Content-Type", "X-XSRF-TOKEN", "X-Request-ID"));
+		configuration.setAllowedHeaders(List.of(
+			"Content-Type",
+			"X-XSRF-TOKEN",
+			"X-Request-ID",
+			"Idempotency-Key"));
 		configuration.setAllowCredentials(true);
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
