@@ -1,7 +1,7 @@
 # API
 
-> Actualizado al cerrar CAT-02 el 2026-07-29. Los contratos de autenticación,
-> categorías y productos administrativos están implementados y verificados.
+> Actualizado durante INV-01 el 2026-07-29. Los contratos de autenticación,
+> catálogo e inventario administrativo están documentados.
 
 ## Health check
 
@@ -326,6 +326,77 @@ la última variante activa de un producto publicado.
 - `404 Not Found`: producto o variante no pertenece al comercio seleccionado.
 - `409 Conflict`: versión obsoleta, SKU/combinación/slug duplicado o transición
   incompatible con la categoría y variantes.
+
+## Administración de inventario
+
+Todas las rutas parten de:
+
+```http
+/api/v1/stores/{storeSlug}/admin/inventory
+```
+
+`OWNER`, `ADMIN` y `STAFF` poseen los permisos independientes
+`VIEW_INVENTORY` y `ADJUST_STOCK`. Las mutaciones requieren CSRF.
+
+### Listar balances por variante
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/inventory?page=0&size=20&q=&availability=ALL
+```
+
+`availability` admite `ALL`, `IN_STOCK` y `OUT_OF_STOCK`; `q` busca por producto
+o SKU. La respuesta pagina variantes, incluso cuando todavía no tienen una fila
+de balance: en ese caso la cantidad lógica es `"0.000"`.
+
+### Consultar balance e historial
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/inventory/variants/{variantId}
+GET /api/v1/stores/{storeSlug}/admin/inventory/variants/{variantId}/movements?page=0&size=20
+```
+
+El balance incluye contexto de producto y variante, cantidad y versión. El
+historial devuelve movimientos inmutables ordenados desde el más reciente, con
+dirección, delta, cantidad anterior, cantidad resultante, motivo, nota, actor y
+fecha.
+
+### Registrar una entrada o salida
+
+```http
+POST /api/v1/stores/{storeSlug}/admin/inventory/variants/{variantId}/adjustments
+Content-Type: application/json
+X-XSRF-TOKEN: <token>
+Idempotency-Key: <uuid por intento>
+```
+
+```json
+{
+  "direction": "DECREASE",
+  "quantity": "2",
+  "reason": "DAMAGE",
+  "note": "Prenda dañada"
+}
+```
+
+Los motivos admitidos son `RECEIPT`, `CORRECTION`, `DAMAGE`, `RETURN` y
+`OTHER`; este último exige nota. Durante el piloto manual la cantidad debe ser
+entera positiva, aunque balance y ledger se persisten con tres decimales.
+
+La primera aplicación responde `201 Created`. Repetir la misma clave y payload
+responde `200 OK` con el movimiento original, sin modificar nuevamente el saldo.
+Reutilizar la clave con otro payload devuelve `409 Conflict`.
+
+### Errores de inventario
+
+- `400 Bad Request`: formato, cantidad, motivo, nota o parámetros inválidos.
+- `401 Unauthorized`: no existe una sesión válida.
+- `403 Forbidden`: falta CSRF, membresía o permiso.
+- `404 Not Found`: la variante no existe en el comercio seleccionado.
+- `409 Conflict`: stock insuficiente, capacidad decimal excedida o clave de
+  idempotencia reutilizada con otro payload.
+
+El navegador nunca envía como autoridad el saldo final, delta firmado, actor,
+fechas, versión resultante, `tenant_id` ni información de conexión.
 
 ## Errores de seguridad
 

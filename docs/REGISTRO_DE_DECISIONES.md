@@ -41,6 +41,14 @@
 | ADR-034 | Precio | Decimal exclusivamente por variante | Aceptada |
 | ADR-035 | Concurrencia | Versión explícita y rechazo de edición obsoleta | Aceptada |
 | ADR-036 | Listado de productos | Paginación desde CAT-02 | Aceptada |
+| ADR-037 | Cantidades | Decimal con tres posiciones | Aceptada |
+| ADR-038 | Ajustes | Entrada o salida, sin saldo absoluto | Aceptada |
+| ADR-039 | Idempotencia | Clave obligatoria por ajuste | Aceptada |
+| ADR-040 | Balance inicial | Cero lógico y materialización lazy | Aceptada |
+| ADR-041 | Estado comercial | Inventario ajustable aunque esté retirado | Aceptada |
+| ADR-042 | Motivos | Catálogo fijo y nota para `OTHER` | Aceptada |
+| ADR-043 | Auditoría | Historial paginado visible | Aceptada |
+| ADR-044 | Stock bajo | Umbral diferido a DASH-01 | Aceptada |
 
 ## Plantilla ADR
 
@@ -537,3 +545,109 @@
   máximo, incorporando búsqueda y filtros de categoría/estado.
 - **Consecuencias:** el contrato es más elaborado desde el comienzo, pero evita
   retrabajo y consumo creciente en Angular y MySQL.
+
+## ADR aceptadas el 2026-07-29 para Sprint 6
+
+### ADR-037 — Cantidades decimales preparadas para peso
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** indumentaria usa unidades enteras, pero otros rubros venderán por
+  peso.
+- **Problema:** elegir una representación que no obligue a migrar el ledger.
+- **Alternativas:** `DECIMAL(15,3)` desde ahora; cantidades enteras y migración
+  futura.
+- **Decisión:** persistir cantidades decimales y transportarlas como strings. La
+  interfaz inicial restringe indumentaria a unidades enteras.
+- **Consecuencias:** el esquema queda preparado para peso sin afirmar todavía que
+  exista una unidad de venta configurable.
+
+### ADR-038 — Ajustes mediante entrada o salida
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** inventario es un registro contable, no un campo libre.
+- **Problema:** decidir entre variación y saldo absoluto.
+- **Alternativas:** entrada/salida con cantidad positiva; fijar saldo final.
+- **Decisión:** INV-01 sólo permite entrada o salida. El backend deriva el delta
+  y el saldo resultante.
+- **Consecuencias:** cada movimiento es explícito y concurrentemente componible.
+  Un conteo físico absoluto requerirá un caso de uso futuro.
+
+### ADR-039 — Idempotencia obligatoria para ajustes
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** un timeout puede ocultar una operación ya confirmada.
+- **Problema:** impedir ajustes duplicados por reintentos.
+- **Alternativas:** clave persistida por intento; confiar en el doble-submit de UI.
+- **Decisión:** cada ajuste exige `Idempotency-Key`. Un replay idéntico devuelve
+  el resultado original y una reutilización incompatible produce conflicto.
+- **Consecuencias:** se agrega unicidad y comparación de payload, reutilizable por
+  pedidos futuros.
+
+### ADR-040 — Saldo cero lógico y materialización diferida
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** catálogo no debe depender directamente de la implementación de
+  inventario.
+- **Problema:** decidir cuándo crear la fila de balance.
+- **Alternativas:** cero lógico con fila lazy; balance cero creado con variante.
+- **Decisión:** la ausencia de balance representa cero y la fila se materializa
+  bajo bloqueo en el primer ajuste.
+- **Consecuencias:** se reduce acoplamiento; listados deben usar `LEFT JOIN` y
+  `COALESCE` de manera consistente.
+
+### ADR-041 — Inventario independiente del estado comercial
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** retirar una variante de venta no elimina la mercadería física.
+- **Problema:** decidir si permitir ajustes sobre variantes inactivas o archivadas.
+- **Alternativas:** permitir con advertencia; bloquear.
+- **Decisión:** cualquier variante persistida puede consultarse y ajustarse.
+- **Consecuencias:** devoluciones, mermas y conciliaciones siguen siendo posibles;
+  la interfaz debe mostrar el estado comercial.
+
+### ADR-042 — Motivos estructurados
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el historial debe ser comprensible y reportable.
+- **Problema:** elegir entre motivos controlados o texto libre.
+- **Alternativas:** catálogo fijo más nota; texto libre.
+- **Decisión:** usar `RECEIPT`, `CORRECTION`, `DAMAGE`, `RETURN` y `OTHER`;
+  `OTHER` exige nota.
+- **Consecuencias:** los datos son comparables y agregar motivos requerirá una
+  evolución explícita.
+
+### ADR-043 — Historial visible desde INV-01
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** registrar auditoría sin poder consultarla limita su valor operativo.
+- **Problema:** decidir si incluir la UI y API de movimientos.
+- **Alternativas:** historial paginado visible; sólo persistencia interna.
+- **Decisión:** incluir consulta paginada, más reciente primero.
+- **Consecuencias:** aumenta el alcance del sprint, pero la trazabilidad puede
+  verificarse manualmente.
+
+### ADR-044 — Umbral de stock bajo diferido
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** DASH-01 necesitará definir stock bajo.
+- **Problema:** agregar ahora una regla aún no validada por el piloto.
+- **Alternativas:** umbral por variante en INV-01; decidirlo en DASH-01.
+- **Decisión:** diferir umbrales y alertas.
+- **Consecuencias:** Sprint 6 se concentra en balance y ledger; DASH-01 deberá
+  definir alcance y migración antes de implementar alertas.

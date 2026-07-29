@@ -29,6 +29,8 @@
 - **Hash adaptativo:** transformación unidireccional de contraseña cuyo costo se
   ajusta para dificultar ataques de fuerza bruta.
 - **Idempotencia:** procesar repetidamente el mismo evento sin repetir su efecto.
+- **Idempotency-Key:** identificador único de un intento de escritura. Permite
+  reconocer un reintento después de un timeout y devolver el resultado original.
 - **Identificador público:** UUID opaco expuesto por la API; evita revelar la
   clave numérica interna utilizada por índices y relaciones.
 - **Interceptor:** pieza Angular que trata solicitudes/respuestas HTTP transversalmente.
@@ -38,6 +40,10 @@
 - **Multi-tenant / multiempresa:** una plataforma atiende varios comercios aislados.
 - **Paginación:** división de una lista grande en páginas; el servidor devuelve
   sólo un tramo y el total disponible.
+- **Ledger:** historial inmutable de movimientos que explica cómo se obtuvo un
+  balance.
+- **Lock de fila:** bloqueo transaccional temporal que serializa cambios
+  concurrentes sobre el mismo registro.
 - **Pool de conexiones:** conjunto acotado de conexiones reutilizables a una base
   de datos; evita abrir una conexión nueva por cada consulta.
 - **Base de control:** base compartida con el registro necesario para localizar y

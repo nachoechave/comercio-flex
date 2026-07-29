@@ -1,7 +1,7 @@
 # Modelo de datos
 
-> Actualizado en CAT-02 el 2026-07-29. La estrategia de una base por comercio y
-> el patrón de identificadores internos/públicos están implementados en catálogo.
+> Actualizado en INV-01 el 2026-07-29. Catálogo e inventario conservan el
+> aislamiento mediante una base por comercio.
 
 ## Base de control
 
@@ -108,10 +108,33 @@ operaciones que protegen la regla “publicado implica al menos una variante
 activa” bloquean primero el producto para mantener un orden consistente entre
 transacciones concurrentes.
 
+### Inventario y movimientos
+
+La migración tenant `V004__create_inventory.sql` incorpora:
+
+| Tabla | Responsabilidad |
+|---|---|
+| `inventory_balances` | Balance materializado por variante, cantidad, versión y fecha de actualización |
+| `inventory_movements` | Ledger append-only con operación idempotente, antes, delta, después, motivo y actor |
+
+`inventory_balances.variant_id` es simultáneamente PK y FK a la variante. La
+ausencia de fila se interpreta como cero y se materializa bajo bloqueo al aplicar
+el primer ajuste.
+
+Cada movimiento posee UUID público, una clave de idempotencia única dentro de la
+base tenant y la versión de balance resultante. La combinación
+`variant_id + balance_version` también es única. El movimiento guarda un snapshot
+del UUID y nombre visible del actor porque no existen claves foráneas entre la
+base tenant y la base de control.
+
+Balance y movimiento cambian en una sola transacción. El balance optimiza
+listados y futuras validaciones de pedidos; el ledger explica cómo se obtuvo.
+Los movimientos no tienen `updated_at` porque no se editan ni eliminan.
+
 ## Reglas
 
 - Dinero usa `DECIMAL`, nunca punto flotante.
-- Cantidad usa `DECIMAL(12,3)` candidato para soportar peso.
+- Cantidad usa `DECIMAL(15,3)` para soportar peso sin migrar el ledger.
 - Fechas se guardan en UTC.
 - `order_items` conserva nombre, SKU, unidad y precio del momento de compra.
 - Pedidos y pagos no se eliminan físicamente desde la aplicación.
@@ -131,6 +154,9 @@ transacciones concurrentes.
   externos, nunca mediante datos sensibles versionados.
 - Cada variante posee una única existencia en el MVP; no se modelan ubicaciones.
 - Cada cambio de existencia genera un movimiento de inventario auditable.
+- Un balance nunca es negativo y no puede exceder la capacidad del decimal.
+- La disponibilidad comercial futura no debe confundirse con existencia física:
+  INV-01 registra cantidad en mano y todavía no modela reservas.
 
 ## Relaciones principales
 

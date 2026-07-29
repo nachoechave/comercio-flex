@@ -14,7 +14,7 @@
 | CORE-02 | Identidad | Login y roles | Sesión JDBC segura, autorización por membresía y logout | Alta | Terminada | CORE-01 | Backend/Frontend/Calidad | Login global, roles fijos, CSRF, límite de intentos y pruebas negativas | Cookies, fuerza bruta y autorización tenant | L |
 | CAT-01 | Catálogo | Gestionar categorías | CRUD administrativo por tenant | Alta | Terminada | CORE-02 | Backend/Frontend | Validación, aislamiento, pruebas y manual | Slugs duplicados | M |
 | CAT-02 | Catálogo | Gestionar productos de indumentaria | Alta/edición/publicación, talle, color, SKU y precio | Alta | Terminada | CAT-01 | Backend/Frontend | Precio > 0, categoría y variante válidos | Combinaciones inválidas | XL |
-| INV-01 | Inventario | Ajustar stock | Existencia por variante y movimiento auditable | Alta | Pendiente | CAT-02 | Backend/Frontend | No negativo, concurrencia y pruebas | Sobreventa | L |
+| INV-01 | Inventario | Ajustar stock | Existencia por variante y movimiento auditable | Alta | Terminada | CAT-02 | Backend/Frontend | No negativo, concurrencia y pruebas | Sobreventa | L |
 | STORE-01 | Tienda | Navegar catálogo | Listar, buscar y ver detalle público | Alta | Pendiente | CAT-02 | Frontend/Backend | Responsive, estados y tenant correcto | Rendimiento/SEO | L |
 | ORD-01 | Compra | Carrito y checkout | Carrito local, cliente, entrega y observaciones | Alta | Pendiente | STORE-01, INV-01 | Frontend/Backend | Backend recalcula y persiste snapshot | Precio manipulado | XL |
 | ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Pendiente | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
@@ -238,3 +238,79 @@ vendibles para preparar el catálogo de indumentaria.
 - Hacer que ediciones de variantes actualicen el orden de “modificado
   recientemente” del producto si el piloto demuestra esa necesidad.
 - Mejorar el diálogo accesible con focus trap y cierre por Escape.
+
+## INV-01 — Inventario por variante
+
+> Estado: terminada el 2026-07-29. Las decisiones ADR-037 a ADR-044 fueron
+> aprobadas antes de iniciar la implementación.
+
+### Historia
+
+Como operador de un comercio quiero registrar entradas y salidas de mercadería
+para conocer la existencia actual de cada variante y explicar cada cambio.
+
+### Criterios de aceptación
+
+- Cada variante presenta una única existencia lógica dentro de su base tenant;
+  si aún no existe una fila materializada, su cantidad es cero.
+- Las cantidades se persisten como `DECIMAL(15,3)`, viajan como strings canónicos
+  y la interfaz de indumentaria sólo admite unidades enteras durante INV-01.
+- El operador elige entrada o salida e ingresa una cantidad positiva; el backend
+  calcula el delta y nunca acepta saldo, actor, timestamps o resultado enviados
+  como autoridad por el navegador.
+- Un ajuste válido actualiza el balance y agrega exactamente un movimiento
+  inmutable dentro de una única transacción.
+- La existencia nunca puede quedar negativa; un intento insuficiente devuelve
+  `409` sin cambiar el balance ni agregar movimiento.
+- Cada intento usa una clave de idempotencia. Repetir la misma clave y payload
+  devuelve el movimiento original sin aplicar nuevamente el ajuste; reutilizarla
+  con datos distintos devuelve `409`.
+- Los motivos permitidos son recepción, corrección, daño/merma, devolución y
+  otro; `OTHER` requiere una nota.
+- `OWNER`, `ADMIN` y `STAFF` con membresía activa pueden consultar y ajustar
+  inventario mediante permisos específicos. Las mutaciones requieren CSRF.
+- Una variante o movimiento de `tienda-a` no puede consultarse ni modificarse
+  desde `tienda-b`.
+- Las variantes inactivas y productos archivados conservan inventario ajustable,
+  mostrando claramente su estado comercial.
+- El panel incluye listado paginado por variante, detalle, ajuste e historial
+  paginado ordenado desde el movimiento más reciente.
+- Dos incrementos concurrentes se acumulan sin pérdida y dos salidas concurrentes
+  nunca producen existencia negativa.
+- El cambio de tenant cancela solicitudes y limpia balance, historial, filtros y
+  formulario del comercio anterior.
+- No existen endpoints para editar o borrar movimientos.
+- Umbrales de stock bajo, reservas, descuento por pedidos, depósitos, compras,
+  transferencias e importación quedan fuera de INV-01.
+- Migración, pruebas backend/frontend, revisión, documentación y prueba manual
+  deben completarse antes de marcar la historia como `Terminada`.
+
+### Evidencia de cierre
+
+- Suite integral backend: 67 pruebas, 0 fallos, 0 errores y 0 omitidas.
+- Suite focalizada de inventario: 13 pruebas de integración sobre MySQL 8.4,
+  incluyendo concurrencia, rollback, idempotencia, roles, CSRF y aislamiento A/B.
+- Frontend: 53 pruebas aprobadas y build de producción exitoso.
+- Revisión final de seguridad y calidad: sin bloqueantes.
+- Prueba manual en navegador: login `OWNER`; saldo inicial `0.000`; entrada de
+  10; salida de 3; saldo final `7.000`; historial con dos movimientos, actor y
+  notas; salida de 8 rechazada sin modificar el saldo.
+- API, modelo de datos, arquitectura, estructura, glosario, guía y material de
+  aprendizaje actualizados.
+
+### Deuda técnica no bloqueante
+
+- Evaluar una matriz motivo/dirección si el piloto necesita reportes más
+  estrictos; hoy cualquier motivo válido puede combinarse con entrada o salida.
+- Persistir temporalmente clave y fingerprint del último intento en
+  `sessionStorage` para conservar el retry seguro si el usuario abandona el
+  formulario durante un timeout.
+- Endurecer en producción los permisos SQL del ledger para impedir
+  `UPDATE`/`DELETE` incluso fuera de la API.
+- Agregar pruebas explícitas de controles ISO y nota de 501 caracteres, de
+  continuidad de `balance_version` y de reutilización de una misma clave entre
+  dos bases tenant.
+- Escalar la búsqueda `%q%` y exponer `balance_version` sólo si el volumen o la
+  auditoría operativa lo justifican.
+- Revisar la versión de Flyway cuando declare compatibilidad probada con MySQL
+  8.4 y reducir el ruido de cierre de pools entre contextos de Testcontainers.

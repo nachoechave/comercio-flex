@@ -1,7 +1,7 @@
 # Estructura del proyecto
 
-> Actualizado durante CAT-02 el 2026-07-29. Identidad, routing tenant, categorías,
-> productos y variantes ya están implementados y verificados.
+> Actualizado durante INV-01 el 2026-07-29. El monolito modular incluye identidad,
+> routing tenant, catálogo e inventario administrativo.
 
 ```text
 comercio-flex/
@@ -33,6 +33,7 @@ frontend/
     │   ├── storefront/home/        # Página pública inicial
     │   └── admin/
     │       ├── categories/         # Listado, formulario y API de categorías
+    │       ├── inventory/          # Balance, ajustes e historial por variante
     │       ├── products/           # Lista, alta, detalle, edición y API de productos
     │       ├── dashboard/          # Entrada administrativa protegida
     │       └── store-selector/     # Selector para usuarios con varias membresías
@@ -65,6 +66,11 @@ backend/src/main/
 │   │   ├── application/            # Casos de uso, normalización y puertos
 │   │   ├── domain/                 # Categoría y estado del dominio
 │   │   └── infrastructure/jdbc/    # Persistencia en la base tenant seleccionada
+│   ├── inventory/
+│   │   ├── api/                    # Contratos HTTP y Problem Details de stock
+│   │   ├── application/            # Transacción, idempotencia y reglas de ajuste
+│   │   ├── domain/                 # Balance, movimiento, dirección y motivo
+│   │   └── infrastructure/jdbc/    # Locks, balances, ledger y listados tenant
 │   ├── tenant/
 │   │   ├── api/                    # Endpoint, filtro y errores HTTP
 │   │   ├── application/            # Resolución, contexto y caso de consulta
@@ -80,7 +86,8 @@ backend/src/main/
         └── tenant/                  # Esquema idéntico para cada comercio
 ```
 
-`catalog` contiene categorías, productos y variantes. Los módulos `inventory`, `customer`,
+`catalog` contiene categorías, productos y variantes; `inventory` registra
+existencias y movimientos sin modificar publicación ni precio. Los módulos `customer`,
 `order`, `delivery`, `payment` y `reporting` se crearán al comenzar sus historias.
 No se agregan carpetas vacías sólo para simular avance.
 
@@ -204,6 +211,25 @@ ProductList, ProductForm o ProductDetail
 El alta confirma producto y variantes como una unidad. La versión evita
 sobrescrituras silenciosas y los bloqueos de fila preservan las reglas de
 publicación ante operaciones concurrentes.
+
+## Flujo implementado de inventario
+
+```text
+InventoryList, InventoryDetail o StockAdjustmentForm
+→ InventoryApiService
+→ sesión, CSRF y permisos de inventario
+→ AdminInventoryController
+→ InventoryService abre transacción tenant
+→ bloquea variante y balance
+→ verifica Idempotency-Key
+→ calcula resultado y valida no negativo/capacidad
+→ JdbcInventoryRepository actualiza balance y agrega movimiento
+→ respuesta con cantidades string
+→ Angular muestra balance e historial
+```
+
+`inventory` consulta metadatos de catálogo mediante joins de lectura en su propio
+adaptador JDBC. No importa `JdbcProductRepository` ni expone claves internas.
 
 ## Flujo de autenticación y autorización de CORE-02
 

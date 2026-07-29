@@ -147,3 +147,28 @@ Publicar y desactivar variantes son operaciones distintas que podrían ocurrir a
 mismo tiempo. Ambas bloquean primero la fila de producto y vuelven a comprobar la
 regla dentro de la transacción. La prueba concurrente confirma que nunca queda un
 producto `PUBLISHED` sin variantes activas.
+
+## Flujo implementado en INV-01
+
+```text
+Operador selecciona Entrada o Salida
+→ Angular genera una Idempotency-Key
+→ envía dirección, cantidad, motivo y nota
+→ backend obtiene el actor desde la sesión
+→ bloquea la variante y su balance
+→ reconoce reintentos ya aplicados
+→ calcula antes + delta = después
+→ actualiza balance e inserta movimiento
+→ confirma ambos o revierte ambos
+→ Angular presenta el nuevo saldo y el movimiento
+```
+
+El balance permite responder rápido cuánto stock existe. El ledger permite
+explicar por qué existe esa cantidad. Guardar ambos exige una transacción: si
+fallara el movimiento después de actualizar el balance, toda la operación se
+revierte.
+
+El lock de fila evita que dos salidas lean simultáneamente el mismo saldo y ambas
+lo gasten. La clave de idempotencia resuelve otro problema: una misma operación
+repetida por pérdida de respuesta. Concurrencia e idempotencia son protecciones
+distintas y complementarias.

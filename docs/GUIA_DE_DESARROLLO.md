@@ -135,6 +135,21 @@ deben probarse copiando credenciales o identificadores de base en la URL.
 9. Cambiar de tienda y verificar que no aparezcan datos del comercio anterior.
 10. Con `STAFF`, verificar lectura sin botones de modificación.
 
+### Probar inventario manualmente
+
+1. Iniciar sesión como `OWNER`, `ADMIN` o `STAFF`.
+2. Abrir `/tiendas/tienda-a/admin/inventario`.
+3. Elegir una variante sin movimientos y comprobar el saldo `"0.000"`.
+4. Registrar una entrada de 10 unidades con motivo recepción.
+5. Registrar una salida de 3 y comprobar saldo 7 y dos movimientos.
+6. Intentar una salida de 8; debe informar stock insuficiente sin agregar
+   movimiento.
+7. Abrir el historial y comprobar antes, variación, después, actor y fecha.
+8. Ajustar una variante inactiva y verificar la advertencia de estado.
+9. Cambiar a otro comercio y comprobar que lista, detalle y formulario se limpien.
+10. Ante un timeout simulado, verificar el historial antes de repetir; la
+    aplicación no reintenta automáticamente.
+
 ## Pruebas
 
 ```powershell

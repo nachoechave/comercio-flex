@@ -180,6 +180,17 @@ transacción tenant. Producto y variante tienen versiones optimistas
 independientes. Las operaciones concurrentes que podrían dejar un publicado sin
 variantes activas bloquean primero la fila del producto y validan la invariante
 dentro de la transacción.
+
+INV-01 agrega un módulo `inventory` separado de `catalog`. Catálogo define qué
+variante existe; inventario mantiene su balance físico y ledger. El estado
+comercial no altera automáticamente la existencia. El repositorio de inventario
+puede hacer joins de lectura con tablas de catálogo, pero no depende de sus
+adaptadores internos.
+
+Los ajustes bloquean la variante y el balance dentro de una transacción tenant.
+La misma transacción valida idempotencia, no negatividad y capacidad decimal,
+actualiza el balance e inserta el movimiento. La integración futura con pedidos
+usará un puerto interno; no habrá llamadas HTTP entre módulos del monolito.
 | Consultar catálogo e inventario | Sí | Sí | Sí |
 | Ajustar stock | Sí | Sí | Sí |
 | Ver pedidos y cambiar estados permitidos | Sí | Sí | Sí |
