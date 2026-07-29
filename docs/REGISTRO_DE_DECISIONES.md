@@ -49,6 +49,12 @@
 | ADR-042 | Motivos | Catálogo fijo y nota para `OTHER` | Aceptada |
 | ADR-043 | Auditoría | Historial paginado visible | Aceptada |
 | ADR-044 | Stock bajo | Umbral diferido a DASH-01 | Aceptada |
+| ADR-045 | Productos agotados | Visibles con estado no disponible | Aceptada |
+| ADR-046 | Stock público | Sólo disponibilidad booleana | Aceptada |
+| ADR-047 | Imágenes | Placeholder y MEDIA-01 antes del piloto | Aceptada |
+| ADR-048 | Categorías públicas | Sólo categorías con productos visibles | Aceptada |
+| ADR-049 | Orden público | Alfabético estable | Aceptada |
+| ADR-050 | Caché del catálogo | `no-store` durante el MVP | Aceptada |
 
 ## Plantilla ADR
 
@@ -651,3 +657,85 @@
 - **Decisión:** diferir umbrales y alertas.
 - **Consecuencias:** Sprint 6 se concentra en balance y ledger; DASH-01 deberá
   definir alcance y migración antes de implementar alertas.
+
+## ADR aceptadas el 2026-07-29 para Sprint 7
+
+### ADR-045 — Productos agotados visibles
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una publicación comercial no debe aparecer y desaparecer por un
+  cambio temporal de inventario.
+- **Problema:** decidir si ocultar los productos publicados sin existencia.
+- **Alternativas:** mantenerlos visibles como no disponibles; ocultarlos.
+- **Decisión:** mostrar productos publicados agotados con un estado explícito de
+  falta de stock.
+- **Consecuencias:** las URLs y el descubrimiento permanecen estables; el futuro
+  carrito deberá impedir seleccionar una variante no disponible.
+
+### ADR-046 — Disponibilidad pública sin cantidad exacta
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el saldo cambia y constituye información operativa del comercio.
+- **Problema:** definir cuánto inventario exponer anónimamente.
+- **Alternativas:** booleano disponible/no disponible; cantidad exacta.
+- **Decisión:** exponer sólo disponibilidad booleana.
+- **Consecuencias:** se protege información comercial y el contrato sirve tanto
+  para unidades como para peso. Checkout deberá revalidar el saldo real.
+
+### ADR-047 — Imágenes separadas de STORE-01
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** todavía no existe almacenamiento, carga ni optimización de medios.
+- **Problema:** evitar que el catálogo público incorpore silenciosamente una
+  arquitectura de archivos.
+- **Alternativas:** placeholder profesional y una historia MEDIA-01; agregar
+  almacenamiento y administración durante STORE-01.
+- **Decisión:** STORE-01 usa un placeholder accesible. MEDIA-01 se priorizará
+  antes de la demostración comercial y no almacenará binarios pesados en MySQL.
+- **Consecuencias:** Sprint 7 conserva tamaño L; el piloto real sigue requiriendo
+  resolver object storage, formatos, límites, thumbnails y seguridad.
+
+### ADR-048 — Categorías públicas no vacías
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una categoría activa puede no contener productos publicados.
+- **Problema:** evitar filtros públicos que no aporten resultados.
+- **Alternativas:** sólo categorías con productos visibles; todas las activas.
+- **Decisión:** listar únicamente categorías activas que contengan al menos un
+  producto público.
+- **Consecuencias:** la navegación es útil, aunque la lista pública no replica
+  literalmente toda la configuración administrativa.
+
+### ADR-049 — Orden alfabético estable
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** no existe todavía ranking ni orden manual.
+- **Problema:** elegir un orden predecible y compatible con paginación.
+- **Alternativas:** nombre estable; última modificación.
+- **Decisión:** ordenar por nombre y usar el identificador interno sólo como
+  desempate técnico.
+- **Consecuencias:** editar un producto no cambia su posición inesperadamente;
+  orden manual y destacados quedan para una historia futura.
+
+### ADR-050 — Catálogo sin caché pública inicial
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** las respuestas incluyen disponibilidad derivada del inventario.
+- **Problema:** una caché compartida podría servir stock desactualizado o mezclar
+  claves incompletas entre comercios y filtros.
+- **Alternativas:** `Cache-Control: no-store`; caché pública corta.
+- **Decisión:** responder `no-store` durante el MVP.
+- **Consecuencias:** se prioriza consistencia y aislamiento. CDN, ETag e
+  invalidación se evaluarán con métricas reales.

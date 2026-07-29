@@ -15,7 +15,8 @@
 | CAT-01 | Catálogo | Gestionar categorías | CRUD administrativo por tenant | Alta | Terminada | CORE-02 | Backend/Frontend | Validación, aislamiento, pruebas y manual | Slugs duplicados | M |
 | CAT-02 | Catálogo | Gestionar productos de indumentaria | Alta/edición/publicación, talle, color, SKU y precio | Alta | Terminada | CAT-01 | Backend/Frontend | Precio > 0, categoría y variante válidos | Combinaciones inválidas | XL |
 | INV-01 | Inventario | Ajustar stock | Existencia por variante y movimiento auditable | Alta | Terminada | CAT-02 | Backend/Frontend | No negativo, concurrencia y pruebas | Sobreventa | L |
-| STORE-01 | Tienda | Navegar catálogo | Listar, buscar y ver detalle público | Alta | Pendiente | CAT-02 | Frontend/Backend | Responsive, estados y tenant correcto | Rendimiento/SEO | L |
+| STORE-01 | Tienda | Navegar catálogo | Listar, buscar y ver detalle público | Alta | Terminada | CAT-02 | Frontend/Backend | Responsive, estados y tenant correcto | Rendimiento/SEO | L |
+| MEDIA-01 | Medios | Gestionar imagen principal | Carga, almacenamiento externo, thumbnail y texto alternativo | Alta | Pendiente | STORE-01 | Frontend/Backend/Infraestructura | MIME/tamaño, aislamiento, fallback y eliminación segura | Costo, contenido malicioso y archivos huérfanos | L |
 | ORD-01 | Compra | Carrito y checkout | Carrito local, cliente, entrega y observaciones | Alta | Pendiente | STORE-01, INV-01 | Frontend/Backend | Backend recalcula y persiste snapshot | Precio manipulado | XL |
 | ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Pendiente | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
 | PAY-01 | Pagos | OAuth y Checkout Pro sandbox | Conectar comercio, preferencia, retorno y webhook idempotente | Alta | Pendiente | ORD-01, F0-02 | Backend/Calidad | OAuth state, firma, importe, duplicados y pruebas | Fraude/secretos | XL |
@@ -314,3 +315,70 @@ para conocer la existencia actual de cada variante y explicar cada cambio.
   auditoría operativa lo justifican.
 - Revisar la versión de Flyway cuando declare compatibilidad probada con MySQL
   8.4 y reducir el ruido de cierre de pools entre contextos de Testcontainers.
+
+## STORE-01 — Catálogo público
+
+> Estado: terminada el 2026-07-29. Las decisiones ADR-045 a ADR-050 fueron
+> aprobadas antes de iniciar la implementación.
+
+### Historia
+
+Como visitante quiero navegar el catálogo público de un comercio para encontrar
+productos, consultar sus variantes y conocer si están disponibles.
+
+### Criterios de aceptación
+
+- La tienda se abre en `/tiendas/{storeSlug}` y el detalle en
+  `/tiendas/{storeSlug}/productos/{productSlug}`.
+- Sólo se exponen productos `PUBLISHED`, categorías `ACTIVE` y variantes
+  `ACTIVE`; borradores, archivados y recursos retirados responden como no
+  encontrados.
+- Las categorías públicas tienen al menos un producto visible.
+- El catálogo permite búsqueda por nombre, filtro por una categoría y
+  paginación; estos valores se reflejan y restauran desde la URL.
+- El orden es alfabético y estable.
+- Los precios viajan como strings decimales y se presentan con la moneda de la
+  configuración pública del comercio.
+- Un producto agotado permanece visible. Sólo se expone `available`; nunca la
+  cantidad, SKU, ledger, versiones, timestamps, BIGINT ni `database_key`.
+- La ausencia de balance representa disponibilidad falsa.
+- Los endpoints del catálogo son anónimos sólo para `GET`, responden
+  `Cache-Control: no-store` y no relajan la seguridad administrativa.
+- Un slug desconocido, inactivo o no conectado falla de forma segura. El mismo
+  slug de producto puede existir en A y B sin cruzar datos.
+- La interfaz distingue carga, catálogo vacío, búsqueda vacía, error recuperable,
+  tienda no encontrada y producto retirado.
+- Cambiar de comercio cancela solicitudes anteriores y limpia resultados.
+- La interfaz funciona con teclado, comunica disponibilidad mediante texto y no
+  presenta desbordamiento horizontal entre 320 y 1280 píxeles.
+- El título y la descripción HTML cambian por tienda y producto dentro de las
+  limitaciones CSR aceptadas para el MVP.
+- STORE-01 usa un placeholder accesible. Carga y almacenamiento real de imágenes,
+  carrito, checkout, promociones, favoritos, filtros avanzados, SSR y SEO
+  avanzado quedan fuera.
+- Pruebas backend/frontend, aislamiento A/B, revisión, documentación y prueba
+  manual deben completarse antes de marcar la historia como `Terminada`.
+
+### Evidencia de cierre
+
+- Suite backend completa: 75 pruebas, 0 fallos, 0 errores y 0 omitidas.
+- Suite focalizada del catálogo público: 8 pruebas de integración sobre MySQL
+  8.4 con visibilidad, aislamiento A/B, autorización y respuestas sin caché.
+- Frontend: 72 pruebas en verde y build de producción correcto.
+- Revisión cruzada de backend, frontend, seguridad y documentación sin bloqueos
+  abiertos.
+- Prueba manual completada sobre Tienda A y Tienda B: catálogo, búsqueda sin
+  resultados, detalle, producto inexistente, tienda vacía, tienda inexistente,
+  cambio de metadatos y ausencia de desbordamiento horizontal en escritorio.
+- La interfaz es mobile-first y sus componentes incluyen puntos de corte desde
+  320 píxeles; la comprobación visual específica en dispositivos reales queda
+  incluida en el smoke test previo al piloto.
+
+### Deuda técnica aceptada
+
+- MEDIA-01 incorporará carga, almacenamiento y optimización de imágenes antes
+  del piloto.
+- SSR/SEO avanzado, CDN, rate limiting y búsqueda full-text se reevaluarán con
+  tráfico y volumen de catálogo reales.
+- Antes del primer cliente se ejecutará un análisis `EXPLAIN` con un conjunto de
+  datos representativo y una matriz visual en dispositivos móviles reales.

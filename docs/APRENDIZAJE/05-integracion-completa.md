@@ -172,3 +172,26 @@ El lock de fila evita que dos salidas lean simultáneamente el mismo saldo y amb
 lo gasten. La clave de idempotencia resuelve otro problema: una misma operación
 repetida por pérdida de respuesta. Concurrencia e idempotencia son protecciones
 distintas y complementarias.
+
+## Flujo público de STORE-01
+
+```text
+Visitante abre /tiendas/tienda-a
+→ Angular lee storeSlug y query params
+→ solicita settings, categorías y productos
+→ Spring resuelve tienda-a en la base de control
+→ TenantContext selecciona únicamente la base A
+→ el repositorio filtra publicación y estados activos
+→ inventario se reduce a available true/false
+→ Angular muestra tarjetas, filtros y enlaces reales
+```
+
+Una API pública necesita su propio contrato. Reutilizar la respuesta
+administrativa sería cómodo, pero podría filtrar SKU, cantidades, versiones o
+estados internos. Por eso STORE-01 usa DTOs públicos deliberadamente más
+pequeños.
+
+El precio y la disponibilidad mostrados no son una promesa de compra. Entre la
+consulta y el checkout otra persona puede modificar precio o stock. ORD-01
+deberá releer esos datos en el backend y calcular el total; nunca confiará en una
+copia enviada por Angular.

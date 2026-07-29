@@ -131,6 +131,23 @@ Balance y movimiento cambian en una sola transacción. El balance optimiza
 listados y futuras validaciones de pedidos; el ledger explica cómo se obtuvo.
 Los movimientos no tienen `updated_at` porque no se editan ni eliminan.
 
+## Lectura pública de catálogo
+
+STORE-01 no agrega tablas. Construye un modelo de lectura mediante joins dentro
+de la base tenant:
+
+```text
+Category ACTIVE
+→ Product PUBLISHED
+→ ProductVariant ACTIVE
+→ LEFT JOIN InventoryBalance
+→ priceFrom, priceTo y available
+```
+
+La ausencia de balance equivale a cero. La consulta conserva los productos
+agotados, pero reduce la cantidad a un booleano público. UUID y slug atraviesan
+la API; las claves `BIGINT`, SKU, versiones y cantidades permanecen internas.
+
 ## Reglas
 
 - Dinero usa `DECIMAL`, nunca punto flotante.

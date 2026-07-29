@@ -150,6 +150,25 @@ deben probarse copiando credenciales o identificadores de base en la URL.
 10. Ante un timeout simulado, verificar el historial antes de repetir; la
     aplicación no reintenta automáticamente.
 
+### Probar el catálogo público manualmente
+
+1. Publicar al menos dos productos en `tienda-a`, con categorías y variantes
+   activas; dejar uno con stock y otro agotado.
+2. Abrir `/tiendas/tienda-a` sin iniciar sesión.
+3. Comprobar nombre del comercio, moneda, categorías, orden alfabético y ambos
+   estados de disponibilidad.
+4. Buscar por nombre, filtrar por categoría y navegar de página; recargar la URL
+   y verificar que filtros y página se conservan.
+5. Abrir `/tiendas/tienda-a/productos/{productSlug}` y revisar descripción,
+   variantes, precios y placeholder.
+6. Confirmar que el navegador no recibe SKU, cantidad exacta, versiones ni datos
+   de conexión.
+7. Despublicar el producto o desactivar su categoría y verificar que el detalle
+   responda como no encontrado.
+8. Abrir `tienda-b` y comprobar que no aparezcan datos de A.
+9. Probar a 320, 390, 768 y 1280 píxeles, además de navegación por teclado.
+10. Confirmar que `/tiendas/tienda-a/admin` continúa exigiendo autenticación.
+
 ## Pruebas
 
 ```powershell

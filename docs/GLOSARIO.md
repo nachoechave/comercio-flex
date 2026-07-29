@@ -12,6 +12,8 @@
   en vez de `double`.
 - **Controller:** entrada HTTP del backend; valida el formato y delega un caso de uso.
 - **CORS:** reglas que controlan qué orígenes web pueden llamar a la API.
+- **CSR (Client-Side Rendering):** renderizado de una SPA en el navegador. Reduce
+  complejidad de despliegue, aunque limita SEO y previews sociales avanzados.
 - **Cookie `HttpOnly`:** cookie que el navegador envía, pero JavaScript no puede
   leer directamente; reduce la exposición del identificador de sesión ante XSS.
 - **Correo normalizado:** representación canónica usada para comparar correos sin
@@ -38,6 +40,8 @@
 - **Membresía (`membership`):** vínculo que autoriza a un usuario global a operar
   en un comercio concreto con un rol determinado.
 - **Multi-tenant / multiempresa:** una plataforma atiende varios comercios aislados.
+- **`no-store`:** directiva HTTP que indica que una respuesta no debe guardarse
+  en cachés; STORE-01 la usa porque la disponibilidad puede cambiar.
 - **Paginación:** división de una lista grande en páginas; el servidor devuelve
   sólo un tramo y el total disponible.
 - **Ledger:** historial inmutable de movimientos que explica cómo se obtuvo un
@@ -64,6 +68,8 @@
   un comercio.
 - **Slug:** texto estable y seguro para URLs, por ejemplo `remeras-de-nino`. No es
   un identificador de base de datos ni una autorización.
+- **Storefront / tienda pública:** interfaz anónima donde un visitante navega el
+  catálogo de un comercio, separada del panel administrativo.
 - **SSR:** generación inicial de HTML en el servidor; puede mejorar SEO y primera carga.
 - **Tenant:** comercio cuyos datos y configuración deben mantenerse aislados.
 - **ThreadLocal:** almacenamiento asociado al hilo actual. Debe limpiarse porque

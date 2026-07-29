@@ -398,6 +398,55 @@ Reutilizar la clave con otro payload devuelve `409 Conflict`.
 El navegador nunca envía como autoridad el saldo final, delta firmado, actor,
 fechas, versión resultante, `tenant_id` ni información de conexión.
 
+## Catálogo público
+
+Las consultas públicas parten de:
+
+```http
+/api/v1/stores/{storeSlug}/catalog
+```
+
+Sólo `GET` es anónimo. Todas las respuestas usan `Cache-Control: no-store`
+porque incluyen disponibilidad derivada del inventario.
+
+### Categorías visibles
+
+```http
+GET /api/v1/stores/{storeSlug}/catalog/categories
+```
+
+Devuelve categorías activas que contienen al menos un producto publicado con
+una variante activa. No expone estados administrativos.
+
+### Productos públicos
+
+```http
+GET /api/v1/stores/{storeSlug}/catalog/products?page=0&size=24&q=&category=
+```
+
+`size` admite de 1 a 60, `page` de 0 a 10.000 y `q` busca por nombre con un
+máximo de 100 caracteres. `category` recibe el slug de una categoría. El orden
+es alfabético estable. Si la página supera el total, la API devuelve una página
+vacía sin ejecutar un `OFFSET` innecesario.
+
+Cada elemento incluye UUID público, nombre, slug, categoría, `priceFrom`,
+`priceTo` y `available`. Los precios son strings con dos decimales. Un producto
+agotado continúa visible con `available: false`.
+
+### Detalle público
+
+```http
+GET /api/v1/stores/{storeSlug}/catalog/products/{productSlug}
+```
+
+Devuelve descripción, categoría y variantes activas con UUID, precio, talle,
+color y disponibilidad booleana. Un borrador, archivado, producto con categoría
+inactiva o slug inexistente responde `404`.
+
+La API pública nunca entrega SKU, cantidad exacta, ledger, versiones, timestamps,
+IDs internos, `tenant_id` ni `database_key`. La disponibilidad es informativa:
+ORD-01 deberá releer precio, estado y stock al confirmar una compra.
+
 ## Errores de seguridad
 
 - `401 Unauthorized`: la operación exige una sesión válida.

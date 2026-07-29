@@ -231,6 +231,34 @@ InventoryList, InventoryDetail o StockAdjustmentForm
 `inventory` consulta metadatos de catálogo mediante joins de lectura en su propio
 adaptador JDBC. No importa `JdbcProductRepository` ni expone claves internas.
 
+## Flujo implementado de tienda pública
+
+```text
+StorefrontLayout
+→ StorefrontContextService obtiene configuración de la tienda
+→ CatalogPage conserva q, categoría y página en la URL
+→ StorefrontApiService
+→ GET /api/v1/stores/{slug}/catalog/**
+→ TenantResolutionFilter
+→ PublicCatalogController
+→ PublicCatalogService
+→ JdbcPublicCatalogRepository
+→ products, categories, product_variants e inventory_balances
+→ DTO público
+→ ProductCard o PublicProductDetail
+```
+
+Dentro de `frontend/src/app/features/storefront/`, `catalog/` coordina el
+listado, `product-card/` representa cada resultado y `product-detail/` presenta
+las variantes. Estos componentes pueden depender de los modelos, servicios y
+contexto públicos del mismo feature, pero no deben importar features
+administrativas.
+
+Dentro de `backend/.../catalog`, las clases `Public*` forman una frontera de
+lectura pública. Pueden depender del dominio y de la abstracción de repositorio,
+pero nunca de Angular ni de los controllers administrativos. El adaptador JDBC
+no debe aceptar un nombre de base proveniente del cliente.
+
 ## Flujo de autenticación y autorización de CORE-02
 
 ```text

@@ -187,6 +187,28 @@ comercial no altera automáticamente la existencia. El repositorio de inventario
 puede hacer joins de lectura con tablas de catálogo, pero no depende de sus
 adaptadores internos.
 
+STORE-01 agrega una lectura pública dentro del módulo `catalog`, con controller,
+DTO y repositorio dedicados. No reutiliza los DTO administrativos: la frontera
+pública omite SKU, cantidades, versiones y estados internos. El repositorio
+público puede unir `products`, `categories`, `product_variants` e
+`inventory_balances` porque todas pertenecen a la misma base tenant, pero expone
+sólo disponibilidad booleana.
+
+```text
+URL /tiendas/{slug}
+→ Angular obtiene settings y catálogo
+→ TenantResolutionFilter resuelve un tenant ACTIVE
+→ PublicCatalogController
+→ PublicCatalogService
+→ JdbcPublicCatalogRepository
+→ base MySQL exclusiva del comercio
+→ DTO público sin datos administrativos
+```
+
+Los endpoints públicos son anónimos únicamente para `GET`; las rutas
+`/admin/**` conservan sesión, membresía y permisos. El catálogo usa `no-store`
+y el futuro checkout vuelve a validar toda información comercial.
+
 Los ajustes bloquean la variante y el balance dentro de una transacción tenant.
 La misma transacción valida idempotencia, no negatividad y capacidad decimal,
 actualiza el balance e inserta el movimiento. La integración futura con pedidos
