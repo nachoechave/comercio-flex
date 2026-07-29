@@ -122,3 +122,28 @@ La categoría usa dos identificadores: un `BIGINT` eficiente dentro de MySQL y u
 UUID público para la API. Al crear, el backend normaliza el nombre y genera el
 slug. Al renombrar, conserva el slug para que futuras URLs no se rompan. Al
 desactivar, cambia el estado a `INACTIVE`; la fila puede reactivarse.
+
+## Flujo implementado en CAT-02
+
+```text
+Administrador completa producto y filas de variantes
+→ Angular valida forma y evita doble envío
+→ POST envía categoría, nombre y variantes
+→ Spring autoriza MANAGE_CATALOG
+→ ProductService abre una transacción tenant
+→ valida categoría, SKU, precio, talle y color
+→ inserta products y product_variants
+→ confirma todo o revierte todo
+→ responde UUID, estado DRAFT y versiones
+→ Angular navega al detalle
+```
+
+El precio se recibe como texto decimal y se convierte a `BigDecimal`; así no
+hereda errores de representación binaria de `number`/`double`. Producto y cada
+variante tienen su propia versión: si dos personas editan el mismo recurso, la
+segunda escritura con una versión vieja recibe `409` y debe recargar.
+
+Publicar y desactivar variantes son operaciones distintas que podrían ocurrir al
+mismo tiempo. Ambas bloquean primero la fila de producto y vuelven a comprobar la
+regla dentro de la transacción. La prueba concurrente confirma que nunca queda un
+producto `PUBLISHED` sin variantes activas.

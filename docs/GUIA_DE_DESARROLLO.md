@@ -122,6 +122,19 @@ La API administrativa utilizada por la pantalla está documentada en `API.md`.
 Las operaciones de escritura requieren la cookie de sesión y el header CSRF; no
 deben probarse copiando credenciales o identificadores de base en la URL.
 
+### Probar productos manualmente
+
+1. Iniciar sesión como `OWNER` o `ADMIN` y asegurar que exista una categoría activa.
+2. Abrir `/tiendas/tienda-a/admin/productos`.
+3. Crear un producto con nombre, categoría y al menos una variante con SKU y precio.
+4. Confirmar que el producto comience en borrador y que el precio conserve dos decimales.
+5. Editar nombre, descripción, SKU o precio y comprobar que los cambios persistan.
+6. Publicar, intentar desactivar la última variante activa y comprobar el rechazo.
+7. Volver a borrador, desactivar/restaurar una variante y archivar/restaurar el producto.
+8. Buscar por nombre o SKU y probar filtros y paginación.
+9. Cambiar de tienda y verificar que no aparezcan datos del comercio anterior.
+10. Con `STAFF`, verificar lectura sin botones de modificación.
+
 ## Pruebas
 
 ```powershell

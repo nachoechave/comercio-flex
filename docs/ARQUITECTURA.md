@@ -173,6 +173,13 @@ CAT-01 implementa la primera parte de `catalog`: `STAFF` puede consultar
 categorías mediante `VIEW_CATALOG`, mientras `OWNER` y `ADMIN` necesitan
 `MANAGE_CATALOG` para crear, renombrar, archivar o restaurar. La autorización se
 ejecuta antes del controller y se repite como defensa en el caso de uso HTTP.
+
+CAT-02 extiende el mismo módulo con el agregado producto-variante. El producto es
+la raíz que coordina publicación y variantes; el alta completa usa una única
+transacción tenant. Producto y variante tienen versiones optimistas
+independientes. Las operaciones concurrentes que podrían dejar un publicado sin
+variantes activas bloquean primero la fila del producto y validan la invariante
+dentro de la transacción.
 | Consultar catálogo e inventario | Sí | Sí | Sí |
 | Ajustar stock | Sí | Sí | Sí |
 | Ver pedidos y cambiar estados permitidos | Sí | Sí | Sí |

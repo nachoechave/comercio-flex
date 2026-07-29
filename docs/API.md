@@ -1,7 +1,7 @@
 # API
 
-> Actualizado al cerrar CORE-02 el 2026-07-28. Los contratos de autenticación
-> están implementados y verificados.
+> Actualizado al cerrar CAT-02 el 2026-07-29. Los contratos de autenticación,
+> categorías y productos administrativos están implementados y verificados.
 
 ## Health check
 
@@ -231,6 +231,101 @@ MVP.
 
 La API sólo expone el UUID público. No recibe ni devuelve `tenant_id`, clave
 interna `BIGINT`, `database_key`, URL JDBC ni credenciales.
+
+## Administración de productos y variantes
+
+Todas las rutas parten de:
+
+```http
+/api/v1/stores/{storeSlug}/admin/products
+```
+
+Requieren sesión y membresía activa. `OWNER` y `ADMIN` pueden modificar;
+`STAFF` sólo puede consultar. Toda mutación requiere CSRF.
+
+### Listar con paginación
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/products?page=0&size=20&status=ALL&categoryId={uuid}&q=remera
+```
+
+`size` admite de 1 a 100, `page` de 0 a 1.000.000, `status` admite `ALL`,
+`DRAFT`, `PUBLISHED` o `ARCHIVED`, y `q` busca por nombre o SKU. La respuesta
+incluye `items`, `page`, `size`, `totalItems` y `totalPages`.
+
+### Crear de forma atómica
+
+```http
+POST /api/v1/stores/{storeSlug}/admin/products
+Content-Type: application/json
+X-XSRF-TOKEN: <token>
+```
+
+```json
+{
+  "name": "Remera clásica",
+  "description": "Algodón",
+  "categoryId": "8ab5aef2-85f2-4ced-b864-1077ee1fd69c",
+  "variants": [
+    {
+      "sku": "REM-CL-M-AZ",
+      "price": "15900.00",
+      "size": "M",
+      "color": "Azul"
+    }
+  ]
+}
+```
+
+Producto y variantes se confirman en una sola transacción. La respuesta es
+`201 Created`, empieza en `DRAFT` y expone UUID y versión de cada recurso. El
+precio siempre viaja como string decimal canónico, por ejemplo `"15900.00"`.
+
+### Consultar y editar
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/products/{productId}
+PUT /api/v1/stores/{storeSlug}/admin/products/{productId}
+```
+
+El `PUT` modifica nombre, descripción o categoría y debe incluir la `version`
+leída. El slug no cambia al renombrar.
+
+### Cambiar estado
+
+```http
+PATCH /api/v1/stores/{storeSlug}/admin/products/{productId}/status
+```
+
+```json
+{
+  "status": "PUBLISHED",
+  "version": 0
+}
+```
+
+Publicar exige categoría activa y al menos una variante activa. Archivar no
+elimina filas; restaurar un archivado lo devuelve a `DRAFT`.
+
+### Agregar, editar o desactivar variantes
+
+```http
+POST  /api/v1/stores/{storeSlug}/admin/products/{productId}/variants
+PUT   /api/v1/stores/{storeSlug}/admin/products/{productId}/variants/{variantId}
+PATCH /api/v1/stores/{storeSlug}/admin/products/{productId}/variants/{variantId}/status
+```
+
+Editar o cambiar estado exige la versión de la variante. No se puede desactivar
+la última variante activa de un producto publicado.
+
+### Errores de productos
+
+- `400 Bad Request`: formato, límites, precio, SKU o atributos inválidos.
+- `401 Unauthorized`: no existe una sesión válida.
+- `403 Forbidden`: falta CSRF, membresía o permiso.
+- `404 Not Found`: producto o variante no pertenece al comercio seleccionado.
+- `409 Conflict`: versión obsoleta, SKU/combinación/slug duplicado o transición
+  incompatible con la categoría y variantes.
 
 ## Errores de seguridad
 

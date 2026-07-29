@@ -1,7 +1,7 @@
 # Estructura del proyecto
 
-> Actualizado durante CAT-01 el 2026-07-28. Identidad, routing tenant y gestión de
-> categorías ya están implementados y verificados.
+> Actualizado durante CAT-02 el 2026-07-29. Identidad, routing tenant, categorías,
+> productos y variantes ya están implementados y verificados.
 
 ```text
 comercio-flex/
@@ -23,7 +23,8 @@ frontend/
 └── src/app/
     ├── core/
     │   ├── auth/                   # Sesión global, CSRF, guards e interceptor
-    │   └── health/                 # Cliente del health check backend
+    │   ├── health/                 # Cliente del health check backend
+    │   └── routing/                # Lectura reactiva de parámetros de rutas tenant
     ├── layouts/
     │   ├── storefront-layout/      # Marco de la tienda pública
     │   └── admin-layout/           # Marco del panel administrativo
@@ -32,6 +33,7 @@ frontend/
     │   ├── storefront/home/        # Página pública inicial
     │   └── admin/
     │       ├── categories/         # Listado, formulario y API de categorías
+    │       ├── products/           # Lista, alta, detalle, edición y API de productos
     │       ├── dashboard/          # Entrada administrativa protegida
     │       └── store-selector/     # Selector para usuarios con varias membresías
     ├── shared/ui/status-pill/      # UI reutilizable sin negocio
@@ -78,7 +80,7 @@ backend/src/main/
         └── tenant/                  # Esquema idéntico para cada comercio
 ```
 
-`catalog` comienza en CAT-01 con categorías. Los módulos `inventory`, `customer`,
+`catalog` contiene categorías, productos y variantes. Los módulos `inventory`, `customer`,
 `order`, `delivery`, `payment` y `reporting` se crearán al comenzar sus historias.
 No se agregan carpetas vacías sólo para simular avance.
 
@@ -182,6 +184,26 @@ CategoryList o CategoryForm
 `catalog` usa las capacidades de autorización de `identity` y la conexión ya
 seleccionada por `tenant`. No conoce la base de control, credenciales JDBC ni
 componentes Angular. El frontend nunca envía `tenant_id` ni `database_key`.
+
+## Flujo implementado de productos
+
+```text
+ProductList, ProductForm o ProductDetail
+→ ProductApiService
+→ API paginada /admin/products
+→ sesión, CSRF, membership y permiso
+→ AdminProductController
+→ ProductService valida y coordina la transacción
+→ ProductValidator aplica reglas del agregado
+→ JdbcProductRepository
+→ products y product_variants en la base tenant
+→ DTO con UUID, versiones y precio string
+→ Angular actualiza la vista
+```
+
+El alta confirma producto y variantes como una unidad. La versión evita
+sobrescrituras silenciosas y los bloqueos de fila preservan las reglas de
+publicación ante operaciones concurrentes.
 
 ## Flujo de autenticación y autorización de CORE-02
 

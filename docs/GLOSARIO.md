@@ -8,6 +8,8 @@
 - **API REST:** contrato HTTP mediante el cual Angular se comunica con el backend.
 - **Archivado lógico:** retiro reversible de un registro mediante un estado, sin
   eliminar físicamente la fila ni romper referencias históricas.
+- **BigDecimal:** tipo Java para cálculos decimales exactos; se usa para dinero
+  en vez de `double`.
 - **Controller:** entrada HTTP del backend; valida el formato y delega un caso de uso.
 - **CORS:** reglas que controlan qué orígenes web pueden llamar a la API.
 - **Cookie `HttpOnly`:** cookie que el navegador envía, pero JavaScript no puede
@@ -34,6 +36,8 @@
 - **Membresía (`membership`):** vínculo que autoriza a un usuario global a operar
   en un comercio concreto con un rol determinado.
 - **Multi-tenant / multiempresa:** una plataforma atiende varios comercios aislados.
+- **Paginación:** división de una lista grande en páginas; el servidor devuelve
+  sólo un tramo y el total disponible.
 - **Pool de conexiones:** conjunto acotado de conexiones reutilizables a una base
   de datos; evita abrir una conexión nueva por cada consulta.
 - **Base de control:** base compartida con el registro necesario para localizar y
@@ -50,6 +54,8 @@
 - **Spring Session JDBC:** implementación que persiste sesiones HTTP en tablas de
   una base relacional para compartirlas entre instancias y sobrevivir reinicios.
 - **Signal:** primitiva reactiva de Angular para representar estado y valores derivados.
+- **SKU:** código operativo único que identifica una variante vendible dentro de
+  un comercio.
 - **Slug:** texto estable y seguro para URLs, por ejemplo `remeras-de-nino`. No es
   un identificador de base de datos ni una autorización.
 - **SSR:** generación inicial de HTML en el servidor; puede mejorar SEO y primera carga.
@@ -57,6 +63,8 @@
 - **ThreadLocal:** almacenamiento asociado al hilo actual. Debe limpiarse porque
   los servidores reutilizan hilos entre solicitudes.
 - **Variable de entorno:** configuración externa al código, apropiada para secretos.
+- **Versión optimista:** número que permite detectar si otro usuario cambió un
+  recurso desde que fue leído, evitando sobrescribirlo silenciosamente.
 - **Webhook:** solicitud enviada por un sistema externo para notificar un evento.
 - **XSS:** inyección de script en una página. Una cookie `HttpOnly` dificulta el
   robo directo de sesión, pero no reemplaza la prevención de contenido inseguro.

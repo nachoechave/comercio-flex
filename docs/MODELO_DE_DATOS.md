@@ -1,7 +1,7 @@
 # Modelo de datos
 
-> Actualizado en CAT-01 el 2026-07-28. La estrategia de una base por comercio y
-> el patrón de identificadores internos/públicos están aprobados.
+> Actualizado en CAT-02 el 2026-07-29. La estrategia de una base por comercio y
+> el patrón de identificadores internos/públicos están implementados en catálogo.
 
 ## Base de control
 
@@ -87,6 +87,26 @@ La tabla no contiene `tenant_id`: la base seleccionada después de autorizar la
 membresía es el límite de aislamiento. El mismo nombre puede existir en bases de
 comercios diferentes. Los índices únicos son la defensa final ante dos altas
 concurrentes.
+
+### Productos y variantes
+
+La migración tenant `V003__create_products_and_variants.sql` crea:
+
+| Tabla | Campos y reglas principales |
+|---|---|
+| `products` | `BIGINT` interno, UUID público, FK de categoría, nombre, slug único, descripción, estado, versión y timestamps |
+| `product_variants` | `BIGINT` interno, UUID público, FK de producto, SKU único, `DECIMAL(15,2)`, talle, color, estado, versión y timestamps |
+
+Estados de producto: `DRAFT`, `PUBLISHED`, `ARCHIVED`. Estados de variante:
+`ACTIVE`, `INACTIVE`. Una restricción única evita repetir la combinación
+normalizada de talle y color dentro del mismo producto. Las cadenas vacías de
+talle y color representan la variante base.
+
+Producto y variante tienen versiones independientes. La aplicación actualiza una
+fila sólo cuando la versión enviada coincide y luego la incrementa. Las
+operaciones que protegen la regla “publicado implica al menos una variante
+activa” bloquean primero el producto para mantener un orden consistente entre
+transacciones concurrentes.
 
 ## Reglas
 

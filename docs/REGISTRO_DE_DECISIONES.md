@@ -33,6 +33,14 @@
 | ADR-026 | Baja de categorías | Archivado lógico reversible | Aceptada |
 | ADR-027 | Slug de categoría | Automático, único e inmutable | Aceptada |
 | ADR-028 | Jerarquía de categorías | Categorías planas para el MVP | Aceptada |
+| ADR-029 | Atributos de variante | Talle y color opcionales | Aceptada |
+| ADR-030 | Editor de variantes | Filas manuales para el MVP | Aceptada |
+| ADR-031 | Alta de producto | Producto y variantes en una transacción | Aceptada |
+| ADR-032 | Ciclo de producto | Borrador, publicado y archivado | Aceptada |
+| ADR-033 | SKU | Obligatorio y único por comercio | Aceptada |
+| ADR-034 | Precio | Decimal exclusivamente por variante | Aceptada |
+| ADR-035 | Concurrencia | Versión explícita y rechazo de edición obsoleta | Aceptada |
+| ADR-036 | Listado de productos | Paginación desde CAT-02 | Aceptada |
 
 ## Plantilla ADR
 
@@ -413,3 +421,119 @@
 - **Decisión:** utilizar una lista plana durante el MVP.
 - **Consecuencias:** se evitan ciclos, profundidad, breadcrumbs y reglas de
   archivado de ramas. Una jerarquía futura requerirá un nuevo ADR y migración.
+
+## ADR aceptadas el 2026-07-29 para Sprint 5
+
+### ADR-029 — Talle y color opcionales
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el piloto de indumentaria necesita talle y color, pero el núcleo
+  también debe representar productos simples.
+- **Problema:** elegir entre atributos explícitos o un motor genérico de opciones.
+- **Alternativas:** columnas opcionales de talle/color; tablas genéricas de
+  definiciones, opciones y valores.
+- **Decisión:** cada variante tendrá talle y color opcionales. Ambos vacíos
+  representan la variante base de un producto simple.
+- **Consecuencias:** CAT-02 evita un modelo EAV y cubre el piloto. Incorporar otros
+  atributos requerirá una migración y un ADR después de validar otro rubro.
+
+### ADR-030 — Editor manual de variantes
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una matriz automática talle por color mejora la carga masiva, pero
+  aumenta considerablemente la lógica del formulario.
+- **Problema:** equilibrar experiencia operativa con alcance de Sprint 5.
+- **Alternativas:** filas manuales; generador cartesiano de combinaciones.
+- **Decisión:** cargar variantes mediante filas manuales en el MVP.
+- **Consecuencias:** el primer flujo es más simple de explicar y probar, aunque
+  cargar muchas combinaciones será más lento. La matriz queda como mejora validada
+  por el uso del piloto.
+
+### ADR-031 — Alta atómica de producto y variantes
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** por ADR-008 todo producto vendible necesita al menos una variante.
+- **Problema:** evitar productos abandonados sin una unidad vendible.
+- **Alternativas:** alta atómica con variantes; crear producto vacío y completar
+  después.
+- **Decisión:** crear el producto y al menos una variante en una única transacción.
+- **Consecuencias:** si cualquier variante es inválida, no se persiste ninguna
+  parte del agregado. Después del alta, cada variante conserva UUID y ciclo propio.
+
+### ADR-032 — Ciclo de publicación y archivado
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** guardar información no debe publicarla accidentalmente.
+- **Problema:** distinguir preparación, visibilidad y retiro.
+- **Alternativas:** estados `DRAFT`, `PUBLISHED`, `ARCHIVED`; booleano publicado.
+- **Decisión:** utilizar la máquina de estados explícita. Las variantes persistidas
+  se activan o desactivan, pero no se borran físicamente.
+- **Consecuencias:** publicar exige categoría activa y al menos una variante
+  activa. Para desactivar la última variante de un producto publicado primero hay
+  que volverlo a borrador. Restaurar un archivado siempre vuelve a `DRAFT`.
+
+### ADR-033 — SKU obligatorio y único por comercio
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** inventario y pedidos necesitarán identificar inequívocamente cada
+  variante.
+- **Problema:** definir alcance, normalización y reutilización del SKU.
+- **Alternativas:** obligatorio y único en la base tenant; opcional o único por
+  producto.
+- **Decisión:** normalizar a mayúsculas, exigirlo y mantenerlo único por comercio.
+  Puede corregirse conservando el UUID de la variante y no se reutiliza mientras
+  exista su fila.
+- **Consecuencias:** mejora la operación e integración futura, pero exige que el
+  administrador asigne un SKU a cada variante.
+
+### ADR-034 — Precio decimal por variante
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** ADR-008 ubica precio, SKU y stock en la variante vendible.
+- **Problema:** evitar dos fuentes de verdad y pérdida de precisión.
+- **Alternativas:** precio sólo por variante; precio base con ajuste por variante.
+- **Decisión:** almacenar `DECIMAL(15,2)`, manipular `BigDecimal` y transportar el
+  valor como string decimal canónico en JSON.
+- **Consecuencias:** frontend y backend validan explícitamente el formato; la
+  moneda pertenece a la configuración del comercio y no se repite por variante.
+
+### ADR-035 — Concurrencia optimista mediante versión
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** dos administradores pueden editar un producto o variante al mismo
+  tiempo.
+- **Problema:** impedir que una edición obsoleta sobrescriba otra silenciosamente.
+- **Alternativas:** campo `version` en el contrato; headers `ETag` e `If-Match`.
+- **Decisión:** cada recurso editable expone y recibe una versión. Un `UPDATE`
+  incrementa la versión sólo si coincide con la leída; en otro caso responde
+  conflicto.
+- **Consecuencias:** Angular debe ofrecer recarga ante `409`. ETag puede adoptarse
+  posteriormente sin eliminar el control optimista interno.
+
+### ADR-036 — Paginación administrativa de productos
+
+- **Fecha:** 2026-07-29
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el volumen de productos y búsquedas por SKU será mayor que el de
+  categorías.
+- **Problema:** evitar cargar el catálogo administrativo completo.
+- **Alternativas:** paginación desde CAT-02; lista completa inicial.
+- **Decisión:** paginar en el servidor con 20 elementos por defecto y 100 como
+  máximo, incorporando búsqueda y filtros de categoría/estado.
+- **Consecuencias:** el contrato es más elaborado desde el comienzo, pero evita
+  retrabajo y consumo creciente en Angular y MySQL.

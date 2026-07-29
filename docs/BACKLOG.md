@@ -13,7 +13,7 @@
 | CORE-01 | Tenant | Resolver comercio y conexión | Resolver path, consultar control DB y enrutar a la base correcta | Alta | Terminada | BT-02, BT-04 | Backend | A/B aislados, fallo seguro y API documentada | Conexión incorrecta | XL |
 | CORE-02 | Identidad | Login y roles | Sesión JDBC segura, autorización por membresía y logout | Alta | Terminada | CORE-01 | Backend/Frontend/Calidad | Login global, roles fijos, CSRF, límite de intentos y pruebas negativas | Cookies, fuerza bruta y autorización tenant | L |
 | CAT-01 | Catálogo | Gestionar categorías | CRUD administrativo por tenant | Alta | Terminada | CORE-02 | Backend/Frontend | Validación, aislamiento, pruebas y manual | Slugs duplicados | M |
-| CAT-02 | Catálogo | Gestionar productos de indumentaria | Alta/edición/publicación, talle, color, SKU y precio | Alta | Pendiente | CAT-01 | Backend/Frontend | Precio > 0, categoría y variante válidos | Combinaciones inválidas | XL |
+| CAT-02 | Catálogo | Gestionar productos de indumentaria | Alta/edición/publicación, talle, color, SKU y precio | Alta | Terminada | CAT-01 | Backend/Frontend | Precio > 0, categoría y variante válidos | Combinaciones inválidas | XL |
 | INV-01 | Inventario | Ajustar stock | Existencia por variante y movimiento auditable | Alta | Pendiente | CAT-02 | Backend/Frontend | No negativo, concurrencia y pruebas | Sobreventa | L |
 | STORE-01 | Tienda | Navegar catálogo | Listar, buscar y ver detalle público | Alta | Pendiente | CAT-02 | Frontend/Backend | Responsive, estados y tenant correcto | Rendimiento/SEO | L |
 | ORD-01 | Compra | Carrito y checkout | Carrito local, cliente, entrega y observaciones | Alta | Pendiente | STORE-01, INV-01 | Frontend/Backend | Backend recalcula y persiste snapshot | Precio manipulado | XL |
@@ -174,3 +174,67 @@ productos que luego publicaré en mi tienda.
 - Mejorar el diálogo accesible de confirmación con contención de foco y Escape.
 - Reducir el ruido del scheduler de limpieza de Spring Session entre contextos de
   Testcontainers.
+
+## CAT-02 — Gestión de productos y variantes
+
+> Estado: terminada el 2026-07-29. Las decisiones ADR-029 a ADR-036 fueron
+> aprobadas antes de iniciar la implementación.
+
+### Historia
+
+Como administrador de un comercio quiero crear y mantener productos con variantes
+vendibles para preparar el catálogo de indumentaria.
+
+### Criterios de aceptación
+
+- `OWNER` y `ADMIN` pueden crear, consultar, editar, publicar, despublicar y
+  archivar productos de su comercio; `STAFF` sólo puede consultar.
+- El alta persiste producto y al menos una variante en una única transacción; si
+  una variante falla, no queda un producto parcial.
+- El producto tiene una categoría activa, nombre obligatorio de 2 a 160
+  caracteres, descripción opcional de hasta 2000 y slug automático e inmutable.
+- Cada variante posee UUID público, SKU obligatorio y único por comercio, precio
+  decimal mayor que cero, talle y color opcionales y estado activo/inactivo.
+- Talle y color vacíos representan una variante base; una combinación normalizada
+  no puede repetirse dentro del producto.
+- El precio vive exclusivamente en la variante, se persiste como `DECIMAL(15,2)`
+  y viaja en JSON como string canónico.
+- Un producto `PUBLISHED` exige categoría activa y al menos una variante activa.
+  No se puede desactivar su última variante activa sin volverlo antes a `DRAFT`.
+- Archivar no borra producto ni variantes; restaurar devuelve el producto a
+  `DRAFT`.
+- Una versión obsoleta de producto o variante devuelve `409` y no sobrescribe la
+  edición más reciente.
+- El listado es paginado, permite búsqueda por nombre o SKU y filtros por estado
+  y categoría, con tamaño máximo 100.
+- Producto, variante o categoría de `tienda-a` no pueden leerse ni modificarse
+  desde `tienda-b`; el mismo SKU puede existir en bases tenant diferentes.
+- Las mutaciones requieren CSRF y `MANAGE_CATALOG`; la lectura requiere
+  `VIEW_CATALOG`.
+- La API no expone `BIGINT`, `tenant_id`, `database_key`, conexiones ni entidades
+  de persistencia.
+- Angular cancela y limpia datos al cambiar de tenant, maneja carga, vacío,
+  errores de campo, conflicto y doble envío, y funciona con teclado.
+- Stock, imágenes, catálogo público, promociones, múltiples categorías y
+  atributos genéricos no forman parte de CAT-02.
+- Migraciones, pruebas backend/frontend, revisión, documentación y prueba manual
+  están completas antes de marcar la historia como `Terminada`.
+
+### Evidencia de cierre
+
+- Backend: 54 pruebas en verde con MySQL 8.4/Testcontainers; 14 pertenecen a la
+  suite específica de productos y validación.
+- Frontend: 44 pruebas en verde y build de producción correcto.
+- Revisión independiente: sin defectos bloqueantes; incluye atomicidad,
+  aislamiento A/B, CSRF, roles, versiones y carreras de publicación.
+- Prueba manual: login `OWNER`, alta, edición de datos y precio, publicación,
+  archivado y restauración a borrador verificados en la aplicación local.
+
+### Deuda no bloqueante
+
+- Definir explícitamente el `collation` común de todas las bases tenant.
+- Escalar la búsqueda `%term%` cuando el volumen real justifique índices o un
+  motor de búsqueda.
+- Hacer que ediciones de variantes actualicen el orden de “modificado
+  recientemente” del producto si el piloto demuestra esa necesidad.
+- Mejorar el diálogo accesible con focus trap y cierre por Escape.
