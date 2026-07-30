@@ -119,7 +119,16 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 						ON balance.variant_id = available_variant.id
 					WHERE available_variant.product_id = product.id
 						AND available_variant.status = 'ACTIVE'
-						AND COALESCE(balance.quantity, 0.000) > 0
+						AND (
+							COALESCE(balance.quantity, 0.000)
+							- COALESCE((
+								SELECT SUM(reservation.quantity)
+								FROM inventory_reservations reservation
+								WHERE reservation.variant_id = available_variant.id
+									AND reservation.status = 'ACTIVE'
+									AND reservation.expires_at > UTC_TIMESTAMP(6)
+							), 0.000)
+						) > 0
 				) available
 			FROM products product
 			JOIN categories category ON category.id = product.category_id
@@ -174,7 +183,16 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				variant.price,
 				variant.size_value,
 				variant.color_value,
-				COALESCE(balance.quantity, 0.000) > 0 available
+				(
+					COALESCE(balance.quantity, 0.000)
+					- COALESCE((
+						SELECT SUM(reservation.quantity)
+						FROM inventory_reservations reservation
+						WHERE reservation.variant_id = variant.id
+							AND reservation.status = 'ACTIVE'
+							AND reservation.expires_at > UTC_TIMESTAMP(6)
+					), 0.000)
+				) > 0 available
 			FROM product_variants variant
 			LEFT JOIN inventory_balances balance ON balance.variant_id = variant.id
 			WHERE variant.product_id = ?

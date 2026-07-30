@@ -65,6 +65,8 @@ public final class TenantDataSourceRegistry implements TenantConnectionCatalog, 
 		config.setJdbcUrl(details.getUrl());
 		config.setUsername(details.getUsername());
 		config.setPassword(details.getPassword());
+		config.addDataSourceProperty("connectionTimeZone", "UTC");
+		config.addDataSourceProperty("forceConnectionTimeZoneToSession", "true");
 		config.setMaximumPoolSize(5);
 		config.setMinimumIdle(0);
 		config.setConnectionTimeout(3_000);

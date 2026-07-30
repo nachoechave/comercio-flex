@@ -67,6 +67,14 @@ public class SecurityConfig {
 					"/api/v1/stores/*/catalog/products/*")
 				.permitAll()
 				.requestMatchers(
+					HttpMethod.POST,
+					"/api/v1/stores/*/orders")
+				.permitAll()
+				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/stores/*/orders/*")
+				.permitAll()
+				.requestMatchers(
 					"/api/v1/auth/csrf",
 					"/api/v1/auth/login",
 					"/api/v1/auth/session").permitAll()
