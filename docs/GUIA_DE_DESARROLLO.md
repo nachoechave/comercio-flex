@@ -202,6 +202,7 @@ sistemas alojados en el mismo origen.
    observaciones opcionales.
 4. Confirmar y verificar la ruta
    `/tiendas/{slug}/pedidos/{uuid}?token=...`.
+
 5. Comprobar número, items, subtotal, retiro, contacto enmascarado y vencimiento.
 6. Recargar el enlace: debe recuperar el pedido sin exponer teléfono, correo
    completos ni SKU.
@@ -214,8 +215,30 @@ sistemas alojados en el mismo origen.
 10. Probar teclado y anchos de 320, 390, 768 y 1280 píxeles.
 
 Las reservas vencidas dejan de reducir disponibilidad inmediatamente. Su estado
-se materializa al consultar el pedido; una limpieza programada masiva queda como
-trabajo operativo posterior.
+se materializa al consultar el pedido o abrir el listado administrativo; una
+limpieza programada independiente queda como evolución operativa.
+
+### Probar la operación administrativa de pedidos
+
+1. Crear un pedido invitado y conservar su número.
+2. Iniciar sesión como OWNER, ADMIN o STAFF.
+3. Abrir `/tiendas/tienda-a/admin/pedidos`.
+4. Buscar el número y abrir el detalle.
+5. Confirmarlo y verificar que aparezcan el actor y la nota en el historial.
+6. Revisar inventario: el balance debe disminuir y existir un movimiento
+   `ORDER_CONFIRMED`.
+7. Marcarlo listo y luego cancelarlo.
+8. Confirmar que el balance vuelva al valor anterior y exista
+   `ORDER_CANCELLED`.
+9. En la UI, confirmar que un estado terminal ya no ofrece acciones.
+10. Mediante la API, reenviar exactamente la misma transición con la misma
+    `Idempotency-Key`: debe responder sin duplicar historial ni stock. Reutilizar
+    esa clave con otro estado o nota debe responder `409`.
+11. Verificar que rechazo y vencimiento liberan reservas sin cambiar el balance.
+12. Entrar con un usuario sin membresía en el comercio: la API debe responder
+    `403`; consultar el UUID desde otro tenant no debe revelar el pedido.
+13. Aplicar filtros por estado y número; con más de 20 registros, verificar las
+    páginas anterior y siguiente.
 
 ## Pruebas
 

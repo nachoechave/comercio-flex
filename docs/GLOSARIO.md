@@ -69,6 +69,10 @@
   un invitado consultar su pedido. La base conserva sólo su hash.
 - **Snapshot:** copia de datos tomada en un momento. El carrito conserva una
   fotografía visible, pero debe revalidarla porque precio y disponibilidad cambian.
+- **Máquina de estados:** conjunto explícito de estados y transiciones permitidas
+  que evita saltos ambiguos en el ciclo de vida de un pedido.
+- **Movimiento compensatorio:** registro inverso que restaura un efecto anterior
+  sin borrar su historial; una cancelación repone stock de esta manera.
 - **Sesión:** estado autenticado mantenido por el servidor y asociado a una cookie
   segura del navegador.
 - **Spring Session JDBC:** implementación que persiste sesiones HTTP en tablas de

@@ -207,6 +207,28 @@ Crear un pedido no modifica el balance físico. Pedido, items y reservas se
 insertan en una única transacción. Las conexiones tenant fijan UTC para que Java
 y MySQL comparen el mismo instante sin depender de la zona del host.
 
+ORD-02 agrega `version` a `orders` y crea `order_status_history`. Cada entrada
+guarda estado anterior, nuevo estado, actor, nota y fecha. La clave idempotente de
+la transición impide repetir un efecto sobre stock.
+
+```text
+Confirmar
+→ reserva ACTIVE pasa a CONSUMED
+→ inventory_balances disminuye
+→ inventory_movements registra ORDER_CONFIRMED
+
+Cancelar después de confirmar
+→ inventory_balances aumenta
+→ inventory_movements registra ORDER_CANCELLED
+→ reserva CONSUMED pasa a RELEASED
+```
+
+`inventory_movements.order_id` relaciona movimientos automáticos con el pedido.
+Rechazar o vencer libera la reserva sin modificar el balance físico.
+La migración V007 agrega una unicidad por `(order_id, new_status)`. Como el MVP
+no permite ciclos, un mismo pedido no puede registrar dos veces el mismo estado,
+incluso ante carreras entre vencimiento, consulta y operación administrativa.
+
 ## Relaciones principales
 
 ```text

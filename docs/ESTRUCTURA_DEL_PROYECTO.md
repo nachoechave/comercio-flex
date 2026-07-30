@@ -315,6 +315,28 @@ para aplicar la regla transaccional, pero no depende de controllers ni de los
 repositorios concretos de esos módulos. `catalog` sólo considera reservas al
 calcular disponibilidad pública.
 
+## Flujo administrativo de pedidos
+
+`frontend/src/app/features/admin/orders/` contiene contratos, servicio HTTP,
+listado y detalle. Sólo depende de utilidades compartidas y de la API; no conoce
+SQL ni reglas de transición.
+
+```text
+OrderDetail
+→ OrderApiService + Idempotency-Key
+→ AdminOrderController valida MANAGE_ORDERS
+→ AdminOrderService bloquea el pedido
+→ JdbcAdminOrderRepository
+→ orders + order_status_history
+→ inventory_reservations
+→ inventory_balances + inventory_movements
+→ respuesta actualizada al panel
+```
+
+El controller no decide transiciones y el repositorio no acepta actores enviados
+por Angular. El caso de uso coordina toda la operación dentro de una transacción
+tenant.
+
 Dentro de `backend/.../catalog`, las clases `Public*` forman una frontera de
 lectura pública. Pueden depender del dominio y de la abstracción de repositorio,
 pero nunca de Angular ni de los controllers administrativos. El adaptador JDBC

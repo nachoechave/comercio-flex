@@ -19,7 +19,7 @@
 | MEDIA-01 | Medios | Gestionar imagen principal | Carga, almacenamiento externo, thumbnail y texto alternativo | Alta | Pendiente | STORE-01 | Frontend/Backend/Infraestructura | MIME/tamaño, aislamiento, fallback y eliminación segura | Costo, contenido malicioso y archivos huérfanos | L |
 | CART-01 | Compra | Carrito local | Selección de variante, cantidades, persistencia local y revalidación | Alta | Terminada | STORE-01 | Frontend | Aislado por tienda, accesible, sin datos personales y revalidado | Datos locales obsoletos | L |
 | ORD-01 | Compra | Checkout invitado | Retiro, contacto, reserva temporal y creación transaccional del pedido | Alta | Terminada | CART-01, INV-01 | Frontend/Backend | Backend recalcula, reserva y persiste snapshot idempotente | Precio manipulado, abuso y sobreventa | XL |
-| ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Pendiente | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
+| ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Terminada | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
 | PAY-01 | Pagos | OAuth y Checkout Pro sandbox | Conectar comercio, preferencia, retorno y webhook idempotente | Alta | Pendiente | ORD-01, F0-02 | Backend/Calidad | OAuth state, firma, importe, duplicados y pruebas | Fraude/secretos | XL |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pendientes y stock bajo | Media | Pendiente | ORD-02 | Backend/Frontend | Datos por tenant y definiciones documentadas | Métricas inconsistentes | M |
 | OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | Pendiente | PAY-01 | Infraestructura | Smoke, backup y restauración probada | Costo/caída | L |
@@ -525,3 +525,52 @@ recibir una referencia segura que me permita consultar la confirmación.
 - La infraestructura de pruebas completa emite avisos de cierre de conexiones
   entre contextos y Flyway advierte sobre MySQL 8.4; no produjeron fallos, pero
   conviene depurarlos en una historia de calidad.
+
+## ORD-02 — Operación administrativa de pedidos
+
+> Estado: terminada el 2026-07-30. Alcance aprobado por el Product Owner
+> mediante ADR-068 a ADR-075.
+
+### Historia
+
+Como integrante del comercio quiero consultar y avanzar pedidos mediante estados
+válidos para preparar entregas y mantener el inventario consistente.
+
+### Criterios de aceptación
+
+- OWNER, ADMIN y STAFF pueden listar, consultar y operar únicamente pedidos de
+  sus comercios.
+- El listado muestra 20 pedidos por página, más recientes primero, y permite
+  filtrar por estado o buscar por número.
+- El detalle muestra contacto, observaciones, productos, totales e historial.
+- Se admiten solamente `PENDING_CONFIRMATION → CONFIRMED|REJECTED`,
+  `CONFIRMED → READY_FOR_PICKUP|CANCELLED` y
+  `READY_FOR_PICKUP → COMPLETED|CANCELLED`.
+- Confirmar consume la reserva, descuenta el balance físico y registra
+  movimientos `ORDER_CONFIRMED` dentro de la misma transacción.
+- Rechazar libera la reserva sin modificar el balance físico.
+- Cancelar un pedido confirmado o listo restaura el stock una sola vez y registra
+  movimientos `ORDER_CANCELLED`.
+- Pedidos vencidos y estados terminales son de sólo lectura.
+- Cada transición exige `Idempotency-Key`; un replay idéntico es seguro y una
+  reutilización distinta responde `409`.
+- Dos operadores concurrentes no pueden aplicar transiciones incompatibles.
+- Cada cambio guarda estado anterior, nuevo estado, actor, fecha y nota opcional.
+- La API no confía en estados, actores, saldos ni totales enviados por Angular.
+- Pruebas backend, frontend, concurrencia, build, documentación y recorrido manual
+  deben completarse antes de marcar la historia como `Terminada`.
+
+### Evidencia de terminación
+
+- Backend: 89 pruebas completas sin fallos; además, 5 pruebas focalizadas
+  recompilaron y validaron la protección idempotente final.
+- Frontend: 29 archivos y 94 pruebas sin fallos; build de producción correcto.
+- Seguridad HTTP: sesión, membresía, `MANAGE_ORDERS`, CSRF, encabezado
+  `Idempotency-Key` y aislamiento entre tenants verificados.
+- Recorrido manual: `PENDING_CONFIRMATION → CONFIRMED → READY_FOR_PICKUP →
+  CANCELLED`, historial completo y ausencia de acciones en estado terminal.
+- Inventario manual: 7.000 → 6.000 → 7.000 con movimientos
+  `ORDER_CONFIRMED` y `ORDER_CANCELLED`.
+- Responsive: detalle verificado a 390 × 844 sin desbordamiento horizontal.
+- Revisión: dos agentes independientes revisaron backend, frontend y
+  documentación; los hallazgos bloqueantes y medios fueron corregidos.

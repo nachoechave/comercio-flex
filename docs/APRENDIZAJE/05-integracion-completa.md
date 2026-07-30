@@ -247,3 +247,34 @@ La idempotencia protege contra doble clic y respuestas perdidas. El mismo UUID v
 y fingerprint recuperan el pedido original; cambiar el comando produce
 conflicto. El lock de variante resuelve otro problema: dos clientes que compiten
 por el último stock.
+
+## Flujo operativo de ORD-02
+
+```text
+Operador abre Pedidos
+→ Angular solicita listado o detalle del tenant actual
+→ Spring verifica sesión, membresía y MANAGE_ORDERS
+→ el servicio bloquea el pedido para cambiarlo
+→ valida la máquina de estados
+→ al confirmar descuenta stock y consume reservas
+→ al cancelar genera el movimiento compensatorio
+→ guarda actor, nota y transición en el historial
+→ Angular reemplaza el detalle con la respuesta actual
+```
+
+Una **máquina de estados** enumera los cambios válidos. No alcanza con recibir un
+texto como `COMPLETED`: el backend debe comprobar desde qué estado se intenta
+llegar. Esto evita, por ejemplo, completar directamente un pedido pendiente.
+
+La confirmación y la cancelación no borran movimientos. La cancelación agrega un
+movimiento compensatorio que devuelve la cantidad. Así el saldo vuelve al valor
+anterior sin perder la evidencia de lo ocurrido.
+
+La expiración también es una transición. Primero actualiza el pedido de forma
+atómica y sólo si ese cambio ganó la carrera libera la reserva y agrega historial.
+Una restricción única por pedido y estado funciona como última defensa contra
+eventos duplicados.
+
+La `Idempotency-Key` protege los reintentos de la misma acción; el bloqueo de fila
+protege a dos operadores que intentan acciones diferentes al mismo tiempo. Igual
+que en ORD-01, resuelven problemas relacionados pero no equivalentes.

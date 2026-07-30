@@ -955,3 +955,98 @@
 - **Alternativas:** enviar sólo variante/cantidad; aceptar snapshots del carrito.
 - **Decisión:** el request no contiene precios ni totales autoritativos.
 - **Consecuencias:** Spring recalcula snapshots y subtotal dentro de MySQL.
+
+## ADR aceptadas el 2026-07-30 para Sprint 10
+
+### ADR-068 — Integración y rama de ORD-02
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** ORD-01 estaba terminada en una rama independiente.
+- **Problema:** iniciar ORD-02 sin mezclar historias ni perder trazabilidad.
+- **Alternativas:** integrar y abrir una rama nueva; continuar en la rama de ORD-01.
+- **Decisión:** integrar ORD-01 por fast-forward y desarrollar ORD-02 en
+  `codex/feat-order-management`.
+- **Consecuencias:** las historias conservan revisión y reversión independientes.
+
+### ADR-069 — Ciclo operativo del pedido
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el checkout crea pedidos pendientes que necesitan preparación.
+- **Problema:** definir un recorrido operativo explícito y verificable.
+- **Alternativas:** ciclo completo de estados; ciclo reducido pendiente/finalizado.
+- **Decisión:** usar `PENDING_CONFIRMATION`, `CONFIRMED`, `READY_FOR_PICKUP`,
+  `COMPLETED`, `REJECTED`, `CANCELLED` y `EXPIRED` con transiciones explícitas.
+- **Consecuencias:** los estados terminales son de sólo lectura.
+
+### ADR-070 — Consumo de stock al confirmar
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el checkout reserva disponibilidad sin alterar el balance físico.
+- **Problema:** decidir cuándo una venta debe descontar existencias reales.
+- **Alternativas:** descontar al crear; descontar al confirmar; descontar al entregar.
+- **Decisión:** confirmar consume reservas, descuenta el balance y genera
+  movimientos auditables en una sola transacción.
+- **Consecuencias:** cancelar después de confirmar requiere un movimiento inverso.
+
+### ADR-071 — Reposición automática al cancelar
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una cancelación puede ocurrir después de descontar el stock.
+- **Problema:** evitar que el inventario quede artificialmente reducido.
+- **Alternativas:** reposición automática; ajuste manual posterior.
+- **Decisión:** `CANCELLED` restaura automáticamente las cantidades consumidas.
+- **Consecuencias:** la idempotencia impide una reposición duplicada.
+
+### ADR-072 — Permiso operativo
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la preparación diaria puede distribuirse entre distintos roles.
+- **Problema:** determinar quién puede ver contacto y cambiar estados.
+- **Alternativas:** sólo OWNER/ADMIN; OWNER/ADMIN/STAFF con permiso común.
+- **Decisión:** OWNER, ADMIN y STAFF operan pedidos mediante `MANAGE_ORDERS`.
+- **Consecuencias:** acceden al contacto necesario dentro de su tenant.
+
+### ADR-073 — Listado mínimo
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el operador necesita encontrar rápidamente trabajo reciente.
+- **Problema:** acotar filtros y volumen para el MVP.
+- **Alternativas:** listado mínimo paginado; buscador avanzado por cliente y fechas.
+- **Decisión:** paginar de a 20, ordenar por fecha descendente, filtrar por estado
+  y buscar por número.
+- **Consecuencias:** búsqueda por datos personales y fechas queda fuera.
+
+### ADR-074 — Historial auditable
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** un único estado actual no explica quién realizó cada cambio.
+- **Problema:** conservar evidencia suficiente para soporte y control.
+- **Alternativas:** sólo estado actual; historial persistente por transición.
+- **Decisión:** persistir cada transición con actor, estados, fecha y nota.
+- **Consecuencias:** soporte y métricas pueden reconstruir el recorrido.
+
+### ADR-075 — Control de alcance de ORD-02
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** pedidos conecta naturalmente con pagos, logística y comunicación.
+- **Problema:** impedir que ORD-02 crezca más allá del objetivo del sprint.
+- **Alternativas:** incorporar integraciones ahora; reservarlas para historias futuras.
+- **Decisión:** excluir pagos, envíos, notificaciones, impresión, edición de
+  líneas y devoluciones.
+- **Consecuencias:** ORD-02 permanece enfocado en operación e inventario.

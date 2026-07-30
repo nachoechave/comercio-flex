@@ -24,9 +24,10 @@ Catálogo público, carrito, checkout invitado, pedidos, estados y entrega bási
 Avance al 2026-07-30:
 
 - Terminados: catálogo público, detalle de producto, carrito local aislado por
-  comercio y checkout invitado con retiro y reserva temporal.
-- Siguiente: operación administrativa de pedidos y transiciones de estado
-  (`ORD-02`).
+  comercio, checkout invitado con retiro y reserva temporal, y operación
+  administrativa de pedidos con historial y consistencia de inventario.
+- Siguiente: revisión del cierre de `ORD-02` y selección de la próxima historia
+  prioritaria por el Product Owner.
 - Fuera de esta etapa: envíos configurables, pago y clientes persistentes.
 
 ## Fase 4 — Pagos

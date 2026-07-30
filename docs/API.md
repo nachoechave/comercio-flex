@@ -520,6 +520,38 @@ el mismo `404` genérico. Al consultar una reserva ya vencida, el pedido pasa a
 - `409 order-item-unavailable`: publicación o cantidad no disponible.
 - `409 idempotency-conflict`: clave reutilizada con otro comando.
 
+## Operación administrativa de pedidos
+
+Todas las rutas exigen sesión, membresía activa y permiso `MANAGE_ORDERS`.
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/orders?page=0&size=20&q=ORD-000001&status=CONFIRMED
+GET /api/v1/stores/{storeSlug}/admin/orders/{orderId}
+```
+
+El listado se ordena por creación descendente. `q` busca únicamente por número;
+`status` es opcional. El detalle entrega contacto completo, observaciones, items,
+versión e historial al operador autorizado del mismo tenant.
+
+```http
+POST /api/v1/stores/{storeSlug}/admin/orders/{orderId}/transitions
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+X-XSRF-TOKEN: {token}
+Content-Type: application/json
+
+{
+  "targetStatus": "CONFIRMED",
+  "note": "Stock revisado"
+}
+```
+
+El actor se obtiene de la sesión. Angular no envía estado anterior, saldo,
+movimientos, versión ni datos de auditoría. Las transiciones inválidas, el stock
+insuficiente y una clave reutilizada con otra intención responden `409`.
+Un replay idéntico no repite movimientos ni historial y devuelve el detalle
+actual del pedido; si el pedido avanzó después del primer intento, la respuesta
+refleja ese estado más reciente.
+
 ## Errores de seguridad
 
 - `401 Unauthorized`: la operación exige una sesión válida.
