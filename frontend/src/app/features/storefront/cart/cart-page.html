@@ -1,0 +1,120 @@
+<section class="cart-page" aria-labelledby="cart-title">
+  <nav class="breadcrumbs" aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug()]">Productos</a>
+    <span aria-hidden="true">/</span>
+    <span>Carrito</span>
+  </nav>
+
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Tu selección</p>
+      <h1 id="cart-title">Carrito</h1>
+      <p>Revisá variantes y cantidades antes de continuar.</p>
+    </div>
+    @if (items().length > 0) {
+      <button class="clear-button" type="button" (click)="requestClear()">Vaciar carrito</button>
+    }
+  </header>
+
+  <p class="sr-status" aria-live="polite">{{ actionMessage() }}</p>
+
+  @if (confirmingClear()) {
+    <section class="confirmation" role="alert" aria-labelledby="clear-title">
+      <div>
+        <h2 id="clear-title">¿Vaciar todo el carrito?</h2>
+        <p>Esta acción elimina las selecciones guardadas para esta tienda.</p>
+      </div>
+      <div class="confirmation-actions">
+        <button type="button" (click)="clear()">Sí, vaciar</button>
+        <button class="secondary-button" type="button" (click)="cancelClear()">Cancelar</button>
+      </div>
+    </section>
+  }
+
+  @if (validating()) {
+    <p class="validation-state" role="status">Confirmando precios y disponibilidad…</p>
+  }
+  @if (validationWarning()) {
+    <div class="warning" role="alert">
+      <p>{{ validationWarning() }}</p>
+      <button type="button" (click)="retryValidation()">Reintentar</button>
+    </div>
+  }
+
+  @if (items().length === 0) {
+    <section class="empty-state">
+      <span aria-hidden="true">○</span>
+      <p class="eyebrow">Carrito vacío</p>
+      <h2>Todavía no elegiste productos</h2>
+      <p>Explorá el catálogo y seleccioná la variante que necesitás.</p>
+      <a [routerLink]="['/tiendas', storeSlug()]">Ver productos</a>
+    </section>
+  } @else {
+    <div class="cart-layout">
+      <section class="cart-lines" aria-label="Productos en el carrito">
+        @for (line of items(); track line.variantId) {
+          <article class="cart-line" [class.cart-line--blocked]="line.status !== 'AVAILABLE'">
+            <div class="line-visual" aria-hidden="true">
+              {{ line.productName.slice(0, 1).toUpperCase() }}
+            </div>
+            <div class="line-content">
+              <div class="line-heading">
+                <div>
+                  <h2>
+                    <a [routerLink]="['/tiendas', storeSlug(), 'productos', line.productSlug]">
+                      {{ line.productName }}
+                    </a>
+                  </h2>
+                  <p>{{ optionLabel(line) }}</p>
+                </div>
+                <strong>{{ line.unitPrice | storefrontMoney: context.currencyCode() }}</strong>
+              </div>
+
+              @if (line.notice) {
+                <p
+                  class="line-notice"
+                  [class.line-notice--warning]="line.status !== 'AVAILABLE'"
+                  role="status"
+                >
+                  {{ line.notice }}
+                </p>
+              }
+
+              <div class="line-actions">
+                <label>
+                  Cantidad
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    step="1"
+                    inputmode="numeric"
+                    [value]="line.quantity"
+                    (change)="updateQuantity(line, $event)"
+                  />
+                </label>
+                <button type="button" (click)="remove(line)">Quitar</button>
+                <span class="line-total">
+                  Total
+                  <strong>{{ lineTotal(line) | storefrontMoney: context.currencyCode() }}</strong>
+                </span>
+              </div>
+            </div>
+          </article>
+        }
+      </section>
+
+      <aside class="summary-card" aria-labelledby="summary-title">
+        <p class="eyebrow">Resumen</p>
+        <h2 id="summary-title">Subtotal disponible</h2>
+        <strong class="subtotal">{{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
+        <p>
+          Los productos sin confirmar o sin stock no se incluyen. Precio y stock se verificarán
+          nuevamente al confirmar el pedido.
+        </p>
+        <button type="button" disabled aria-describedby="checkout-help">Continuar</button>
+        <small id="checkout-help">El checkout se habilitará en el próximo sprint.</small>
+      </aside>
+    </div>
+  }
+</section>

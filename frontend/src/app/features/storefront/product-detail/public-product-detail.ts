@@ -8,8 +8,12 @@ import { inheritedRouteParam } from '../../../core/routing/inherited-route-param
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { storefrontErrorMessage } from '../storefront-errors';
-import { PublicProductDetail as PublicProductDetailModel, PublicProductVariant } from '../storefront.models';
+import {
+  PublicProductDetail as PublicProductDetailModel,
+  PublicProductVariant,
+} from '../storefront.models';
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
+import { CartService } from '../cart/cart.service';
 
 @Component({
   selector: 'app-public-product-detail',
@@ -19,6 +23,7 @@ import { StorefrontMoneyPipe } from '../storefront-money.pipe';
 })
 export class PublicProductDetail {
   private readonly api = inject(StorefrontApiService);
+  private readonly cart = inject(CartService);
   protected readonly context = inject(StorefrontContextService);
   private readonly route = inject(ActivatedRoute);
   private readonly title = inject(Title);
@@ -35,11 +40,17 @@ export class PublicProductDetail {
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly notFound = signal(false);
+  protected readonly selectedVariantId = signal<string | null>(null);
+  protected readonly quantity = signal(1);
+  protected readonly cartMessage = signal('');
   protected readonly available = computed(
     () => this.product()?.variants.some((variant) => variant.available) ?? false,
   );
   protected readonly initial = computed(
     () => this.product()?.name.trim().slice(0, 1).toUpperCase() ?? '',
+  );
+  protected readonly selectedVariant = computed(() =>
+    this.product()?.variants.find((variant) => variant.id === this.selectedVariantId()),
   );
 
   constructor() {
@@ -50,6 +61,9 @@ export class PublicProductDetail {
       this.product.set(null);
       this.errorMessage.set(null);
       this.notFound.set(false);
+      this.selectedVariantId.set(null);
+      this.quantity.set(1);
+      this.cartMessage.set('');
       this.loading.set(true);
 
       if (!storeSlug || !productSlug) {
@@ -67,9 +81,7 @@ export class PublicProductDetail {
         error: (error: unknown) => {
           this.loading.set(false);
           this.notFound.set(error instanceof HttpErrorResponse && error.status === 404);
-          this.errorMessage.set(
-            storefrontErrorMessage(error, 'No pudimos cargar este producto.'),
-          );
+          this.errorMessage.set(storefrontErrorMessage(error, 'No pudimos cargar este producto.'));
         },
       });
       onCleanup(() => subscription.unsubscribe());
@@ -98,6 +110,44 @@ export class PublicProductDetail {
   protected variantLabel(variant: PublicProductVariant): string {
     const attributes = [variant.size && `Talle ${variant.size}`, variant.color].filter(Boolean);
     return attributes.length ? attributes.join(' · ') : 'Opción estándar';
+  }
+
+  protected selectVariant(variant: PublicProductVariant): void {
+    if (!variant.available) return;
+    this.selectedVariantId.set(variant.id);
+    this.cartMessage.set('');
+  }
+
+  protected updateQuantity(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = input.valueAsNumber;
+    if (!Number.isInteger(value) || value < 1 || value > 99) {
+      input.value = String(this.quantity());
+      this.cartMessage.set('La cantidad debe ser un número entero entre 1 y 99.');
+      return;
+    }
+    this.quantity.set(value);
+    this.cartMessage.set('');
+  }
+
+  protected addToCart(): void {
+    const product = this.product();
+    const variant = this.selectedVariant();
+    if (!product || !variant) {
+      this.cartMessage.set('Elegí una variante disponible.');
+      return;
+    }
+
+    const result = this.cart.add(this.storeSlug() ?? '', {
+      product,
+      variant,
+      quantity: this.quantity(),
+    });
+    this.cartMessage.set(
+      result.reachedLimit
+        ? `El carrito admite hasta 99 unidades de ${this.variantLabel(variant)}.`
+        : `Agregamos ${this.quantity()} ${this.quantity() === 1 ? 'unidad' : 'unidades'} al carrito.`,
+    );
   }
 
   private updateMetadata(product: PublicProductDetailModel, storeName: string): void {

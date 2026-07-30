@@ -122,6 +122,11 @@
   border: 1px solid #b8dcc8;
   border-radius: 1rem;
   background: var(--color-surface);
+  cursor: pointer;
+}
+
+.variant-card--selected {
+  border-color: var(--color-accent);
 }
 
 .variant-card h3,
@@ -148,10 +153,42 @@
 .variant-card--out {
   border-color: var(--color-border);
   background: #f6f6f7;
+  cursor: not-allowed;
 }
 
 .variant-card--out p {
   color: #8b4a20;
+}
+
+.purchase-panel {
+  display: grid;
+  grid-template-columns: auto minmax(12rem, 18rem) 1fr;
+  align-items: end;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+}
+
+.purchase-panel label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.purchase-panel input {
+  width: 5rem;
+  min-height: 2.75rem;
+  padding: 0.5rem;
+  font: inherit;
+}
+
+.cart-feedback {
+  margin: 0;
+}
+
+.purchase-panel small {
+  grid-column: 1 / -1;
 }
 
 .state {
@@ -178,7 +215,8 @@
   margin-top: 1rem;
 }
 
-.state-actions button {
+.state-actions button,
+.purchase-panel button {
   min-height: 2.75rem;
   padding: 0.65rem 1rem;
   border: 0;
@@ -214,6 +252,14 @@
   .variant-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .purchase-panel {
+    grid-template-columns: auto 1fr;
+  }
+
+  .cart-feedback {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 34rem) {
@@ -229,6 +275,15 @@
   .variant-card {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .purchase-panel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .purchase-panel button {
+    width: 100%;
   }
 
   .state-actions {

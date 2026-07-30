@@ -9,6 +9,7 @@ import { BehaviorSubject } from 'rxjs';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { StoreSettings } from '../storefront.models';
+import { CartService } from '../cart/cart.service';
 import { PublicProductDetail } from './public-product-detail';
 
 describe('PublicProductDetail', () => {
@@ -25,6 +26,7 @@ describe('PublicProductDetail', () => {
   });
 
   beforeEach(async () => {
+    localStorage.clear();
     params.next(convertToParamMap({ storeSlug: 'tienda-a', productSlug: 'remera-azul' }));
     settings.set({
       slug: 'tienda-a',
@@ -61,7 +63,10 @@ describe('PublicProductDetail', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    http.verify();
+    localStorage.clear();
+  });
 
   function create(): void {
     fixture = TestBed.createComponent(PublicProductDetail);
@@ -70,9 +75,7 @@ describe('PublicProductDetail', () => {
 
   it('renders public variants and updates the document title', () => {
     create();
-    http.expectOne(
-      '/api/v1/stores/tienda-a/catalog/products/remera-azul',
-    ).flush({
+    http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul').flush({
       id: 'product-1',
       name: 'Remera azul',
       slug: 'remera-azul',
@@ -93,14 +96,51 @@ describe('PublicProductDetail', () => {
     expect(TestBed.inject(Title).getTitle()).toBe('Remera azul | Tienda A');
   });
 
+  it('requires an explicit available variant and adds it to the tenant cart', () => {
+    create();
+    http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul').flush({
+      id: 'product-1',
+      name: 'Remera azul',
+      slug: 'remera-azul',
+      description: null,
+      category: { id: 'category-1', name: 'Remeras', slug: 'remeras' },
+      variants: [
+        { id: 'variant-1', price: '2500.00', size: 'M', color: 'Azul', available: true },
+        { id: 'variant-2', price: '2600.00', size: 'L', color: 'Azul', available: false },
+      ],
+    });
+    fixture.detectChanges();
+
+    const addButton: HTMLButtonElement =
+      fixture.nativeElement.querySelector('.purchase-panel button');
+    const radios: NodeListOf<HTMLInputElement> =
+      fixture.nativeElement.querySelectorAll('input[type="radio"]');
+    expect(addButton.disabled).toBe(true);
+    expect(radios[1].disabled).toBe(true);
+
+    radios[0].dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(addButton.disabled).toBe(false);
+
+    const quantity: HTMLInputElement = fixture.nativeElement.querySelector(
+      '.purchase-panel input[type="number"]',
+    );
+    quantity.value = '2';
+    quantity.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    addButton.click();
+    fixture.detectChanges();
+
+    expect(TestBed.inject(CartService).totalUnits('tienda-a')).toBe(2);
+    expect(fixture.nativeElement.textContent).toContain('Agregamos 2 unidades al carrito');
+    expect(fixture.nativeElement.textContent).toContain('Ver carrito');
+  });
+
   it('renders a product-specific not-found state', () => {
     create();
-    http.expectOne(
-      '/api/v1/stores/tienda-a/catalog/products/remera-azul',
-    ).flush(
-      { detail: 'Producto no encontrado.' },
-      { status: 404, statusText: 'Not Found' },
-    );
+    http
+      .expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul')
+      .flush({ detail: 'Producto no encontrado.' }, { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('No encontramos este producto');
@@ -111,9 +151,7 @@ describe('PublicProductDetail', () => {
   it('keeps neutral metadata until settings arrive and then updates reactively', () => {
     settings.set(null);
     create();
-    http.expectOne(
-      '/api/v1/stores/tienda-a/catalog/products/remera-azul',
-    ).flush({
+    http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul').flush({
       id: 'product-1',
       name: 'Remera azul',
       slug: 'remera-azul',
@@ -141,9 +179,7 @@ describe('PublicProductDetail', () => {
 
   it('cleans product and metadata when switching tenant and keeps them neutral on 404', () => {
     create();
-    http.expectOne(
-      '/api/v1/stores/tienda-a/catalog/products/remera-azul',
-    ).flush({
+    http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul').flush({
       id: 'product-a',
       name: 'Producto A',
       slug: 'remera-azul',
@@ -163,21 +199,16 @@ describe('PublicProductDetail', () => {
       'Descripción privada de A',
     );
 
-    http.expectOne(
-      '/api/v1/stores/tienda-b/catalog/products/producto-b',
-    ).flush(
-      { detail: 'Producto no encontrado.' },
-      { status: 404, statusText: 'Not Found' },
-    );
+    http
+      .expectOne('/api/v1/stores/tienda-b/catalog/products/producto-b')
+      .flush({ detail: 'Producto no encontrado.' }, { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
     expect(TestBed.inject(Title).getTitle()).toBe('Producto | Comercio Flex');
   });
 
   it('cancels an in-flight detail request when switching from tenant A to B', () => {
     create();
-    const requestA = http.expectOne(
-      '/api/v1/stores/tienda-a/catalog/products/remera-azul',
-    );
+    const requestA = http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul');
 
     settings.set({
       slug: 'tienda-b',
@@ -190,9 +221,7 @@ describe('PublicProductDetail', () => {
     expect(requestA.cancelled).toBe(true);
     expect((fixture.componentInstance as any).product()).toBeNull();
 
-    http.expectOne(
-      '/api/v1/stores/tienda-b/catalog/products/producto-b',
-    ).flush({
+    http.expectOne('/api/v1/stores/tienda-b/catalog/products/producto-b').flush({
       id: 'product-b',
       name: 'Producto B',
       slug: 'producto-b',

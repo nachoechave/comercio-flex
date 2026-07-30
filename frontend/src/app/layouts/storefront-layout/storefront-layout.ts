@@ -1,10 +1,11 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, computed, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
 
 import { StorefrontApiService } from '../../features/storefront/storefront-api.service';
 import { StorefrontContextService } from '../../features/storefront/storefront-context.service';
+import { CartService } from '../../features/storefront/cart/cart.service';
 
 @Component({
   selector: 'app-storefront-layout',
@@ -15,16 +16,21 @@ import { StorefrontContextService } from '../../features/storefront/storefront-c
 })
 export class StorefrontLayout {
   private readonly route = inject(ActivatedRoute);
+  private readonly cart = inject(CartService);
   protected readonly context = inject(StorefrontContextService);
   protected readonly storeSlug = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('storeSlug') ?? '')),
     { initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '' },
   );
+  protected readonly cartUnits = computed(() => this.cart.totalUnits(this.storeSlug()));
 
   constructor() {
     effect(() => {
       const slug = this.storeSlug();
-      if (slug) this.context.load(slug);
+      if (slug) {
+        this.cart.activate(slug);
+        this.context.load(slug);
+      }
     });
   }
 }
