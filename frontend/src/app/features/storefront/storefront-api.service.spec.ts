@@ -32,9 +32,7 @@ describe('StorefrontApiService', () => {
 
   it('encodes tenant and product slugs in public URLs', () => {
     service.getProduct('tienda a', 'remera/azul').subscribe();
-    const request = http.expectOne(
-      '/api/v1/stores/tienda%20a/catalog/products/remera%2Fazul',
-    );
+    const request = http.expectOne('/api/v1/stores/tienda%20a/catalog/products/remera%2Fazul');
     expect(request.request.method).toBe('GET');
     request.flush({});
   });
@@ -66,5 +64,29 @@ describe('StorefrontApiService', () => {
     expect(request.request.params.has('q')).toBe(false);
     expect(request.request.params.has('category')).toBe(false);
     request.flush({ items: [], page: 0, size: 24, totalItems: 0, totalPages: 0 });
+  });
+
+  it('creates and retrieves a guest order with its private headers and token', () => {
+    const body = {
+      customerName: 'Ana Pérez',
+      customerPhone: '11 5555 1234',
+      items: [{ variantId: 'variant-1', quantity: '2' }],
+    };
+    service.createOrder('tienda-a', 'key-1', body).subscribe();
+    const create = http.expectOne('/api/v1/stores/tienda-a/orders');
+    expect(create.request.method).toBe('POST');
+    expect(create.request.headers.get('Idempotency-Key')).toBe('key-1');
+    expect(create.request.body).toEqual(body);
+    expect(create.request.body.items[0].unitPrice).toBeUndefined();
+    create.flush({});
+
+    service.getOrder('tienda-a', 'order/1', 'private-token').subscribe();
+    const find = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/v1/stores/tienda-a/orders/order%2F1' &&
+        candidate.params.get('token') === 'private-token',
+    );
+    expect(find.request.method).toBe('GET');
+    find.flush({});
   });
 });

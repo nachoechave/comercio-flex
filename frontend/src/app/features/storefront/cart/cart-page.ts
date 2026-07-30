@@ -32,6 +32,12 @@ export class CartPage {
   });
   protected readonly items = computed(() => this.cart.items(this.storeSlug() ?? ''));
   protected readonly subtotal = computed(() => this.cart.availableSubtotal(this.storeSlug() ?? ''));
+  protected readonly canCheckout = computed(
+    () =>
+      !this.validating() &&
+      this.items().length > 0 &&
+      this.items().every((line) => line.status === 'AVAILABLE'),
+  );
   protected readonly validating = signal(false);
   protected readonly validationWarning = signal<string | null>(null);
   protected readonly actionMessage = signal('');

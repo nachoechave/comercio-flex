@@ -1,0 +1,65 @@
+<section class="confirmation-page" aria-labelledby="confirmation-title">
+  @if (loading()) {
+    <p class="loading" role="status">Buscando tu pedido…</p>
+  } @else if (errorMessage()) {
+    <div class="error-card" role="alert">
+      <p class="eyebrow">No disponible</p>
+      <h1 id="confirmation-title">No encontramos el pedido</h1>
+      <p>{{ errorMessage() }}</p>
+      <a [routerLink]="['/tiendas', storeSlug()]">Volver a la tienda</a>
+    </div>
+  } @else if (order(); as currentOrder) {
+    <header>
+      <div class="success-mark" aria-hidden="true">✓</div>
+      <p class="eyebrow">
+        {{ currentOrder.status === 'EXPIRED' ? 'Reserva vencida' : 'Pedido recibido' }}
+      </p>
+      <h1 id="confirmation-title">{{ currentOrder.number }}</h1>
+      @if (currentOrder.status === 'PENDING_CONFIRMATION') {
+        <p>
+          Guardamos el pedido de {{ currentOrder.customerName }}. El comercio se comunicará por
+          {{ currentOrder.contactHint }} para coordinar el retiro.
+        </p>
+      } @else {
+        <p>La reserva de stock venció. Contactá al comercio o armá un nuevo pedido.</p>
+      }
+    </header>
+
+    <div class="order-layout">
+      <section aria-labelledby="items-title">
+        <h2 id="items-title">Detalle del pedido</h2>
+        <ul>
+          @for (item of currentOrder.items; track item.variantId) {
+            <li>
+              <div>
+                <strong>{{ item.productName }}</strong>
+                @if (optionLabel(item)) {
+                  <span>{{ optionLabel(item) }}</span>
+                }
+                <span>{{ item.quantity }} unidad(es)</span>
+              </div>
+              <strong>{{ item.lineTotal | storefrontMoney: currentOrder.currencyCode }}</strong>
+            </li>
+          }
+        </ul>
+        <div class="total">
+          <span>Subtotal</span>
+          <strong>{{ currentOrder.subtotal | storefrontMoney: currentOrder.currencyCode }}</strong>
+        </div>
+      </section>
+
+      <aside>
+        <h2>Retiro en el comercio</h2>
+        <p>Conservá este enlace: es la llave privada para volver a consultar el pedido.</p>
+        @if (currentOrder.status === 'PENDING_CONFIRMATION') {
+          <p>
+            La reserva automática vence el
+            <strong>{{ currentOrder.reservationExpiresAt | date: 'short' }}</strong
+            >.
+          </p>
+        }
+        <a [routerLink]="['/tiendas', storeSlug()]">Seguir comprando</a>
+      </aside>
+    </div>
+  }
+</section>

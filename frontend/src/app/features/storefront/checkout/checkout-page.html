@@ -1,0 +1,98 @@
+<section class="checkout-page" aria-labelledby="checkout-title">
+  <nav class="breadcrumbs" aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug(), 'carrito']">Carrito</a>
+    <span aria-hidden="true">/</span>
+    <span>Checkout</span>
+  </nav>
+
+  <header>
+    <p class="eyebrow">Último paso</p>
+    <h1 id="checkout-title">Confirmá tu pedido</h1>
+    <p>Por ahora los pedidos se retiran en el comercio y se coordinan después de confirmarlos.</p>
+  </header>
+
+  @if (!ready()) {
+    <section class="warning" role="alert">
+      <h2>Necesitamos revisar tu carrito</h2>
+      <p>Está vacío o contiene productos cuya disponibilidad todavía no fue confirmada.</p>
+      <a [routerLink]="['/tiendas', storeSlug(), 'carrito']">Volver al carrito</a>
+    </section>
+  } @else {
+    <div class="checkout-layout">
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <fieldset>
+          <legend>Datos de contacto</legend>
+          <label>
+            Nombre y apellido
+            <input formControlName="customerName" autocomplete="name" maxlength="160" />
+            @if (form.controls.customerName.touched && form.controls.customerName.invalid) {
+              <small class="field-error">Ingresá tu nombre.</small>
+            }
+          </label>
+          <label>
+            Teléfono
+            <input formControlName="customerPhone" autocomplete="tel" maxlength="40" />
+            @if (form.controls.customerPhone.touched && form.controls.customerPhone.invalid) {
+              <small class="field-error">Ingresá un teléfono de contacto.</small>
+            }
+          </label>
+          <label>
+            Correo electrónico <span>(opcional)</span>
+            <input
+              formControlName="customerEmail"
+              type="email"
+              autocomplete="email"
+              maxlength="254"
+            />
+            @if (form.controls.customerEmail.touched && form.controls.customerEmail.invalid) {
+              <small class="field-error">Ingresá un correo válido.</small>
+            }
+          </label>
+          <label>
+            Observaciones <span>(opcional)</span>
+            <textarea formControlName="notes" rows="4" maxlength="1000"></textarea>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Entrega</legend>
+          <div class="pickup-option">
+            <strong>Retiro en el comercio</strong>
+            <span>El comercio se comunicará para coordinarlo.</span>
+          </div>
+        </fieldset>
+
+        @if (errorMessage()) {
+          <div class="error-message" role="alert">
+            <strong>{{
+              uncertainResult() ? 'Resultado pendiente de confirmar' : 'No pudimos continuar'
+            }}</strong>
+            <p>{{ errorMessage() }}</p>
+          </div>
+        }
+
+        <button type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Confirmando…' : 'Confirmar pedido' }}
+        </button>
+      </form>
+
+      <aside aria-labelledby="order-summary-title">
+        <p class="eyebrow">Resumen</p>
+        <h2 id="order-summary-title">{{ items().length }} productos</h2>
+        <ul>
+          @for (item of items(); track item.variantId) {
+            <li>
+              <span>{{ item.quantity }} × {{ item.productName }}</span>
+              <strong>{{ item.unitPrice | storefrontMoney: context.currencyCode() }}</strong>
+            </li>
+          }
+        </ul>
+        <div class="total">
+          <span>Subtotal</span>
+          <strong>{{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
+        </div>
+        <small>El backend verificará nuevamente precios y stock al confirmar.</small>
+      </aside>
+    </div>
+  }
+</section>

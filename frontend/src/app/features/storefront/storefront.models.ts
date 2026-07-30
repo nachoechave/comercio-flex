@@ -58,3 +58,48 @@ export interface PublicProductQuery {
   q?: string;
   category?: string;
 }
+
+export interface CreateGuestOrder {
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  notes?: string;
+  items: {
+    variantId: string;
+    quantity: string;
+  }[];
+}
+
+export interface GuestOrderItem {
+  productId: string;
+  variantId: string;
+  productName: string;
+  size: string | null;
+  color: string | null;
+  unitCode: 'UNIT';
+  unitPrice: string;
+  quantity: string;
+  lineTotal: string;
+}
+
+export type GuestOrderStatus = 'PENDING_CONFIRMATION' | 'EXPIRED';
+
+export interface GuestOrder {
+  id: string;
+  number: string;
+  status: GuestOrderStatus;
+  fulfillmentType: 'PICKUP';
+  customerName: string;
+  contactHint: string;
+  currencyCode: string;
+  subtotal: string;
+  reservationExpiresAt: string;
+  createdAt: string;
+  items: GuestOrderItem[];
+}
+
+export interface CreatedGuestOrder {
+  order: GuestOrder;
+  lookupToken: string;
+  replayed: boolean;
+}

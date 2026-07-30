@@ -10,6 +10,17 @@ export const STOREFRONT_ROUTES: Routes = [
     loadComponent: () => import('./cart/cart-page').then((module) => module.CartPage),
   },
   {
+    path: 'checkout',
+    loadComponent: () => import('./checkout/checkout-page').then((module) => module.CheckoutPage),
+  },
+  {
+    path: 'pedidos/:orderId',
+    loadComponent: () =>
+      import('./order-confirmation/order-confirmation-page').then(
+        (module) => module.OrderConfirmationPage,
+      ),
+  },
+  {
     path: 'productos/:productSlug',
     loadComponent: () =>
       import('./product-detail/public-product-detail').then((module) => module.PublicProductDetail),

@@ -112,8 +112,24 @@
           Los productos sin confirmar o sin stock no se incluyen. Precio y stock se verificarán
           nuevamente al confirmar el pedido.
         </p>
-        <button type="button" disabled aria-describedby="checkout-help">Continuar</button>
-        <small id="checkout-help">El checkout se habilitará en el próximo sprint.</small>
+        @if (canCheckout()) {
+          <a
+            class="checkout-link"
+            [routerLink]="['/tiendas', storeSlug(), 'checkout']"
+            aria-describedby="checkout-help"
+          >
+            Continuar
+          </a>
+        } @else {
+          <button type="button" disabled aria-describedby="checkout-help">Continuar</button>
+        }
+        <small id="checkout-help">
+          @if (canCheckout()) {
+            Vas a completar tus datos y confirmar el pedido.
+          } @else {
+            Todos los productos deben estar disponibles antes de continuar.
+          }
+        </small>
       </aside>
     </div>
   }

@@ -1,8 +1,11 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
+  CreateGuestOrder,
+  CreatedGuestOrder,
+  GuestOrder,
   PublicCategory,
   PublicProductDetail,
   PublicProductPage,
@@ -15,9 +18,7 @@ export class StorefrontApiService {
   private readonly http = inject(HttpClient);
 
   getSettings(storeSlug: string): Observable<StoreSettings> {
-    return this.http.get<StoreSettings>(
-      `/api/v1/stores/${encodeURIComponent(storeSlug)}/settings`,
-    );
+    return this.http.get<StoreSettings>(`/api/v1/stores/${encodeURIComponent(storeSlug)}/settings`);
   }
 
   listCategories(storeSlug: string): Observable<PublicCategory[]> {
@@ -41,5 +42,26 @@ export class StorefrontApiService {
     return this.http.get<PublicProductDetail>(
       `/api/v1/stores/${encodeURIComponent(storeSlug)}/catalog/products/${encodeURIComponent(productSlug)}`,
     );
+  }
+
+  createOrder(
+    storeSlug: string,
+    idempotencyKey: string,
+    body: CreateGuestOrder,
+  ): Observable<CreatedGuestOrder> {
+    const headers = new HttpHeaders({ 'Idempotency-Key': idempotencyKey });
+    return this.http.post<CreatedGuestOrder>(this.ordersUrl(storeSlug), body, { headers });
+  }
+
+  getOrder(storeSlug: string, orderId: string, token: string): Observable<GuestOrder> {
+    const params = new HttpParams().set('token', token);
+    return this.http.get<GuestOrder>(
+      `${this.ordersUrl(storeSlug)}/${encodeURIComponent(orderId)}`,
+      { params },
+    );
+  }
+
+  private ordersUrl(storeSlug: string): string {
+    return `/api/v1/stores/${encodeURIComponent(storeSlug)}/orders`;
   }
 }
