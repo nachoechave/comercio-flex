@@ -455,6 +455,71 @@ Un `404` marca el producto como retirado; un error transitorio conserva el
 snapshot como estado desconocido y permite reintentar. El navegador no envía
 ningún total al backend en este sprint.
 
+## Checkout invitado y consulta de pedidos
+
+Las rutas son públicas, pero se resuelven contra la base del comercio indicado
+por `storeSlug`. Las respuestas usan `Cache-Control: no-store`.
+
+### Crear pedido con retiro
+
+```http
+POST /api/v1/stores/{storeSlug}/orders
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+X-XSRF-TOKEN: {token de la cookie XSRF-TOKEN}
+Content-Type: application/json
+```
+
+```json
+{
+  "customerName": "Ana Pérez",
+  "customerPhone": "11 5555 1234",
+  "customerEmail": "ana@example.com",
+  "notes": "Cortado fino",
+  "items": [
+    {
+      "variantId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0101",
+      "quantity": "2"
+    }
+  ]
+}
+```
+
+El request no acepta precio, subtotal, SKU, moneda, estado ni identificadores
+internos. Spring bloquea las variantes en orden estable, relee precio y
+disponibilidad, calcula el total y crea pedido, items y reservas dentro de una
+sola transacción.
+
+Una creación nueva responde `201`; repetir el mismo comando con la misma clave
+responde `200` y `replayed: true`. Reutilizarla con otro comando responde `409`.
+La clave debe ser un UUID v4.
+
+La respuesta contiene `order` con UUID, número `ORD-xxxxxx`, estado, retiro,
+contacto enmascarado, moneda, subtotal e items; los decimales se expresan como
+strings. También contiene `lookupToken`, un valor URL-safe de 43 caracteres.
+
+El token se deriva de forma unidireccional desde el UUID v4 idempotente para
+poder devolverlo ante un timeout; MySQL guarda únicamente otro hash SHA-256.
+No debe registrarse en logs ni enviarse a otra tienda.
+
+### Consultar confirmación
+
+```http
+GET /api/v1/stores/{storeSlug}/orders/{orderId}?token={lookupToken}
+```
+
+Devuelve el objeto `order` sin teléfono, correo completos ni token. Una
+combinación de UUID/token incorrecta, o perteneciente a otro comercio, responde
+el mismo `404` genérico. Al consultar una reserva ya vencida, el pedido pasa a
+`EXPIRED` y sus reservas activas se marcan `EXPIRED`.
+
+### Errores del checkout
+
+- `400`: campos, cantidad, UUID v4 o encabezado inválidos.
+- `403`: falta o es inválido el token CSRF del `POST`.
+- `404`: comercio o combinación privada de pedido no encontrados.
+- `409 order-item-unavailable`: publicación o cantidad no disponible.
+- `409 idempotency-conflict`: clave reutilizada con otro comando.
+
 ## Errores de seguridad
 
 - `401 Unauthorized`: la operación exige una sesión válida.

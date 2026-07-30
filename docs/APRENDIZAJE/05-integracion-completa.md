@@ -221,3 +221,29 @@ Revalidar mejora la información presentada, pero todavía no garantiza una
 compra. No existe reserva y otra operación puede consumir el último stock un
 instante después. La garantía real aparecerá cuando ORD-01 bloquee y valide las
 filas necesarias dentro de una transacción MySQL.
+
+## Flujo transaccional de ORD-01
+
+```text
+Formulario Angular
+→ obtiene CSRF
+→ envía contacto + UUID de variante + cantidad + Idempotency-Key
+→ Spring resuelve el comercio
+→ normaliza y genera fingerprint
+→ bloquea variantes en orden estable
+→ resta reservas vigentes del saldo físico
+→ toma precio y moneda desde MySQL
+→ inserta pedido, snapshots y reservas
+→ devuelve referencia pública y token privado
+→ Angular vacía el carrito y abre la confirmación
+```
+
+El navegador es entrada no confiable: puede mostrar un precio para la UX, pero
+nunca decide qué se cobra ni cuánto stock existe. La transacción hace indivisible
+el cambio; si falla una línea, no queda un pedido incompleto ni una reserva
+huérfana.
+
+La idempotencia protege contra doble clic y respuestas perdidas. El mismo UUID v4
+y fingerprint recuperan el pedido original; cambiar el comando produce
+conflicto. El lock de variante resuelve otro problema: dos clientes que compiten
+por el último stock.

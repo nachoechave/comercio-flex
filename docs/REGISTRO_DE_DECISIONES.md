@@ -831,3 +831,127 @@
 - **Decisión:** validar de 1 a 99 y explicar que el checkout confirmará stock.
 - **Consecuencias:** el límite es una protección de UX, no una reserva ni una
   garantía comercial.
+
+## ADR aceptadas el 2026-07-30 para Sprint 9
+
+### ADR-058 — Preparar pedidos para cantidades futuras
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una futura carnicería necesitará peso, pero el piloto actual es
+  indumentaria.
+- **Problema:** evitar una migración estructural sin ampliar ahora la interfaz.
+- **Alternativas:** persistencia decimal y unidad `UNIT`; enteros solamente.
+- **Decisión:** items y reservas usan `DECIMAL(15,3)` y guardan unidad; ORD-01
+  valida enteros y `UNIT`.
+- **Consecuencias:** venta por peso todavía requerirá reglas de catálogo y UI,
+  pero el histórico del pedido ya admite cantidades decimales.
+
+### ADR-059 — Retiro como único método inicial
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** todavía no existen zonas, tarifas ni métodos configurables.
+- **Problema:** no inventar reglas de envío sin comercio piloto.
+- **Alternativas:** retiro; retiro más envío.
+- **Decisión:** ORD-01 implementa `PICKUP`.
+- **Consecuencias:** envío se incorporará como ORD-01B con configuración propia.
+
+### ADR-060 — Contacto mínimo del invitado
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el comercio debe poder coordinar el retiro.
+- **Problema:** equilibrar contacto y minimización de datos.
+- **Alternativas:** nombre y teléfono obligatorios con correo opcional; exigir
+  también correo.
+- **Decisión:** nombre y teléfono obligatorios; correo y observaciones opcionales.
+- **Consecuencias:** Mercado Pago podrá requerir completar o validar correo en
+  PAY-01.
+
+### ADR-061 — Cliente como snapshot del pedido
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** no existe identidad pública ni CRM validado.
+- **Problema:** evitar deduplicación automática y consentimiento prematuro.
+- **Alternativas:** snapshot; entidad cliente reutilizable.
+- **Decisión:** ORD-01 guarda contacto dentro de `orders`.
+- **Consecuencias:** gestión de clientes se diseñará separadamente.
+
+### ADR-062 — Reserva separada del balance físico
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** crear un pedido no equivale todavía a una venta confirmada.
+- **Problema:** evitar sobreventa sin falsificar el inventario físico.
+- **Alternativas:** reserva; descuento inmediato.
+- **Decisión:** `inventory_reservations` compromete cantidad sin modificar
+  `inventory_balances`.
+- **Consecuencias:** disponibilidad es balance menos reservas activas y PAY-01
+  deberá consumirlas al confirmar.
+
+### ADR-063 — Reserva de treinta minutos
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** un checkout abandonado no debe bloquear stock indefinidamente.
+- **Problema:** fijar una ventana inicial sin configuración comercial.
+- **Alternativas:** 30 minutos; sin vencimiento.
+- **Decisión:** expirar lógicamente a los 30 minutos en UTC.
+- **Consecuencias:** limpieza programada y duración configurable quedan como
+  evolución; las consultas ignoran inmediatamente reservas vencidas. Las
+  conexiones tenant fijan explícitamente UTC para que Java y MySQL comparen el
+  mismo instante sin depender de la zona horaria de la máquina.
+
+### ADR-064 — Pedido pendiente de confirmación
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** aún no existe pago ni aceptación administrativa.
+- **Problema:** no prometer una compra confirmada antes de esas etapas.
+- **Alternativas:** `PENDING_CONFIRMATION`; confirmado.
+- **Decisión:** usar `PENDING_CONFIRMATION` y mantener pago como máquina separada.
+- **Consecuencias:** ORD-02 definirá aceptación, rechazo y cancelación.
+
+### ADR-065 — Consulta mediante token con hash
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el invitado no tiene cuenta.
+- **Problema:** permitir consulta sin habilitar enumeración de pedidos.
+- **Alternativas:** UUID más token; número y teléfono.
+- **Decisión:** entregar un token aleatorio una vez y persistir sólo SHA-256.
+- **Consecuencias:** perder el token exige soporte; respuestas inválidas fallan
+  como no encontradas.
+
+### ADR-066 — Creación idempotente
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** doble clic y timeout pueden repetir el POST.
+- **Problema:** impedir pedidos y reservas duplicados.
+- **Alternativas:** `Idempotency-Key`; protección sólo frontend.
+- **Decisión:** clave UUID única por tenant más fingerprint canónico del comando.
+- **Consecuencias:** replay igual devuelve el original; payload distinto produce
+  conflicto.
+
+### ADR-067 — Contrato sin precio enviado como autoridad
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** `localStorage` puede manipularse.
+- **Problema:** decidir qué datos comerciales acepta la creación.
+- **Alternativas:** enviar sólo variante/cantidad; aceptar snapshots del carrito.
+- **Decisión:** el request no contiene precios ni totales autoritativos.
+- **Consecuencias:** Spring recalcula snapshots y subtotal dentro de MySQL.

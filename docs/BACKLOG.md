@@ -18,7 +18,7 @@
 | STORE-01 | Tienda | Navegar catálogo | Listar, buscar y ver detalle público | Alta | Terminada | CAT-02 | Frontend/Backend | Responsive, estados y tenant correcto | Rendimiento/SEO | L |
 | MEDIA-01 | Medios | Gestionar imagen principal | Carga, almacenamiento externo, thumbnail y texto alternativo | Alta | Pendiente | STORE-01 | Frontend/Backend/Infraestructura | MIME/tamaño, aislamiento, fallback y eliminación segura | Costo, contenido malicioso y archivos huérfanos | L |
 | CART-01 | Compra | Carrito local | Selección de variante, cantidades, persistencia local y revalidación | Alta | Terminada | STORE-01 | Frontend | Aislado por tienda, accesible, sin datos personales y revalidado | Datos locales obsoletos | L |
-| ORD-01 | Compra | Checkout invitado | Cliente, entrega, observaciones y creación transaccional del pedido | Alta | Pendiente | CART-01, INV-01 | Frontend/Backend | Backend recalcula y persiste snapshot | Precio manipulado y sobreventa | XL |
+| ORD-01 | Compra | Checkout invitado | Retiro, contacto, reserva temporal y creación transaccional del pedido | Alta | Terminada | CART-01, INV-01 | Frontend/Backend | Backend recalcula, reserva y persiste snapshot idempotente | Precio manipulado, abuso y sobreventa | XL |
 | ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Pendiente | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
 | PAY-01 | Pagos | OAuth y Checkout Pro sandbox | Conectar comercio, preferencia, retorno y webhook idempotente | Alta | Pendiente | ORD-01, F0-02 | Backend/Calidad | OAuth state, firma, importe, duplicados y pruebas | Fraude/secretos | XL |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pendientes y stock bajo | Media | Pendiente | ORD-02 | Backend/Frontend | Datos por tenant y definiciones documentadas | Métricas inconsistentes | M |
@@ -446,3 +446,82 @@ cantidades y subtotal antes de iniciar el checkout.
   permanece en V2.
 - Productos por peso requerirán unidad de medida y cantidades decimales después
   de validar ese vertical.
+
+## ORD-01 — Checkout invitado con retiro
+
+> Estado: terminada el 2026-07-30. Las decisiones ADR-058 a ADR-067 fueron
+> aprobadas antes de iniciar la implementación.
+
+### Historia
+
+Como visitante quiero confirmar mi carrito para registrar un pedido con retiro y
+recibir una referencia segura que me permita consultar la confirmación.
+
+### Criterios de aceptación
+
+- El checkout se abre desde un carrito no vacío y sólo ofrece retiro en el MVP
+  inicial; envío, zonas, tarifas y franjas quedan fuera.
+- Nombre y teléfono son obligatorios; correo y observaciones son opcionales.
+- Los datos de contacto se guardan como snapshot del pedido, sin crear una cuenta
+  ni deduplicar clientes.
+- El frontend envía UUID de variante y cantidad; nunca precio, subtotal, stock,
+  SKU, estado, nombre de base ni identificadores internos como autoridad.
+- El backend vuelve a leer publicación, categoría, variante, precio, moneda y
+  stock dentro de una transacción tenant.
+- CART-01 continúa admitiendo enteros 1–99. `order_items.quantity` y reservas usan
+  `DECIMAL(15,3)` y guardan `UNIT` para permitir una evolución futura por peso.
+- Variantes repetidas se rechazan; todo pedido contiene de 1 a 50 líneas y el
+  subtotal debe caber en `DECIMAL(15,2)`.
+- Las filas de variante y balance se bloquean en orden estable. El stock
+  disponible es balance físico menos reservas `ACTIVE` no vencidas.
+- El pedido y todas sus reservas se crean juntos o se revierten juntos.
+- Las reservas vencen 30 minutos después de crear el pedido. Reservas vencidas
+  no reducen disponibilidad aunque su limpieza física sea posterior.
+- El pedido nace `PENDING_CONFIRMATION`; estado de pedido y pago permanecen
+  separados y CART-01 no crea pagos.
+- Crear exige `Idempotency-Key`. Un replay idéntico devuelve el pedido original;
+  reutilizar la clave con otro payload responde `409`.
+- La respuesta de alta entrega UUID público, número visible y un token opaco
+  derivado de una clave aleatoria del intento. MySQL conserva sólo SHA-256 del
+  token.
+- La consulta pública exige UUID y token; valores incorrectos responden `404` sin
+  revelar si el pedido existe.
+- Tienda A nunca crea, reserva ni consulta datos de Tienda B.
+- La confirmación pública no expone teléfono completo, correo completo, token
+  hash, claves internas, SKU ni información de conexión.
+- La interfaz previene doble envío, distingue timeout incierto y permite repetir
+  con la misma clave.
+- Validaciones, errores, migración, pruebas concurrentes, revisión, documentación
+  y prueba manual deben completarse antes de marcar `Terminada`.
+
+### Evidencia de cierre
+
+- Backend: regresión completa final de 82 pruebas y 7 pruebas focalizadas de
+  ORD-01, todas sin fallos.
+- La prueba concurrente se repitió tres veces por ejecución: en todos los casos
+  una reserva obtuvo `201` y la competidora `409`, sin superar el balance físico.
+- Frontend: 86 pruebas en 26 archivos, sin fallos; Prettier aplicado a los
+  archivos modificados.
+- Build Angular de producción correcto. Queda una advertencia no bloqueante:
+  `cart-page.scss` supera por 98 bytes el presupuesto preventivo de 4 kB.
+- Prueba manual real con Angular, Spring Boot y MySQL: carrito de tres unidades,
+  formulario de contacto, retiro, pedido `PENDING_CONFIRMATION`, subtotal
+  recalculado, reserva a treinta minutos y vaciado del carrito.
+- La confirmación mostró contacto enmascarado y el enlace con token modificado
+  respondió con el estado genérico “No encontramos el pedido”.
+- La confirmación se revisó en escritorio y a 390 píxeles, sin desbordamiento
+  horizontal del documento.
+- La prueba manual creó únicamente datos ficticios en la base local ignorada por
+  Git; no se usaron credenciales ni datos personales reales.
+
+### Deuda técnica aceptada
+
+- ORD-02 debe agregar operación administrativa, historial y transiciones de
+  estado; PAY-01 debe consumir o liberar la reserva según el pago.
+- La expiración cambia el estado al consultar o reintentar; una limpieza
+  programada y la duración configurable quedan fuera de este MVP.
+- Envíos, clientes persistentes y cantidades fraccionarias visibles quedan para
+  las historias ya separadas del vertical carnicería.
+- La infraestructura de pruebas completa emite avisos de cierre de conexiones
+  entre contextos y Flyway advierte sobre MySQL 8.4; no produjeron fallos, pero
+  conviene depurarlos en una historia de calidad.

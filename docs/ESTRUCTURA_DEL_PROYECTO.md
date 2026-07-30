@@ -280,6 +280,41 @@ El flujo termina en el navegador: CART-01 no crea pedidos ni movimientos de
 inventario. ORD-01 agregará la frontera Angular → Spring Boot → MySQL y repetirá
 la validación de forma autoritativa.
 
+## Flujo implementado de checkout invitado
+
+`frontend/src/app/features/storefront/checkout/` contiene el formulario y
+orquesta el alta. `order-confirmation/` consulta y presenta el resultado. Ambas
+dependen de los contratos y servicios públicos de `storefront`, no de features
+administrativas.
+
+`backend/src/main/java/com/comercioflex/order/` contiene:
+
+- `api`: DTO públicos, controller y errores HTTP;
+- `application`: caso de uso, validación, idempotencia y puerto de persistencia;
+- `domain`: pedido, items, estados y tipo de entrega;
+- `infrastructure/jdbc`: consultas e inserciones sobre la base tenant.
+
+```text
+CheckoutPage
+→ CsrfService
+→ StorefrontApiService + Idempotency-Key
+→ POST /api/v1/stores/{slug}/orders
+→ TenantResolutionFilter abre la base del comercio
+→ GuestOrderController
+→ GuestOrderService abre una transacción tenant
+→ JdbcGuestOrderRepository bloquea variantes
+→ MySQL calcula saldo físico − reservas vigentes
+→ orders + order_items + inventory_reservations
+→ respuesta con UUID público y token privado
+→ Angular vacía el carrito
+→ OrderConfirmationPage consulta UUID + token
+```
+
+`order` puede leer tablas de catálogo e inventario mediante su adaptador JDBC
+para aplicar la regla transaccional, pero no depende de controllers ni de los
+repositorios concretos de esos módulos. `catalog` sólo considera reservas al
+calcular disponibilidad pública.
+
 Dentro de `backend/.../catalog`, las clases `Public*` forman una frontera de
 lectura pública. Pueden depender del dominio y de la abstracción de repositorio,
 pero nunca de Angular ni de los controllers administrativos. El adaptador JDBC

@@ -21,6 +21,14 @@ variantes de talle/color y stock.
 
 Catálogo público, carrito, checkout invitado, pedidos, estados y entrega básica.
 
+Avance al 2026-07-30:
+
+- Terminados: catálogo público, detalle de producto, carrito local aislado por
+  comercio y checkout invitado con retiro y reserva temporal.
+- Siguiente: operación administrativa de pedidos y transiciones de estado
+  (`ORD-02`).
+- Fuera de esta etapa: envíos configurables, pago y clientes persistentes.
+
 ## Fase 4 — Pagos
 
 OAuth, Checkout Pro de prueba, conexión por comercio, webhooks, validación e

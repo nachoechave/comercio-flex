@@ -193,6 +193,30 @@ una clave `comercio-flex:cart:v1:{storeSlug}`. No se debe ejecutar
 `localStorage.clear()` en una aplicación real porque podría borrar datos de otros
 sistemas alojados en el mismo origen.
 
+### Probar el checkout invitado manualmente
+
+1. Preparar un producto publicado con variante activa y stock físico.
+2. Agregar una cantidad al carrito y confirmar que todas las líneas queden
+   disponibles.
+3. Pulsar `Continuar`, completar nombre y teléfono; probar también correo y
+   observaciones opcionales.
+4. Confirmar y verificar la ruta
+   `/tiendas/{slug}/pedidos/{uuid}?token=...`.
+5. Comprobar número, items, subtotal, retiro, contacto enmascarado y vencimiento.
+6. Recargar el enlace: debe recuperar el pedido sin exponer teléfono, correo
+   completos ni SKU.
+7. Reservar todo el saldo y comprobar que el catálogo marque la variante como no
+   disponible aunque el balance físico no cambie.
+8. Consultar el UUID con otro token y desde otro `storeSlug`: ambos deben
+   responder como no encontrados.
+9. Simular un error de red y reintentar sin cambiar el formulario: debe usar la
+   misma `Idempotency-Key` y no duplicar el pedido.
+10. Probar teclado y anchos de 320, 390, 768 y 1280 píxeles.
+
+Las reservas vencidas dejan de reducir disponibilidad inmediatamente. Su estado
+se materializa al consultar el pedido; una limpieza programada masiva queda como
+trabajo operativo posterior.
+
 ## Pruebas
 
 ```powershell

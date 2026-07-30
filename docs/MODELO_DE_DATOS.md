@@ -184,8 +184,28 @@ parte de la clave de almacenamiento, no de cada línea.
 
 Ese snapshot es descartable y no constituye un pedido. No contiene cliente,
 dirección, stock exacto, SKU, secretos ni identificadores internos. Al abrir el
-carrito Angular revalida contra el catálogo; ORD-01 diseñará `customers`,
-`delivery_methods`, `orders` y `order_items` mediante una migración posterior.
+carrito Angular revalida contra el catálogo; ORD-01 no confía en este snapshot.
+
+## Pedidos y reservas
+
+`orders` conserva el UUID público, identificador interno, clave idempotente,
+fingerprint SHA-256, hash del token privado, estado, retiro, datos de contacto
+como snapshot, moneda, subtotal y vencimiento.
+
+`order_items` conserva producto, variante, nombre, SKU operativo, opciones,
+precio, cantidad, unidad y total de línea. La confirmación pública no expone el
+SKU. `inventory_reservations` relaciona pedido y variante con cantidad, estado y
+vencimiento.
+
+```text
+disponible
+= inventory_balances.quantity
+− SUM(reservas ACTIVE cuyo expires_at todavía no venció)
+```
+
+Crear un pedido no modifica el balance físico. Pedido, items y reservas se
+insertan en una única transacción. Las conexiones tenant fijan UTC para que Java
+y MySQL comparen el mismo instante sin depender de la zona del host.
 
 ## Relaciones principales
 
@@ -196,9 +216,11 @@ Control DB: PlatformUser ── Membership ── Tenant ── DatabaseRegistry
 Tenant DB:
 StoreSettings
 ├── Category ── Product ── ProductVariant ── Inventory
+│                              └── InventoryReservation
 ├── Customer
 ├── DeliveryMethod
 ├── Order ── OrderItem
+│     └── InventoryReservation
 │          └── Payment ── PaymentWebhookEvent
 └── MerchantPaymentConnection
 ```

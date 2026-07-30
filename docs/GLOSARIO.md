@@ -60,7 +60,13 @@
 - **Rate limiting:** límite temporal de solicitudes para reducir abuso, fuerza
   bruta y agotamiento de recursos.
 - **Repository:** abstracción para leer o guardar datos del dominio.
+- **Reserva de stock:** compromiso temporal que reduce la cantidad vendible sin
+  alterar el balance físico.
 - **Service / caso de uso:** coordina reglas y una operación de negocio.
+- **Fingerprint:** hash de una representación canónica del comando; permite
+  comprobar si una clave idempotente conserva la misma intención.
+- **Token de consulta:** secreto URL-safe que, junto al UUID público, permite a
+  un invitado consultar su pedido. La base conserva sólo su hash.
 - **Snapshot:** copia de datos tomada en un momento. El carrito conserva una
   fotografía visible, pero debe revalidarla porque precio y disponibilidad cambian.
 - **Sesión:** estado autenticado mantenido por el servidor y asociado a una cookie
