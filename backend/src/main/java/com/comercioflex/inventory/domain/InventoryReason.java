@@ -5,5 +5,7 @@ public enum InventoryReason {
 	CORRECTION,
 	DAMAGE,
 	RETURN,
-	OTHER
+	OTHER,
+	ORDER_CONFIRMED,
+	ORDER_CANCELLED
 }

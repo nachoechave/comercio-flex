@@ -3,6 +3,7 @@ import { ProductStatus } from '../products/product.models';
 export type InventoryAvailability = 'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK';
 export type AdjustmentDirection = 'INCREASE' | 'DECREASE';
 export type AdjustmentReason = 'RECEIPT' | 'CORRECTION' | 'DAMAGE' | 'RETURN' | 'OTHER';
+export type InventoryMovementReason = AdjustmentReason | 'ORDER_CONFIRMED' | 'ORDER_CANCELLED';
 
 export interface InventoryItem {
   variantId: string;
@@ -37,7 +38,7 @@ export interface InventoryMovement {
   delta: string;
   quantityBefore: string;
   quantityAfter: string;
-  reason: AdjustmentReason;
+  reason: InventoryMovementReason;
   note: string | null;
   actor: MovementActor;
   createdAt: string;

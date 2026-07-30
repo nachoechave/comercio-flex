@@ -1,0 +1,116 @@
+<section class="page" aria-labelledby="order-title">
+  <nav aria-label="Migas de pan"><a [routerLink]="['../']">Pedidos</a><span> / Detalle</span></nav>
+  @if (loading()) {
+    <p role="status">Cargando pedido…</p>
+  } @else if (order(); as current) {
+    <header>
+      <div>
+        <p class="eyebrow">{{ labels[current.status] }}</p>
+        <h1 id="order-title">{{ current.number }}</h1>
+        <p>{{ current.createdAt | date: 'short' }}</p>
+      </div>
+      <strong class="total">{{ current.subtotal | storefrontMoney: current.currencyCode }}</strong>
+    </header>
+
+    @if (errorMessage()) {
+      <p class="error" role="alert">{{ errorMessage() }}</p>
+    }
+
+    <div class="layout">
+      <div class="content">
+        <section class="card">
+          <h2>Cliente</h2>
+          <dl>
+            <div>
+              <dt>Nombre</dt>
+              <dd>{{ current.customerName }}</dd>
+            </div>
+            <div>
+              <dt>Teléfono</dt>
+              <dd>{{ current.customerPhone }}</dd>
+            </div>
+            <div>
+              <dt>Correo</dt>
+              <dd>{{ current.customerEmail || 'No informado' }}</dd>
+            </div>
+            <div>
+              <dt>Entrega</dt>
+              <dd>Retiro en el comercio</dd>
+            </div>
+          </dl>
+          @if (current.notes) {
+            <p class="notes"><strong>Observaciones:</strong> {{ current.notes }}</p>
+          }
+        </section>
+        <section class="card">
+          <h2>Productos</h2>
+          <ul>
+            @for (item of current.items; track item.variantId) {
+              <li>
+                <div>
+                  <strong>{{ item.productName }}</strong>
+                  @if (optionLabel(item.size, item.color)) {
+                    <span>{{ optionLabel(item.size, item.color) }}</span>
+                  }
+                  <span>{{ item.quantity }} unidad(es)</span>
+                </div>
+                <strong>{{ item.lineTotal | storefrontMoney: current.currencyCode }}</strong>
+              </li>
+            }
+          </ul>
+        </section>
+      </div>
+      <aside>
+        <section class="card">
+          <h2>Actualizar estado</h2>
+          @if (actions().length) {
+            <form [formGroup]="form">
+              <label for="transition-note">Observación opcional</label>
+              <textarea
+                id="transition-note"
+                formControlName="note"
+                rows="3"
+                maxlength="500"
+                [attr.aria-invalid]="form.controls.note.invalid"
+                aria-describedby="transition-note-help"
+              ></textarea>
+              <small id="transition-note-help">
+                {{ form.controls.note.value.length }} de 500 caracteres
+              </small>
+              <div class="actions">
+                @for (action of actions(); track action) {
+                  <button
+                    type="button"
+                    (click)="transition(action)"
+                    [class.destructive]="action === 'CANCELLED' || action === 'REJECTED'"
+                    [disabled]="submitting() || form.invalid"
+                  >
+                    {{ actionLabels[action] }}
+                  </button>
+                }
+              </div>
+            </form>
+          } @else {
+            <p>Este pedido no admite más cambios.</p>
+          }
+        </section>
+        <section class="card">
+          <h2>Historial</h2>
+          <ol>
+            @for (entry of current.history; track entry.id) {
+              <li>
+                <strong>{{ labels[entry.newStatus] }}</strong>
+                <span>{{ entry.createdAt | date: 'short' }} · {{ entry.actorDisplayName }}</span>
+                @if (entry.note) {
+                  <p>{{ entry.note }}</p>
+                }
+              </li>
+            }
+          </ol>
+        </section>
+      </aside>
+    </div>
+  } @else {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+  }
+</section>

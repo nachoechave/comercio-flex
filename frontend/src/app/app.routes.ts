@@ -72,6 +72,11 @@ export const routes: Routes = [
             (module) => module.INVENTORY_ROUTES,
           ),
       },
+      {
+        path: 'pedidos',
+        loadChildren: () =>
+          import('./features/admin/orders/order.routes').then((module) => module.ORDER_ROUTES),
+      },
     ],
   },
   {

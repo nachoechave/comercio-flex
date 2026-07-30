@@ -137,6 +137,7 @@ public class GuestOrderService {
 			repository.findCurrencyCode(),
 			subtotal,
 			expiresAt);
+		repository.insertInitialHistory(internalId);
 		repository.insertItemsAndReservations(internalId, items, expiresAt);
 		return new GuestOrderCreation(
 			repository.findByInternalId(internalId),

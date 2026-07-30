@@ -8,7 +8,7 @@ import { routeParam } from '../../../../core/auth/auth.guards';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
 import { InventoryApiService } from '../inventory-api.service';
 import { inventoryErrorMessage } from '../inventory-errors';
-import { AdjustmentReason, InventoryItem, MovementPage } from '../inventory.models';
+import { InventoryItem, InventoryMovementReason, MovementPage } from '../inventory.models';
 
 const EMPTY_MOVEMENTS: MovementPage = {
   items: [],
@@ -88,13 +88,15 @@ export class InventoryDetail {
     this.reloadVersion.update((value) => value + 1);
   }
 
-  reasonLabel(reason: AdjustmentReason): string {
+  reasonLabel(reason: InventoryMovementReason): string {
     return {
       RECEIPT: 'Recepción',
       CORRECTION: 'Corrección',
       DAMAGE: 'Daño o pérdida',
       RETURN: 'Devolución',
       OTHER: 'Otro',
+      ORDER_CONFIRMED: 'Pedido confirmado',
+      ORDER_CANCELLED: 'Pedido cancelado',
     }[reason];
   }
 }

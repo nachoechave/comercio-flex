@@ -26,8 +26,10 @@ public interface GuestOrderRepository {
 		String customerEmail,
 		String notes,
 		String currencyCode,
-		BigDecimal subtotal,
-		Instant reservationExpiresAt);
+			BigDecimal subtotal,
+			Instant reservationExpiresAt);
+
+	void insertInitialHistory(long orderInternalId);
 
 	void insertItemsAndReservations(
 		long orderInternalId,

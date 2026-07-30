@@ -14,13 +14,19 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.comercioflex.order.application.GuestOrderNotFoundException;
+import com.comercioflex.order.application.AdminOrderNotFoundException;
 import com.comercioflex.order.application.InvalidGuestOrderException;
+import com.comercioflex.order.application.InvalidOrderTransitionException;
 import com.comercioflex.order.application.OrderIdempotencyConflictException;
+import com.comercioflex.order.application.OrderTransitionIdempotencyConflictException;
 import com.comercioflex.order.application.OrderUnavailableException;
 
 import jakarta.validation.ConstraintViolationException;
 
-@RestControllerAdvice(basePackageClasses = GuestOrderController.class)
+@RestControllerAdvice(basePackageClasses = {
+	GuestOrderController.class,
+	AdminOrderController.class
+})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class GuestOrderErrorHandler {
 
@@ -31,6 +37,33 @@ public class GuestOrderErrorHandler {
 			"Pedido no encontrado",
 			"No existe un pedido accesible con esos datos.",
 			"guest-order-not-found");
+	}
+
+	@ExceptionHandler(AdminOrderNotFoundException.class)
+	ProblemDetail adminNotFound() {
+		return problem(
+			HttpStatus.NOT_FOUND,
+			"Pedido no encontrado",
+			"No existe el pedido solicitado.",
+			"admin-order-not-found");
+	}
+
+	@ExceptionHandler(InvalidOrderTransitionException.class)
+	ProblemDetail invalidTransition(InvalidOrderTransitionException exception) {
+		return problem(
+			HttpStatus.CONFLICT,
+			"No se pudo cambiar el pedido",
+			exception.getMessage(),
+			"invalid-order-transition");
+	}
+
+	@ExceptionHandler(OrderTransitionIdempotencyConflictException.class)
+	ProblemDetail transitionConflict() {
+		return problem(
+			HttpStatus.CONFLICT,
+			"Clave de idempotencia reutilizada",
+			"La clave ya fue utilizada para otra transición.",
+			"idempotency-conflict");
 	}
 
 	@ExceptionHandler(OrderUnavailableException.class)

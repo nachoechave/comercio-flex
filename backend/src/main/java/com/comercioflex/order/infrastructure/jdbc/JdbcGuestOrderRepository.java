@@ -211,6 +211,22 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 	}
 
 	@Override
+	public void insertInitialHistory(long orderInternalId) {
+		jdbcTemplate.update("""
+			INSERT INTO order_status_history (
+				public_id,
+				order_id,
+				previous_status,
+				new_status,
+				actor_display_name
+			)
+			VALUES (UUID_TO_BIN(?), ?, NULL, 'PENDING_CONFIRMATION', 'Sistema')
+			""",
+			UUID.randomUUID().toString(),
+			orderInternalId);
+	}
+
+	@Override
 	public void insertItemsAndReservations(
 			long orderInternalId,
 			List<ReservedOrderItem> items,
@@ -297,6 +313,14 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 
 	@Override
 	public void expireOrder(long orderInternalId) {
+		int changed = jdbcTemplate.update("""
+			UPDATE orders
+			SET status = 'EXPIRED', version = version + 1
+			WHERE id = ?
+				AND status = 'PENDING_CONFIRMATION'
+			""",
+			orderInternalId);
+		if (changed == 0) return;
 		jdbcTemplate.update("""
 			UPDATE inventory_reservations
 			SET status = 'EXPIRED'
@@ -305,11 +329,12 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 			""",
 			orderInternalId);
 		jdbcTemplate.update("""
-			UPDATE orders
-			SET status = 'EXPIRED'
-			WHERE id = ?
-				AND status = 'PENDING_CONFIRMATION'
+			INSERT INTO order_status_history (
+				public_id, order_id, previous_status, new_status, actor_display_name
+			)
+			VALUES (UUID_TO_BIN(?), ?, 'PENDING_CONFIRMATION', 'EXPIRED', 'Sistema')
 			""",
+			UUID.randomUUID().toString(),
 			orderInternalId);
 	}
 

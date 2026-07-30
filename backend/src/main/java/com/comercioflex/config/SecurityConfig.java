@@ -111,6 +111,11 @@ public class SecurityConfig {
 					"/api/v1/stores/*/admin/inventory/**")
 				.access(new TenantPermissionAuthorizationManager(
 					TenantPermission.ADJUST_STOCK))
+				.requestMatchers(
+					"/api/v1/stores/*/admin/orders",
+					"/api/v1/stores/*/admin/orders/**")
+				.access(new TenantPermissionAuthorizationManager(
+					TenantPermission.MANAGE_ORDERS))
 				.anyRequest().authenticated())
 			.addFilterAfter(tenantResolutionFilter, AnonymousAuthenticationFilter.class)
 			.build();

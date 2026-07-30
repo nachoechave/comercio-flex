@@ -1,6 +1,8 @@
 package com.comercioflex;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,6 +29,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -38,6 +41,14 @@ import org.testcontainers.utility.DockerImageName;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.comercioflex.order.application.AdminOrderNotFoundException;
+import com.comercioflex.order.application.AdminOrderService;
+import com.comercioflex.order.application.OrderTransitionCommand;
+import com.comercioflex.order.domain.OrderStatus;
+import com.comercioflex.identity.application.PlatformPrincipal;
+import com.comercioflex.identity.application.UserCredentials;
+import com.comercioflex.identity.domain.UserStatus;
+import com.comercioflex.tenant.application.TenantContext;
 
 @Testcontainers
 @SpringBootTest
@@ -52,6 +63,8 @@ class GuestOrderIntegrationTests {
 		"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1";
 	private static final String VARIANT_A =
 		"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0101";
+	private static final UUID OPERATOR_ID =
+		UUID.fromString("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee");
 
 	@Container
 	static final MySQLContainer<?> CONTROL_DATABASE = new MySQLContainer<>(MYSQL_IMAGE);
@@ -71,6 +84,10 @@ class GuestOrderIntegrationTests {
 	private MockMvc mockMvc;
 	@Autowired
 	private ObjectMapper objectMapper;
+	@Autowired
+	private AdminOrderService adminOrderService;
+	@Autowired
+	private TenantContext tenantContext;
 
 	@DynamicPropertySource
 	static void configureDatabases(DynamicPropertyRegistry registry) {
@@ -96,6 +113,25 @@ class GuestOrderIntegrationTests {
 			VALUES
 				(UUID_TO_BIN(UUID()), 'tienda-a', 'Tienda A', 'ACTIVE', 'tenant-a'),
 				(UUID_TO_BIN(UUID()), 'tienda-b', 'Tienda B', 'ACTIVE', 'tenant-b')
+			""");
+		execute(CONTROL_DATABASE, """
+			INSERT INTO platform_users (
+				id, public_id, email_normalized, display_name, password_hash, status
+			)
+			VALUES (
+				9001,
+				UUID_TO_BIN('%s'),
+				'operator@example.test',
+				'Operador',
+				'{noop}test',
+				'ACTIVE'
+			)
+			""".formatted(OPERATOR_ID));
+		execute(CONTROL_DATABASE, """
+			INSERT INTO memberships (user_id, tenant_id, role, status)
+			SELECT 9001, id, 'STAFF', 'ACTIVE'
+			FROM tenants
+			WHERE slug = 'tienda-a'
 			""");
 		resetTenant(TENANT_A_DATABASE, "Tienda A");
 		resetTenant(TENANT_B_DATABASE, "Tienda B");
@@ -209,6 +245,100 @@ class GuestOrderIntegrationTests {
 	}
 
 	@Test
+	void operatesOrderLifecycleAndRestoresStockOnCancellation() throws Exception {
+		JsonNode created = create(UUID.randomUUID(), "2", 201);
+		UUID orderId = UUID.fromString(created.at("/order/id").asText());
+		UUID actorId = UUID.randomUUID();
+		UUID confirmationKey = UUID.randomUUID();
+
+		try (var scope = tenantContext.open("tenant-a")) {
+			assertThat(adminOrderService.find(orderId).history()).hasSize(1);
+			var confirmed = adminOrderService.transition(new OrderTransitionCommand(
+				orderId,
+				confirmationKey,
+				OrderStatus.CONFIRMED,
+				"Stock revisado",
+				actorId,
+				"Operador"));
+			assertThat(confirmed.status()).isEqualTo(OrderStatus.CONFIRMED);
+			assertThat(adminOrderService.transition(new OrderTransitionCommand(
+				orderId,
+				confirmationKey,
+				OrderStatus.CONFIRMED,
+				"Stock revisado",
+				actorId,
+				"Operador")).status()).isEqualTo(OrderStatus.CONFIRMED);
+			adminOrderService.transition(new OrderTransitionCommand(
+				orderId,
+				UUID.randomUUID(),
+				OrderStatus.READY_FOR_PICKUP,
+				null,
+				actorId,
+				"Operador"));
+			var cancelled = adminOrderService.transition(new OrderTransitionCommand(
+				orderId,
+				UUID.randomUUID(),
+				OrderStatus.CANCELLED,
+				"Cliente canceló",
+				actorId,
+				"Operador"));
+			assertThat(cancelled.status()).isEqualTo(OrderStatus.CANCELLED);
+			assertThat(cancelled.history()).hasSize(4);
+		}
+		try (var scope = tenantContext.open("tenant-b")) {
+			assertThatThrownBy(() -> adminOrderService.find(orderId))
+				.isInstanceOf(AdminOrderNotFoundException.class);
+		}
+
+		assertThat(decimal(TENANT_A_DATABASE,
+			"SELECT quantity FROM inventory_balances")).isEqualTo("5.000");
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM inventory_movements")).isEqualTo(2);
+		assertThat(text(TENANT_A_DATABASE,
+			"SELECT status FROM inventory_reservations")).isEqualTo("RELEASED");
+	}
+
+	@Test
+	void securesAndOperatesAdminOrderEndpoints() throws Exception {
+		JsonNode created = create(UUID.randomUUID(), "1", 201);
+		String orderId = created.at("/order/id").asText();
+		var operator = authentication(new UsernamePasswordAuthenticationToken(
+			operatorPrincipal(),
+			"test",
+			operatorPrincipal().getAuthorities()));
+
+		mockMvc.perform(get("/api/v1/stores/tienda-a/admin/orders"))
+			.andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/v1/stores/tienda-a/admin/orders").with(operator))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[0].id").value(orderId));
+		mockMvc.perform(post("/api/v1/stores/tienda-a/admin/orders/" + orderId + "/transitions")
+				.with(operator)
+				.header("Idempotency-Key", UUID.randomUUID())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"targetStatus\":\"CONFIRMED\"}"))
+			.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/v1/stores/tienda-a/admin/orders/" + orderId + "/transitions")
+				.with(operator)
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"targetStatus\":\"CONFIRMED\"}"))
+			.andExpect(status().isBadRequest());
+		mockMvc.perform(post("/api/v1/stores/tienda-a/admin/orders/" + orderId + "/transitions")
+				.with(operator)
+				.with(csrf())
+				.header("Idempotency-Key", UUID.randomUUID())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(
+					"{\"targetStatus\":\"CONFIRMED\",\"note\":\"Stock revisado\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("CONFIRMED"))
+			.andExpect(jsonPath("$.history[1].actorDisplayName").value("Operador"));
+		mockMvc.perform(get("/api/v1/stores/tienda-b/admin/orders").with(operator))
+			.andExpect(status().isForbidden());
+	}
+
+	@Test
 	void validatesCsrfHeaderPayloadAndUnavailableTenantScope() throws Exception {
 		mockMvc.perform(post(orders("tienda-a"))
 				.header("Idempotency-Key", UUID.randomUUID())
@@ -297,13 +427,24 @@ class GuestOrderIntegrationTests {
 		return orders(storeSlug) + "/" + orderId;
 	}
 
+	private PlatformPrincipal operatorPrincipal() {
+		return new PlatformPrincipal(new UserCredentials(
+			9001L,
+			OPERATOR_ID,
+			"operator@example.test",
+			"Operador",
+			"{noop}test",
+			UserStatus.ACTIVE));
+	}
+
 	private static void resetTenant(
 			MySQLContainer<?> database,
 			String storeName) throws SQLException {
+		execute(database, "DELETE FROM order_status_history");
+		execute(database, "DELETE FROM inventory_movements");
 		execute(database, "DELETE FROM inventory_reservations");
 		execute(database, "DELETE FROM order_items");
 		execute(database, "DELETE FROM orders");
-		execute(database, "DELETE FROM inventory_movements");
 		execute(database, "DELETE FROM inventory_balances");
 		execute(database, "DELETE FROM product_variants");
 		execute(database, "DELETE FROM products");

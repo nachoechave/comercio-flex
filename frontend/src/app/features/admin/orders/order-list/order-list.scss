@@ -1,0 +1,98 @@
+.page {
+  max-width: 70rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+header {
+  margin-bottom: 1.5rem;
+}
+.eyebrow {
+  margin: 0;
+  color: var(--color-accent);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+h1 {
+  margin: 0.25rem 0;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+}
+header p:last-child,
+small {
+  color: var(--color-muted);
+}
+.filters {
+  display: flex;
+  align-items: end;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-surface);
+}
+.filters div {
+  display: grid;
+  flex: 1;
+  gap: 0.35rem;
+}
+input,
+select,
+button {
+  min-height: 2.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.6rem;
+  background: var(--color-surface);
+  font: inherit;
+}
+button {
+  color: #fff;
+  background: var(--color-accent);
+  font-weight: 700;
+}
+.table-wrapper {
+  margin-top: 1.25rem;
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+}
+th,
+td {
+  padding: 0.9rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+td small {
+  display: block;
+  margin-top: 0.2rem;
+}
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: #eee8ff;
+  font-weight: 700;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+.state {
+  margin-top: 1.25rem;
+  padding: 2rem;
+  text-align: center;
+}
+.error {
+  color: #a22323;
+}
+@media (max-width: 40rem) {
+  .filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

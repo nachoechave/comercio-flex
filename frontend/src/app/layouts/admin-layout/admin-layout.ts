@@ -56,6 +56,12 @@ import { AuthService } from '../../core/auth/auth.service';
         >
           Inventario
         </a>
+        <a
+          [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'pedidos']"
+          routerLinkActive="active"
+        >
+          Pedidos
+        </a>
       </nav>
     }
     @if (logoutError()) {
@@ -90,6 +96,7 @@ import { AuthService } from '../../core/auth/auth.service';
 
     .admin-nav {
       display: flex;
+      flex-wrap: wrap;
       gap: 1rem;
       max-width: 70rem;
       margin: 0 auto;

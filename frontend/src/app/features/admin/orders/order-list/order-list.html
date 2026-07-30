@@ -1,0 +1,83 @@
+<section class="page" aria-labelledby="orders-title">
+  <header>
+    <div>
+      <p class="eyebrow">Operación</p>
+      <h1 id="orders-title">Pedidos</h1>
+      <p>Revisá y actualizá los pedidos del comercio.</p>
+    </div>
+  </header>
+
+  <form class="filters" [formGroup]="filters" (ngSubmit)="search()">
+    <div>
+      <label for="order-q">Número</label>
+      <input id="order-q" type="search" formControlName="q" placeholder="ORD-000001" />
+    </div>
+    <div>
+      <label for="order-status">Estado</label>
+      <select id="order-status" formControlName="status">
+        <option value="">Todos</option>
+        @for (entry of labels | keyvalue; track entry.key) {
+          <option [value]="entry.key">{{ entry.value }}</option>
+        }
+      </select>
+    </div>
+    <button type="submit" [disabled]="loading()">Aplicar filtros</button>
+  </form>
+
+  @if (loading()) {
+    <p class="state" role="status">Cargando pedidos…</p>
+  } @else if (errorMessage()) {
+    <p class="state error" role="alert">{{ errorMessage() }}</p>
+  } @else if (page().items.length === 0) {
+    <div class="state">
+      <h2>No hay pedidos</h2>
+      <p>Probá otro filtro.</p>
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Cliente</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th>Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of page().items; track order.id) {
+            <tr>
+              <td>
+                <strong>{{ order.number }}</strong>
+              </td>
+              <td>
+                {{ order.customerName }}<small>{{ order.customerPhone }}</small>
+              </td>
+              <td>{{ order.createdAt | date: 'short' }}</td>
+              <td>
+                <span class="badge">{{ labels[order.status] }}</span>
+              </td>
+              <td>{{ order.subtotal | storefrontMoney: order.currencyCode }}</td>
+              <td><a [routerLink]="[order.id]">Ver pedido</a></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <nav class="pagination" aria-label="Paginación">
+      <button type="button" (click)="goToPage(page().page - 1)" [disabled]="page().page === 0">
+        Anterior
+      </button>
+      <span>Página {{ page().page + 1 }} de {{ page().totalPages }}</span>
+      <button
+        type="button"
+        (click)="goToPage(page().page + 1)"
+        [disabled]="page().page + 1 >= page().totalPages"
+      >
+        Siguiente
+      </button>
+    </nav>
+  }
+</section>
