@@ -169,6 +169,30 @@ deben probarse copiando credenciales o identificadores de base en la URL.
 9. Probar a 320, 390, 768 y 1280 píxeles, además de navegación por teclado.
 10. Confirmar que `/tiendas/tienda-a/admin` continúa exigiendo autenticación.
 
+### Probar el carrito local manualmente
+
+1. Abrir el detalle de un producto publicado con una variante disponible.
+2. Comprobar que “Agregar al carrito” permanezca deshabilitado hasta elegir una
+   variante y que las opciones agotadas no puedan seleccionarse.
+3. Elegir variante, indicar una cantidad entre 1 y 99 y agregarla.
+4. Verificar que el contador de cabecera cambie y sobreviva una recarga.
+5. Abrir `/tiendas/tienda-a/carrito`, cambiar la cantidad y revisar subtotal.
+6. Modificar el precio desde administración y volver a abrir el carrito: debe
+   actualizar el valor e informar el cambio.
+7. Agotar o retirar la variante: la línea debe conservarse marcada y quedar fuera
+   del subtotal disponible.
+8. Simular un fallo del backend y comprobar que el snapshot no se borre y exista
+   una acción para reintentar.
+9. Abrir `tienda-b`, agregar otro producto y comprobar que ambos carritos y
+   contadores sean independientes.
+10. Quitar una línea, probar la confirmación de vaciado y recorrer todo con
+    teclado a 320, 390, 768 y 1280 píxeles.
+
+Para reiniciar sólo los datos de esta historia desde DevTools puede eliminarse
+una clave `comercio-flex:cart:v1:{storeSlug}`. No se debe ejecutar
+`localStorage.clear()` en una aplicación real porque podría borrar datos de otros
+sistemas alojados en el mismo origen.
+
 ## Pruebas
 
 ```powershell

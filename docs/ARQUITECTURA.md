@@ -209,6 +209,23 @@ Los endpoints públicos son anónimos únicamente para `GET`; las rutas
 `/admin/**` conservan sesión, membresía y permisos. El catálogo usa `no-store`
 y el futuro checkout vuelve a validar toda información comercial.
 
+CART-01 mantiene estado exclusivamente en Angular. `CartService` usa signals
+para compartir carrito y contador, y una clave versionada de `localStorage` por
+`storeSlug` para sobrevivir recargas. El contenido local nunca es autoridad:
+
+```text
+Snapshot local no confiable
+→ validación estructural y de límites
+→ relectura del detalle público por producto
+→ actualización de nombre, opciones y precio
+→ marca AVAILABLE, UNAVAILABLE o UNKNOWN
+→ subtotal sólo de líneas AVAILABLE
+```
+
+No se almacenan correo, dirección, credenciales ni tokens. Tampoco se descuenta
+stock. Aunque CART-01 muestre un precio actualizado, ORD-01 deberá volver a leer
+variante, precio y saldo dentro de la transacción que crea el pedido.
+
 Los ajustes bloquean la variante y el balance dentro de una transacción tenant.
 La misma transacción valida idempotencia, no negatividad y capacidad decimal,
 actualiza el balance e inserta el movimiento. La integración futura con pedidos

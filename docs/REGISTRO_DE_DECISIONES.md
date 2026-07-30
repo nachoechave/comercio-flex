@@ -739,3 +739,95 @@
 - **Decisión:** responder `no-store` durante el MVP.
 - **Consecuencias:** se prioriza consistencia y aislamiento. CDN, ETag e
   invalidación se evaluarán con métricas reales.
+
+## ADR aceptadas el 2026-07-30 para Sprint 8
+
+### ADR-051 — Separar carrito de checkout y pedido
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** ORD-01 reunía estado frontend, datos personales, entrega,
+  persistencia, inventario y concurrencia en una historia XL.
+- **Problema:** mantener Sprint 8 revisable sin ocultar riesgos transaccionales.
+- **Alternativas:** CART-01 local seguido de ORD-01; implementar todo junto.
+- **Decisión:** Sprint 8 implementa CART-01. Checkout y creación del pedido
+  permanecen en ORD-01.
+- **Consecuencias:** no hay migración ni descuento de stock en Sprint 8; la
+  validación autoritativa continúa siendo responsabilidad del futuro checkout.
+
+### ADR-052 — Persistencia local sin datos personales
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el visitante debe conservar su selección al recargar.
+- **Problema:** elegir persistencia antes de disponer de identidad de cliente.
+- **Alternativas:** `localStorage`; memoria de la pestaña; carrito servidor.
+- **Decisión:** usar una clave versionada de `localStorage` y almacenar sólo
+  identificadores públicos, nombres visibles, opciones, precio y cantidad.
+- **Consecuencias:** el carrito no se sincroniza entre dispositivos y cualquier
+  contenido leído debe validarse como entrada no confiable.
+
+### ADR-053 — Un carrito independiente por comercio
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** un navegador puede visitar más de una tienda.
+- **Problema:** evitar mezclar productos entre tenants.
+- **Alternativas:** clave por `storeSlug`; vaciar al cambiar de tienda.
+- **Decisión:** conservar un carrito separado por comercio.
+- **Consecuencias:** cambiar de ruta selecciona otro estado y contador sin
+  eliminar selecciones anteriores.
+
+### ADR-054 — Alta desde el detalle con variante explícita
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** indumentaria puede requerir talle y color.
+- **Problema:** impedir que un alta rápida seleccione una opción incorrecta.
+- **Alternativas:** selector en detalle; alta rápida desde tarjetas.
+- **Decisión:** agregar sólo desde el detalle y exigir selección explícita.
+- **Consecuencias:** el flujo tiene un paso adicional pero es claro, accesible y
+  reduce errores.
+
+### ADR-055 — Revalidar el snapshot al abrir el carrito
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** precio, publicación y disponibilidad cambian después del alta.
+- **Problema:** comunicar datos vigentes sin convertir el carrito en servidor.
+- **Alternativas:** releer el catálogo público; confiar en el snapshot.
+- **Decisión:** agrupar líneas por producto, releer cada detalle y actualizar
+  datos visibles. Las líneas retiradas se conservan marcadas para que el usuario
+  comprenda el cambio.
+- **Consecuencias:** se realizan varias lecturas pequeñas; ORD-01 igualmente
+  deberá validar precio y stock dentro de su transacción.
+
+### ADR-056 — Cantidad entera para el piloto
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el vertical piloto es indumentaria; venta por peso es futura.
+- **Problema:** evitar introducir unidades configurables sin validación comercial.
+- **Alternativas:** enteros ahora; decimales y unidades ahora.
+- **Decisión:** CART-01 admite cantidades enteras. El futuro pedido mantendrá
+  capacidad decimal para otros rubros.
+- **Consecuencias:** productos por peso requerirán evolucionar catálogo y UI, no
+  sólo cambiar el control de cantidad.
+
+### ADR-057 — Máximo local de 99 unidades
+
+- **Fecha:** 2026-07-30
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la API pública no revela el saldo exacto.
+- **Problema:** limitar valores accidentales sin prometer disponibilidad.
+- **Alternativas:** rango 1–99; sin máximo frontend.
+- **Decisión:** validar de 1 a 99 y explicar que el checkout confirmará stock.
+- **Consecuencias:** el límite es una protección de UX, no una reserva ni una
+  garantía comercial.

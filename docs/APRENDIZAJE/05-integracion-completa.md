@@ -195,3 +195,29 @@ El precio y la disponibilidad mostrados no son una promesa de compra. Entre la
 consulta y el checkout otra persona puede modificar precio o stock. ORD-01
 deberá releer esos datos en el backend y calcular el total; nunca confiará en una
 copia enviada por Angular.
+
+## Flujo local de CART-01
+
+```text
+Visitante elige talle/color y cantidad
+→ ProductDetail llama a CartService
+→ CartService valida 1–99 y disponibilidad
+→ actualiza signals de la tienda actual
+→ persiste un snapshot mínimo por storeSlug
+→ la cabecera actualiza el contador
+→ CartPage relee el detalle público
+→ actualiza precio o marca la línea como no disponible/desconocida
+```
+
+`localStorage` es cómodo, pero el usuario puede editarlo desde DevTools y otro
+script del mismo origen puede accederlo. Por eso no guarda datos personales ni
+secretos y se valida cada campo al leer. Un valor corrupto se descarta.
+
+El subtotal usa centavos enteros con `BigInt`: precio decimal → centavos →
+multiplicación por cantidad → string decimal. Esto evita errores como
+`0.1 + 0.2` propios del punto flotante.
+
+Revalidar mejora la información presentada, pero todavía no garantiza una
+compra. No existe reserva y otra operación puede consumir el último stock un
+instante después. La garantía real aparecerá cuando ORD-01 bloquee y valide las
+filas necesarias dentro de una transacción MySQL.

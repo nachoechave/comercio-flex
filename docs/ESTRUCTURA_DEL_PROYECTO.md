@@ -30,7 +30,11 @@ frontend/
     │   └── admin-layout/           # Marco del panel administrativo
     ├── features/
     │   ├── auth/                   # Pantalla de login global
-    │   ├── storefront/home/        # Página pública inicial
+    │   ├── storefront/
+    │   │   ├── home/               # Página pública inicial
+    │   │   ├── catalog/            # Catálogo, filtros y paginación
+    │   │   ├── product-detail/     # Variantes y alta al carrito
+    │   │   └── cart/               # Estado local, revalidación y página del carrito
     │   └── admin/
     │       ├── categories/         # Listado, formulario y API de categorías
     │       ├── inventory/          # Balance, ajustes e historial por variante
@@ -253,6 +257,28 @@ listado, `product-card/` representa cada resultado y `product-detail/` presenta
 las variantes. Estos componentes pueden depender de los modelos, servicios y
 contexto públicos del mismo feature, pero no deben importar features
 administrativas.
+
+`cart/` contiene el modelo, `CartService` y la página pública del carrito. Puede
+depender del contrato público de storefront, pero no conoce controllers,
+entidades ni repositorios backend. `CartService` es la única pieza que accede a
+`localStorage`; los componentes piden operaciones de negocio en lugar de leer o
+escribir claves directamente.
+
+### Flujo del carrito local
+
+```text
+Detalle público selecciona variante
+→ CartService valida cantidad y disponibilidad
+→ actualiza signal por storeSlug
+→ persiste snapshot mínimo en localStorage
+→ cabecera y página reaccionan al mismo estado
+→ CartPage relee cada producto con StorefrontApiService
+→ CartService actualiza precio/opciones o marca la línea
+```
+
+El flujo termina en el navegador: CART-01 no crea pedidos ni movimientos de
+inventario. ORD-01 agregará la frontera Angular → Spring Boot → MySQL y repetirá
+la validación de forma autoritativa.
 
 Dentro de `backend/.../catalog`, las clases `Public*` forman una frontera de
 lectura pública. Pueden depender del dominio y de la abstracción de repositorio,

@@ -33,6 +33,8 @@
 - **Idempotencia:** procesar repetidamente el mismo evento sin repetir su efecto.
 - **Idempotency-Key:** identificador único de un intento de escritura. Permite
   reconocer un reintento después de un timeout y devolver el resultado original.
+- **localStorage:** almacenamiento clave/valor del navegador que sobrevive a
+  recargas. No es una base confiable ni debe contener secretos.
 - **Identificador público:** UUID opaco expuesto por la API; evita revelar la
   clave numérica interna utilizada por índices y relaciones.
 - **Interceptor:** pieza Angular que trata solicitudes/respuestas HTTP transversalmente.
@@ -59,6 +61,8 @@
   bruta y agotamiento de recursos.
 - **Repository:** abstracción para leer o guardar datos del dominio.
 - **Service / caso de uso:** coordina reglas y una operación de negocio.
+- **Snapshot:** copia de datos tomada en un momento. El carrito conserva una
+  fotografía visible, pero debe revalidarla porque precio y disponibilidad cambian.
 - **Sesión:** estado autenticado mantenido por el servidor y asociado a una cookie
   segura del navegador.
 - **Spring Session JDBC:** implementación que persiste sesiones HTTP en tablas de

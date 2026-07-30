@@ -17,7 +17,8 @@
 | INV-01 | Inventario | Ajustar stock | Existencia por variante y movimiento auditable | Alta | Terminada | CAT-02 | Backend/Frontend | No negativo, concurrencia y pruebas | Sobreventa | L |
 | STORE-01 | Tienda | Navegar catálogo | Listar, buscar y ver detalle público | Alta | Terminada | CAT-02 | Frontend/Backend | Responsive, estados y tenant correcto | Rendimiento/SEO | L |
 | MEDIA-01 | Medios | Gestionar imagen principal | Carga, almacenamiento externo, thumbnail y texto alternativo | Alta | Pendiente | STORE-01 | Frontend/Backend/Infraestructura | MIME/tamaño, aislamiento, fallback y eliminación segura | Costo, contenido malicioso y archivos huérfanos | L |
-| ORD-01 | Compra | Carrito y checkout | Carrito local, cliente, entrega y observaciones | Alta | Pendiente | STORE-01, INV-01 | Frontend/Backend | Backend recalcula y persiste snapshot | Precio manipulado | XL |
+| CART-01 | Compra | Carrito local | Selección de variante, cantidades, persistencia local y revalidación | Alta | Terminada | STORE-01 | Frontend | Aislado por tienda, accesible, sin datos personales y revalidado | Datos locales obsoletos | L |
+| ORD-01 | Compra | Checkout invitado | Cliente, entrega, observaciones y creación transaccional del pedido | Alta | Pendiente | CART-01, INV-01 | Frontend/Backend | Backend recalcula y persiste snapshot | Precio manipulado y sobreventa | XL |
 | ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Pendiente | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
 | PAY-01 | Pagos | OAuth y Checkout Pro sandbox | Conectar comercio, preferencia, retorno y webhook idempotente | Alta | Pendiente | ORD-01, F0-02 | Backend/Calidad | OAuth state, firma, importe, duplicados y pruebas | Fraude/secretos | XL |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pendientes y stock bajo | Media | Pendiente | ORD-02 | Backend/Frontend | Datos por tenant y definiciones documentadas | Métricas inconsistentes | M |
@@ -382,3 +383,66 @@ productos, consultar sus variantes y conocer si están disponibles.
   tráfico y volumen de catálogo reales.
 - Antes del primer cliente se ejecutará un análisis `EXPLAIN` con un conjunto de
   datos representativo y una matriz visual en dispositivos móviles reales.
+
+## CART-01 — Carrito local
+
+> Estado: terminada el 2026-07-30. Las decisiones ADR-051 a ADR-057 fueron
+> aprobadas antes de iniciar la implementación.
+
+### Historia
+
+Como visitante quiero guardar variantes en un carrito del comercio para revisar
+cantidades y subtotal antes de iniciar el checkout.
+
+### Criterios de aceptación
+
+- Una variante sólo puede agregarse desde el detalle del producto y después de
+  seleccionarla explícitamente.
+- Las variantes sin disponibilidad no pueden seleccionarse ni agregarse.
+- La cantidad por línea es un entero entre 1 y 99.
+- Agregar nuevamente la misma variante acumula la cantidad sin superar 99.
+- El visitante puede abrir `/tiendas/{storeSlug}/carrito`, cambiar cantidades,
+  eliminar una línea y vaciar el carrito con confirmación.
+- La cabecera muestra el total de unidades y lo actualiza inmediatamente.
+- El carrito persiste en `localStorage` usando una clave versionada y separada
+  por `storeSlug`; nunca almacena datos personales ni secretos.
+- Datos corruptos, incompatibles o fuera de rango se descartan de forma segura.
+- Al abrir el carrito se relee cada producto público. Precio, nombre y opciones
+  se actualizan; una variante retirada o sin stock queda marcada y no participa
+  del subtotal accionable.
+- Un fallo de red conserva el snapshot local, distingue el estado desconocido y
+  permite reintentar sin borrar el carrito.
+- Cambiar de comercio muestra únicamente el carrito de ese comercio.
+- La moneda proviene de la configuración pública y el subtotal usa aritmética
+  decimal, no punto flotante.
+- No se crea pedido, no se descuenta stock y no se solicitan datos del cliente.
+- La interfaz funciona con teclado, anuncia acciones importantes y no presenta
+  desbordamiento horizontal entre 320 y 1280 píxeles.
+- Pruebas, build, revisión, documentación y prueba manual deben completarse antes
+  de marcar la historia como `Terminada`.
+
+### Evidencia de cierre
+
+- Frontend: 83 pruebas en 25 archivos, sin fallos.
+- Build de producción correcto y sin advertencias de presupuesto.
+- Prettier y `git diff --check` sin errores.
+- Prueba manual real con Angular, Spring Boot y MySQL: selección explícita,
+  cantidad 2, acumulación hasta 3, persistencia tras recarga, contador reactivo,
+  subtotal exacto de ARS 50.702,25 y metadatos de Tienda A.
+- Aislamiento manual: Tienda B mostró carrito vacío y contador cero mientras
+  Tienda A conservó tres unidades.
+- Vista de carrito comprobada a 320 píxeles sin desbordamiento horizontal; rutas,
+  encabezados, controles, mensajes y confirmación se expusieron semánticamente.
+- La validación manual detectó y corrigió una carrera de evento en la cantidad
+  del detalle; quedó cubierta con una prueba de regresión.
+- No se modificaron backend, esquema ni datos comerciales: el producto de prueba
+  y su stock permanecen iguales.
+
+### Deuda técnica aceptada
+
+- ORD-01 reemplazará el botón deshabilitado por checkout invitado y validará
+  autoritativamente precio y saldo dentro de MySQL.
+- El carrito no sincroniza pestañas, dispositivos ni cuentas; el carrito servidor
+  permanece en V2.
+- Productos por peso requerirán unidad de medida y cantidades decimales después
+  de validar ese vertical.

@@ -447,6 +447,14 @@ La API pública nunca entrega SKU, cantidad exacta, ledger, versiones, timestamp
 IDs internos, `tenant_id` ni `database_key`. La disponibilidad es informativa:
 ORD-01 deberá releer precio, estado y stock al confirmar una compra.
 
+### Uso del catálogo por CART-01
+
+CART-01 no agrega endpoints. El carrito se conserva localmente y, al abrirlo,
+agrupa líneas por `productSlug` para consultar nuevamente el detalle público.
+Un `404` marca el producto como retirado; un error transitorio conserva el
+snapshot como estado desconocido y permite reintentar. El navegador no envía
+ningún total al backend en este sprint.
+
 ## Errores de seguridad
 
 - `401 Unauthorized`: la operación exige una sesión válida.

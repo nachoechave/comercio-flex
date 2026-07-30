@@ -175,6 +175,18 @@ la API; las claves `BIGINT`, SKU, versiones y cantidades permanecen internas.
 - La disponibilidad comercial futura no debe confundirse con existencia física:
   INV-01 registra cantidad en mano y todavía no modela reservas.
 
+## Carrito local
+
+CART-01 no agrega tablas ni migraciones. Persiste en el navegador una versión
+del formato, identificadores públicos de producto y variante, nombres visibles,
+talle, color, precio como string decimal y cantidad entera. El `storeSlug` forma
+parte de la clave de almacenamiento, no de cada línea.
+
+Ese snapshot es descartable y no constituye un pedido. No contiene cliente,
+dirección, stock exacto, SKU, secretos ni identificadores internos. Al abrir el
+carrito Angular revalida contra el catálogo; ORD-01 diseñará `customers`,
+`delivery_methods`, `orders` y `order_items` mediante una migración posterior.
+
 ## Relaciones principales
 
 ```text
