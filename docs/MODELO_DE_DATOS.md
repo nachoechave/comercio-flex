@@ -65,8 +65,8 @@ versionada; la inicialización automática de esquema no reemplaza a Flyway.
 | `customers` | Compradores invitados asociados al comercio |
 | `delivery_methods` | Retiro o envío |
 | `orders`, `order_items`, `order_status_history` | Compra y fotografía histórica |
-| `payments`, `payment_webhook_events` | Intentos, resultado e idempotencia |
-| `merchant_payment_connections` | Conexión cifrada del comercio |
+| `payment_intents`, `payment_transactions` | Intentos y resultados internos implementados en PAY-01A |
+| `merchant_payment_connections`, `payment_webhook_events` | Conexión e inbox previstos para PAY-01B/C |
 | `audit_events` | Acciones administrativas sensibles |
 
 ### Categorías
@@ -172,30 +172,72 @@ la API; las claves `BIGINT`, SKU, versiones y cantidades permanecen internas.
 - Cada variante posee una única existencia en el MVP; no se modelan ubicaciones.
 - Cada cambio de existencia genera un movimiento de inventario auditable.
 
-### Modelo preliminar de PAY-01
+### Modelo de pagos
 
-> Aprobado conceptualmente el 2026-07-31. Las columnas y restricciones exactas
-> se definirán antes de crear cada migración.
+PAY-01A implementa en cada base tenant `V008__create_payment_foundation.sql` y
+`V009__enforce_case_sensitive_payment_currency.sql`. No modifica la base de
+control.
 
-Base de control:
+#### `payment_intents`
 
-| Tabla propuesta | Responsabilidad |
-|---|---|
-| `payment_oauth_states` | `state` hasheado, tenant, OWNER iniciador, PKCE, vencimiento y consumo de un solo uso |
-| `tenant_payment_routes` | Clave opaca para resolver el tenant de un webhook sin recorrer bases |
+Representa una intención interna de cobrar un pedido. Conserva UUID público,
+pedido, clave idempotente, fingerprint SHA-256, clave estable para la transición
+del pedido, proveedor, intento secuencial, importe, moneda, referencia externa,
+estado y versión optimista.
 
-Base de cada comercio:
+Estados implementados:
 
-| Tabla propuesta | Responsabilidad |
-|---|---|
-| `merchant_payment_connections` | Vendedor, ambiente, estado y tokens OAuth cifrados/versionados |
-| `payment_intents` | Pedido, importe/moneda esperados, referencia externa, preferencia y estado interno |
-| `payment_transactions` | Resultado verificado por `provider_payment_id`; una preferencia puede tener varios intentos |
-| `payment_webhook_events` | Inbox idempotente con recepción, procesamiento, reintentos y error saneado |
+```text
+CREATED → PENDING
+CREATED → REJECTED
+CREATED → APPROVED
+CREATED → REQUIRES_REVIEW
+```
 
-Las restricciones únicas protegerán `external_reference`, `preference_id`,
-`provider_payment_id` y la identidad del evento. Ninguna tabla guardará tokens,
-firmas o secretos en texto plano.
+Un pedido puede tener varios intentos históricos, pero sólo después de que el
+anterior haya sido rechazado. La aplicación bloquea primero `orders` y consulta
+si existe `CREATED`, `PENDING`, `APPROVED` o `REQUIRES_REVIEW`. Además, la
+columna generada `blocking_order_id` y su restricción `UNIQUE` garantizan esta
+regla en MySQL aun ante concurrencia. La unicidad de `(order_id, attempt_number)`
+protege la secuencia de intentos.
+
+Son únicos `public_id`, `idempotency_key`, `transition_idempotency_key`,
+`external_reference` y `(order_id, attempt_number)`.
+
+#### `payment_transactions`
+
+Conserva cada resultado normalizado del proveedor: UUID, intento, identificador
+externo único dentro de su proveedor, estado, importe, moneda, instante de
+aplicación y marca de revisión.
+No guarda payloads externos, datos de tarjeta ni credenciales.
+
+Estados implementados: `PENDING`, `APPROVED` y `REJECTED`. Una transacción
+aprobada puede quedar aplicada o marcada para revisión, nunca ambas. La consulta
+por `(provider, provider_payment_id)` usa `FOR UPDATE`. Si dos pedidos compiten
+por el mismo identificador, la restricción compuesta de MySQL elige un ganador;
+el perdedor se traduce a conflicto de dominio y su intento queda para revisión.
+Las monedas se validan distinguiendo mayúsculas y minúsculas.
+
+```text
+orders
+└── payment_intents
+    └── payment_transactions
+```
+
+PAY-01B agregará `merchant_payment_connections` y estado OAuth en la base de
+control. PAY-01C agregará preferencias reales, routing de notificaciones e inbox
+`payment_webhook_events`. Esas tablas continúan como diseño futuro y no deben
+considerarse implementadas en PAY-01A.
+
+PAY-01A sólo acepta el primer resultado `CREATED → resultado`. La evolución
+externa `PENDING → APPROVED` se implementará en PAY-01C mediante eventos de
+webhook idempotentes; no se simula como un replay inmutable en esta entrega.
+
+El contrato `CredentialCipher` y su adaptador AES-256-GCM ya existen, pero todavía
+no persisten tokens. El ciphertext futuro deberá guardar además nonce, `key_id` y
+contexto autenticado. El AAD usa el identificador público e inmutable del tenant,
+proveedor, ambiente, sujeto, campo y `key_id`; las claves provendrán
+exclusivamente del entorno.
 - Un balance nunca es negativo y no puede exceder la capacidad del decimal.
 - La disponibilidad comercial futura no debe confundirse con existencia física:
   INV-01 registra cantidad en mano y todavía no modela reservas.

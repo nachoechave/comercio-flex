@@ -1,7 +1,7 @@
 # Estructura del proyecto
 
-> Actualizado durante INV-01 el 2026-07-29. El monolito modular incluye identidad,
-> routing tenant, catálogo e inventario administrativo.
+> Actualizado durante PAY-01A el 2026-07-31. El monolito modular incluye identidad,
+> routing tenant, catálogo, inventario, pedidos y una base interna de pagos.
 
 ```text
 comercio-flex/
@@ -75,6 +75,18 @@ backend/src/main/
 │   │   ├── application/            # Transacción, idempotencia y reglas de ajuste
 │   │   ├── domain/                 # Balance, movimiento, dirección y motivo
 │   │   └── infrastructure/jdbc/    # Locks, balances, ledger y listados tenant
+│   ├── order/
+│   │   ├── api/                    # Contratos públicos y administrativos de pedidos
+│   │   ├── application/            # Checkout, operación y transición compartida
+│   │   ├── domain/                 # Pedido, estado, item y forma de entrega
+│   │   └── infrastructure/jdbc/    # Pedidos, reservas, historial y stock tenant
+│   ├── payment/
+│   │   ├── application/            # Caso de uso interno, puertos y cifrado
+│   │   ├── domain/                 # Intento, proveedor y resultados de pago
+│   │   └── infrastructure/
+│   │       ├── crypto/             # AES-GCM sin claves embebidas
+│   │       ├── fake/               # Proveedor determinista sólo para pruebas
+│   │       └── jdbc/               # Intentos y transacciones en la base tenant
 │   ├── tenant/
 │   │   ├── api/                    # Endpoint, filtro y errores HTTP
 │   │   ├── application/            # Resolución, contexto y caso de consulta
@@ -91,8 +103,10 @@ backend/src/main/
 ```
 
 `catalog` contiene categorías, productos y variantes; `inventory` registra
-existencias y movimientos sin modificar publicación ni precio. Los módulos `customer`,
-`order`, `delivery`, `payment` y `reporting` se crearán al comenzar sus historias.
+existencias y movimientos sin modificar publicación ni precio. `order` coordina
+reservas y operación; `payment` conserva intentos financieros sin exponerlos aún
+por HTTP. Los módulos `customer`, `delivery` y `reporting` se crearán al comenzar
+sus historias.
 No se agregan carpetas vacías sólo para simular avance.
 
 Dentro de un módulo de negocio se utilizarán, cuando hagan falta:
@@ -336,6 +350,43 @@ OrderDetail
 El controller no decide transiciones y el repositorio no acepta actores enviados
 por Angular. El caso de uso coordina toda la operación dentro de una transacción
 tenant.
+
+## Flujo interno de pagos de PAY-01A
+
+PAY-01A no agrega controllers ni componentes Angular. El flujo se activa sólo
+desde pruebas mediante una instancia explícita del proveedor falso.
+
+```text
+Prueba de integración abre TenantContext
+→ PaymentApplicationService bloquea el pedido
+→ JdbcPaymentRepository crea o recupera payment_intent
+→ commit antes de invocar PaymentGateway
+→ FakePaymentGateway devuelve APPROVED, PENDING o REJECTED
+→ nueva transacción bloquea order → intent → transaction
+→ PaidOrderConfirmer reutiliza OrderTransitionExecutor
+→ orders + reservations + balances + movements + history
+→ payment_intents + payment_transactions
+```
+
+`payment.application` no depende del adaptador falso ni de JDBC. El puerto
+`PaymentGateway` permite reemplazar el doble de prueba por Mercado Pago en una
+entrega posterior. `OrderTransitionExecutor` contiene las reglas compartidas de
+stock, pero no abre transacciones; tanto administración como pagos lo llaman
+dentro de la transacción tenant correspondiente.
+
+`OrderPaymentPolicy` es el puerto que permite a pedidos preguntar si una
+confirmación manual o una cancelación está permitida. Su adaptador
+`JdbcOrderPaymentPolicy` vive en pagos: así el repositorio de pedidos no conoce
+tablas ajenas a su módulo.
+
+Las restricciones de MySQL son la última barrera ante dos solicitudes
+simultáneas. La aplicación traduce colisiones de clave y deadlocks esperables a
+conflictos del negocio; nunca repite la llamada externa en un replay y marca para
+revisión un resultado externo que no pudo aplicarse de forma segura.
+
+Los datos de pago permanecen en la base ya seleccionada por `TenantContext`.
+No existe fallback, búsqueda global de intentos, endpoint simulador ni secreto
+versionado.
 
 Dentro de `backend/.../catalog`, las clases `Public*` forman una frontera de
 lectura pública. Pueden depender del dominio y de la abstracción de repositorio,

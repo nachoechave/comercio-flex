@@ -552,6 +552,23 @@ Un replay idéntico no repite movimientos ni historial y devuelve el detalle
 actual del pedido; si el pedido avanzó después del primer intento, la respuesta
 refleja ese estado más reciente.
 
+## Base interna de pagos — PAY-01A
+
+PAY-01A no agrega endpoints HTTP. `PaymentApplicationService`, `PaymentGateway`
+y el adaptador falso son internos y se ejercitan únicamente mediante pruebas.
+El navegador no puede seleccionar resultados falsos, consultar intentos ni
+recibir identificadores o material cifrado.
+
+Los contratos existentes de catálogo, carrito, pedido y administración no
+cambian. La transición administrativa responde `409` mediante su manejo de error
+existente cuando intenta confirmar un pedido con pago activo o cancelar un pedido
+ya cobrado. Los endpoints reales para iniciar Checkout Pro y consultar su estado
+se definirán en PAY-01C, después de conectar la cuenta en PAY-01B.
+
+Las colisiones concurrentes internas se normalizan como conflictos de negocio y
+el intento que recibió un resultado externo no aplicable queda
+`REQUIRES_REVIEW`. Este estado aún no se expone como contrato HTTP en PAY-01A.
+
 ## Errores de seguridad
 
 - `401 Unauthorized`: la operación exige una sesión válida.

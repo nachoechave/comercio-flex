@@ -63,10 +63,19 @@
   productos, referencia y URLs que produce el enlace de inicio del pago.
 - **PaymentGateway:** puerto del dominio que abstrae al proveedor de pagos; permite
   usar Mercado Pago real o un proveedor falso sin cambiar las reglas de negocio.
+- **Intento de pago:** registro interno que vincula un pedido con un intento de
+  cobro, su importe esperado, moneda, proveedor, estado e idempotencia.
+- **AES-GCM:** cifrado autenticado que protege el contenido y también detecta si
+  el ciphertext o su contexto fueron alterados. Cada cifrado usa un nonce nuevo.
+- **AAD:** datos adicionales autenticados por AES-GCM. No se cifran, pero impiden
+  mover una credencial entre tenant, ambiente, conexión o campo sin detección.
 - **External reference:** identificador opaco enviado al proveedor para correlacionar
   el pago verificado con un intento interno.
 - **Inbox de webhooks:** tabla durable que deduplica notificaciones externas y
   permite procesarlas o reintentarlas sin perder eventos.
+- **Deadlock:** bloqueo circular entre transacciones concurrentes. MySQL aborta
+  una de ellas para recuperar el progreso; la aplicación debe traducir ese caso
+  a un resultado controlado o reintentable sin duplicar efectos.
 - **Rate limiting:** límite temporal de solicitudes para reducir abuso, fuerza
   bruta y agotamiento de recursos.
 - **Repository:** abstracción para leer o guardar datos del dominio.

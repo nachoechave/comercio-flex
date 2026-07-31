@@ -21,7 +21,7 @@
 | ORD-01 | Compra | Checkout invitado | Retiro, contacto, reserva temporal y creación transaccional del pedido | Alta | Terminada | CART-01, INV-01 | Frontend/Backend | Backend recalcula, reserva y persiste snapshot idempotente | Precio manipulado, abuso y sobreventa | XL |
 | ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Terminada | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
 | PAY-01 | Pagos | Integrar Checkout Pro sandbox | Épica dividida en PAY-01A–D | Alta | En análisis | ORD-02, F0-02 | Coordinación | Cuatro entregas revisables y sandbox verificado | Fraude/secretos | XL |
-| PAY-01A | Pagos | Crear base interna de pagos | Dominio, estados, migraciones, cifrado y proveedor falso | Alta | En análisis | ORD-02 | Backend/Datos/Calidad | Flujo interno verificable sin red ni credenciales reales | Estados inconsistentes | L |
+| PAY-01A | Pagos | Crear base interna de pagos | Dominio, estados, migraciones, cifrado y proveedor falso | Alta | Terminada | ORD-02 | Backend/Datos/Calidad | Flujo interno verificable sin red ni credenciales reales | Estados inconsistentes | L |
 | PAY-01B | Pagos | Conectar cuenta vendedora | OAuth Authorization Code, state, PKCE y tokens cifrados | Alta | Pendiente | PAY-01A | Backend/Seguridad | Sólo OWNER conecta y no se exponen secretos | Robo/mezcla de tokens | L |
 | PAY-01C | Pagos | Ejecutar y confirmar pagos | Preferencia, retorno, inbox webhook y confirmación idempotente | Alta | Pendiente | PAY-01B | Backend/Frontend | Pago verificado coordina pedido y stock una vez | Doble cobro/stock | XL |
 | PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | Pendiente | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
@@ -581,8 +581,8 @@ válidos para preparar entregas y mantener el inventario consistente.
 
 ## PAY-01A — Base interna de pagos
 
-> Estado: en análisis desde el 2026-07-31. Alcance aprobado mediante ADR-076 a
-> ADR-084. La implementación todavía requiere autorización de inicio.
+> Estado: terminada el 2026-07-31. Alcance aprobado mediante ADR-076 a ADR-084 e
+> implementación autorizada por el Product Owner.
 
 ### Historia
 
@@ -645,3 +645,17 @@ retorno ni webhooks públicos.
 - Recorrido manual local con datos ficticios y sin secretos externos.
 - Regresión completa de backend y frontend, aun cuando PAY-01A no modifique
   interfaces Angular.
+
+### Evidencia de cierre
+
+- Backend completo: `108` pruebas, `0` fallos y `0` errores.
+- Frontend completo: `94` pruebas en `29` archivos, sin fallos.
+- Build productivo Angular: correcto; permanece el aviso previo no bloqueante de
+  `cart-page.scss` por `98 bytes` sobre su presupuesto.
+- MySQL 8.4: V008 y V009 aplicadas desde cero en dos bases tenant; moneda en
+  minúsculas, segundo intento bloqueante y referencias incompatibles rechazadas.
+- Concurrencia: una sola llamada al gateway en replay, conflicto controlado para
+  clave idempotente compartida y para identificador externo compartido.
+- Seguridad: cifrado AES-256-GCM con nonce aleatorio, AAD contextual, rotación y
+  alias de claves verificados sin secretos reales.
+- Revisión: arquitectura y calidad confirmaron que no quedan bloqueantes.

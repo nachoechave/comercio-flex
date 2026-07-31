@@ -240,6 +240,39 @@ limpieza programada independiente queda como evolución operativa.
 13. Aplicar filtros por estado y número; con más de 20 registros, verificar las
     páginas anterior y siguiente.
 
+### Probar la base interna de pagos
+
+PAY-01A no tiene botón, endpoint ni credenciales externas. Su recorrido manual
+consiste en ejecutar los escenarios identificados contra MySQL real:
+
+```powershell
+Set-Location .\backend
+.\mvnw.cmd "-Dtest=GuestOrderIntegrationTests" test
+```
+
+La prueba crea pedidos ficticios y verifica:
+
+1. `APPROVED` confirma el pedido, consume la reserva y descuenta stock una vez.
+2. El replay devuelve el mismo intento sin duplicar transacción ni movimiento.
+3. `PENDING` y `REJECTED` no cambian pedido ni balance físico.
+4. Una aprobación tardía queda `REQUIRES_REVIEW` y no descuenta stock.
+5. Dos hilos concurrentes producen un solo efecto financiero y de inventario.
+6. El UUID de un pedido de tenant A no puede iniciar un pago desde tenant B.
+7. Un pedido cobrado no puede cancelarse mientras no exista reembolso.
+8. Dos pedidos que compiten por una clave idempotente o un identificador externo
+   reciben un conflicto controlado; no queda una excepción JDBC expuesta.
+9. Un importe o moneda externos inconsistentes dejan el intento en revisión sin
+   transacción, movimiento ni descuento parcial.
+
+Las pruebas criptográficas no usan claves reales:
+
+```powershell
+.\mvnw.cmd "-Dtest=AesGcmCredentialCipherTests,FakePaymentGatewayTests" test
+```
+
+En PAY-01B las claves se leerán desde variables de entorno y no tendrán valores
+por defecto. Nunca debe agregarse un token real para probar PAY-01A.
+
 ## Pruebas
 
 ```powershell
