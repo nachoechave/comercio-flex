@@ -303,7 +303,7 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 			previousStatus.name(),
 			newStatus.name(),
 			note,
-			actorId.toString(),
+			actorId == null ? null : actorId.toString(),
 			actorName);
 	}
 

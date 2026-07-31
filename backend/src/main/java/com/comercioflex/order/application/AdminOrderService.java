@@ -22,8 +22,12 @@ public class AdminOrderService {
 	@Autowired
 	public AdminOrderService(
 			AdminOrderRepository repository,
-			@Qualifier("tenantTransactionTemplate") TransactionTemplate transactionTemplate) {
-		this(repository, transactionTemplate, new OrderTransitionExecutor(repository));
+			@Qualifier("tenantTransactionTemplate") TransactionTemplate transactionTemplate,
+			OrderPaymentPolicy paymentPolicy) {
+		this(
+			repository,
+			transactionTemplate,
+			new OrderTransitionExecutor(repository, paymentPolicy, Clock.systemUTC()));
 	}
 
 	AdminOrderService(

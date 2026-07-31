@@ -8,12 +8,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.comercioflex.order.domain.OrderStatus;
 
 @Component
 class OrderTransitionExecutor {
+
+	private static final UUID PAYMENT_SYSTEM_ACTOR_ID = UUID.fromString(
+		"00000000-0000-4000-8000-000000000001");
 
 	private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED = Map.of(
 		OrderStatus.PENDING_CONFIRMATION,
@@ -24,14 +28,26 @@ class OrderTransitionExecutor {
 		EnumSet.of(OrderStatus.COMPLETED, OrderStatus.CANCELLED));
 
 	private final AdminOrderRepository repository;
+	private final OrderPaymentPolicy paymentPolicy;
 	private final Clock clock;
 
-	OrderTransitionExecutor(AdminOrderRepository repository) {
-		this(repository, Clock.systemUTC());
+	@Autowired
+	OrderTransitionExecutor(
+			AdminOrderRepository repository,
+			OrderPaymentPolicy paymentPolicy) {
+		this(repository, paymentPolicy, Clock.systemUTC());
 	}
 
 	OrderTransitionExecutor(AdminOrderRepository repository, Clock clock) {
+		this(repository, OrderPaymentPolicy.allowAll(), clock);
+	}
+
+	OrderTransitionExecutor(
+			AdminOrderRepository repository,
+			OrderPaymentPolicy paymentPolicy,
+			Clock clock) {
 		this.repository = repository;
+		this.paymentPolicy = paymentPolicy;
 		this.clock = clock;
 	}
 
@@ -53,6 +69,17 @@ class OrderTransitionExecutor {
 				.contains(command.targetStatus())) {
 			throw new InvalidOrderTransitionException(
 				"La transición solicitada no está permitida.");
+		}
+		if (command.targetStatus() == OrderStatus.CONFIRMED
+				&& command.actorId() != null
+				&& paymentPolicy.blocksManualConfirmation(order.internalId())) {
+			throw new InvalidOrderTransitionException(
+				"El pedido tiene un pago en proceso y no puede confirmarse manualmente.");
+		}
+		if (command.targetStatus() == OrderStatus.CANCELLED
+				&& paymentPolicy.hasAppliedPayment(order.internalId())) {
+			throw new InvalidOrderTransitionException(
+				"El pedido cobrado no puede cancelarse sin un reembolso.");
 		}
 
 		if (command.targetStatus() == OrderStatus.CONFIRMED) {
@@ -81,7 +108,7 @@ class OrderTransitionExecutor {
 			order.status(),
 			command.targetStatus(),
 			command.note(),
-			command.actorId(),
+			effectiveActorId(command),
 			command.actorDisplayName());
 		return OrderTransitionExecution.completed(repository.findDetail(command.orderId())
 			.orElseThrow(AdminOrderNotFoundException::new));
@@ -112,7 +139,7 @@ class OrderTransitionExecutor {
 				balanceVersion,
 				restoring,
 				movementId,
-				command.actorId(),
+				effectiveActorId(command),
 				command.actorDisplayName());
 		}
 		return lines.size();
@@ -128,5 +155,9 @@ class OrderTransitionExecutor {
 	private UUID movementId(UUID key, UUID variantId) {
 		return UUID.nameUUIDFromBytes(
 			(key + ":" + variantId).getBytes(StandardCharsets.UTF_8));
+	}
+
+	private UUID effectiveActorId(OrderTransitionCommand command) {
+		return command.actorId() == null ? PAYMENT_SYSTEM_ACTOR_ID : command.actorId();
 	}
 }
