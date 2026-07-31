@@ -17,14 +17,18 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -33,6 +37,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -43,8 +48,21 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.comercioflex.order.application.AdminOrderNotFoundException;
 import com.comercioflex.order.application.AdminOrderService;
+import com.comercioflex.order.application.InvalidOrderTransitionException;
 import com.comercioflex.order.application.OrderTransitionCommand;
+import com.comercioflex.order.application.PaidOrderConfirmer;
 import com.comercioflex.order.domain.OrderStatus;
+import com.comercioflex.payment.application.GatewayPayment;
+import com.comercioflex.payment.application.PaymentApplicationService;
+import com.comercioflex.payment.application.PaymentCommand;
+import com.comercioflex.payment.application.PaymentConflictException;
+import com.comercioflex.payment.application.PaymentGateway;
+import com.comercioflex.payment.application.PaymentInitiation;
+import com.comercioflex.payment.application.PaymentRepository;
+import com.comercioflex.payment.domain.PaymentIntentStatus;
+import com.comercioflex.payment.domain.PaymentProvider;
+import com.comercioflex.payment.domain.PaymentResultStatus;
+import com.comercioflex.payment.infrastructure.fake.FakePaymentGateway;
 import com.comercioflex.identity.application.PlatformPrincipal;
 import com.comercioflex.identity.application.UserCredentials;
 import com.comercioflex.identity.domain.UserStatus;
@@ -86,6 +104,13 @@ class GuestOrderIntegrationTests {
 	private ObjectMapper objectMapper;
 	@Autowired
 	private AdminOrderService adminOrderService;
+	@Autowired
+	private PaidOrderConfirmer paidOrderConfirmer;
+	@Autowired
+	private PaymentRepository paymentRepository;
+	@Autowired
+	@Qualifier("tenantTransactionTemplate")
+	private TransactionTemplate tenantTransactionTemplate;
 	@Autowired
 	private TenantContext tenantContext;
 
@@ -299,6 +324,335 @@ class GuestOrderIntegrationTests {
 	}
 
 	@Test
+	void approvedFakePaymentConfirmsOnceAndProtectsPaidCancellation()
+			throws Exception {
+		JsonNode created = create(UUID.randomUUID(), "2", 201);
+		UUID orderId = UUID.fromString(created.at("/order/id").asText());
+		UUID key = UUID.randomUUID();
+		PaymentApplicationService payments = paymentService(PaymentResultStatus.APPROVED);
+
+		try (var scope = tenantContext.open("tenant-a")) {
+			var first = payments.initiate(new PaymentCommand(orderId, key));
+			var replay = payments.initiate(new PaymentCommand(orderId, key));
+			assertThat(first.paymentIntent().status())
+				.isEqualTo(PaymentIntentStatus.APPROVED);
+			assertThat(replay.paymentIntent().id())
+				.isEqualTo(first.paymentIntent().id());
+			assertThat(replay.replayed()).isTrue();
+			assertThatThrownBy(() -> adminOrderService.transition(
+				new OrderTransitionCommand(
+					orderId,
+					UUID.randomUUID(),
+					OrderStatus.CANCELLED,
+					null,
+					OPERATOR_ID,
+					"Operador")))
+				.isInstanceOf(InvalidOrderTransitionException.class)
+				.hasMessageContaining("reembolso");
+		}
+
+		assertThat(text(TENANT_A_DATABASE, "SELECT status FROM orders"))
+			.isEqualTo("CONFIRMED");
+		assertThat(decimal(TENANT_A_DATABASE,
+			"SELECT quantity FROM inventory_balances")).isEqualTo("3.000");
+		assertThat(text(TENANT_A_DATABASE,
+			"SELECT status FROM inventory_reservations")).isEqualTo("CONSUMED");
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM payment_intents")).isEqualTo(1);
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM payment_transactions")).isEqualTo(1);
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM inventory_movements")).isEqualTo(1);
+	}
+
+	@Test
+	void pendingAndRejectedPaymentsDoNotChangeOrderOrPhysicalStock()
+			throws Exception {
+		UUID pendingOrderId = UUID.fromString(
+			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
+		try (var scope = tenantContext.open("tenant-a")) {
+			var pending = paymentService(PaymentResultStatus.PENDING)
+				.initiate(new PaymentCommand(pendingOrderId, UUID.randomUUID()));
+			assertThat(pending.paymentIntent().status())
+				.isEqualTo(PaymentIntentStatus.PENDING);
+			assertThatThrownBy(() -> paymentService(PaymentResultStatus.APPROVED)
+				.initiate(new PaymentCommand(pendingOrderId, UUID.randomUUID())))
+				.isInstanceOf(PaymentConflictException.class)
+				.hasMessageContaining("pago activo");
+		}
+
+		UUID rejectedOrderId = UUID.fromString(
+			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
+		try (var scope = tenantContext.open("tenant-a")) {
+			var rejected = paymentService(PaymentResultStatus.REJECTED)
+				.initiate(new PaymentCommand(rejectedOrderId, UUID.randomUUID()));
+			assertThat(rejected.paymentIntent().status())
+				.isEqualTo(PaymentIntentStatus.REJECTED);
+		}
+
+		assertThat(count(TENANT_A_DATABASE, """
+			SELECT COUNT(*) FROM orders WHERE status = 'PENDING_CONFIRMATION'
+			""")).isEqualTo(2);
+		assertThat(decimal(TENANT_A_DATABASE,
+			"SELECT quantity FROM inventory_balances")).isEqualTo("5.000");
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM inventory_movements")).isZero();
+		assertThatThrownBy(() -> execute(TENANT_A_DATABASE, """
+			INSERT INTO payment_intents (
+				public_id, order_id, idempotency_key, request_fingerprint,
+				transition_idempotency_key, provider, status, attempt_number,
+				amount, currency_code, external_reference
+			)
+			SELECT
+				UUID_TO_BIN(UUID()), order_id, UUID_TO_BIN(UUID()), request_fingerprint,
+				UUID_TO_BIN(UUID()), provider, 'CREATED', attempt_number + 10,
+				amount, currency_code, CONCAT('duplicate-', UUID())
+			FROM payment_intents
+			WHERE status = 'PENDING'
+			"""))
+			.isInstanceOf(SQLException.class);
+		assertThatThrownBy(() -> execute(TENANT_A_DATABASE, """
+			UPDATE payment_intents SET currency_code = 'ars' LIMIT 1
+			"""))
+			.isInstanceOf(SQLException.class);
+		assertThatThrownBy(() -> execute(TENANT_A_DATABASE, """
+			UPDATE payment_transactions SET currency_code = 'ars' LIMIT 1
+			"""))
+			.isInstanceOf(SQLException.class);
+	}
+
+	@Test
+	void rejectsCrossOrderIdempotencyAndProviderIdentifierCollisions()
+			throws Exception {
+		UUID firstOrderId = UUID.fromString(
+			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
+		UUID secondOrderId = UUID.fromString(
+			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
+		UUID sharedKey = UUID.randomUUID();
+		PaymentGateway fixedRejected = fixedGateway(
+			"fake-shared-provider-id",
+			PaymentResultStatus.REJECTED);
+
+		try (var scope = tenantContext.open("tenant-a")) {
+			paymentService(fixedRejected).initiate(
+				new PaymentCommand(firstOrderId, sharedKey));
+			assertThatThrownBy(() -> paymentService(fixedRejected).initiate(
+				new PaymentCommand(secondOrderId, sharedKey)))
+				.isInstanceOf(PaymentConflictException.class)
+				.hasMessageContaining("otra operación");
+			assertThatThrownBy(() -> paymentService(fixedRejected).initiate(
+				new PaymentCommand(secondOrderId, UUID.randomUUID())))
+				.isInstanceOf(PaymentConflictException.class)
+				.hasMessageContaining("proveedor");
+		}
+
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM payment_transactions")).isEqualTo(1);
+		assertThat(count(TENANT_A_DATABASE, """
+			SELECT COUNT(*) FROM payment_intents WHERE status = 'REQUIRES_REVIEW'
+			""")).isEqualTo(1);
+	}
+
+	@Test
+	void resolvesConcurrentCrossOrderIdempotencyAsADomainConflict()
+			throws Exception {
+		UUID firstOrderId = UUID.fromString(
+			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
+		UUID secondOrderId = UUID.fromString(
+			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
+		UUID sharedKey = UUID.randomUUID();
+		PaymentApplicationService payments = paymentService(PaymentResultStatus.REJECTED);
+		CountDownLatch start = new CountDownLatch(1);
+		var executor = Executors.newFixedThreadPool(2);
+		try {
+			Future<Object> first = executor.submit(() -> {
+				start.await();
+				return capturePaymentResult(payments, firstOrderId, sharedKey);
+			});
+			Future<Object> second = executor.submit(() -> {
+				start.await();
+				return capturePaymentResult(payments, secondOrderId, sharedKey);
+			});
+			start.countDown();
+			List<Object> results = List.of(
+				first.get(10, TimeUnit.SECONDS),
+				second.get(10, TimeUnit.SECONDS));
+
+			assertThat(resultTypes(results)).containsExactlyInAnyOrder(
+				PaymentInitiation.class.getName(),
+				PaymentConflictException.class.getName());
+		}
+		finally {
+			executor.shutdownNow();
+		}
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM payment_intents")).isEqualTo(1);
+	}
+
+	@Test
+	void resolvesConcurrentProviderIdentifierCollisionAndReleasesLosingOrder()
+			throws Exception {
+		UUID firstOrderId = UUID.fromString(
+			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
+		UUID secondOrderId = UUID.fromString(
+			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
+		PaymentApplicationService payments = paymentService(
+			new SharedIdentifierBarrierGateway());
+		var executor = Executors.newFixedThreadPool(2);
+		try {
+			Future<Object> first = executor.submit(() -> capturePaymentResult(
+				payments, firstOrderId, UUID.randomUUID()));
+			Future<Object> second = executor.submit(() -> capturePaymentResult(
+				payments, secondOrderId, UUID.randomUUID()));
+			List<Object> results = List.of(
+				first.get(10, TimeUnit.SECONDS),
+				second.get(10, TimeUnit.SECONDS));
+
+			assertThat(resultTypes(results)).containsExactlyInAnyOrder(
+				PaymentInitiation.class.getName(),
+				PaymentConflictException.class.getName());
+		}
+		finally {
+			executor.shutdownNow();
+		}
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM payment_transactions")).isEqualTo(1);
+		assertThat(count(TENANT_A_DATABASE, """
+			SELECT COUNT(*) FROM payment_intents WHERE status = 'REQUIRES_REVIEW'
+			""")).isEqualTo(1);
+	}
+
+	@Test
+	void invalidGatewayCommercialDataRequiresReviewWithoutStockEffects()
+			throws Exception {
+		UUID orderId = UUID.fromString(
+			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
+		PaymentGateway mismatchedAmount = new PaymentGateway() {
+			@Override
+			public PaymentProvider provider() {
+				return PaymentProvider.FAKE;
+			}
+
+			@Override
+			public GatewayPayment createPayment(
+					com.comercioflex.payment.application.GatewayPaymentRequest request) {
+				return new GatewayPayment(
+					"fake-invalid-amount",
+					PaymentResultStatus.APPROVED,
+					request.amount().add(java.math.BigDecimal.ONE),
+					request.currencyCode());
+			}
+		};
+
+		try (var scope = tenantContext.open("tenant-a")) {
+			assertThatThrownBy(() -> paymentService(mismatchedAmount).initiate(
+				new PaymentCommand(orderId, UUID.randomUUID())))
+				.isInstanceOf(PaymentConflictException.class)
+				.hasMessageContaining("no coincide");
+		}
+
+		assertThat(text(TENANT_A_DATABASE, "SELECT status FROM payment_intents"))
+			.isEqualTo("REQUIRES_REVIEW");
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM payment_transactions")).isZero();
+		assertThat(decimal(TENANT_A_DATABASE,
+			"SELECT quantity FROM inventory_balances")).isEqualTo("5.000");
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM inventory_movements")).isZero();
+	}
+
+	@Test
+	void lateApprovalRequiresReviewAndPaymentDataRemainsTenantIsolated()
+			throws Exception {
+		UUID orderId = UUID.fromString(
+			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
+		PaymentGateway lateApproval = new PaymentGateway() {
+			@Override
+			public PaymentProvider provider() {
+				return PaymentProvider.FAKE;
+			}
+
+			@Override
+			public GatewayPayment createPayment(
+					com.comercioflex.payment.application.GatewayPaymentRequest request) {
+				try {
+					execute(TENANT_A_DATABASE, """
+						UPDATE orders
+						SET reservation_expires_at = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND
+						""");
+				}
+				catch (SQLException exception) {
+					throw new IllegalStateException(exception);
+				}
+				return new GatewayPayment(
+					"fake-late-approval",
+					PaymentResultStatus.APPROVED,
+					request.amount(),
+					request.currencyCode());
+			}
+		};
+
+		try (var scope = tenantContext.open("tenant-a")) {
+			var result = paymentService(lateApproval)
+				.initiate(new PaymentCommand(orderId, UUID.randomUUID()));
+			assertThat(result.paymentIntent().status())
+				.isEqualTo(PaymentIntentStatus.REQUIRES_REVIEW);
+		}
+		try (var scope = tenantContext.open("tenant-b")) {
+			assertThatThrownBy(() -> paymentService(PaymentResultStatus.APPROVED)
+				.initiate(new PaymentCommand(orderId, UUID.randomUUID())))
+				.isInstanceOf(com.comercioflex.payment.application.InvalidPaymentException.class);
+		}
+
+		assertThat(text(TENANT_A_DATABASE, "SELECT status FROM orders"))
+			.isEqualTo("EXPIRED");
+		assertThat(count(TENANT_A_DATABASE, """
+			SELECT COUNT(*) FROM payment_transactions WHERE review_required = TRUE
+			""")).isEqualTo(1);
+		assertThat(count(TENANT_B_DATABASE,
+			"SELECT COUNT(*) FROM payment_intents")).isZero();
+		assertThat(decimal(TENANT_A_DATABASE,
+			"SELECT quantity FROM inventory_balances")).isEqualTo("5.000");
+	}
+
+	@RepeatedTest(3)
+	void serializesDuplicateApprovedPaymentsWithoutDuplicatingStockEffects()
+			throws Exception {
+		UUID orderId = UUID.fromString(
+			create(UUID.randomUUID(), "2", 201).at("/order/id").asText());
+		UUID key = UUID.randomUUID();
+		BlockingCountingGateway gateway = new BlockingCountingGateway();
+		PaymentApplicationService payments = paymentService(gateway);
+		var executor = Executors.newFixedThreadPool(2);
+		try {
+			Future<PaymentInitiation> first = executor.submit(
+				() -> initiateWithinTenant(payments, orderId, key));
+			assertThat(gateway.awaitInvocation()).isTrue();
+			Future<PaymentInitiation> second = executor.submit(
+				() -> initiateWithinTenant(payments, orderId, key));
+			PaymentInitiation replay = second.get(10, TimeUnit.SECONDS);
+			assertThat(replay.replayed()).isTrue();
+			gateway.release();
+			assertThat(first.get().paymentIntent().id())
+				.isEqualTo(replay.paymentIntent().id());
+		}
+		finally {
+			gateway.release();
+			executor.shutdownNow();
+		}
+
+		assertThat(gateway.invocations()).isEqualTo(1);
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM payment_intents")).isEqualTo(1);
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM payment_transactions")).isEqualTo(1);
+		assertThat(count(TENANT_A_DATABASE,
+			"SELECT COUNT(*) FROM inventory_movements")).isEqualTo(1);
+		assertThat(decimal(TENANT_A_DATABASE,
+			"SELECT quantity FROM inventory_balances")).isEqualTo("3.000");
+	}
+
+	@Test
 	void securesAndOperatesAdminOrderEndpoints() throws Exception {
 		JsonNode created = create(UUID.randomUUID(), "1", 201);
 		String orderId = created.at("/order/id").asText();
@@ -437,9 +791,102 @@ class GuestOrderIntegrationTests {
 			UserStatus.ACTIVE));
 	}
 
+	private PaymentApplicationService paymentService(PaymentResultStatus result) {
+		return paymentService(new FakePaymentGateway(result));
+	}
+
+	private PaymentApplicationService paymentService(PaymentGateway gateway) {
+		return new PaymentApplicationService(
+			paymentRepository,
+			gateway,
+			paidOrderConfirmer,
+			tenantTransactionTemplate);
+	}
+
+	private PaymentGateway fixedGateway(
+			String providerPaymentId,
+			PaymentResultStatus status) {
+		return new PaymentGateway() {
+			@Override
+			public PaymentProvider provider() {
+				return PaymentProvider.FAKE;
+			}
+
+			@Override
+			public GatewayPayment createPayment(
+					com.comercioflex.payment.application.GatewayPaymentRequest request) {
+				return new GatewayPayment(
+					providerPaymentId,
+					status,
+					request.amount(),
+					request.currencyCode());
+			}
+		};
+	}
+
+	private PaymentInitiation initiateWithinTenant(
+			PaymentApplicationService payments,
+			UUID orderId,
+			UUID key) {
+		try (var scope = tenantContext.open("tenant-a")) {
+			return payments.initiate(new PaymentCommand(orderId, key));
+		}
+	}
+
+	private Object capturePaymentResult(
+			PaymentApplicationService payments,
+			UUID orderId,
+			UUID key) {
+		try {
+			return initiateWithinTenant(payments, orderId, key);
+		}
+		catch (RuntimeException exception) {
+			return exception;
+		}
+	}
+
+	private List<String> resultTypes(List<Object> results) {
+		return results.stream()
+			.map(result -> result.getClass().getName())
+			.toList();
+	}
+
+	private static final class SharedIdentifierBarrierGateway
+			implements PaymentGateway {
+
+		private final CountDownLatch invocations = new CountDownLatch(2);
+
+		@Override
+		public PaymentProvider provider() {
+			return PaymentProvider.FAKE;
+		}
+
+		@Override
+		public GatewayPayment createPayment(
+				com.comercioflex.payment.application.GatewayPaymentRequest request) {
+			invocations.countDown();
+			try {
+				if (!invocations.await(10, TimeUnit.SECONDS)) {
+					throw new IllegalStateException("No llegaron ambas solicitudes.");
+				}
+			}
+			catch (InterruptedException exception) {
+				Thread.currentThread().interrupt();
+				throw new IllegalStateException(exception);
+			}
+			return new GatewayPayment(
+				"fake-concurrent-shared-id",
+				PaymentResultStatus.REJECTED,
+				request.amount(),
+				request.currencyCode());
+		}
+	}
+
 	private static void resetTenant(
 			MySQLContainer<?> database,
 			String storeName) throws SQLException {
+		execute(database, "DELETE FROM payment_transactions");
+		execute(database, "DELETE FROM payment_intents");
 		execute(database, "DELETE FROM order_status_history");
 		execute(database, "DELETE FROM inventory_movements");
 		execute(database, "DELETE FROM inventory_reservations");
@@ -510,5 +957,50 @@ class GuestOrderIntegrationTests {
 		registry.add(prefix + ".url", database::getJdbcUrl);
 		registry.add(prefix + ".username", database::getUsername);
 		registry.add(prefix + ".password", database::getPassword);
+	}
+
+	private static final class BlockingCountingGateway implements PaymentGateway {
+
+		private final AtomicInteger invocations = new AtomicInteger();
+		private final CountDownLatch invoked = new CountDownLatch(1);
+		private final CountDownLatch release = new CountDownLatch(1);
+
+		@Override
+		public PaymentProvider provider() {
+			return PaymentProvider.FAKE;
+		}
+
+		@Override
+		public GatewayPayment createPayment(
+				com.comercioflex.payment.application.GatewayPaymentRequest request) {
+			invocations.incrementAndGet();
+			invoked.countDown();
+			try {
+				if (!release.await(10, TimeUnit.SECONDS)) {
+					throw new IllegalStateException("La prueba no liberó el gateway falso.");
+				}
+			}
+			catch (InterruptedException exception) {
+				Thread.currentThread().interrupt();
+				throw new IllegalStateException(exception);
+			}
+			return new GatewayPayment(
+				"fake-blocking-payment",
+				PaymentResultStatus.APPROVED,
+				request.amount(),
+				request.currencyCode());
+		}
+
+		boolean awaitInvocation() throws InterruptedException {
+			return invoked.await(10, TimeUnit.SECONDS);
+		}
+
+		void release() {
+			release.countDown();
+		}
+
+		int invocations() {
+			return invocations.get();
+		}
 	}
 }

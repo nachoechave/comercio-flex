@@ -40,21 +40,23 @@ class AdminOrderServiceTests {
 	private static final Instant NOW = Instant.parse("2026-07-30T18:00:00Z");
 
 	private AdminOrderRepository repository;
+	private OrderPaymentPolicy paymentPolicy;
 	private AdminOrderService service;
 
 	@BeforeEach
 	@SuppressWarnings("unchecked")
 	void setUp() {
 		repository = mock(AdminOrderRepository.class);
+		paymentPolicy = mock(OrderPaymentPolicy.class);
 		TransactionTemplate transactions = mock(TransactionTemplate.class);
 		when(transactions.execute(any())).thenAnswer(invocation -> {
 			TransactionCallback<Object> callback = invocation.getArgument(0);
 			return callback.doInTransaction(mock(TransactionStatus.class));
 		});
-		service = new AdminOrderService(
+		service = new AdminOrderService(repository, transactions, new OrderTransitionExecutor(
 			repository,
-			transactions,
-			Clock.fixed(NOW, ZoneOffset.UTC));
+			paymentPolicy,
+			Clock.fixed(NOW, ZoneOffset.UTC)));
 		when(repository.findTransition(KEY)).thenReturn(Optional.empty());
 		when(repository.findDetail(ORDER_ID)).thenReturn(Optional.of(detail()));
 	}
@@ -92,6 +94,30 @@ class AdminOrderServiceTests {
 
 		verify(repository).updateReservations(7, "CONSUMED", "RELEASED");
 		verify(repository).updateOrderStatus(7, 1, OrderStatus.CANCELLED);
+	}
+
+	@Test
+	void blocksManualConfirmationWhilePaymentIsActive() {
+		when(repository.lockOrder(ORDER_ID)).thenReturn(Optional.of(
+			locked(OrderStatus.PENDING_CONFIRMATION, 0)));
+		when(paymentPolicy.blocksManualConfirmation(7)).thenReturn(true);
+
+		assertThatThrownBy(() -> service.transition(command(OrderStatus.CONFIRMED)))
+			.isInstanceOf(InvalidOrderTransitionException.class)
+			.hasMessageContaining("pago en proceso");
+		verify(repository, never()).updateBalance(anyLong(), any());
+	}
+
+	@Test
+	void blocksCancellationForApprovedPayment() {
+		when(repository.lockOrder(ORDER_ID)).thenReturn(Optional.of(
+			locked(OrderStatus.CONFIRMED, 1)));
+		when(paymentPolicy.hasAppliedPayment(7)).thenReturn(true);
+
+		assertThatThrownBy(() -> service.transition(command(OrderStatus.CANCELLED)))
+			.isInstanceOf(InvalidOrderTransitionException.class)
+			.hasMessageContaining("reembolso");
+		verify(repository, never()).updateBalance(anyLong(), any());
 	}
 
 	@Test
