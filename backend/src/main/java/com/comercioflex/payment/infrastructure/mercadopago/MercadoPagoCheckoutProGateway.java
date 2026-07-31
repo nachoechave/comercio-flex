@@ -1,0 +1,173 @@
+package com.comercioflex.payment.infrastructure.mercadopago;
+
+import java.net.URI;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+import com.mercadopago.client.merchantorder.MerchantOrderClient;
+import com.mercadopago.client.payment.PaymentClient;
+import com.mercadopago.client.preference.PreferenceBackUrlsRequest;
+import com.mercadopago.client.preference.PreferenceClient;
+import com.mercadopago.client.preference.PreferenceItemRequest;
+import com.mercadopago.client.preference.PreferencePaymentMethodsRequest;
+import com.mercadopago.client.preference.PreferencePaymentTypeRequest;
+import com.mercadopago.client.preference.PreferenceRequest;
+import com.mercadopago.core.MPRequestOptions;
+import com.mercadopago.exceptions.MPApiException;
+import com.mercadopago.exceptions.MPException;
+import com.mercadopago.resources.merchantorder.MerchantOrder;
+import com.mercadopago.resources.payment.Payment;
+import com.mercadopago.resources.preference.Preference;
+
+import com.comercioflex.payment.application.CheckoutPaymentException;
+import com.comercioflex.payment.application.CheckoutPreferenceCommand;
+import com.comercioflex.payment.application.CheckoutProGateway;
+import com.comercioflex.payment.application.CheckoutProProperties;
+import com.comercioflex.payment.application.CreatedCheckoutPreference;
+import com.comercioflex.payment.application.PaymentCredential;
+import com.comercioflex.payment.application.VerifiedProviderPayment;
+import com.comercioflex.payment.domain.PaymentResultStatus;
+
+public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
+
+	private final PreferenceClient preferences;
+	private final PaymentClient payments;
+	private final MerchantOrderClient merchantOrders;
+	private final CheckoutProProperties properties;
+
+	public MercadoPagoCheckoutProGateway(CheckoutProProperties properties) {
+		this(new PreferenceClient(), new PaymentClient(), new MerchantOrderClient(), properties);
+	}
+
+	MercadoPagoCheckoutProGateway(
+			PreferenceClient preferences,
+			PaymentClient payments,
+			MerchantOrderClient merchantOrders,
+			CheckoutProProperties properties) {
+		this.preferences = preferences;
+		this.payments = payments;
+		this.merchantOrders = merchantOrders;
+		this.properties = properties;
+	}
+
+	@Override
+	public CreatedCheckoutPreference createPreference(
+			PaymentCredential credential, CheckoutPreferenceCommand command) {
+		PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
+			.success(command.returnUri().toString())
+			.pending(command.returnUri().toString())
+			.failure(command.returnUri().toString())
+			.build();
+		PreferenceItemRequest item = PreferenceItemRequest.builder()
+			.id(command.paymentAttemptId().toString())
+			.title(command.title())
+			.currencyId(command.currencyCode())
+			.quantity(1)
+			.unitPrice(command.amount())
+			.build();
+		PreferencePaymentMethodsRequest paymentMethods = PreferencePaymentMethodsRequest.builder()
+			.excludedPaymentTypes(List.of(
+				PreferencePaymentTypeRequest.builder().id("ticket").build()))
+			.build();
+		PreferenceRequest request = PreferenceRequest.builder()
+			.items(List.of(item))
+			.externalReference(command.externalReference())
+			.metadata(Map.of("payment_attempt_id", command.paymentAttemptId().toString()))
+			.backUrls(backUrls)
+			.autoReturn("approved")
+			.notificationUrl(command.notificationUri().toString())
+			.paymentMethods(paymentMethods)
+			.binaryMode(false)
+			.expires(true)
+			.expirationDateTo(OffsetDateTime.ofInstant(command.expiresAt(), ZoneOffset.UTC))
+			.build();
+		try {
+			Preference preference = preferences.create(request, options(credential));
+			String checkoutUrl = credential.environment()
+				== com.comercioflex.payment.domain.PaymentEnvironment.TEST
+				? preference.getSandboxInitPoint() : preference.getInitPoint();
+			if (blank(preference.getId()) || blank(checkoutUrl)
+					|| preference.getCollectorId() == null) {
+				throw invalidProviderResponse();
+			}
+			return new CreatedCheckoutPreference(
+				preference.getId(), URI.create(checkoutUrl),
+				preference.getCollectorId().toString());
+		}
+		catch (MPApiException | MPException exception) {
+			throw gatewayFailure("PREFERENCE_CREATION_FAILED", exception);
+		}
+	}
+
+	@Override
+	public VerifiedProviderPayment findPayment(
+			PaymentCredential credential, String providerPaymentId) {
+		try {
+			long numericId = Long.parseLong(providerPaymentId);
+			MPRequestOptions options = options(credential);
+			Payment payment = payments.get(numericId, options);
+			if (payment == null || payment.getId() == null || payment.getOrder() == null
+					|| payment.getOrder().getId() == null) {
+				throw invalidProviderResponse();
+			}
+			MerchantOrder merchantOrder = merchantOrders.get(payment.getOrder().getId(), options);
+			if (merchantOrder == null || blank(merchantOrder.getPreferenceId())) {
+				throw invalidProviderResponse();
+			}
+			return new VerifiedProviderPayment(
+				payment.getId().toString(),
+				payment.getCollectorId() == null ? null : payment.getCollectorId().toString(),
+				merchantOrder.getPreferenceId(), payment.getExternalReference(),
+				payment.getTransactionAmount(), payment.getCurrencyId(), payment.isLiveMode(),
+				mapStatus(payment.getStatus()),
+				payment.getDateLastUpdated() == null ? null
+					: payment.getDateLastUpdated().toInstant());
+		}
+		catch (NumberFormatException exception) {
+			throw new CheckoutPaymentException(
+				"INVALID_PROVIDER_RESOURCE", "El identificador de pago no es válido.", exception);
+		}
+		catch (MPApiException | MPException exception) {
+			throw gatewayFailure("PAYMENT_LOOKUP_FAILED", exception);
+		}
+	}
+
+	private MPRequestOptions options(PaymentCredential credential) {
+		return MPRequestOptions.builder()
+			.accessToken(credential.accessToken())
+			.connectionTimeout(Math.toIntExact(properties.connectTimeout().toMillis()))
+			.connectionRequestTimeout(Math.toIntExact(properties.connectTimeout().toMillis()))
+			.socketTimeout(Math.toIntExact(properties.readTimeout().toMillis()))
+			.build();
+	}
+
+	private PaymentResultStatus mapStatus(String status) {
+		if (status == null) {
+			throw invalidProviderResponse();
+		}
+		return switch (status.toLowerCase(Locale.ROOT)) {
+			case "approved" -> PaymentResultStatus.APPROVED;
+			case "pending", "in_process", "authorized" -> PaymentResultStatus.PENDING;
+			case "rejected", "cancelled" -> PaymentResultStatus.REJECTED;
+			default -> throw new CheckoutPaymentException(
+				"UNSUPPORTED_PAYMENT_STATUS", "Mercado Pago devolvió un estado no soportado.");
+		};
+	}
+
+	private CheckoutPaymentException invalidProviderResponse() {
+		return new CheckoutPaymentException(
+			"INVALID_PROVIDER_RESPONSE", "Mercado Pago devolvió una respuesta incompleta.");
+	}
+
+	private CheckoutPaymentException gatewayFailure(String code, Exception cause) {
+		return new CheckoutPaymentException(
+			code, "No se pudo completar la operación con Mercado Pago.", cause);
+	}
+
+	private boolean blank(String value) {
+		return value == null || value.isBlank();
+	}
+}

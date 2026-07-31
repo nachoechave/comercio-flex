@@ -177,6 +177,11 @@ public class MerchantPaymentConnectionService {
 
 	/** Returns a usable token to PAY-01C, refreshing both rotating tokens atomically. */
 	public String requireActiveAccessToken(long tenantId) {
+		return requireActiveCredential(tenantId).accessToken();
+	}
+
+	/** Returns a tenant-scoped credential without exposing it outside backend adapters. */
+	public PaymentCredential requireActiveCredential(long tenantId) {
 		requireEnabled();
 		try {
 			return Objects.requireNonNull(transactions.execute(status -> {
@@ -186,7 +191,10 @@ public class MerchantPaymentConnectionService {
 					.orElseThrow(() -> oauth(
 						"PAYMENT_ACCOUNT_NOT_CONNECTED", "La cuenta de cobros no está conectada."));
 				if (connection.accessTokenExpiresAt().isAfter(clock.instant().plus(REFRESH_WINDOW))) {
-					return decrypt(connection, connection.accessToken(), "access_token");
+					return new PaymentCredential(
+						decrypt(connection, connection.accessToken(), "access_token"),
+						connection.sellerAccountId(), environment(),
+						PaymentCredential.Source.TENANT_OAUTH);
 				}
 				OAuthTokenResponse token = client.refresh(
 					decrypt(connection, connection.refreshToken(), "refresh_token"));
@@ -201,7 +209,9 @@ public class MerchantPaymentConnectionService {
 				repository.replaceRefreshedTokens(
 					connection, token.scopes(), access, refresh,
 					clock.instant().plus(token.expiresIn()), clock.instant());
-				return token.accessToken();
+				return new PaymentCredential(
+					token.accessToken(), connection.sellerAccountId(), environment(),
+					PaymentCredential.Source.TENANT_OAUTH);
 			}));
 		}
 		catch (PaymentOAuthException exception) {

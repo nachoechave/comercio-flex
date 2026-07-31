@@ -56,6 +56,20 @@ app:
       encryption-key: ${PAYMENT_TOKEN_ENCRYPTION_KEY_V1:}
       connect-timeout: ${MP_CONNECT_TIMEOUT:3s}
       read-timeout: ${MP_READ_TIMEOUT:8s}
+    checkout-pro:
+      enabled: ${PAYMENTS_CHECKOUT_PRO_ENABLED:false}
+      test-access-token: ${MP_TEST_ACCESS_TOKEN:}
+      test-seller-account-id: ${MP_TEST_SELLER_ACCOUNT_ID:}
+      test-demo-tenant-slug: ${MP_TEST_DEMO_TENANT_SLUG:}
+      public-backend-base-uri: ${PUBLIC_BACKEND_BASE_URI:http://localhost:8080}
+      frontend-base-uri: ${FRONTEND_ORIGIN:http://localhost:4200}
+      webhook-secret: ${MP_WEBHOOK_SECRET:}
+      connect-timeout: ${MP_CONNECT_TIMEOUT:3s}
+      read-timeout: ${MP_READ_TIMEOUT:8s}
+      webhook-lease: ${PAYMENT_WEBHOOK_LEASE:30s}
+      retry-delay: ${PAYMENT_WEBHOOK_RETRY_DELAY:30s}
+      max-webhook-attempts: ${PAYMENT_WEBHOOK_MAX_ATTEMPTS:8}
+      return-token-ttl: ${PAYMENT_RETURN_TOKEN_TTL:24h}
   database:
     tenant-migration-enabled: ${TENANT_MIGRATION_ENABLED:false}
     migration-username: ${MIGRATION_DB_USER:}

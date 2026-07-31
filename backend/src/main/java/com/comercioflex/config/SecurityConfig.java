@@ -51,6 +51,8 @@ public class SecurityConfig {
 			.cors(Customizer.withDefaults())
 			.csrf(csrf -> csrf
 				.csrfTokenRepository(csrfTokenRepository)
+				.ignoringRequestMatchers(
+					"/api/v1/integrations/mercado-pago/webhooks")
 				.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
 			.securityContext(context -> context
 				.requireExplicitSave(true)
@@ -73,6 +75,18 @@ public class SecurityConfig {
 				.requestMatchers(
 					HttpMethod.GET,
 					"/api/v1/stores/*/orders/*")
+				.permitAll()
+				.requestMatchers(
+					HttpMethod.POST,
+					"/api/v1/stores/*/orders/*/payments/checkout-pro")
+				.permitAll()
+				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/stores/*/payment-returns/*")
+				.permitAll()
+				.requestMatchers(
+					HttpMethod.POST,
+					"/api/v1/integrations/mercado-pago/webhooks")
 				.permitAll()
 				.requestMatchers(
 					"/api/v1/auth/csrf",
