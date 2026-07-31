@@ -99,6 +99,7 @@
 | ADR-092 | Ambiente de pagos | Determinado por despliegue | Aceptada |
 | ADR-093 | Cliente OAuth | `RestClient`; SDK reservado para Checkout | Aceptada |
 | ADR-094 | Identidad vendedora | `user_id` verificado y `nickname` mínimo | Aceptada |
+| ADR-095 | Aplicación OAuth | Una aplicación central de Comercio Flex | Aceptada |
 
 ## Plantilla ADR
 
@@ -1395,3 +1396,23 @@
 - **Consecuencias:** email, nombre legal y demás PII no se solicitan como parte del
   contrato interno, no se persisten y no se devuelven; `nickname` es sólo
   presentación y nunca autoriza reemplazo, refresh ni exclusividad.
+
+### ADR-095 — Aplicación OAuth central de Comercio Flex
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** Mercado Pago exige `Client ID` y `Client Secret` para identificar
+  a la aplicación que solicita autorización, pero el comerciante sólo necesita
+  decidir qué cuenta vendedora conecta.
+- **Problema:** definir si cada comercio debe crear y configurar su propia
+  aplicación técnica o si Comercio Flex administra esa infraestructura.
+- **Alternativas:** una aplicación OAuth central configurada por despliegue; una
+  aplicación y secretos cargados manualmente por cada vendedor.
+- **Decisión:** Comercio Flex configura una única aplicación OAuth central en el
+  backend. El vendedor nunca carga secretos: inicia sesión en Mercado Pago,
+  presta consentimiento y reconoce la cuenta conectada desde el panel.
+- **Consecuencias:** `Client ID` y `Client Secret` son secretos operativos de la
+  plataforma; los access y refresh tokens continúan siendo distintos, cifrados y
+  aislados por tenant. La rotación de las credenciales centrales requiere un
+  procedimiento operativo, pero no una acción de cada comercio.

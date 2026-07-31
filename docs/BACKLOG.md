@@ -717,6 +717,9 @@ confirmar pagos, pero todavía no crea preferencias ni procesa webhooks.
   el permiso desde Mercado Pago.
 - El ambiente se determina por configuración del despliegue y no por una selección
   del usuario. No se mezclan conexiones ni credenciales de prueba y producción.
+- La aplicación OAuth y sus credenciales son centrales de Comercio Flex. El
+  vendedor no crea aplicaciones técnicas ni carga `Client Secret`; sólo presta
+  consentimiento mediante el botón de conexión.
 - Angular ofrece una pantalla mínima completa con estado desconectado, conexión,
   retorno exitoso o fallido, cuenta visible, reconexión y desconexión confirmada;
   ningún token, `state`, código o detalle sensible llega al frontend.

@@ -307,6 +307,11 @@ tokens se cifran con AES-256-GCM y AAD ligada a tenant, ambiente, conexión y
 campo. Una cuenta vendedora activa no puede pertenecer a dos tenants del mismo
 ambiente.
 
+La aplicación OAuth es central y pertenece a Comercio Flex. Sus `Client ID` y
+`Client Secret` se configuran una sola vez como secretos del despliegue y nunca
+se solicitan desde Angular. Cada vendedor sólo presta consentimiento; los tokens
+resultantes siguen asociados y cifrados de manera independiente por tenant.
+
 El refresh se realiza bajo demanda, con bloqueo de la conexión y reemplazo
 atómico de access y refresh token. Un rechazo definitivo borra secretos y marca
 `REAUTHORIZATION_REQUIRED`; una indisponibilidad transitoria no destruye una
