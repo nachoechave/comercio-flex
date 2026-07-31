@@ -99,4 +99,3 @@ CREATE TABLE payment_webhook_events (
 
 CREATE INDEX ix_payment_webhook_events_work
     ON payment_webhook_events (status, available_at, leased_until, id);
-
