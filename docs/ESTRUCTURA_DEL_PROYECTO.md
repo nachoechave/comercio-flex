@@ -388,6 +388,28 @@ Los datos de pago permanecen en la base ya seleccionada por `TenantContext`.
 No existe fallback, búsqueda global de intentos, endpoint simulador ni secreto
 versionado.
 
+## Flujo de conexión OAuth de PAY-01B
+
+```text
+PaymentConnectionPage (sólo OWNER)
+→ PaymentConnectionApiService
+→ PaymentConnectionController valida MANAGE_PAYMENTS
+→ MerchantPaymentConnectionService crea state + PKCE
+→ JdbcMerchantOAuthRepository guarda el intento en control DB
+→ Mercado Pago autoriza y vuelve al callback fijo
+→ MercadoPagoOAuthClientAdapter intercambia el código
+→ GET /users/me verifica user_id y obtiene nickname público
+→ AesGcmCredentialCipher cifra access token y refresh token
+→ merchant_payment_connections en control DB
+→ Angular consulta el estado real
+→ “Conectada a: nickname”
+```
+
+`payment.application` define casos de uso y puertos; no depende de HTTP, JDBC ni
+DTO externos. `payment.infrastructure.mercadopago` conoce el contrato remoto y
+`payment.infrastructure.control` conoce las tablas de control. El feature
+Angular sólo consume la API pública y no puede leer material cifrado.
+
 Dentro de `backend/.../catalog`, las clases `Public*` forman una frontera de
 lectura pública. Pueden depender del dominio y de la abstracción de repositorio,
 pero nunca de Angular ni de los controllers administrativos. El adaptador JDBC

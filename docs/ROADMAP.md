@@ -26,8 +26,9 @@ Avance al 2026-07-31:
 - Terminados: catálogo público, detalle de producto, carrito local aislado por
   comercio, checkout invitado con retiro y reserva temporal, y operación
   administrativa de pedidos con historial y consistencia de inventario.
-- Terminadas `ORD-02` y `PAY-01A`; `PAY-01B` es la próxima entrega a analizar y
-  requiere aprobación antes de conectar OAuth o credenciales.
+- Terminadas `ORD-02` y `PAY-01A`; `PAY-01B` está en pruebas con backend,
+  frontend, identidad vendedora visible y tokens cifrados implementados. Falta
+  el recorrido manual con credenciales TEST; todavía no crea cobros.
 - Fuera de esta etapa: envíos configurables, pago y clientes persistentes.
 
 ## Fase 4 — Pagos

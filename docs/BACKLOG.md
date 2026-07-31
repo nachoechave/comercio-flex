@@ -22,7 +22,7 @@
 | ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Terminada | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
 | PAY-01 | Pagos | Integrar Checkout Pro sandbox | Épica dividida en PAY-01A–D | Alta | En análisis | ORD-02, F0-02 | Coordinación | Cuatro entregas revisables y sandbox verificado | Fraude/secretos | XL |
 | PAY-01A | Pagos | Crear base interna de pagos | Dominio, estados, migraciones, cifrado y proveedor falso | Alta | Terminada | ORD-02 | Backend/Datos/Calidad | Flujo interno verificable sin red ni credenciales reales | Estados inconsistentes | L |
-| PAY-01B | Pagos | Conectar cuenta vendedora | OAuth Authorization Code, state, PKCE y tokens cifrados | Alta | Pendiente | PAY-01A | Backend/Seguridad | Sólo OWNER conecta y no se exponen secretos | Robo/mezcla de tokens | L |
+| PAY-01B | Pagos | Conectar cuenta vendedora | OAuth Authorization Code, state, PKCE y tokens cifrados | Alta | En pruebas | PAY-01A | Backend/Frontend/Seguridad | Sólo OWNER conecta, la identidad vendedora se verifica y no se exponen secretos | Robo/mezcla de tokens | L |
 | PAY-01C | Pagos | Ejecutar y confirmar pagos | Preferencia, retorno, inbox webhook y confirmación idempotente | Alta | Pendiente | PAY-01B | Backend/Frontend | Pago verificado coordina pedido y stock una vez | Doble cobro/stock | XL |
 | PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | Pendiente | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pendientes y stock bajo | Media | Pendiente | ORD-02 | Backend/Frontend | Datos por tenant y definiciones documentadas | Métricas inconsistentes | M |
@@ -659,3 +659,96 @@ retorno ni webhooks públicos.
 - Seguridad: cifrado AES-256-GCM con nonce aleatorio, AAD contextual, rotación y
   alias de claves verificados sin secretos reales.
 - Revisión: arquitectura y calidad confirmaron que no quedan bloqueantes.
+
+## PAY-01B — Conectar cuenta vendedora
+
+> Estado: en pruebas desde el 2026-07-31. Alcance aprobado mediante ADR-085 a
+> ADR-094. Backend, frontend, migración, revisión y documentación están
+> implementados. Falta el recorrido manual con credenciales TEST autorizadas;
+> no debe marcarse `Terminada` antes de esa validación.
+
+### Historia
+
+Como propietario de un comercio quiero conectar y reconocer mi cuenta vendedora
+de Mercado Pago para que el comercio pueda cobrar con sus propias credenciales sin
+exponerlas ni mezclarlas con las de otro tenant.
+
+### Objetivo de la entrega
+
+Implementar la conexión OAuth Authorization Code con `state` de un uso, PKCE S256,
+tokens cifrados, identidad vendedora verificada y una interfaz administrativa
+mínima. PAY-01B prepara las credenciales que PAY-01C utilizará para crear y
+confirmar pagos, pero todavía no crea preferencias ni procesa webhooks.
+
+### Criterios de aceptación
+
+- Sólo un usuario autenticado con rol `OWNER` y membresía activa puede consultar,
+  iniciar o desconectar la cuenta de pagos de su comercio; `ADMIN`, `STAFF`, otro
+  tenant y usuarios anónimos reciben una denegación segura.
+- Las conexiones y los intentos OAuth se almacenan en la base de control porque
+  deben aplicar reglas globales entre tenants; las credenciales permanecen
+  cifradas y asociadas de forma inequívoca al comercio y al ambiente.
+- El inicio genera un `state` impredecible, de un solo uso y con vencimiento, ligado
+  en backend al tenant, al `OWNER`, al ambiente y a un `code_verifier`; se envía a
+  Mercado Pago únicamente el `code_challenge` S256.
+- Mercado Pago retorna a un callback fijo del backend. El callback rechaza `state`
+  ausente, vencido, reutilizado o no coincidente y nunca acepta que la URL de
+  retorno determine el tenant o el ambiente.
+- El intercambio OAuth se realiza con `RestClient`, límites de conexión y lectura,
+  respuestas tipadas y errores sanitizados; el SDK Java 3.3.1 queda reservado para
+  Checkout Pro en PAY-01C.
+- El `user_id` devuelto por OAuth es el identificador canónico de la cuenta. El
+  backend consulta `GET /users/me` con el Bearer token y exige que su `id` coincida;
+  cualquier diferencia aborta sin persistir los nuevos secretos.
+- Sólo se persisten como identidad visible el `user_id` y el `nickname` público.
+  La API y la interfaz muestran una etiqueta de cuenta basada en esos datos y no
+  almacenan ni exponen email, nombre legal u otros datos personales del perfil.
+- Una misma cuenta vendedora no puede quedar activa en más de un tenant dentro del
+  mismo ambiente. La restricción se decide en la base de control y funciona aun
+  ante callbacks concurrentes.
+- Una conexión activa no puede reemplazarse silenciosamente. Para vincular otra
+  cuenta, el `OWNER` debe desconectar primero la actual y comenzar un flujo OAuth
+  nuevo; una identidad diferente recibida durante reconexión produce conflicto.
+- La renovación segura de tokens se ejecuta bajo demanda cuando sea necesaria,
+  rota access y refresh token de manera atómica y nunca cambia el `user_id`. La
+  renovación programada queda para PAY-01C o PAY-01D.
+- Desconectar elimina localmente los tokens y demás secretos recuperables y deja
+  trazabilidad mínima sin PII. La interfaz y la guía aclaran cómo revocar también
+  el permiso desde Mercado Pago.
+- El ambiente se determina por configuración del despliegue y no por una selección
+  del usuario. No se mezclan conexiones ni credenciales de prueba y producción.
+- Angular ofrece una pantalla mínima completa con estado desconectado, conexión,
+  retorno exitoso o fallido, cuenta visible, reconexión y desconexión confirmada;
+  ningún token, `state`, código o detalle sensible llega al frontend.
+- Las pruebas cubren autorización por rol, aislamiento, expiración y replay de
+  `state`, PKCE, callback inválido, cifrado, coincidencia de identidad, conflicto
+  global de cuenta, reconexión, refresh, desconexión, concurrencia y sanitización.
+- Antes del cierre se actualizan API, arquitectura, modelo de datos, estructura,
+  glosario y guía manual, y se ejecuta la regresión completa de backend y frontend.
+
+### Fuera de PAY-01B
+
+- Crear preferencias de Checkout Pro o redirigir compradores al pago.
+- Recibir, persistir o procesar webhooks de pagos.
+- Confirmar pedidos o consumir stock a partir de Mercado Pago real.
+- Renovación programada, monitoreo operativo y validación E2E en sandbox público.
+- Reembolsos, contracargos, disputas, comisiones marketplace y medios offline.
+
+### Estrategia de prueba prevista
+
+- Pruebas unitarias para `state`, PKCE, sanitización, identidad y reglas de cambio.
+- Pruebas de integración Spring Boot + MySQL para base de control, cifrado,
+  restricciones globales, transacciones, concurrencia y autorización.
+- Dobles HTTP deterministas para token, refresh y `/users/me`, sin credenciales
+  reales ni dependencia de red en la suite automática.
+- Pruebas de componentes y servicios Angular para todos los estados de la pantalla.
+- Recorrido manual con credenciales de prueba sólo después de configurar el entorno
+  autorizado; PAY-01D conservará la validación E2E completa.
+
+### Evidencia ejecutada
+
+- Backend completo: 114 pruebas aprobadas sobre MySQL 8.4/Testcontainers.
+- OAuth focalizado tras la revisión final: 9 pruebas aprobadas.
+- Frontend completo: 109 pruebas aprobadas y build productivo correcto.
+- Flyway aplicó `V004` y Spring Boot inició correctamente sobre MySQL 8.4.
+- `git diff --check` sin errores; no se detectaron credenciales reales.

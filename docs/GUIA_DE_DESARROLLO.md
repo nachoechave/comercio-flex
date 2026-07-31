@@ -306,3 +306,28 @@ fix: validate stock before confirming order
 test: add tenant isolation integration tests
 docs: explain backend folder structure
 ```
+
+## Probar la conexión Mercado Pago de PAY-01B
+
+La suite automática usa dobles HTTP y no necesita credenciales reales:
+
+```powershell
+Set-Location .\backend
+.\mvnw.cmd "-Dtest=MerchantPaymentConnectionServiceTests,MercadoPagoOAuthClientAdapterTests" test
+.\mvnw.cmd "-Dtest=ComercioFlexBackendApplicationTests" test
+
+Set-Location ..\frontend
+npm.cmd test -- --watch=false
+npm.cmd run build
+```
+
+Para una prueba manual se usan exclusivamente credenciales de prueba. Generá una
+clave local de 32 bytes codificada en Base64 y exportala como
+`PAYMENT_TOKEN_ENCRYPTION_KEY_V1`; no la copies al repositorio. Configurá además
+`PAYMENTS_MERCADO_PAGO_ENABLED=true`, `PAYMENT_MODE=TEST`, `MP_CLIENT_ID`,
+`MP_CLIENT_SECRET` y el callback registrado en `MP_OAUTH_REDIRECT_URI`.
+
+Luego iniciá sesión como OWNER, abrí
+`/tiendas/{storeSlug}/admin/configuracion/pagos`, conectá la cuenta y comprobá el
+texto `Conectada a: {nickname}`. Un ADMIN o STAFF no debe ver el enlace ni poder
+usar la API. No pruebes producción ni credenciales reales en esta entrega.

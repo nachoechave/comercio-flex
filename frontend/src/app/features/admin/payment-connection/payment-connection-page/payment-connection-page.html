@@ -1,0 +1,131 @@
+<section class="page" aria-labelledby="payment-connection-title" [attr.aria-busy]="busy()">
+  <header>
+    <p class="eyebrow">Configuración</p>
+    <h1 id="payment-connection-title" tabindex="-1">Pagos</h1>
+    <p>Conectá la cuenta de Mercado Pago que recibirá los pagos de esta tienda.</p>
+  </header>
+
+  @if (noticeMessage()) {
+    <p class="notice" role="status" aria-live="polite">{{ noticeMessage() }}</p>
+  }
+  @if (errorMessage()) {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="loading" role="status">Cargando configuración de pagos…</p>
+  } @else if (connection(); as current) {
+    <section class="card" aria-labelledby="mercado-pago-title">
+      <div class="card-heading">
+        <div>
+          <p class="eyebrow">Proveedor</p>
+          <h2 id="mercado-pago-title">Mercado Pago</h2>
+        </div>
+        <span class="status" [attr.data-status]="current.status">
+          @switch (current.status) {
+            @case ('CONNECTED') {
+              Conectada
+            }
+            @case ('AUTHORIZATION_PENDING') {
+              Autorización pendiente
+            }
+            @case ('REAUTHORIZATION_REQUIRED') {
+              Requiere autorización
+            }
+            @default {
+              No conectada
+            }
+          }
+        </span>
+      </div>
+
+      <dl>
+        <div>
+          <dt>Ambiente:</dt>
+          <dd>{{ environmentLabel() }}</dd>
+        </div>
+        @if (current.connectedAt) {
+          <div>
+            <dt>Conectada el:</dt>
+            <dd>{{ current.connectedAt | date: 'short' }}</dd>
+          </div>
+        }
+      </dl>
+
+      @if (current.status === 'CONNECTED' || current.status === 'REAUTHORIZATION_REQUIRED') {
+        <p class="account-identity"><strong>Conectada a:</strong> {{ accountLabel() }}</p>
+      }
+
+      @switch (current.status) {
+        @case ('NOT_CONNECTED') {
+          <p>
+            Autorizá una cuenta vendedora. Comercio Flex no conocerá tu contraseña y, en el ambiente
+            de prueba, no se realizarán cobros reales.
+          </p>
+          <button type="button" class="primary" (click)="startAuthorization()" [disabled]="busy()">
+            {{ startingAuthorization() ? 'Abriendo Mercado Pago…' : 'Conectar Mercado Pago' }}
+          </button>
+        }
+        @case ('AUTHORIZATION_PENDING') {
+          <p>Hay una autorización en curso. Podés continuar iniciando un enlace nuevo.</p>
+          <button type="button" class="primary" (click)="startAuthorization()" [disabled]="busy()">
+            {{ startingAuthorization() ? 'Abriendo Mercado Pago…' : 'Continuar autorización' }}
+          </button>
+        }
+        @case ('CONNECTED') {
+          <p>La cuenta está disponible para las próximas etapas de integración de pagos.</p>
+          <div class="actions">
+            <button type="button" (click)="startAuthorization()" [disabled]="busy()">
+              {{ startingAuthorization() ? 'Abriendo Mercado Pago…' : 'Volver a autorizar' }}
+            </button>
+            <button type="button" class="danger" (click)="askToDisconnect()" [disabled]="busy()">
+              Desconectar
+            </button>
+          </div>
+        }
+        @case ('REAUTHORIZATION_REQUIRED') {
+          <p>Mercado Pago requiere que vuelvas a autorizar esta cuenta para continuar.</p>
+          <div class="actions">
+            <button
+              type="button"
+              class="primary"
+              (click)="startAuthorization()"
+              [disabled]="busy()"
+            >
+              {{ startingAuthorization() ? 'Abriendo Mercado Pago…' : 'Volver a autorizar' }}
+            </button>
+            <button type="button" class="danger" (click)="askToDisconnect()" [disabled]="busy()">
+              Desconectar
+            </button>
+          </div>
+        }
+      }
+
+      @if (confirmingDisconnect()) {
+        <section class="confirmation" role="alertdialog" aria-labelledby="disconnect-title">
+          <h3 id="disconnect-title">¿Desconectar Mercado Pago?</h3>
+          <p>
+            La tienda no podrá iniciar nuevos cobros. Los registros existentes no se eliminarán.
+          </p>
+          <div class="actions">
+            <button type="button" (click)="cancelDisconnect()" [disabled]="disconnecting()">
+              Conservar conexión
+            </button>
+            <button
+              type="button"
+              class="danger"
+              (click)="disconnect()"
+              [disabled]="disconnecting()"
+            >
+              {{ disconnecting() ? 'Desconectando…' : 'Confirmar desconexión' }}
+            </button>
+          </div>
+        </section>
+      }
+
+      <small class="redirect-note">
+        Para autorizar, saldrás temporalmente de Comercio Flex y volverás a esta pantalla.
+      </small>
+    </section>
+  }
+</section>

@@ -89,6 +89,16 @@
 | ADR-082 | Excepciones de pago | Revisión tardía y cancelación protegida | Aceptada |
 | ADR-083 | Cliente Mercado Pago | SDK oficial detrás de `PaymentGateway` | Aceptada |
 | ADR-084 | Modelo comercial | Sin comisión transaccional en el MVP | Aceptada |
+| ADR-085 | Persistencia OAuth | Conexiones en la base de control | Aceptada |
+| ADR-086 | Retorno OAuth | Callback fijo en el backend | Aceptada |
+| ADR-087 | Exclusividad de cuenta | Una cuenta activa por tenant y ambiente | Aceptada |
+| ADR-088 | Cambio de cuenta | Desconectar antes de reemplazar | Aceptada |
+| ADR-089 | Renovación de tokens | Refresh seguro bajo demanda | Aceptada |
+| ADR-090 | Desconexión | Borrado local y guía de revocación externa | Aceptada |
+| ADR-091 | Interfaz OAuth | Pantalla Angular mínima completa | Aceptada |
+| ADR-092 | Ambiente de pagos | Determinado por despliegue | Aceptada |
+| ADR-093 | Cliente OAuth | `RestClient`; SDK reservado para Checkout | Aceptada |
+| ADR-094 | Identidad vendedora | `user_id` verificado y `nickname` mínimo | Aceptada |
 
 ## Plantilla ADR
 
@@ -1223,3 +1233,165 @@
   de plataforma por fuera del checkout del comercio.
 - **Consecuencias:** PAY-01 no calcula ni concilia comisiones; un modelo marketplace
   se evaluará como producto y arquitectura futura.
+
+## ADR aceptadas el 2026-07-31 para PAY-01B
+
+### ADR-085 — Conexiones OAuth en la base de control
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** las conexiones pertenecen a un comercio, pero algunas reglas deben
+  comprobar cuentas vendedoras entre tenants antes de enrutar a una base tenant.
+- **Problema:** elegir una ubicación que permita aislamiento y restricciones
+  globales sin consultar dinámicamente todas las bases de comercios.
+- **Alternativas:** persistir cada conexión en su base tenant; centralizar conexiones
+  e intentos OAuth en la base de control.
+- **Decisión:** guardar en la base de control las conexiones, intentos OAuth y
+  metadatos mínimos, ligados al identificador global del tenant y al ambiente.
+- **Consecuencias:** la base de control concentra secretos cifrados y requiere
+  permisos mínimos, migraciones y auditoría reforzada; el tenant sigue siendo una
+  dimensión obligatoria en toda operación.
+
+### ADR-086 — Callback OAuth fijo en el backend
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** Mercado Pago debe volver a una URL registrada después de autorizar
+  una cuenta y el frontend se sirve bajo rutas de comercio.
+- **Problema:** evitar callbacks variables que permitan manipular tenant, ambiente o
+  destino y simplificar la configuración externa.
+- **Alternativas:** callback por tenant o frontend; callback único y fijo del backend.
+- **Decisión:** usar un callback HTTPS fijo del backend. El contexto se recupera
+  exclusivamente desde un `state` server-side impredecible, vencible y de un uso.
+- **Consecuencias:** el callback no confía en parámetros de tenant ni en URLs de
+  retorno aportadas por el navegador; tras resolver el resultado redirige a una
+  ruta Angular interna permitida.
+
+### ADR-087 — Una cuenta activa por tenant y ambiente
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** conectar la misma cuenta vendedora a varios comercios puede mezclar
+  cobros, conciliación y responsabilidad operativa.
+- **Problema:** definir si una identidad Mercado Pago puede reutilizarse entre
+  tenants de Comercio Flex.
+- **Alternativas:** permitir reutilización; impedirla globalmente por ambiente.
+- **Decisión:** una cuenta vendedora sólo puede estar activa en un tenant dentro del
+  mismo ambiente. La base de control debe aplicar la unicidad de forma concurrente.
+- **Consecuencias:** prueba y producción se evalúan por separado; un conflicto no
+  revela qué otro tenant posee la conexión y requiere resolución operativa segura.
+
+### ADR-088 — Desconectar antes de cambiar de cuenta
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una nueva autorización puede corresponder a la misma cuenta o a una
+  cuenta distinta de la ya conectada.
+- **Problema:** impedir que un callback o error de operación sustituya sin aviso el
+  destino financiero de un comercio.
+- **Alternativas:** reemplazo automático; confirmación dentro del callback; exigir
+  desconexión previa y un flujo OAuth nuevo.
+- **Decisión:** una cuenta activa no se reemplaza. La misma identidad puede renovar
+  credenciales; una identidad diferente produce conflicto hasta que el `OWNER`
+  desconecte explícitamente e inicie una conexión nueva.
+- **Consecuencias:** el cambio requiere más pasos, pero queda visible y auditable;
+  los tokens recibidos en un intento conflictivo no se persisten ni se registran.
+
+### ADR-089 — Refresh seguro bajo demanda
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** los access tokens vencen y Mercado Pago entrega refresh tokens que
+  pueden rotar al renovarse.
+- **Problema:** mantener una conexión utilizable sin incorporar todavía tareas
+  programadas, coordinación distribuida y monitoreo avanzado.
+- **Alternativas:** no renovar; scheduler preventivo; renovar bajo demanda.
+- **Decisión:** PAY-01B implementa refresh bajo demanda, con bloqueo, actualización
+  atómica de ambos tokens y verificación de que la identidad canónica no cambie.
+- **Consecuencias:** el scheduler se difiere a PAY-01C o PAY-01D; fallos definitivos
+  dejan la conexión en estado de reconexión requerida sin exponer errores sensibles.
+
+### ADR-090 — Desconexión local y revocación externa guiada
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** eliminar secretos locales impide que Comercio Flex siga usándolos,
+  pero no garantiza por sí mismo la revocación del permiso en Mercado Pago.
+- **Problema:** ofrecer una desconexión segura aun sin depender de un contrato de
+  revocación remota dentro de esta entrega.
+- **Alternativas:** conservar tokens inactivos; exigir revocación remota automática;
+  borrar localmente y guiar al propietario para revocar en el proveedor.
+- **Decisión:** al desconectar se eliminan tokens y secretos recuperables de la base
+  local y se muestra una guía para revocar también el permiso en Mercado Pago.
+- **Consecuencias:** se conserva únicamente auditoría mínima sin PII; la interfaz
+  debe explicar con precisión la diferencia entre desconectar y revocar.
+
+### ADR-091 — Interfaz Angular mínima completa
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una conexión exclusivamente backend no permite al propietario
+  reconocer el estado, la cuenta asociada ni resolver errores normales.
+- **Problema:** decidir si PAY-01B entrega sólo API o un flujo administrativo usable.
+- **Alternativas:** API solamente; pantalla temporal; interfaz mínima completa.
+- **Decisión:** entregar en Angular estados desconectado, conectando, conectado,
+  reconexión requerida, retorno exitoso o fallido y desconexión confirmada.
+- **Consecuencias:** PAY-01B incluye frontend y pruebas accesibles, pero no incorpora
+  checkout del comprador ni paneles avanzados de conciliación.
+
+### ADR-092 — Ambiente determinado por despliegue
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** prueba y producción utilizan credenciales y consecuencias distintas.
+- **Problema:** evitar que un usuario mezcle ambientes mediante una selección en UI
+  o que un callback altere el ambiente esperado.
+- **Alternativas:** selector por comercio; ambiente fijo por despliegue.
+- **Decisión:** el ambiente de Mercado Pago se obtiene de configuración validada al
+  iniciar la aplicación y no puede elegirse desde Angular ni desde el callback.
+- **Consecuencias:** cada despliegue opera en un solo ambiente; las restricciones e
+  identidades se particionan por ambiente y una promoción exige configuración
+  operativa explícita.
+
+### ADR-093 — `RestClient` para OAuth y SDK reservado para Checkout
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** PAY-01B requiere endpoints OAuth y de identidad, mientras el SDK
+  oficial 3.3.1 fue seleccionado para las operaciones de Checkout Pro.
+- **Problema:** no forzar el SDK sobre contratos OAuth que pueden modelarse de forma
+  pequeña y explícita ni duplicar clientes sin límites homogéneos.
+- **Alternativas:** SDK para todo; cliente HTTP de bajo nivel; `RestClient` tipado
+  para OAuth y SDK detrás de `PaymentGateway` en PAY-01C.
+- **Decisión:** usar Spring `RestClient` con DTO, timeouts y errores sanitizados para
+  token, refresh y perfil; reservar el SDK 3.3.1 para Checkout Pro en PAY-01C.
+- **Consecuencias:** los contratos externos quedan aislados por adaptadores y ningún
+  DTO de Mercado Pago atraviesa hacia el dominio o el frontend.
+
+### ADR-094 — Identidad vendedora mínima y verificada
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el intercambio OAuth devuelve `user_id` y el perfil autenticado de
+  `/users/me` permite mostrar al propietario qué cuenta autorizó.
+- **Problema:** verificar la cuenta sin persistir datos personales innecesarios ni
+  usar atributos mutables como autoridad de seguridad.
+- **Alternativas:** confiar sólo en una etiqueta; conservar el perfil completo;
+  validar IDs y guardar únicamente `user_id` y `nickname`.
+- **Decisión:** `user_id` es la identidad canónica. Después del intercambio se llama
+  a `GET /users/me` y su `id` debe coincidir; si difiere se aborta sin persistir los
+  secretos. Sólo se guardan `user_id` y el `nickname` público para construir la
+  etiqueta visible.
+- **Consecuencias:** email, nombre legal y demás PII no se solicitan como parte del
+  contrato interno, no se persisten y no se devuelven; `nickname` es sólo
+  presentación y nunca autoriza reemplazo, refresh ni exclusividad.

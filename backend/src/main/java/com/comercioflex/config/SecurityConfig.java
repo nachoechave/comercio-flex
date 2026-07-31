@@ -116,6 +116,15 @@ public class SecurityConfig {
 					"/api/v1/stores/*/admin/orders/**")
 				.access(new TenantPermissionAuthorizationManager(
 					TenantPermission.MANAGE_ORDERS))
+				.requestMatchers(
+					"/api/v1/stores/*/admin/payment-connection",
+					"/api/v1/stores/*/admin/payment-connection/**")
+				.access(new TenantPermissionAuthorizationManager(
+					TenantPermission.MANAGE_PAYMENTS))
+				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/integrations/mercado-pago/oauth/callback")
+				.authenticated()
 				.anyRequest().authenticated())
 			.addFilterAfter(tenantResolutionFilter, AnonymousAuthenticationFilter.class)
 			.build();

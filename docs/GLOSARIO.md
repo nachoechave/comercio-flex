@@ -115,3 +115,12 @@
   robo directo de sesión, pero no reemplaza la prevención de contenido inseguro.
 - **XSRF token:** valor que la SPA copia desde `XSRF-TOKEN` al header
   `X-XSRF-TOKEN` para demostrar que una operación no proviene de un sitio externo.
+- **Access token:** credencial breve que permite llamar APIs autorizadas del
+  proveedor; se cifra y nunca se entrega al navegador.
+- **Refresh token:** credencial rotativa usada para obtener un access token nuevo
+  sin pedir autorización en cada cobro; también se cifra y actualiza de forma
+  atómica.
+- **State OAuth:** valor aleatorio, vencible y de un uso que vincula el retorno
+  del proveedor con el usuario y comercio que iniciaron la autorización.
+- **Nickname vendedor:** nombre de usuario público devuelto por `/users/me`. Se
+  muestra como referencia visual, pero el `user_id` es la identidad canónica.

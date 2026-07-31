@@ -77,6 +77,14 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/admin/orders/order.routes').then((module) => module.ORDER_ROUTES),
       },
+      {
+        path: 'configuracion/pagos',
+        canActivate: [allowedRolesGuard(['OWNER'])],
+        loadChildren: () =>
+          import('./features/admin/payment-connection/payment-connection.routes').then(
+            (module) => module.PAYMENT_CONNECTION_ROUTES,
+          ),
+      },
     ],
   },
   {

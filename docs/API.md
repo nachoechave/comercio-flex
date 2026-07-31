@@ -578,3 +578,36 @@ el intento que recibió un resultado externo no aplicable queda
 Los errores de login no distinguen cuenta inexistente, deshabilitada o contraseña
 incorrecta. Este comportamiento está confirmado por las pruebas de contrato de
 CORE-02.
+
+## Conexión vendedora de Mercado Pago — PAY-01B
+
+Las rutas administrativas exigen sesión, membresía activa y permiso
+`MANAGE_PAYMENTS`, que en el modelo actual pertenece únicamente a `OWNER`.
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/payment-connection
+POST /api/v1/stores/{storeSlug}/admin/payment-connection/authorization
+DELETE /api/v1/stores/{storeSlug}/admin/payment-connection
+```
+
+El `GET` devuelve sólo `provider`, `environment`, `status`, `connectedAt` y
+`connectedAccountLabel`. Esta última propiedad contiene el `nickname` público
+verificado; nunca incluye tokens, email, nombre legal ni credenciales.
+
+El `POST` genera un `state` de un uso y PKCE S256, y devuelve
+`authorizationUrl` y `expiresAt`. Angular redirige en la misma pestaña. Mercado
+Pago vuelve al callback fijo:
+
+```http
+GET /api/v1/integrations/mercado-pago/oauth/callback?code={code}&state={state}
+```
+
+El callback requiere la misma sesión autenticada que inició la operación,
+recupera tenant y ambiente exclusivamente desde el intento guardado, verifica
+`user_id` contra `GET /users/me` y redirige a Angular con `oauth=connected`,
+`cancelled` o `failed`. El parámetro visual nunca es autoridad: Angular consulta
+nuevamente el `GET` anterior.
+
+La desconexión responde `204`, elimina localmente ambos tokens y conserva sólo
+auditoría e identidad mínima. El propietario debe revocar también el permiso en
+Mercado Pago si desea invalidarlo del lado del proveedor.

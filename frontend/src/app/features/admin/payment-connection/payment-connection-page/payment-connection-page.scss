@@ -1,0 +1,169 @@
+.page {
+  max-width: 58rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+header {
+  margin-bottom: 1.5rem;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(2rem, 7vw, 3.5rem);
+  letter-spacing: -0.04em;
+}
+
+.eyebrow {
+  margin-bottom: 0.35rem;
+  color: var(--color-accent);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.card {
+  padding: clamp(1rem, 4vw, 2rem);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 1rem 2.5rem rgb(23 32 51 / 8%);
+}
+
+.card-heading,
+.actions,
+dl div {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.card-heading {
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.status {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  color: var(--color-muted);
+  background: var(--color-background);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.status[data-status='CONNECTED'] {
+  color: #17643a;
+  background: #e6f6ed;
+}
+
+.status[data-status='REAUTHORIZATION_REQUIRED'] {
+  color: #7b4c00;
+  background: #fff2d8;
+}
+
+dl {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1.5rem;
+}
+
+dl div {
+  align-items: baseline;
+}
+
+dt {
+  color: var(--color-muted);
+}
+
+dd {
+  min-width: 0;
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+button {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.65rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.primary {
+  border-color: var(--color-accent);
+  color: #fff;
+  background: var(--color-accent);
+}
+
+button.danger {
+  border-color: #b42318;
+  color: #9d1d14;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.actions {
+  flex-wrap: wrap;
+}
+
+.confirmation,
+.notice,
+.error {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 0.75rem;
+}
+
+.confirmation {
+  border: 1px solid #edb9b5;
+  background: #fff5f4;
+}
+
+.notice {
+  border: 1px solid #b7ddc6;
+  color: #17643a;
+  background: #effaf3;
+}
+
+.error {
+  border: 1px solid #edb9b5;
+  color: #9d1d14;
+  background: #fff5f4;
+}
+
+.redirect-note {
+  display: block;
+  margin-top: 1.25rem;
+  color: var(--color-muted);
+}
+
+@media (max-width: 36rem) {
+  .card-heading,
+  dl div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .actions,
+  .actions button,
+  button.primary {
+    width: 100%;
+  }
+}

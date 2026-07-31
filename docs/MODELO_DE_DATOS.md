@@ -320,3 +320,18 @@ ADR-025 fija `BIGINT` interno para índices y relaciones más un `public_id` UUI
 opaco para contratos y URLs. El patrón comienza en `categories` y se reutilizará
 en las entidades comerciales posteriores, salvo que un ADR futuro justifique una
 excepción.
+
+## Conexiones OAuth de PAY-01B en control DB
+
+- `payment_oauth_attempts`: guarda `state` como hash SHA-256, PKCE cifrado,
+  tenant, OWNER iniciador, ambiente, vencimiento y estado de un uso.
+- `merchant_payment_connections`: una fila por tenant/proveedor/ambiente con
+  `seller_account_id`, `seller_nickname`, scopes y ambos tokens AES-256-GCM.
+- `merchant_payment_connection_events`: auditoría append-only de conexión,
+  refresh, reconexión requerida y desconexión.
+
+Una columna generada y una restricción única impiden que la misma identidad
+vendedora quede activa en dos tenants del mismo ambiente. Al desconectar o
+requerir nueva autorización, los ciphertext, nonces y key IDs quedan en `NULL`.
+Los tokens usan AAD con tenant público, proveedor, ambiente, conexión y nombre
+del campo: mover un secreto entre filas o ambientes hace fallar el descifrado.

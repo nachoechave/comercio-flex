@@ -14,4 +14,17 @@ describe('application routes', () => {
     expect(await adminRoute.loadComponent?.()).toBe(AdminLayout);
     expect(await storefrontRoute.loadComponent?.()).toBe(StorefrontLayout);
   });
+
+  it('lazy-loads owner-only payment settings under the admin store', async () => {
+    const adminRoute = routes.find((route) => route.path === 'tiendas/:storeSlug/admin');
+    const paymentRoute = adminRoute?.children?.find(
+      (route) => route.path === 'configuracion/pagos',
+    );
+
+    expect(paymentRoute).toBeTruthy();
+    expect(paymentRoute?.canActivate).toHaveLength(1);
+    expect(await paymentRoute?.loadChildren?.()).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: '' })]),
+    );
+  });
 });

@@ -299,6 +299,19 @@ se aplicarán por solicitud; no existirá un token global mutable. El SDK oficia
 quedará encapsulado detrás de `PaymentGateway`, de modo que dominio, pruebas y
 proveedor falso no dependan de Mercado Pago.
 
+PAY-01B concreta la conexión OAuth en la base de control. El callback fijo exige
+la misma sesión OWNER que inició el intento, resuelve tenant y ambiente desde un
+`state` server-side y verifica que el `user_id` del token coincida con el `id` de
+`GET /users/me`. Sólo persiste ese identificador y el `nickname` público; los dos
+tokens se cifran con AES-256-GCM y AAD ligada a tenant, ambiente, conexión y
+campo. Una cuenta vendedora activa no puede pertenecer a dos tenants del mismo
+ambiente.
+
+El refresh se realiza bajo demanda, con bloqueo de la conexión y reemplazo
+atómico de access y refresh token. Un rechazo definitivo borra secretos y marca
+`REAUTHORIZATION_REQUIRED`; una indisponibilidad transitoria no destruye una
+conexión válida. No hay scheduler ni cobros reales en esta entrega.
+
 La inbox persistente acepta y deduplica la notificación antes de procesarla con
 reintentos. No requiere Kafka ni otro servicio. Una aprobación posterior al
 vencimiento queda `REQUIRES_REVIEW`; una cancelación cobrada se bloquea mientras

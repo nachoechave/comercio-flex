@@ -62,6 +62,20 @@ import { AuthService } from '../../core/auth/auth.service';
         >
           Pedidos
         </a>
+        @if (currentMembership.role === 'OWNER') {
+          <a
+            [routerLink]="[
+              '/tiendas',
+              currentMembership.storeSlug,
+              'admin',
+              'configuracion',
+              'pagos',
+            ]"
+            routerLinkActive="active"
+          >
+            Pagos
+          </a>
+        }
       </nav>
     }
     @if (logoutError()) {

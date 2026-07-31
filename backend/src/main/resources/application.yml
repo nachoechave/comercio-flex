@@ -44,6 +44,18 @@ management:
 app:
   cors:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
+  payments:
+    mercado-pago:
+      enabled: ${PAYMENTS_MERCADO_PAGO_ENABLED:false}
+      environment: ${PAYMENT_MODE:TEST}
+      client-id: ${MP_CLIENT_ID:}
+      client-secret: ${MP_CLIENT_SECRET:}
+      redirect-uri: ${MP_OAUTH_REDIRECT_URI:http://localhost:8080/api/v1/integrations/mercado-pago/oauth/callback}
+      frontend-base-uri: ${FRONTEND_ORIGIN:http://localhost:4200}
+      active-key-id: ${PAYMENT_TOKEN_ACTIVE_KEY_ID:v1}
+      encryption-key: ${PAYMENT_TOKEN_ENCRYPTION_KEY_V1:}
+      connect-timeout: ${MP_CONNECT_TIMEOUT:3s}
+      read-timeout: ${MP_READ_TIMEOUT:8s}
   database:
     tenant-migration-enabled: ${TENANT_MIGRATION_ENABLED:false}
     migration-username: ${MIGRATION_DB_USER:}
