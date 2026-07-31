@@ -8,6 +8,9 @@ import { finalize, switchMap } from 'rxjs';
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { CartService } from '../cart/cart.service';
+import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
+import { PaymentApiService } from '../payment/payment-api.service';
+import { PaymentRecoveryService } from '../payment/payment-recovery.service';
 import { StorefrontApiService } from '../storefront-api.service';
 import { storefrontErrorMessage } from '../storefront-errors';
 import { StorefrontContextService } from '../storefront-context.service';
@@ -25,11 +28,15 @@ export class CheckoutPage {
   private readonly cart = inject(CartService);
   private readonly csrf = inject(CsrfService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly paymentApi = inject(PaymentApiService);
+  private readonly paymentNavigation = inject(CheckoutProNavigationService);
+  private readonly paymentRecovery = inject(PaymentRecoveryService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly context = inject(StorefrontContextService);
   private intentFingerprint: string | null = null;
   private idempotencyKey: string | null = null;
+  private paymentIdempotencyKey: string | null = null;
 
   protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
     initialValue: '',
@@ -78,6 +85,7 @@ export class CheckoutPage {
     if (fingerprint !== this.intentFingerprint) {
       this.intentFingerprint = fingerprint;
       this.idempotencyKey = globalThis.crypto.randomUUID();
+      this.paymentIdempotencyKey = globalThis.crypto.randomUUID();
     }
 
     const storeSlug = this.storeSlug();
@@ -87,24 +95,55 @@ export class CheckoutPage {
     }
     this.submitting.set(true);
     this.form.disable();
+    let createdOrder: { id: string; lookupToken: string } | null = null;
     this.csrf
       .ensureToken()
       .pipe(
         switchMap(() => this.api.createOrder(storeSlug, this.idempotencyKey!, body)),
+        switchMap((response) => {
+          createdOrder = { id: response.order.id, lookupToken: response.lookupToken };
+          this.cart.clear(storeSlug);
+          this.paymentRecovery.remember(
+            storeSlug,
+            response.order.id,
+            response.lookupToken,
+            this.paymentIdempotencyKey!,
+          );
+          return this.paymentApi.startCheckout(
+            storeSlug,
+            response.order.id,
+            response.lookupToken,
+            this.paymentIdempotencyKey!,
+          );
+        }),
         finalize(() => {
           this.submitting.set(false);
           this.form.enable();
         }),
       )
       .subscribe({
-        next: (response) => {
-          this.cart.clear(storeSlug);
-          void this.router.navigate(['/tiendas', storeSlug, 'pedidos', response.order.id], {
-            queryParams: { token: response.lookupToken },
-            replaceUrl: true,
-          });
+        next: (payment) => {
+          const order = createdOrder;
+          if (!order) return;
+          void this.router
+            .navigate(['/tiendas', storeSlug, 'pedidos', order.id], {
+              queryParams: { token: order.lookupToken },
+              replaceUrl: true,
+            })
+            .then(() => {
+              try {
+                this.paymentNavigation.navigate(payment.checkoutUrl);
+              } catch {
+                void this.navigateToRecoverableOrder(storeSlug, order, 'failed');
+              }
+            });
         },
         error: (error: unknown) => {
+          if (createdOrder) {
+            const result = this.paymentsNotEnabled(error) ? 'not-enabled' : 'failed';
+            void this.navigateToRecoverableOrder(storeSlug, createdOrder, result);
+            return;
+          }
           const uncertain =
             error instanceof HttpErrorResponse && (error.status === 0 || error.status >= 500);
           this.uncertainResult.set(uncertain);
@@ -115,5 +154,24 @@ export class CheckoutPage {
           );
         },
       });
+  }
+
+  private navigateToRecoverableOrder(
+    storeSlug: string,
+    order: { id: string; lookupToken: string },
+    payment: 'failed' | 'not-enabled',
+  ): Promise<boolean> {
+    return this.router.navigate(['/tiendas', storeSlug, 'pedidos', order.id], {
+      queryParams: { token: order.lookupToken, payment },
+      replaceUrl: true,
+    });
+  }
+
+  private paymentsNotEnabled(error: unknown): boolean {
+    return (
+      error instanceof HttpErrorResponse &&
+      typeof error.error === 'object' &&
+      error.error?.code === 'PAYMENTS_NOT_ENABLED'
+    );
   }
 }

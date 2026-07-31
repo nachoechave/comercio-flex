@@ -38,6 +38,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'stores/:storeSlug/payment-return/:returnToken',
+    loadComponent: () =>
+      import('./features/storefront/payment/payment-return-page/payment-return-page').then(
+        (module) => module.PaymentReturnPage,
+      ),
+  },
+  {
     path: 'tiendas/:storeSlug/admin',
     canActivate: [authGuard, membershipGuard, allowedRolesGuard(ADMIN_ROLES)],
     canActivateChild: [authGuard, membershipGuard],

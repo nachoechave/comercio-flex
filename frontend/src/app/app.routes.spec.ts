@@ -27,4 +27,13 @@ describe('application routes', () => {
       expect.arrayContaining([expect.objectContaining({ path: '' })]),
     );
   });
+
+  it('exposes the dedicated public payment return route', async () => {
+    const returnRoute = routes.find(
+      (route) => route.path === 'stores/:storeSlug/payment-return/:returnToken',
+    );
+
+    expect(returnRoute).toBeTruthy();
+    expect(await returnRoute?.loadComponent?.()).toBeTruthy();
+  });
 });

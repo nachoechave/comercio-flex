@@ -1,0 +1,61 @@
+<main class="payment-return" aria-labelledby="payment-result-title">
+  <p class="sr-only" role="status" aria-live="polite">{{ announcement() }}</p>
+
+  @if (loading()) {
+    <section class="result-card pending" role="status">
+      <span class="status-icon" aria-hidden="true">…</span>
+      <p class="eyebrow">Verificando pago</p>
+      <h1 id="payment-result-title">Esperá un momento</h1>
+      <p>Estamos consultando a Mercado Pago. No cierres esta página ni vuelvas a pagar.</p>
+    </section>
+  } @else if (errorMessage() && !result()) {
+    <section class="result-card error" role="alert">
+      <span class="status-icon" aria-hidden="true">!</span>
+      <p class="eyebrow">No pudimos verificarlo</p>
+      <h1 id="payment-result-title">Revisá el enlace</h1>
+      <p>{{ errorMessage() }}</p>
+      <a [routerLink]="['/tiendas', storeSlug]">Volver a la tienda</a>
+    </section>
+  } @else if (result(); as current) {
+    <section class="result-card" [class]="'result-card ' + current.paymentStatus.toLowerCase()">
+      <span class="status-icon" aria-hidden="true">
+        {{ current.paymentStatus === 'APPROVED' ? '✓' : current.paymentStatus === 'REJECTED' ? '×' : '•' }}
+      </span>
+      <p class="eyebrow">{{ statusLabel(current.paymentStatus) }}</p>
+      <h1 #resultTitle id="payment-result-title" tabindex="-1">Pedido {{ current.orderNumber }}</h1>
+      <p class="message">{{ statusMessage(current.paymentStatus) }}</p>
+      <p class="updated">Última actualización: {{ current.updatedAt | date: 'short' }}</p>
+
+      @if (timedOut() && isPending(current.paymentStatus)) {
+        <div class="notice" role="status">
+          La confirmación está demorando más de lo habitual. Podés actualizar el estado sin realizar otro pago.
+        </div>
+        <button type="button" class="secondary" (click)="refresh()" [disabled]="refreshing()">
+          {{ refreshing() ? 'Actualizando…' : 'Actualizar estado' }}
+        </button>
+      }
+
+      @if (errorMessage()) {
+        <div class="notice error-notice" role="alert">{{ errorMessage() }}</div>
+      }
+
+      @if (current.canRetry && privateOrderToken(current)) {
+        <button type="button" (click)="retryPayment()" [disabled]="retrying()">
+          {{ retrying() ? 'Abriendo Mercado Pago…' : 'Intentar el pago nuevamente' }}
+        </button>
+      } @else if (current.canRetry) {
+        <p class="notice" role="status">
+          Abrí el enlace privado del pedido para volver a intentar el pago.
+        </p>
+      }
+
+      @if (privateOrderLink(current); as orderLink) {
+        <a [routerLink]="orderLink" [queryParams]="{ token: privateOrderToken(current) }">
+          Ver mi pedido
+        </a>
+      } @else {
+        <a [routerLink]="['/tiendas', storeSlug]">Volver a la tienda</a>
+      }
+    </section>
+  }
+</main>

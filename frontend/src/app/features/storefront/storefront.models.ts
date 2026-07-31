@@ -82,7 +82,14 @@ export interface GuestOrderItem {
   lineTotal: string;
 }
 
-export type GuestOrderStatus = 'PENDING_CONFIRMATION' | 'EXPIRED';
+export type GuestOrderStatus =
+  | 'PENDING_CONFIRMATION'
+  | 'CONFIRMED'
+  | 'READY_FOR_PICKUP'
+  | 'COMPLETED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'EXPIRED';
 
 export interface GuestOrder {
   id: string;

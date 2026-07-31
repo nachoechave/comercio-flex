@@ -7,6 +7,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { CartService } from '../cart/cart.service';
+import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { PublicProductDetail, StoreSettings } from '../storefront.models';
@@ -17,6 +18,7 @@ describe('CheckoutPage', () => {
   let http: HttpTestingController;
   let cart: CartService;
   let router: Router;
+  const paymentNavigation = { navigate: vi.fn() };
   const params = new BehaviorSubject(convertToParamMap({ storeSlug: 'tienda-a' }));
   const settings = signal<StoreSettings | null>({
     slug: 'tienda-a',
@@ -43,11 +45,14 @@ describe('CheckoutPage', () => {
 
   beforeEach(async () => {
     localStorage.clear();
+    sessionStorage.clear();
+    paymentNavigation.navigate.mockReset();
     await TestBed.configureTestingModule({
       imports: [CheckoutPage],
       providers: [
         StorefrontApiService,
         CsrfService,
+        { provide: CheckoutProNavigationService, useValue: paymentNavigation },
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -81,9 +86,10 @@ describe('CheckoutPage', () => {
   afterEach(() => {
     http.verify();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
-  it('sends only customer data and cart identifiers, then clears the cart', () => {
+  it('sends only customer data and cart identifiers, then starts the payment', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const component = fixture.componentInstance as unknown as {
       form: {
@@ -122,11 +128,30 @@ describe('CheckoutPage', () => {
       replayed: false,
     });
 
+    const payment = http.expectOne(
+      (request) =>
+        request.url === '/api/v1/stores/tienda-a/orders/order-1/payments/checkout-pro' &&
+        request.params.get('token') === 'private-token',
+    );
+    expect(payment.request.headers.get('Idempotency-Key')).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    payment.flush({
+      checkoutUrl: 'https://www.mercadopago.com.ar/checkout/v1/redirect',
+      paymentAttemptId: 'attempt-1',
+      expiresAt: '2026-08-01T12:00:00Z',
+      replayed: false,
+    });
+    await Promise.resolve();
+
     expect(cart.items('tienda-a')).toEqual([]);
     expect(navigate).toHaveBeenCalledWith(['/tiendas', 'tienda-a', 'pedidos', 'order-1'], {
       queryParams: { token: 'private-token' },
       replaceUrl: true,
     });
+    expect(paymentNavigation.navigate).toHaveBeenCalledWith(
+      'https://www.mercadopago.com.ar/checkout/v1/redirect',
+    );
   });
 
   it('keeps the idempotency key when the outcome is uncertain', () => {

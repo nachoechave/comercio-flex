@@ -10,20 +10,17 @@
     </div>
   } @else if (order(); as currentOrder) {
     <header>
-      <div class="success-mark" aria-hidden="true">✓</div>
-      <p class="eyebrow">
-        {{ currentOrder.status === 'EXPIRED' ? 'Reserva vencida' : 'Pedido recibido' }}
-      </p>
+      <div class="success-mark" [class.neutral]="currentOrder.status !== 'CONFIRMED'" aria-hidden="true">
+        {{ currentOrder.status === 'CONFIRMED' ? '✓' : '•' }}
+      </div>
+      <p class="eyebrow">{{ statusLabel(currentOrder.status) }}</p>
       <h1 id="confirmation-title">{{ currentOrder.number }}</h1>
-      @if (currentOrder.status === 'PENDING_CONFIRMATION') {
-        <p>
-          Guardamos el pedido de {{ currentOrder.customerName }}. El comercio se comunicará por
-          {{ currentOrder.contactHint }} para coordinar el retiro.
-        </p>
-      } @else {
-        <p>La reserva de stock venció. Contactá al comercio o armá un nuevo pedido.</p>
-      }
+      <p>{{ statusMessage(currentOrder) }}</p>
     </header>
+
+    @if (paymentErrorMessage()) {
+      <div class="payment-message" role="alert">{{ paymentErrorMessage() }}</div>
+    }
 
     <div class="order-layout">
       <section aria-labelledby="items-title">
@@ -57,6 +54,11 @@
             <strong>{{ currentOrder.reservationExpiresAt | date: 'short' }}</strong
             >.
           </p>
+          @if (!paymentsUnavailable()) {
+            <button type="button" (click)="startPayment()" [disabled]="paymentStarting()">
+              {{ paymentStarting() ? 'Abriendo Mercado Pago…' : 'Pagar con Mercado Pago' }}
+            </button>
+          }
         }
         <a [routerLink]="['/tiendas', storeSlug()]">Seguir comprando</a>
       </aside>
