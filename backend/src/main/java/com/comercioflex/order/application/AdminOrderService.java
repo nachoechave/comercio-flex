@@ -1,12 +1,7 @@
 package com.comercioflex.order.application;
 
-import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
-import java.util.EnumSet;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,32 +15,31 @@ import com.comercioflex.order.domain.OrderStatus;
 @Service
 public class AdminOrderService {
 
-	private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED = Map.of(
-		OrderStatus.PENDING_CONFIRMATION,
-		EnumSet.of(OrderStatus.CONFIRMED, OrderStatus.REJECTED),
-		OrderStatus.CONFIRMED,
-		EnumSet.of(OrderStatus.READY_FOR_PICKUP, OrderStatus.CANCELLED),
-		OrderStatus.READY_FOR_PICKUP,
-		EnumSet.of(OrderStatus.COMPLETED, OrderStatus.CANCELLED));
-
 	private final AdminOrderRepository repository;
 	private final TransactionTemplate transactionTemplate;
-	private final Clock clock;
+	private final OrderTransitionExecutor executor;
 
 	@Autowired
 	public AdminOrderService(
 			AdminOrderRepository repository,
 			@Qualifier("tenantTransactionTemplate") TransactionTemplate transactionTemplate) {
-		this(repository, transactionTemplate, Clock.systemUTC());
+		this(repository, transactionTemplate, new OrderTransitionExecutor(repository));
 	}
 
 	AdminOrderService(
 			AdminOrderRepository repository,
 			TransactionTemplate transactionTemplate,
 			Clock clock) {
+		this(repository, transactionTemplate, new OrderTransitionExecutor(repository, clock));
+	}
+
+	AdminOrderService(
+			AdminOrderRepository repository,
+			TransactionTemplate transactionTemplate,
+			OrderTransitionExecutor executor) {
 		this.repository = repository;
 		this.transactionTemplate = transactionTemplate;
-		this.clock = clock;
+		this.executor = executor;
 	}
 
 	public AdminOrderPage findPage(AdminOrderSearch rawSearch) {
@@ -66,9 +60,9 @@ public class AdminOrderService {
 
 	public AdminOrderDetail transition(OrderTransitionCommand rawCommand) {
 		OrderTransitionCommand command = validate(rawCommand);
-		TransitionOutcome outcome;
+		OrderTransitionExecution outcome;
 		try {
-			outcome = transactionTemplate.execute(ignored -> transitionInside(command));
+			outcome = transactionTemplate.execute(ignored -> executor.execute(command));
 		}
 		catch (DuplicateKeyException exception) {
 			return transactionTemplate.execute(ignored -> replayAfterDuplicate(command, exception));
@@ -80,58 +74,6 @@ public class AdminOrderService {
 		return outcome.detail();
 	}
 
-	private TransitionOutcome transitionInside(OrderTransitionCommand command) {
-		LockedAdminOrder order = repository.lockOrder(command.orderId())
-			.orElseThrow(AdminOrderNotFoundException::new);
-		var replay = repository.findTransition(command.idempotencyKey());
-		if (replay.isPresent()) {
-			requireSameTransition(replay.get(), command);
-			return TransitionOutcome.completed(repository.findDetail(command.orderId())
-				.orElseThrow(AdminOrderNotFoundException::new));
-		}
-		if (order.status() == OrderStatus.PENDING_CONFIRMATION
-				&& !order.reservationExpiresAt().isAfter(clock.instant())) {
-			repository.expireOrder(order.internalId());
-			return TransitionOutcome.expiration();
-		}
-		if (!ALLOWED.getOrDefault(order.status(), Set.of())
-				.contains(command.targetStatus())) {
-			throw new InvalidOrderTransitionException(
-				"La transición solicitada no está permitida.");
-		}
-
-		if (command.targetStatus() == OrderStatus.CONFIRMED) {
-			int expected = moveStock(order, command, false);
-			requireReservations(expected, repository.updateReservations(
-				order.internalId(), "ACTIVE", "CONSUMED"));
-		}
-		else if (command.targetStatus() == OrderStatus.REJECTED) {
-			int expected = repository.findStockLinesForUpdate(order.internalId()).size();
-			requireReservations(expected, repository.updateReservations(
-				order.internalId(), "ACTIVE", "RELEASED"));
-		}
-		else if (command.targetStatus() == OrderStatus.CANCELLED) {
-			int expected = moveStock(order, command, true);
-			requireReservations(expected, repository.updateReservations(
-				order.internalId(), "CONSUMED", "RELEASED"));
-		}
-
-		repository.updateOrderStatus(
-			order.internalId(),
-			order.version(),
-			command.targetStatus());
-		repository.insertHistory(
-			order.internalId(),
-			command.idempotencyKey(),
-			order.status(),
-			command.targetStatus(),
-			command.note(),
-			command.actorId(),
-			command.actorDisplayName());
-		return TransitionOutcome.completed(repository.findDetail(command.orderId())
-			.orElseThrow(AdminOrderNotFoundException::new));
-	}
-
 	private AdminOrderDetail replayAfterDuplicate(
 			OrderTransitionCommand command,
 			DuplicateKeyException original) {
@@ -140,49 +82,6 @@ public class AdminOrderService {
 		requireSameTransition(stored, command);
 		return repository.findDetail(command.orderId())
 			.orElseThrow(AdminOrderNotFoundException::new);
-	}
-
-	private int moveStock(
-			LockedAdminOrder order,
-			OrderTransitionCommand command,
-			boolean restoring) {
-		var lines = repository.findStockLinesForUpdate(order.internalId());
-		for (OrderStockLine line : lines) {
-			BigDecimal before = repository.findBalanceForUpdate(line.variantInternalId());
-			BigDecimal after = restoring
-				? before.add(line.quantity())
-				: before.subtract(line.quantity());
-			if (after.signum() < 0) {
-				throw new InvalidOrderTransitionException(
-					"No hay stock físico suficiente para confirmar el pedido.");
-			}
-			long balanceVersion = repository.updateBalance(line.variantInternalId(), after);
-			UUID movementId = movementId(command.idempotencyKey(), line.variantId());
-			repository.insertInventoryMovement(
-				movementId,
-				order.internalId(),
-				line,
-				before,
-				after,
-				balanceVersion,
-				restoring,
-				movementId,
-				command.actorId(),
-				command.actorDisplayName());
-		}
-		return lines.size();
-	}
-
-	private void requireReservations(int expected, int changed) {
-		if (expected == 0 || changed != expected) {
-			throw new InvalidOrderTransitionException(
-				"Las reservas del pedido ya no están disponibles.");
-		}
-	}
-
-	private UUID movementId(UUID key, UUID variantId) {
-		return UUID.nameUUIDFromBytes(
-			(key + ":" + variantId).getBytes(StandardCharsets.UTF_8));
 	}
 
 	private AdminOrderSearch validate(AdminOrderSearch search) {
@@ -211,7 +110,7 @@ public class AdminOrderService {
 			command.actorDisplayName());
 	}
 
-	private void requireSameTransition(
+	static void requireSameTransition(
 			StoredOrderTransition stored,
 			OrderTransitionCommand requested) {
 		if (!stored.orderId().equals(requested.orderId())
@@ -229,16 +128,5 @@ public class AdminOrderService {
 			throw new InvalidOrderTransitionException("El texto ingresado no es válido.");
 		}
 		return normalized;
-	}
-
-	private record TransitionOutcome(AdminOrderDetail detail, boolean expired) {
-
-		private static TransitionOutcome completed(AdminOrderDetail detail) {
-			return new TransitionOutcome(detail, false);
-		}
-
-		private static TransitionOutcome expiration() {
-			return new TransitionOutcome(null, true);
-		}
 	}
 }

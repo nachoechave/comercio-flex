@@ -241,7 +241,7 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 			balanceVersion,
 			restoring ? "ORDER_CANCELLED" : "ORDER_CONFIRMED",
 			restoring ? "Reposición por cancelación de pedido" : "Consumo por pedido confirmado",
-			actorId.toString(),
+			actorId == null ? null : actorId.toString(),
 			actorName);
 	}
 
