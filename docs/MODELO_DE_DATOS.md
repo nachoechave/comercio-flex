@@ -171,6 +171,31 @@ la API; las claves `BIGINT`, SKU, versiones y cantidades permanecen internas.
   externos, nunca mediante datos sensibles versionados.
 - Cada variante posee una única existencia en el MVP; no se modelan ubicaciones.
 - Cada cambio de existencia genera un movimiento de inventario auditable.
+
+### Modelo preliminar de PAY-01
+
+> Aprobado conceptualmente el 2026-07-31. Las columnas y restricciones exactas
+> se definirán antes de crear cada migración.
+
+Base de control:
+
+| Tabla propuesta | Responsabilidad |
+|---|---|
+| `payment_oauth_states` | `state` hasheado, tenant, OWNER iniciador, PKCE, vencimiento y consumo de un solo uso |
+| `tenant_payment_routes` | Clave opaca para resolver el tenant de un webhook sin recorrer bases |
+
+Base de cada comercio:
+
+| Tabla propuesta | Responsabilidad |
+|---|---|
+| `merchant_payment_connections` | Vendedor, ambiente, estado y tokens OAuth cifrados/versionados |
+| `payment_intents` | Pedido, importe/moneda esperados, referencia externa, preferencia y estado interno |
+| `payment_transactions` | Resultado verificado por `provider_payment_id`; una preferencia puede tener varios intentos |
+| `payment_webhook_events` | Inbox idempotente con recepción, procesamiento, reintentos y error saneado |
+
+Las restricciones únicas protegerán `external_reference`, `preference_id`,
+`provider_payment_id` y la identidad del evento. Ninguna tabla guardará tokens,
+firmas o secretos en texto plano.
 - Un balance nunca es negativo y no puede exceder la capacidad del decimal.
 - La disponibilidad comercial futura no debe confundirse con existencia física:
   INV-01 registra cantidad en mano y todavía no modela reservas.

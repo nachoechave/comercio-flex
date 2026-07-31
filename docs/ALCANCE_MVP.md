@@ -14,7 +14,8 @@
 - Carrito local separado por comercio.
 - Checkout invitado con datos mínimos, observaciones, retiro o envío básico.
 - Creación y consulta segura del pedido.
-- Mercado Pago Checkout Pro en pruebas, retorno informativo y webhook idempotente.
+- Mercado Pago Checkout Pro en pruebas: pedido previo al pago, medios online,
+  retorno informativo, webhook idempotente y confirmación automática verificada.
 - Diseño responsive y accesibilidad básica.
 
 ### Administración
@@ -41,6 +42,7 @@
 - Franjas horarias y cupos de entrega.
 - Gestión completa de clientes y usuarios/roles desde UI.
 - Reportes y gráficos ampliados.
+- Medios de pago offline, reservas de larga duración y configuración de cuotas.
 - Mejoras del onboarding OAuth de Mercado Pago y renovación operativa.
 - Recuperación de contraseña, auditoría ampliada y carrito en servidor.
 - Evaluación de Firebase Authentication como proveedor de identidad, manteniendo
@@ -51,7 +53,7 @@
 
 - Múltiples sucursales y depósitos.
 - POS y omnicanalidad.
-- Reembolsos, disputas y múltiples proveedores de pago.
+- Reembolsos automáticos, disputas y múltiples proveedores de pago.
 - Constructor visual, reseñas, PWA, i18n y notificaciones.
 - Analítica avanzada, API pública, aplicaciones móviles.
 - Aislamiento de base por tenant como plan premium.
@@ -60,7 +62,7 @@
 ## Exclusiones explícitas del MVP
 
 - Motor genérico EAV/reglas para cualquier rubro.
-- Facturación fiscal, marketplace, comisiones y logística avanzada.
+- Facturación fiscal, marketplace, comisiones por transacción y logística avanzada.
 - Búsqueda externa, colas distribuidas, Redis y Kubernetes.
 - Todos los indicadores de dashboard solicitados.
 

@@ -55,6 +55,40 @@
 | ADR-048 | Categorías públicas | Sólo categorías con productos visibles | Aceptada |
 | ADR-049 | Orden público | Alfabético estable | Aceptada |
 | ADR-050 | Caché del catálogo | `no-store` durante el MVP | Aceptada |
+| ADR-051 | Separación funcional | Carrito separado de checkout y pedido | Aceptada |
+| ADR-052 | Persistencia del carrito | Local y sin datos personales | Aceptada |
+| ADR-053 | Aislamiento del carrito | Una clave por comercio | Aceptada |
+| ADR-054 | Alta al carrito | Desde detalle y con variante explícita | Aceptada |
+| ADR-055 | Revalidación | Actualizar el snapshot al abrir el carrito | Aceptada |
+| ADR-056 | Cantidad piloto | Unidades enteras | Aceptada |
+| ADR-057 | Límite local | Máximo de 99 unidades | Aceptada |
+| ADR-058 | Cantidades de pedido | Persistencia preparada para decimales | Aceptada |
+| ADR-059 | Entrega inicial | Sólo retiro | Aceptada |
+| ADR-060 | Contacto invitado | Nombre y teléfono obligatorios | Aceptada |
+| ADR-061 | Cliente del pedido | Snapshot sin cuenta persistente | Aceptada |
+| ADR-062 | Reserva de inventario | Separada del balance físico | Aceptada |
+| ADR-063 | Duración de reserva | Treinta minutos | Aceptada |
+| ADR-064 | Estado inicial | Pedido pendiente de confirmación | Aceptada |
+| ADR-065 | Consulta pública | Token opaco conservado como hash | Aceptada |
+| ADR-066 | Creación de pedido | Idempotencia obligatoria | Aceptada |
+| ADR-067 | Autoridad comercial | Backend calcula precios y totales | Aceptada |
+| ADR-068 | Integración de ORD-02 | Rama independiente después de ORD-01 | Aceptada |
+| ADR-069 | Ciclo operativo | Estados y transiciones explícitos | Aceptada |
+| ADR-070 | Consumo de stock | Al confirmar el pedido | Aceptada |
+| ADR-071 | Cancelación | Reposición automática del stock | Aceptada |
+| ADR-072 | Operación de pedidos | OWNER, ADMIN y STAFF | Aceptada |
+| ADR-073 | Listado administrativo | Paginado, estado y número | Aceptada |
+| ADR-074 | Auditoría de pedidos | Historial persistente por transición | Aceptada |
+| ADR-075 | Alcance de ORD-02 | Excluir integraciones posteriores | Aceptada |
+| ADR-076 | Entrega de pagos | PAY-01 dividido en cuatro incrementos | Aceptada |
+| ADR-077 | Inicio del pago | Crear primero el pedido | Aceptada |
+| ADR-078 | Aprobación del pago | Confirmación automática verificada | Aceptada |
+| ADR-079 | Medios de pago | Sólo medios en línea en el MVP | Aceptada |
+| ADR-080 | Webhooks | Inbox durable en MySQL | Aceptada |
+| ADR-081 | Credenciales por comercio | OAuth con PKCE y tokens cifrados | Aceptada |
+| ADR-082 | Excepciones de pago | Revisión tardía y cancelación protegida | Aceptada |
+| ADR-083 | Cliente Mercado Pago | SDK oficial detrás de `PaymentGateway` | Aceptada |
+| ADR-084 | Modelo comercial | Sin comisión transaccional en el MVP | Aceptada |
 
 ## Plantilla ADR
 
@@ -1050,3 +1084,142 @@
 - **Decisión:** excluir pagos, envíos, notificaciones, impresión, edición de
   líneas y devoluciones.
 - **Consecuencias:** ORD-02 permanece enfocado en operación e inventario.
+
+## ADR aceptadas el 2026-07-31 para PAY-01
+
+### ADR-076 — PAY-01 dividido en cuatro entregas
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** pagos combina dominio, credenciales, redirecciones, notificaciones
+  externas y efectos sobre pedidos e inventario.
+- **Problema:** mantener incrementos revisables sin ocultar riesgos detrás de una
+  única historia demasiado grande.
+- **Alternativas:** implementar toda la integración en un sprint; dividirla en
+  base interna, conexión OAuth, checkout/webhook y validación sandbox.
+- **Decisión:** dividir PAY-01 en PAY-01A, PAY-01B, PAY-01C y PAY-01D.
+- **Consecuencias:** cada entrega tendrá criterios y pruebas propios; Mercado Pago
+  real no se incorporará durante PAY-01A.
+
+### ADR-077 — El pedido existe antes del pago
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** ORD-01 ya crea un pedido pendiente con importes recalculados y una
+  reserva temporal de inventario.
+- **Problema:** definir cuál es la fuente interna de verdad al iniciar Checkout Pro.
+- **Alternativas:** pagar un carrito todavía no persistido; crear primero el pedido
+  y luego asociarle un intento de pago.
+- **Decisión:** el pago sólo se inicia desde un pedido existente y elegible.
+- **Consecuencias:** importe, moneda, líneas y referencia externa se derivan del
+  pedido; una preferencia no crea ni modifica por sí sola un pedido.
+
+### ADR-078 — Aprobación verificada confirma automáticamente
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** ORD-02 dispone de una operación transaccional que confirma el
+  pedido, consume reservas y descuenta stock.
+- **Problema:** decidir cómo impacta un pago aprobado sobre la operación comercial.
+- **Alternativas:** confirmación manual posterior; confirmación automática después
+  de verificar el pago con el proveedor.
+- **Decisión:** un pago aprobado y verificado invoca la misma regla compartida de
+  confirmación del pedido, exactamente una vez.
+- **Consecuencias:** pago, pedido e inventario conservan estados separados pero
+  coordinados; ni la redirección ni el payload del webhook bastan como autoridad.
+
+### ADR-079 — Sólo medios de pago en línea
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** Checkout Pro puede exponer medios con acreditación diferida fuera
+  de línea, que prolongan reservas y agregan reglas operativas.
+- **Problema:** evitar que el primer MVP requiera reservas extensas, vencimientos y
+  conciliación adicional.
+- **Alternativas:** admitir todos los medios ofrecidos; excluir medios fuera de
+  línea en el MVP.
+- **Decisión:** PAY-01 admite únicamente medios de pago en línea.
+- **Consecuencias:** efectivo, cupones y otros medios offline quedan para una
+  segunda versión con una política específica de reservas.
+
+### ADR-080 — Inbox durable para webhooks
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una notificación puede repetirse, llegar desordenada o fallar a
+  mitad de procesamiento.
+- **Problema:** responder rápido sin perder trazabilidad ni ejecutar dos veces los
+  efectos comerciales.
+- **Alternativas:** procesar todo dentro de la solicitud HTTP; persistir primero un
+  evento único y procesarlo con reintentos.
+- **Decisión:** guardar cada evento en un inbox MySQL idempotente antes del
+  procesamiento de negocio.
+- **Consecuencias:** se requieren estados, contador de intentos, último error,
+  monitoreo y política de reintentos; la unicidad impide efectos duplicados.
+
+### ADR-081 — OAuth por comercio con PKCE y cifrado
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** cada comercio debe cobrar en su propia cuenta de Mercado Pago.
+- **Problema:** conectar cuentas sin compartir tokens entre tenants ni almacenar
+  secretos legibles.
+- **Alternativas:** credencial manual por comercio; OAuth Authorization Code con
+  `state`, PKCE y tokens cifrados.
+- **Decisión:** un OWNER conecta su cuenta mediante OAuth, validando `state` y
+  PKCE; los tokens se cifran antes de persistirse.
+- **Consecuencias:** la aplicación deberá gestionar conexión, renovación,
+  revocación y rotación de la clave de cifrado sin exponer tokens al frontend.
+
+### ADR-082 — Pagos tardíos y cancelaciones pagadas
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una aprobación puede llegar después de vencer la reserva y un
+  operador puede intentar cancelar un pedido ya cobrado.
+- **Problema:** evitar descuentos de stock inválidos y pérdida de dinero sin un
+  flujo de devolución implementado.
+- **Alternativas:** confirmar siempre; ignorar el pago; exigir revisión ante una
+  aprobación tardía y bloquear cancelaciones pagadas.
+- **Decisión:** una aprobación sin reserva válida pasa a `REQUIRES_REVIEW`; un
+  pedido pagado no puede cancelarse mientras no exista un flujo de reembolso.
+- **Consecuencias:** soporte deberá resolver excepciones explícitas; reembolsos y
+  su conciliación quedan fuera del MVP inicial.
+
+### ADR-083 — SDK oficial aislado por un puerto
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la integración requiere llamadas autenticadas por comercio y debe
+  poder probarse sin red.
+- **Problema:** aprovechar el cliente oficial sin acoplar el dominio ni usar una
+  credencial global incompatible con multiempresa.
+- **Alternativas:** HTTP manual; SDK oficial usado directamente; SDK oficial detrás
+  de una interfaz propia.
+- **Decisión:** usar el SDK Java oficial 3.3.1 detrás de `PaymentGateway`, con token
+  y timeouts definidos por solicitud.
+- **Consecuencias:** PAY-01A usará un adaptador falso y no agregará aún el SDK; el
+  adaptador real podrá cambiar sin contaminar las reglas de negocio.
+
+### ADR-084 — Sin comisión transaccional de plataforma
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una plataforma puede monetizar mediante suscripción o cobrando una
+  comisión dentro de cada pago.
+- **Problema:** elegir un modelo inicial sin sumar conciliación fiscal y financiera
+  al alcance técnico de pagos.
+- **Alternativas:** usar `marketplace_fee`; cobrar el SaaS por separado.
+- **Decisión:** no cobrar comisión transaccional en el MVP y facturar el servicio
+  de plataforma por fuera del checkout del comercio.
+- **Consecuencias:** PAY-01 no calcula ni concilia comisiones; un modelo marketplace
+  se evaluará como producto y arquitectura futura.

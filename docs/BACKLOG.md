@@ -20,7 +20,11 @@
 | CART-01 | Compra | Carrito local | Selección de variante, cantidades, persistencia local y revalidación | Alta | Terminada | STORE-01 | Frontend | Aislado por tienda, accesible, sin datos personales y revalidado | Datos locales obsoletos | L |
 | ORD-01 | Compra | Checkout invitado | Retiro, contacto, reserva temporal y creación transaccional del pedido | Alta | Terminada | CART-01, INV-01 | Frontend/Backend | Backend recalcula, reserva y persiste snapshot idempotente | Precio manipulado, abuso y sobreventa | XL |
 | ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Terminada | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
-| PAY-01 | Pagos | OAuth y Checkout Pro sandbox | Conectar comercio, preferencia, retorno y webhook idempotente | Alta | Pendiente | ORD-01, F0-02 | Backend/Calidad | OAuth state, firma, importe, duplicados y pruebas | Fraude/secretos | XL |
+| PAY-01 | Pagos | Integrar Checkout Pro sandbox | Épica dividida en PAY-01A–D | Alta | En análisis | ORD-02, F0-02 | Coordinación | Cuatro entregas revisables y sandbox verificado | Fraude/secretos | XL |
+| PAY-01A | Pagos | Crear base interna de pagos | Dominio, estados, migraciones, cifrado y proveedor falso | Alta | En análisis | ORD-02 | Backend/Datos/Calidad | Flujo interno verificable sin red ni credenciales reales | Estados inconsistentes | L |
+| PAY-01B | Pagos | Conectar cuenta vendedora | OAuth Authorization Code, state, PKCE y tokens cifrados | Alta | Pendiente | PAY-01A | Backend/Seguridad | Sólo OWNER conecta y no se exponen secretos | Robo/mezcla de tokens | L |
+| PAY-01C | Pagos | Ejecutar y confirmar pagos | Preferencia, retorno, inbox webhook y confirmación idempotente | Alta | Pendiente | PAY-01B | Backend/Frontend | Pago verificado coordina pedido y stock una vez | Doble cobro/stock | XL |
+| PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | Pendiente | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pendientes y stock bajo | Media | Pendiente | ORD-02 | Backend/Frontend | Datos por tenant y definiciones documentadas | Métricas inconsistentes | M |
 | OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | Pendiente | PAY-01 | Infraestructura | Smoke, backup y restauración probada | Costo/caída | L |
 | SEC-01 | Seguridad | Separar credenciales runtime por base | Usuario de mínimo privilegio para control y para cada tenant | Alta | Pendiente | CORE-01 | Datos/Infraestructura | Un usuario tenant no accede a control ni a otra base | Movimiento lateral | M |
@@ -574,3 +578,70 @@ válidos para preparar entregas y mantener el inventario consistente.
 - Responsive: detalle verificado a 390 × 844 sin desbordamiento horizontal.
 - Revisión: dos agentes independientes revisaron backend, frontend y
   documentación; los hallazgos bloqueantes y medios fueron corregidos.
+
+## PAY-01A — Base interna de pagos
+
+> Estado: en análisis desde el 2026-07-31. Alcance aprobado mediante ADR-076 a
+> ADR-084. La implementación todavía requiere autorización de inicio.
+
+### Historia
+
+Como equipo del producto quiero modelar y probar internamente el ciclo de un pago
+para integrar Mercado Pago después sin mezclar reglas externas con pedidos,
+inventario ni aislamiento multiempresa.
+
+### Objetivo de la entrega
+
+Construir el dominio, la persistencia, el cifrado de credenciales y el puerto
+`PaymentGateway` con un proveedor falso determinista. PAY-01A no utilizará la red,
+no pedirá credenciales y no incorporará todavía OAuth, Checkout Pro real, URLs de
+retorno ni webhooks públicos.
+
+### Criterios de aceptación
+
+- Pedido y pago conservan estados independientes y las transiciones admitidas
+  están definidas explícitamente.
+- Un intento de pago sólo puede crearse para un pedido tenant
+  `PENDING_CONFIRMATION` con reserva activa y sin otro intento incompatible.
+- Importe, moneda, referencia y datos comerciales se obtienen del pedido dentro
+  del backend; el cliente no puede declararlos como autoridad.
+- Repetir el mismo inicio con la misma clave idempotente devuelve el intento
+  original; reutilizar la clave para otra operación produce conflicto.
+- `PaymentGateway` no depende de clases del SDK ni expone detalles de Mercado Pago
+  al dominio.
+- El adaptador falso puede producir de forma determinista resultados aprobados,
+  pendientes y rechazados sin conexiones externas.
+- Una aprobación falsa válida reutiliza la operación transaccional de ORD-02 para
+  confirmar el pedido, consumir la reserva y descontar stock exactamente una vez.
+- Un resultado pendiente o rechazado no descuenta stock ni confirma el pedido.
+- Una aprobación recibida sin reserva válida queda en `REQUIRES_REVIEW` y no
+  modifica el inventario automáticamente.
+- Un pedido asociado a un pago aprobado no puede cancelarse mientras el producto
+  no disponga de un flujo de reembolso.
+- Las tablas, índices y restricciones se crean mediante migraciones versionadas y
+  mantienen aislados los datos de cada comercio.
+- Los tokens y secretos persistibles pasan por un contrato de cifrado autenticado;
+  las claves sólo provienen de variables de entorno y nunca del repositorio.
+- Logs, respuestas y errores no exponen tokens, secretos, hashes internos ni datos
+  de conexión.
+- Las pruebas cubren idempotencia, concurrencia, aislamiento entre tenants,
+  aprobación repetida, rechazo, pendiente, reserva vencida y cancelación pagada.
+- La documentación de arquitectura, datos, estructura, API, glosario y prueba
+  manual queda actualizada antes de marcar la historia como `Terminada`.
+
+### Fuera de PAY-01A
+
+- SDK y llamadas reales a Mercado Pago.
+- OAuth, PKCE, renovación o revocación real de tokens.
+- Preferencias de Checkout Pro, redirecciones y pantalla Angular de resultado.
+- Endpoint público, firma, inbox y reintentos de webhooks reales.
+- Medios offline, reembolsos, contracargos, disputas y comisión marketplace.
+
+### Estrategia de prueba prevista
+
+- Pruebas unitarias del dominio y del adaptador falso.
+- Pruebas de integración Spring Boot + MySQL para migraciones, restricciones,
+  transacciones, idempotencia, concurrencia e aislamiento.
+- Recorrido manual local con datos ficticios y sin secretos externos.
+- Regresión completa de backend y frontend, aun cuando PAY-01A no modifique
+  interfaces Angular.

@@ -57,6 +57,16 @@
 - **Connection routing:** selección segura de una conexión de base a partir del
   comercio resuelto por el servidor.
 - **OAuth:** autorización delegada sin pedir al comercio que entregue su contraseña.
+- **PKCE:** extensión de OAuth que liga el código de autorización a un secreto
+  temporal del cliente, reduciendo el riesgo de usar un código interceptado.
+- **Preferencia de pago:** configuración creada en Checkout Pro con importe,
+  productos, referencia y URLs que produce el enlace de inicio del pago.
+- **PaymentGateway:** puerto del dominio que abstrae al proveedor de pagos; permite
+  usar Mercado Pago real o un proveedor falso sin cambiar las reglas de negocio.
+- **External reference:** identificador opaco enviado al proveedor para correlacionar
+  el pago verificado con un intento interno.
+- **Inbox de webhooks:** tabla durable que deduplica notificaciones externas y
+  permite procesarlas o reintentarlas sin perder eventos.
 - **Rate limiting:** límite temporal de solicitudes para reducir abuso, fuerza
   bruta y agotamiento de recursos.
 - **Repository:** abstracción para leer o guardar datos del dominio.

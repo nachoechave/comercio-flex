@@ -280,6 +280,30 @@ importe, crea la preferencia y valida el pago servidor a servidor. El retorno de
 navegador nunca confirma el pedido. Webhooks firmados e idempotentes actualizan el
 estado después de verificar cuenta, referencia, moneda e importe.
 
+Diseño aprobado para PAY-01, todavía no implementado:
+
+```text
+Pedido PENDING_CONFIRMATION
+→ PaymentIntent local
+→ PaymentGateway falso u oficial
+→ Checkout Pro alojado
+→ inbox MySQL de webhooks
+→ consulta servidor a servidor
+→ validación de vendedor, referencia, preferencia, moneda e importe
+→ APPROVED confirma el pedido y consume stock una sola vez
+```
+
+Una aplicación OAuth de Comercio Flex conectará cada cuenta vendedora mediante
+Authorization Code, `state` de un uso y PKCE. Los tokens se cifrarán en backend y
+se aplicarán por solicitud; no existirá un token global mutable. El SDK oficial
+quedará encapsulado detrás de `PaymentGateway`, de modo que dominio, pruebas y
+proveedor falso no dependan de Mercado Pago.
+
+La inbox persistente acepta y deduplica la notificación antes de procesarla con
+reintentos. No requiere Kafka ni otro servicio. Una aprobación posterior al
+vencimiento queda `REQUIRES_REVIEW`; una cancelación cobrada se bloquea mientras
+el producto no implemente reembolsos.
+
 ## Versiones aprobadas y candidatas verificadas el 2026-07-23
 
 - Angular 22 + Node 24 LTS: compatibles según la tabla oficial de Angular.
