@@ -331,3 +331,67 @@ Luego iniciá sesión como OWNER, abrí
 `/tiendas/{storeSlug}/admin/configuracion/pagos`, conectá la cuenta y comprobá el
 texto `Conectada a: {nickname}`. Un ADMIN o STAFF no debe ver el enlace ni poder
 usar la API. No pruebes producción ni credenciales reales en esta entrega.
+
+## Preparar y probar PAY-01C
+
+> PAY-01C está implementado y la regresión automática está aprobada. Falta el
+> recorrido integrado con Mercado Pago TEST antes de marcar la historia terminada.
+
+### Configuración segura
+
+- Mantener `PAYMENT_MODE=TEST` durante desarrollo y demostración.
+- Habilitar el módulo con `PAYMENTS_CHECKOUT_PRO_ENABLED=true` y configurar
+  `MP_TEST_ACCESS_TOKEN`, `MP_TEST_SELLER_ACCOUNT_ID`,
+  `MP_TEST_DEMO_TENANT_SLUG`, `MP_WEBHOOK_SECRET` y
+  `PUBLIC_BACKEND_BASE_URI` mediante variables de entorno.
+- `PAYMENT_RETURN_TOKEN_TTL` controla la vigencia del enlace opaco de retorno;
+  el valor predeterminado es `24h`.
+- Cargar OAuth, access token demo y secreto de webhook mediante variables de
+  entorno o el gestor de secretos; nunca en Git, `.env` versionado, capturas o chat.
+- La credencial vendedora TEST central sólo puede asociarse al slug/UUID del tenant
+  demo configurado. No habilitarla para tiendas adicionales.
+- El perfil de producción debe rechazar el token TEST central, secretos vacíos,
+  URLs HTTP, `localhost` y una mezcla de secretos TEST/producción.
+- Configurar una URL HTTPS pública temporal para webhook y back URLs. Mercado Pago
+  no puede alcanzar `localhost`; un túnel sólo se usa durante la prueba controlada.
+- Tratar el secreto de firma como distinto del `Client Secret`, access token,
+  refresh token y clave AES. Rotar uno no implica rotar los demás.
+
+### Recorrido manual pendiente
+
+1. Levantar MySQL, backend y frontend con PAY-01C habilitado en TEST.
+2. Confirmar que el tenant demo tenga conexión utilizable o la excepción TEST
+   central explícita, y activar por separado su habilitación comercial.
+3. Crear un pedido con reserva vigente y conservar su `lookupToken`.
+4. Iniciar el pago una sola vez. Verificar que Angular muestre estado ocupado y
+   navegue automáticamente al dominio HTTPS esperado en la misma pestaña.
+5. Completar Checkout Pro con comprador de prueba diferente del vendedor.
+6. Confirmar que el retorno muestre estado de procesamiento sin confiar en los
+   parámetros visibles y que el polling se detenga al alcanzar resultado terminal.
+7. Verificar el recorrido `RECEIVED → PROCESSING → PROCESSED` en la inbox y que el
+   pedido aprobado confirme y descuente stock exactamente una vez.
+8. Reenviar la misma notificación desde el simulador y comprobar que no duplique
+   transacción, historial, reserva consumida ni movimiento de inventario.
+9. Probar firma ausente/alterada y timestamp fuera de tolerancia: debe rechazarse
+   antes de crear trabajo procesable y no debe llamar a la API de pagos.
+10. Simular indisponibilidad transitoria del proveedor: el evento debe pasar a
+    `RETRY` con backoff; al agotar el límite debe quedar `DEAD` y generar señal
+    operativa, no un bucle infinito.
+11. Simular caída después del commit tenant y antes de cerrar el inbox: el replay
+    debe finalizar sin repetir el efecto comercial.
+12. Desactivar la habilitación comercial manteniendo OAuth conectado: el inicio
+    debe fallar cerrado, mientras el estado técnico continúa visible al OWNER.
+13. Intentar usar la credencial TEST central desde otro tenant y arrancar esa
+    modalidad en producción: ambos casos deben rechazarse sin revelar secretos.
+14. Dejar que el polling alcance su límite y comprobar que se detenga, explique la
+    demora y permita actualización manual sin crear otra preferencia.
+
+### Observabilidad y revisión
+
+Revisar métricas de recibidos, firmas inválidas, duplicados, reintentos, `DEAD`,
+edad de cola y latencia del proveedor. Buscar sentinelas de prueba en logs para
+demostrar que no aparecen firma, secret, Authorization, tokens, callback/query
+completa, payload remoto ni datos del comprador.
+
+La validación manual completa con cuentas TEST y HTTPS público pertenece al cierre
+de PAY-01C/PAY-01D. Hasta entonces no debe afirmarse que el sandbox está validado.

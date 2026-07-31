@@ -280,7 +280,8 @@ importe, crea la preferencia y valida el pago servidor a servidor. El retorno de
 navegador nunca confirma el pedido. Webhooks firmados e idempotentes actualizan el
 estado después de verificar cuenta, referencia, moneda e importe.
 
-Diseño aprobado para PAY-01, todavía no implementado:
+Diseño incremental aprobado para PAY-01. PAY-01A y PAY-01B construyen la base
+interna y la conexión; PAY-01C se encuentra en desarrollo:
 
 ```text
 Pedido PENDING_CONFIRMATION
@@ -321,6 +322,60 @@ La inbox persistente acepta y deduplica la notificación antes de procesarla con
 reintentos. No requiere Kafka ni otro servicio. Una aprobación posterior al
 vencimiento queda `REQUIRES_REVIEW`; una cancelación cobrada se bloquea mientras
 el producto no implemente reembolsos.
+
+### Fronteras de PAY-01C
+
+La conexión técnica y la habilitación comercial son condiciones independientes:
+
+```text
+Conexión OAuth CONNECTED
++ habilitación comercial ACTIVE
++ pedido y reserva elegibles
+→ crear preferencia con credencial del vendedor
+→ Angular abre init_point HTTPS en la misma pestaña
+```
+
+Una credencial vendedora TEST central es una excepción operativa limitada a un
+único tenant demo. No reemplaza el OAuth por comercio y la configuración debe
+impedir su uso en `PRODUCTION`.
+
+El retorno del navegador lleva a una ruta específica con un token opaco y
+vencible. Angular consulta por tiempo limitado; no interpreta `status`,
+`payment_id` ni otros parámetros de Mercado Pago como prueba de pago. Al agotarse
+el polling conserva un estado neutral y ofrece actualización manual.
+
+El webhook cruza primero una frontera global porque todavía no existe un contexto
+tenant confiable:
+
+```text
+POST HTTPS de Mercado Pago
+→ límites de tamaño y formato
+→ firma + timestamp obligatorios en TEST/PRODUCTION
+→ inbox en control DB y respuesta rápida 200/201
+→ worker reclama evento con lease
+→ resuelve conexión y tenant
+→ consulta autoritativa a Mercado Pago con token del vendedor
+→ valida seller + ambiente + referencia + preferencia + importe + moneda
+→ transacción en tenant DB aplica pago/pedido/stock idempotentemente
+→ control DB marca PROCESSED
+```
+
+El inbox usa `RECEIVED`, `PROCESSING`, `RETRY`, `PROCESSED` y `DEAD`,
+con intentos, `next_attempt_at`, lease y error sanitizado. No existe transacción
+distribuida entre control y tenant: si la aplicación cae después del commit tenant
+y antes del cierre global, el worker repite y las restricciones por pago externo
+y transición impiden repetir el efecto comercial.
+
+La firma autentica la notificación, pero el cuerpo sigue sin ser autoridad de
+negocio. Sólo se persisten metadatos mínimos y un fingerprint de entrega; no se
+guardan payloads completos, tokens ni PII para depurar. Los secretos de firma TEST
+y producción provienen del entorno y se rotan mediante un procedimiento
+controlado.
+
+Observabilidad prevista: conteos de recibidos, firma inválida, duplicados,
+reintentos y `DEAD`; edad del evento más antiguo; latencias del worker y del
+proveedor. Los logs utilizan IDs públicos y códigos sanitizados, nunca headers de
+autorización, firmas, tokens, query completa o cuerpo del proveedor.
 
 ## Versiones aprobadas y candidatas verificadas el 2026-07-23
 

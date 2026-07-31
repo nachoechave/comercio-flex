@@ -1,7 +1,8 @@
 # Estructura del proyecto
 
-> Actualizado durante PAY-01A el 2026-07-31. El monolito modular incluye identidad,
-> routing tenant, catálogo, inventario, pedidos y una base interna de pagos.
+> Actualizado durante el diseño de PAY-01C el 2026-07-31. El monolito modular
+> incluye identidad, routing tenant, catálogo, inventario, pedidos, pagos internos
+> y conexión OAuth; Checkout Pro y el inbox permanecen en desarrollo.
 
 ```text
 comercio-flex/
@@ -34,12 +35,15 @@ frontend/
     │   │   ├── home/               # Página pública inicial
     │   │   ├── catalog/            # Catálogo, filtros y paginación
     │   │   ├── product-detail/     # Variantes y alta al carrito
-    │   │   └── cart/               # Estado local, revalidación y página del carrito
+    │   │   ├── cart/               # Estado local, revalidación y página del carrito
+    │   │   ├── checkout/           # Creación del pedido invitado
+    │   │   └── order-confirmation/ # Consulta privada del pedido creado
     │   └── admin/
     │       ├── categories/         # Listado, formulario y API de categorías
     │       ├── inventory/          # Balance, ajustes e historial por variante
     │       ├── products/           # Lista, alta, detalle, edición y API de productos
     │       ├── dashboard/          # Entrada administrativa protegida
+    │       ├── payment-connection/ # Conexión OAuth exclusiva de OWNER
     │       └── store-selector/     # Selector para usuarios con varias membresías
     ├── shared/ui/status-pill/      # UI reutilizable sin negocio
     ├── app.config.ts               # Proveedores globales
@@ -81,12 +85,15 @@ backend/src/main/
 │   │   ├── domain/                 # Pedido, estado, item y forma de entrega
 │   │   └── infrastructure/jdbc/    # Pedidos, reservas, historial y stock tenant
 │   ├── payment/
-│   │   ├── application/            # Caso de uso interno, puertos y cifrado
+│   │   ├── api/                    # Conexión OAuth y callback fijo
+│   │   ├── application/            # Casos de uso, puertos y cifrado
 │   │   ├── domain/                 # Intento, proveedor y resultados de pago
 │   │   └── infrastructure/
+│   │       ├── control/            # OAuth y conexiones en control DB
 │   │       ├── crypto/             # AES-GCM sin claves embebidas
 │   │       ├── fake/               # Proveedor determinista sólo para pruebas
-│   │       └── jdbc/               # Intentos y transacciones en la base tenant
+│   │       ├── jdbc/               # Intentos y transacciones en la base tenant
+│   │       └── mercadopago/        # OAuth remoto tipado; Checkout en evolución
 │   ├── tenant/
 │   │   ├── api/                    # Endpoint, filtro y errores HTTP
 │   │   ├── application/            # Resolución, contexto y caso de consulta
@@ -409,6 +416,50 @@ PaymentConnectionPage (sólo OWNER)
 DTO externos. `payment.infrastructure.mercadopago` conoce el contrato remoto y
 `payment.infrastructure.control` conoce las tablas de control. El feature
 Angular sólo consume la API pública y no puede leer material cifrado.
+
+## Estructura implementada para PAY-01C
+
+PAY-01C reutiliza el módulo `payment`; no crea un microservicio. Las
+responsabilidades nuevas se separan así:
+
+- `payment/api`: inicio público, consulta del resultado y receptor webhook;
+- `payment/application`: preferencia, token de retorno, validación autoritativa,
+  reclamo/reintento del inbox y coordinación idempotente;
+- `payment/domain`: estados de entrega del webhook y habilitación comercial;
+- `payment/infrastructure/control`: inbox y resolución global de conexión;
+- `payment/infrastructure/jdbc`: correlación y efectos dentro de la base tenant;
+- `payment/infrastructure/mercadopago`: SDK oficial detrás de `PaymentGateway` y
+  verificación de firma sin exponer DTO externos.
+
+Angular incluye la pantalla `payment/payment-return-page`, los servicios
+`PaymentApiService`, `PaymentRecoveryService` y `CheckoutProNavigationService`, y
+extiende confirmación/checkout para iniciar la preferencia. Esa pantalla no
+depende del feature administrativo `payment-connection`.
+
+```text
+OrderConfirmationPage
+→ API de inicio con lookupToken + Idempotency-Key
+→ backend verifica conexión + habilitación + pedido
+→ SDK crea preferencia con datos del servidor
+→ Angular navega al init_point en la misma pestaña
+→ PaymentReturnPage recibe token opaco
+→ polling acotado consulta estado normalizado
+
+WebhookController
+→ validador de firma y timestamp
+→ repositorio de inbox en control DB
+→ worker con lease/retry/DEAD
+→ PaymentGateway consulta el pago real
+→ repositorio tenant aplica transacción idempotente
+```
+
+Dependencias prohibidas:
+
+- el receptor webhook no abre directamente tablas tenant antes de persistir;
+- Angular no conoce firma, access token, seller ID interno ni payload remoto;
+- el worker no mantiene simultáneamente una transacción control y otra tenant;
+- `domain` no importa SDK, Spring MVC, JDBC ni DTO de Mercado Pago;
+- la pantalla pública de resultado no depende de componentes administrativos.
 
 Dentro de `backend/.../catalog`, las clases `Public*` forman una frontera de
 lectura pública. Pueden depender del dominio y de la abstracción de repositorio,

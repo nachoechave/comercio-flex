@@ -16,6 +16,8 @@
 | `memberships` | Relación usuario-comercio, rol y estado de acceso |
 | `SPRING_SESSION` | Metadatos y vencimiento de sesiones web persistentes |
 | `SPRING_SESSION_ATTRIBUTES` | Atributos mínimos asociados a cada sesión |
+| `payment_oauth_attempts`, `merchant_payment_connections`, `merchant_payment_connection_events` | Conexión OAuth y auditoría global implementadas en PAY-01B |
+| `payment_webhook_events` | Inbox global previsto para PAY-01C |
 
 Las credenciales de conexión no se guardarán en texto plano en esta base. Serán
 secretos externos o valores cifrados con una clave externa.
@@ -66,7 +68,6 @@ versionada; la inicialización automática de esquema no reemplaza a Flyway.
 | `delivery_methods` | Retiro o envío |
 | `orders`, `order_items`, `order_status_history` | Compra y fotografía histórica |
 | `payment_intents`, `payment_transactions` | Intentos y resultados internos implementados en PAY-01A |
-| `merchant_payment_connections`, `payment_webhook_events` | Conexión e inbox previstos para PAY-01B/C |
 | `audit_events` | Acciones administrativas sensibles |
 
 ### Categorías
@@ -224,10 +225,11 @@ orders
     └── payment_transactions
 ```
 
-PAY-01B agregará `merchant_payment_connections` y estado OAuth en la base de
-control. PAY-01C agregará preferencias reales, routing de notificaciones e inbox
-`payment_webhook_events`. Esas tablas continúan como diseño futuro y no deben
-considerarse implementadas en PAY-01A.
+PAY-01B agregó `merchant_payment_connections` y estado OAuth en la base de
+control. PAY-01C agregará preferencias reales en cada base tenant y el inbox
+global `payment_webhook_events` en control DB. El diseño de PAY-01C está aprobado
+y en desarrollo; estas nuevas tablas no deben considerarse implementadas hasta
+verificar su migración.
 
 PAY-01A sólo acepta el primer resultado `CREATED → resultado`. La evolución
 externa `PENDING → APPROVED` se implementará en PAY-01C mediante eventos de
@@ -300,7 +302,9 @@ incluso ante carreras entre vencimiento, consulta y operación administrativa.
 
 ```text
 Control DB: PlatformUser ── Membership ── Tenant ── DatabaseRegistry
-                                      └────────────── Path
+                                      ├────────────── Path
+                                      ├── MerchantPaymentConnection
+                                      └── PaymentWebhookEvent
 
 Tenant DB:
 StoreSettings
@@ -310,8 +314,8 @@ StoreSettings
 ├── DeliveryMethod
 ├── Order ── OrderItem
 │     └── InventoryReservation
-│          └── Payment ── PaymentWebhookEvent
-└── MerchantPaymentConnection
+│          └── PaymentIntent ── PaymentTransaction
+└── PaymentCommercialSettings
 ```
 
 ## Identificadores
@@ -335,3 +339,58 @@ vendedora quede activa en dos tenants del mismo ambiente. Al desconectar o
 requerir nueva autorización, los ciphertext, nonces y key IDs quedan en `NULL`.
 Los tokens usan AAD con tenant público, proveedor, ambiente, conexión y nombre
 del campo: mover un secreto entre filas o ambientes hace fallar el descifrado.
+
+## Modelo implementado para PAY-01C
+
+### Extensión tenant de intentos de pago
+
+La base de cada comercio conserva la autoridad financiera y comercial.
+`payment_intents` registra el identificador de preferencia,
+el hash del token opaco de retorno, su vencimiento y los datos mínimos necesarios
+para correlacionar una consulta verificada. El token legible sólo se entrega una
+vez al navegador; no se guarda en claro.
+
+La habilitación comercial de pagos es independiente de
+`merchant_payment_connections.status`. Su persistencia debe permitir responder
+por tenant si el checkout está habilitado sin convertir la conexión OAuth en un
+interruptor comercial implícito. Cada cambio queda auditado.
+
+### `payment_webhook_events` en control DB
+
+El inbox es global porque la notificación llega antes de disponer de un
+`TenantContext` confiable. Modelo conceptual aprobado:
+
+| Campo | Responsabilidad |
+|---|---|
+| `public_id` | UUID operativo que puede aparecer en logs seguros |
+| `provider`, `environment`, `topic` | Partición explícita del origen |
+| `provider_resource_id` | `data.id` autenticado por la firma |
+| `delivery_fingerprint` | Dedupe de una entrega sin conservar firma o payload |
+| `routing_reference` | Referencia opaca para resolver conexión y tenant |
+| `tenant_id`, `connection_public_id` | Resolución global; pueden estar pendientes al recibir |
+| `status` | `RECEIVED`, `PROCESSING`, `RETRY`, `PROCESSED` o `DEAD` |
+| `attempt_count`, `next_attempt_at` | Backoff y límite de reintentos |
+| `lease_owner`, `lease_expires_at` | Reclamo recuperable por un worker |
+| `last_error_code` | Motivo sanitizado, nunca respuesta cruda del proveedor |
+| timestamps | Recepción, procesamiento y finalización en UTC |
+
+La unicidad de `delivery_fingerprint` evita procesar dos veces la misma entrega,
+pero no reemplaza la idempotencia tenant: un pago puede producir varias
+notificaciones legítimas. `payment_transactions(provider,
+provider_payment_id)` y las transiciones de pedido siguen siendo la defensa final.
+
+El inbox no guarda el body completo, firma, headers de autorización, tokens ni
+PII del comprador. Los estados terminales se conservan según una política de
+retención operativa aún pendiente de validación legal; `DEAD` no se elimina antes
+de su revisión. El worker opera por lotes y lease, nunca mantiene abierta una
+transacción de control mientras llama a Mercado Pago o modifica una base tenant.
+
+```text
+Control DB: webhook RECEIVED → PROCESSING
+Tenant DB: payment transaction + pedido + stock (commit idempotente)
+Control DB: PROCESSED
+```
+
+Una caída después del commit tenant deja el evento reintentable. El siguiente
+intento observa el pago ya aplicado y finaliza sin duplicar inventario ni
+historial; no se intenta simular una transacción distribuida.

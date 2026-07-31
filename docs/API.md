@@ -562,8 +562,8 @@ recibir identificadores o material cifrado.
 Los contratos existentes de catálogo, carrito, pedido y administración no
 cambian. La transición administrativa responde `409` mediante su manejo de error
 existente cuando intenta confirmar un pedido con pago activo o cancelar un pedido
-ya cobrado. Los endpoints reales para iniciar Checkout Pro y consultar su estado
-se definirán en PAY-01C, después de conectar la cuenta en PAY-01B.
+ya cobrado. El contrato en desarrollo para iniciar Checkout Pro y consultar su
+estado se describe en la sección PAY-01C de este documento.
 
 Las colisiones concurrentes internas se normalizan como conflictos de negocio y
 el intento que recibió un resultado externo no aplicable queda
@@ -611,3 +611,93 @@ nuevamente el `GET` anterior.
 La desconexión responde `204`, elimina localmente ambos tokens y conserva sólo
 auditoría e identidad mínima. El propietario debe revocar también el permiso en
 Mercado Pago si desea invalidarlo del lado del proveedor.
+
+## Checkout Pro y confirmación — PAY-01C
+
+> Contrato implementado y cubierto por la regresión automática. El recorrido
+> integrado con Mercado Pago TEST sigue pendiente antes de cerrar la historia.
+
+### Iniciar Checkout Pro
+
+La operación parte del pedido ya creado y exige su `lookupToken`. El contrato no
+acepta precio, moneda, seller, access token, URL de retorno ni estado de pago como
+datos autoritativos.
+
+```http
+POST /api/v1/stores/{storeSlug}/orders/{orderId}/payments/checkout-pro?token={lookupToken}
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+X-XSRF-TOKEN: {token CSRF}
+Content-Type: application/json
+
+{}
+```
+
+Respuesta `201 Created` al crear o `200 OK` al repetir la misma clave:
+
+```json
+{
+  "checkoutUrl": "https://www.mercadopago.com.ar/checkout/...",
+  "paymentAttemptId": "550e8400-e29b-41d4-a716-446655440000",
+  "expiresAt": "2026-07-31T21:00:00Z",
+  "replayed": false
+}
+```
+
+Angular valida que `checkoutUrl` sea HTTPS y pertenezca al host permitido, evita
+un segundo inicio y navega automáticamente en la misma pestaña. El backend sólo
+responde si el pedido es elegible, la conexión técnica está utilizable y la
+habilitación comercial del tenant está activa.
+
+### Retorno y consulta acotada
+
+Mercado Pago vuelve a una ruta frontend específica. El token opaco identifica el
+seguimiento permitido, pero no contiene ni concede autoridad financiera. Debe
+tratarse como secreto temporal, no persistirse en `localStorage` y ocultarse de
+logs y referencias del navegador.
+
+```text
+/stores/{storeSlug}/payment-return/{returnToken}
+```
+
+La pantalla consulta el estado autoritativo mediante un endpoint de sólo lectura:
+
+```http
+GET /api/v1/stores/{storeSlug}/payment-returns/{returnToken}
+```
+
+La respuesta pública contiene `orderId`, `orderNumber`, `orderStatus`,
+`paymentStatus`, `canRetry` y `updatedAt`. Los estados de pago públicos son
+`CREATED`, `PENDING`, `APPROVED`, `REJECTED`, `EXPIRED` y `REQUIRES_REVIEW`.
+El polling se ejecuta cada 3 segundos durante un máximo aproximado de 30 segundos; al
+agotar el límite se detiene y ofrece actualización manual. Un `status` recibido
+en la back URL nunca cambia el pedido.
+
+### Webhook público
+
+```http
+POST /api/v1/integrations/mercado-pago/webhooks?route={opaqueRoute}&data.id={resourceId}
+x-signature: ts={timestamp},v1={digest}
+x-request-id: {requestId}
+Content-Type: application/json
+```
+
+TEST y producción exigen firma válida y timestamp dentro de tolerancia. El
+receptor valida los valores firmados, persiste metadatos mínimos en el inbox de
+control y recién entonces responde `200` o `201`. Si no puede persistir devuelve
+un error reintentable; firma ausente o inválida responde `401` sin crear trabajo.
+
+La aceptación HTTP no significa que el pedido ya esté confirmado. Un worker
+consulta el recurso a Mercado Pago con la credencial del vendedor y verifica
+seller, ambiente, referencia, preferencia, importe y moneda antes de aplicar un
+estado. El payload recibido no se devuelve ni se usa como fuente financiera.
+
+Errores públicos implementados:
+
+- `400`: formato, token temporal o clave idempotente inválidos;
+- `401`: token de pedido/retorno o firma webhook inválidos;
+- `404`: pedido o seguimiento no encontrado, sin revelar otro tenant;
+- `409`: pedido no elegible, pago incompatible o habilitación ausente;
+- `502`: operación remota con Mercado Pago fallida.
+
+Las respuestas nunca incluyen access/refresh token, secreto de firma, digest,
+seller interno, payload completo, ciphertext ni error crudo del SDK.

@@ -73,6 +73,26 @@
   el pago verificado con un intento interno.
 - **Inbox de webhooks:** tabla durable que deduplica notificaciones externas y
   permite procesarlas o reintentarlas sin perder eventos.
+- **Firma de webhook:** HMAC que permite verificar que una notificación fue
+  emitida por el proveedor. No convierte el contenido notificado en autoridad
+  financiera; el recurso se consulta nuevamente servidor a servidor.
+- **Worker:** proceso interno que reclama trabajo persistido y lo ejecuta fuera de
+  la solicitud HTTP. En PAY-01C procesa la inbox de forma recuperable.
+- **Lease:** reserva temporal de un trabajo para un worker. Si el proceso cae, el
+  vencimiento permite que otro intento lo reclame sin dejarlo bloqueado.
+- **Backoff:** espera progresivamente mayor entre reintentos para no sobrecargar un
+  proveedor o una base que está fallando.
+- **Dead-letter / `DEAD`:** estado de un evento que agotó sus reintentos
+  automáticos y necesita alerta, diagnóstico y reproceso controlado.
+- **Polling acotado:** consultas periódicas con intervalo, cantidad y duración
+  máximos. Evita esperar indefinidamente por un webhook.
+- **Token opaco de retorno:** secreto temporal sin datos interpretables que permite
+  consultar el resultado asociado a un inicio de pago; el servidor guarda su hash.
+- **Habilitación comercial:** interruptor explícito que decide si una tienda puede
+  ofrecer cobros. Es independiente de que OAuth esté técnicamente conectado.
+- **Validación autoritativa:** consulta servidor a servidor que contrasta seller,
+  ambiente, referencia, preferencia, importe, moneda y estado antes de aplicar un
+  pago notificado.
 - **Deadlock:** bloqueo circular entre transacciones concurrentes. MySQL aborta
   una de ellas para recuperar el progreso; la aplicación debe traducir ese caso
   a un resultado controlado o reintentable sin duplicar efectos.

@@ -278,3 +278,63 @@ eventos duplicados.
 La `Idempotency-Key` protege los reintentos de la misma acción; el bloqueo de fila
 protege a dos operadores que intentan acciones diferentes al mismo tiempo. Igual
 que en ORD-01, resuelven problemas relacionados pero no equivalentes.
+
+## Integración completa de un pago externo
+
+Un pago reúne tres comunicaciones distintas que no tienen el mismo nivel de
+confianza:
+
+1. El backend crea una preferencia con datos recalculados del pedido.
+2. El navegador va a Checkout Pro y luego vuelve a Comercio Flex.
+3. Mercado Pago envía un webhook y el backend consulta el pago real.
+
+La redirección sirve para experiencia de usuario, no para confirmar. Una persona
+puede modificar su query string o cerrar la pestaña; además, el webhook puede
+llegar antes o después. Por eso la pantalla recibe un token opaco y hace polling
+por tiempo limitado sobre el estado interno.
+
+```text
+Retorno del navegador (informativo)
+→ token opaco
+→ consulta estado interno
+→ CREATED / PENDING / APPROVED / REJECTED / EXPIRED / REQUIRES_REVIEW
+```
+
+El webhook tampoco se aplica directamente. Primero se autentica su origen con una
+firma HMAC y se guarda en una inbox durable. Esto permite responder rápido y
+separar el transporte externo de las reglas del negocio.
+
+```text
+Webhook firmado
+→ inbox global RECEIVED
+→ worker obtiene lease
+→ consulta autoritativa a Mercado Pago
+→ transacción tenant idempotente
+→ PROCESSED, RETRY o DEAD
+```
+
+La firma responde “¿esta entrega proviene de quien conoce el secreto?”. La
+consulta autoritativa responde otra pregunta: “¿este pago pertenece a este
+vendedor, pedido, preferencia, importe, moneda y ambiente?”. Se necesitan ambas.
+
+El inbox vive en control DB porque al recibir todavía no existe un contexto tenant
+confiable. El efecto comercial vive en la base del comercio. No hay una sola
+transacción MySQL que abarque ambas bases; se usa repetición segura:
+
+- si falla antes del commit tenant, el evento se reintenta;
+- si falla después, el siguiente intento encuentra el pago ya aplicado;
+- las claves únicas y máquinas de estado impiden repetir stock o historial;
+- tras demasiados fallos el evento queda `DEAD` para intervención, no se pierde.
+
+También se separan dos conceptos que suelen confundirse. OAuth `CONNECTED` dice
+que existe una credencial utilizable; la habilitación comercial dice que el
+comercio decidió ofrecer el medio de pago. El checkout exige ambas condiciones.
+
+Conceptos para profundizar:
+
+- HMAC-SHA256 y comparación en tiempo constante;
+- entrega al menos una vez e idempotencia de negocio;
+- transactional inbox, leases y backoff;
+- consistencia eventual entre bases;
+- credenciales TEST frente a producción;
+- secretos externos, rotación y observabilidad sin PII.

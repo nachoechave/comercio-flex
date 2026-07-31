@@ -100,6 +100,12 @@
 | ADR-093 | Cliente OAuth | `RestClient`; SDK reservado para Checkout | Aceptada |
 | ADR-094 | Identidad vendedora | `user_id` verificado y `nickname` mínimo | Aceptada |
 | ADR-095 | Aplicación OAuth | Una aplicación central de Comercio Flex | Aceptada |
+| ADR-096 | Credencial TEST central | Sólo tenant demo y prohibida en producción | Aceptada |
+| ADR-097 | Apertura de Checkout Pro | Automática en la misma pestaña | Aceptada |
+| ADR-098 | Retorno del comprador | Token opaco y polling acotado | Aceptada |
+| ADR-099 | Webhooks de pago | Inbox global, worker, reintentos y `DEAD` | Aceptada |
+| ADR-100 | Habilitación de cobros | Separada de la conexión técnica | Aceptada |
+| ADR-101 | Firma de webhook | Obligatoria en TEST y producción | Aceptada |
 
 ## Plantilla ADR
 
@@ -1416,3 +1422,111 @@
   plataforma; los access y refresh tokens continúan siendo distintos, cifrados y
   aislados por tenant. La rotación de las credenciales centrales requiere un
   procedimiento operativo, pero no una acción de cada comercio.
+
+## ADR aceptadas el 2026-07-31 para PAY-01C
+
+### ADR-096 — Credencial TEST central limitada al tenant demo
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una credencial vendedora TEST central facilita una demostración
+  inicial, pero no representa el aislamiento OAuth real entre comercios.
+- **Problema:** permitir una prueba controlada sin convertir una credencial común
+  en el mecanismo normal de cobro multiempresa.
+- **Alternativas:** usarla en todos los tenants; prohibirla por completo; limitarla
+  mediante configuración a un único tenant demo y rechazarla en producción.
+- **Decisión:** la credencial vendedora TEST central sólo puede habilitarse para un
+  tenant demo identificado explícitamente. El backend debe fallar al iniciar si
+  esa modalidad aparece en ambiente `PRODUCTION` o fuera del tenant autorizado.
+- **Consecuencias:** sirve para smoke tests y demostraciones, pero no acredita
+  aislamiento por vendedor. El recorrido de aceptación multiempresa utiliza las
+  conexiones OAuth TEST propias de cada comercio.
+
+### ADR-097 — Checkout Pro se abre automáticamente en la misma pestaña
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** después de crear la preferencia el comprador debe continuar hacia
+  la pantalla alojada por Mercado Pago.
+- **Problema:** elegir una navegación predecible que no dependa de pop-ups ni deje
+  al usuario ante un segundo botón ambiguo.
+- **Alternativas:** mostrar un enlace manual; abrir otra pestaña; navegar
+  automáticamente en la pestaña actual.
+- **Decisión:** tras recibir una preferencia válida Angular navega al `init_point`
+  permitido en la misma pestaña.
+- **Consecuencias:** el botón entra en estado ocupado para impedir dobles inicios;
+  si la creación falla, permanece en Comercio Flex con un error recuperable.
+
+### ADR-098 — Retorno específico con token opaco y polling acotado
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el navegador vuelve antes, después o sin que el webhook haya sido
+  procesado, y los parámetros de retorno pueden alterarse.
+- **Problema:** mostrar el resultado del pedido sin tratar la redirección como
+  autoridad ni exponer identificadores internos.
+- **Alternativas:** confiar en `status` de Mercado Pago; volver al detalle general;
+  usar una ruta de resultado con token opaco y consultar el backend por tiempo
+  limitado.
+- **Decisión:** cada inicio genera un token opaco específico para el retorno. La
+  pantalla consulta el estado autoritativo con polling acotado, se detiene ante un
+  estado terminal o al agotar tiempo/intentos y ofrece actualización manual.
+- **Consecuencias:** el token se guarda sólo como hash, tiene alcance y vencimiento
+  limitados y no confirma pagos. Las URLs aplican HTTPS y política de no referencia;
+  el frontend no conserva el token en almacenamiento persistente.
+
+### ADR-099 — Inbox global en control DB con worker y estado `DEAD`
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** un webhook llega antes de abrir una base tenant y puede repetirse,
+  desordenarse o fallar después de aplicar el efecto comercial.
+- **Problema:** confirmar recepción con rapidez sin perder eventos ni duplicar el
+  pedido, el pago o el stock entre dos bases.
+- **Alternativas:** procesar todo en la solicitud; inbox por tenant; inbox global
+  en control DB y procesamiento posterior.
+- **Decisión:** el receptor valida firma, persiste metadatos mínimos en un inbox
+  global y responde. Un worker con lease procesa, reintenta con backoff y pasa a
+  `DEAD` al agotar el límite. La aplicación tenant continúa siendo idempotente.
+- **Consecuencias:** existe consistencia eventual entre control DB y tenant DB. Si
+  ocurre una caída entre ambos commits, el replay es seguro por las unicidades de
+  pago y las transiciones idempotentes; `DEAD` exige alerta y reproceso controlado.
+
+### ADR-100 — Habilitación comercial separada de la conexión técnica
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una cuenta OAuth conectada demuestra acceso técnico, pero no que el
+  comercio esté listo para ofrecer pagos a compradores.
+- **Problema:** evitar cobros accidentales durante configuración, soporte o prueba.
+- **Alternativas:** cobrar automáticamente al conectar; usar un único estado;
+  mantener una habilitación comercial explícita e independiente.
+- **Decisión:** crear preferencias requiere conexión técnica utilizable y
+  habilitación comercial activa para ese tenant. Cambiar la habilitación no borra
+  ni renueva credenciales.
+- **Consecuencias:** el backend falla cerrado y la tienda oculta o deshabilita la
+  acción de pago cuando cualquiera de las dos condiciones falta. La gestión de esa
+  habilitación debe ser auditable.
+
+### ADR-101 — Firma obligatoria en TEST y producción
+
+- **Fecha:** 2026-07-31
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** Mercado Pago firma las notificaciones con una clave configurada
+  para la aplicación y recomienda validar su origen.
+- **Problema:** impedir que TEST desarrolle un camino menos seguro que producción
+  o que un payload no autenticado ingrese al inbox.
+- **Alternativas:** validar sólo en producción; aceptar sin firma y verificar luego;
+  exigir firma válida en ambos ambientes.
+- **Decisión:** TEST y producción requieren firma válida, timestamp dentro de la
+  tolerancia y secretos externos separados. Una notificación inválida no se
+  persiste como evento procesable ni se consulta al proveedor.
+- **Consecuencias:** la prueba local sin Mercado Pago usa dobles explícitos; la
+  prueba integrada necesita HTTPS y el secreto de webhook correspondiente. La
+  rotación de secretos debe contemplar una transición operativa controlada.

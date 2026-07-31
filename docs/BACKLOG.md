@@ -23,7 +23,7 @@
 | PAY-01 | Pagos | Integrar Checkout Pro sandbox | Épica dividida en PAY-01A–D | Alta | En análisis | ORD-02, F0-02 | Coordinación | Cuatro entregas revisables y sandbox verificado | Fraude/secretos | XL |
 | PAY-01A | Pagos | Crear base interna de pagos | Dominio, estados, migraciones, cifrado y proveedor falso | Alta | Terminada | ORD-02 | Backend/Datos/Calidad | Flujo interno verificable sin red ni credenciales reales | Estados inconsistentes | L |
 | PAY-01B | Pagos | Conectar cuenta vendedora | OAuth Authorization Code, state, PKCE y tokens cifrados | Alta | En pruebas | PAY-01A | Backend/Frontend/Seguridad | Sólo OWNER conecta, la identidad vendedora se verifica y no se exponen secretos | Robo/mezcla de tokens | L |
-| PAY-01C | Pagos | Ejecutar y confirmar pagos | Preferencia, retorno, inbox webhook y confirmación idempotente | Alta | Pendiente | PAY-01B | Backend/Frontend | Pago verificado coordina pedido y stock una vez | Doble cobro/stock | XL |
+| PAY-01C | Pagos | Ejecutar y confirmar pagos | Preferencia, retorno, inbox webhook y confirmación idempotente | Alta | En pruebas | PAY-01B | Backend/Frontend/Seguridad | Pago firmado y verificado coordina pedido y stock una vez | Doble cobro/stock | XL |
 | PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | Pendiente | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pendientes y stock bajo | Media | Pendiente | ORD-02 | Backend/Frontend | Datos por tenant y definiciones documentadas | Métricas inconsistentes | M |
 | OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | Pendiente | PAY-01 | Infraestructura | Smoke, backup y restauración probada | Costo/caída | L |
@@ -755,3 +755,98 @@ confirmar pagos, pero todavía no crea preferencias ni procesa webhooks.
 - Frontend completo: 109 pruebas aprobadas y build productivo correcto.
 - Flyway aplicó `V004` y Spring Boot inició correctamente sobre MySQL 8.4.
 - `git diff --check` sin errores; no se detectaron credenciales reales.
+
+## PAY-01C — Ejecutar y confirmar pagos
+
+> Estado: en pruebas desde el 2026-07-31. Alcance aprobado mediante ADR-096 a
+> ADR-101. Backend y frontend están implementados; la regresión automática pasó
+> 120 pruebas backend y 119 frontend, además de ambos builds. Falta el recorrido
+> integrado con Mercado Pago TEST para cerrar la historia.
+
+### Historia
+
+Como comprador quiero pagar un pedido elegible mediante Checkout Pro y conocer su
+resultado, mientras el comercio recibe una confirmación verificada exactamente
+una vez.
+
+### Criterios de aceptación
+
+- El backend sólo crea una preferencia desde un pedido existente del mismo tenant,
+  autenticado con su token de consulta, con reserva vigente, importe y moneda
+  recalculados y sin un intento incompatible.
+- El comercio debe tener una conexión de pago utilizable y una habilitación
+  comercial activa. Conectar OAuth no habilita cobros automáticamente.
+- La credencial vendedora TEST central, si se configura, funciona únicamente para
+  el tenant demo autorizado; la aplicación rechaza esa modalidad en producción.
+- Cada preferencia usa referencia externa, importe, moneda, ítems y URLs generados
+  por el backend. El navegador no puede indicar access token, seller, importe,
+  ambiente, `notification_url` ni destino de retorno.
+- Angular bloquea el doble inicio y, al recibir un `init_point` HTTPS válido de
+  Mercado Pago, navega automáticamente en la misma pestaña.
+- El retorno abre una pantalla específica mediante un token opaco, vencible y de
+  alcance limitado cuyo hash se conserva en servidor. Los parámetros de Mercado
+  Pago y la redirección nunca confirman el pedido.
+- La pantalla consulta un endpoint autoritativo con polling de intervalo, cantidad
+  y duración máximos. Se detiene ante estado terminal o timeout y permite una
+  actualización manual sin iniciar otro cobro.
+- El endpoint público de webhook exige firma válida en TEST y producción,
+  `x-request-id`, `data.id` y timestamp dentro de tolerancia antes de persistir.
+- Una notificación válida se guarda en un inbox global de la base de control antes
+  de responder `200` o `201`. Si no puede persistirse, se devuelve error para que
+  Mercado Pago reintente.
+- El inbox deduplica entregas, no guarda tokens ni payload completo con PII y usa
+  estados explícitos, contador, próxima ejecución, lease y error sanitizado.
+- Un worker reclama eventos sin procesarlos dos veces, reintenta fallos transitorios
+  con backoff y mueve a `DEAD` los agotados para alerta y reproceso manual seguro.
+- Antes de aplicar un resultado, el backend consulta Mercado Pago con la credencial
+  del vendedor y verifica seller, ambiente, referencia externa, preferencia,
+  importe, moneda y estado. Una discrepancia queda en revisión y no toca stock.
+- Una aprobación verificada confirma el pedido, consume la reserva y descuenta
+  stock exactamente una vez, incluso con webhooks repetidos, desordenados o una
+  caída entre el commit tenant y el cierre del inbox global.
+- Estados pendientes o rechazados no confirman ni descuentan stock. Una aprobación
+  tardía sin reserva válida queda `REQUIRES_REVIEW`.
+- URLs de webhook y retorno integrado son HTTPS, pertenecen a hosts configurados y
+  no aceptan `localhost` ni destinos proporcionados por el cliente fuera del perfil
+  de dobles automáticos.
+- Configuración TEST y producción usa secretos externos separados y falla cerrada;
+  logs, métricas y respuestas no exponen firma, tokens, cuerpo completo, datos del
+  comprador ni credenciales.
+- Las pruebas automáticas cubren configuración, autorización del pedido,
+  preferencia, firma, timestamp, deduplicación, concurrencia, lease, retry/`DEAD`,
+  aislamiento tenant, verificación autoritativa, replay y sanitización.
+- Antes de marcar `Terminada` se actualizan documentos, se ejecuta la regresión y
+  se completa el recorrido manual autorizado definido para PAY-01C/PAY-01D.
+
+### Fuera de PAY-01C
+
+- Cobros productivos o uso de credenciales reales de clientes.
+- Reembolsos, devoluciones, contracargos, disputas y conciliación contable.
+- Medios offline, reservas prolongadas y reglas avanzadas de cuotas.
+- Comisión marketplace, split payments o cobro de la suscripción SaaS dentro de MP.
+- Kafka, Redis, colas administradas o procesamiento distribuido entre réplicas.
+- Polling indefinido, actualización en tiempo real por WebSocket o notificaciones
+  push al comprador.
+- Dashboard financiero, reproceso masivo y consola avanzada de operación del inbox.
+- Validación E2E productiva, dominio definitivo, hardening y runbook de rotación;
+  corresponden a PAY-01D/OPS-01.
+
+### Estrategia de prueba y evidencia
+
+- Unitarias para construcción de preferencia, URLs, tokens opacos, firma,
+  normalización de estados y política de reintentos.
+- Integración MySQL para migraciones, deduplicación, leases, carreras y repetición
+  segura entre control DB y bases tenant.
+- Servidor HTTP falso para SDK/API sin depender de red ni credenciales externas.
+- Componentes Angular para inicio automático, retorno, polling acotado, timeout y
+  actualización manual.
+- Recorrido manual sólo en TEST con HTTPS público controlado, tenant demo o cuentas
+  OAuth de prueba y secreto de webhook suministrado por variables de entorno.
+
+Evidencia automática del 2026-07-31:
+
+- backend: `mvnw.cmd clean test`, 120 pruebas, 0 fallos y migraciones control V005
+  y tenant V010 aplicadas sobre MySQL 8.4;
+- frontend: 119 pruebas aprobadas y build de producción correcto;
+- pendiente: pago completo con comprador TEST, retorno, webhook firmado y
+  confirmación visible del pedido.

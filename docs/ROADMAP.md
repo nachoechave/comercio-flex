@@ -37,8 +37,8 @@ PAY-01 se divide en entregas revisables:
 
 1. `PAY-01A`: dominio, estados, migraciones, cifrado y proveedor falso.
 2. `PAY-01B`: OAuth Authorization Code con PKCE por comercio.
-3. `PAY-01C`: preferencia, retorno Angular, inbox de webhooks y coordinación
-   idempotente con pedidos/stock.
+3. `PAY-01C` (en pruebas): preferencia, retorno Angular con token opaco,
+   inbox global de webhooks y coordinación idempotente con pedidos/stock.
 4. `PAY-01D`: sandbox real, HTTPS público controlado, observabilidad y hardening.
 
 El MVP excluye medios offline, reembolsos automáticos, disputas y comisiones de
