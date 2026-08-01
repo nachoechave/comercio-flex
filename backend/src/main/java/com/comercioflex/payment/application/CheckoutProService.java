@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.comercioflex.order.application.OrderTransitionExecution;
@@ -57,10 +56,10 @@ public class CheckoutProService {
 			CheckoutProProperties properties,
 			PaymentOAuthProperties oauthProperties,
 			@Qualifier("tenantTransactionTemplate") TransactionTemplate tenantTransactions,
-			@Qualifier("transactionManager") PlatformTransactionManager controlManager) {
+			@Qualifier("controlTransactionTemplate") TransactionTemplate controlTransactions) {
 		this(repository, controlRepository, credentials, gateway, orderConfirmer,
 			tenantResolver, properties, oauthProperties, tenantTransactions,
-			new TransactionTemplate(controlManager), Clock.systemUTC());
+			controlTransactions, Clock.systemUTC());
 	}
 
 	CheckoutProService(

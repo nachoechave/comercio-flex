@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -51,7 +52,8 @@ public class JdbcMerchantOAuthRepository implements MerchantOAuthRepository {
 
 	private final JdbcTemplate jdbcTemplate;
 
-	public JdbcMerchantOAuthRepository(JdbcTemplate jdbcTemplate) {
+	public JdbcMerchantOAuthRepository(
+			@Qualifier("controlJdbcTemplate") JdbcTemplate jdbcTemplate) {
 		this.jdbcTemplate = jdbcTemplate;
 	}
 

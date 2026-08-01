@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -34,7 +35,8 @@ public class JdbcCheckoutControlRepository implements CheckoutControlRepository 
 
 	private final JdbcTemplate jdbcTemplate;
 
-	public JdbcCheckoutControlRepository(JdbcTemplate jdbcTemplate) {
+	public JdbcCheckoutControlRepository(
+			@Qualifier("controlJdbcTemplate") JdbcTemplate jdbcTemplate) {
 		this.jdbcTemplate = jdbcTemplate;
 	}
 

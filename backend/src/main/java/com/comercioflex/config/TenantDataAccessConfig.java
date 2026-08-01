@@ -1,5 +1,7 @@
 package com.comercioflex.config;
 
+import javax.sql.DataSource;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +17,17 @@ import com.comercioflex.tenant.infrastructure.routing.TenantDatabaseProperties;
 @Configuration
 @EnableConfigurationProperties(TenantDatabaseProperties.class)
 public class TenantDataAccessConfig {
+
+	@Bean("controlJdbcTemplate")
+	JdbcTemplate controlJdbcTemplate(@Qualifier("dataSource") DataSource dataSource) {
+		return new JdbcTemplate(dataSource);
+	}
+
+	@Bean("controlTransactionTemplate")
+	TransactionTemplate controlTransactionTemplate(
+			@Qualifier("dataSource") DataSource dataSource) {
+		return new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+	}
 
 	@Bean
 	TenantDataSourceRegistry tenantDataSourceRegistry(

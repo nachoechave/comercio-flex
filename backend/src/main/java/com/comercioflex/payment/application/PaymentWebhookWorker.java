@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.comercioflex.tenant.application.TenantContext;
@@ -42,9 +41,9 @@ public class PaymentWebhookWorker {
 			CheckoutProProperties properties,
 			PaymentOAuthProperties oauthProperties,
 			TenantContext tenantContext,
-			@Qualifier("transactionManager") PlatformTransactionManager transactionManager) {
+			@Qualifier("controlTransactionTemplate") TransactionTemplate controlTransactions) {
 		this(repository, credentials, gateway, checkoutService, properties,
-			oauthProperties, tenantContext, new TransactionTemplate(transactionManager),
+			oauthProperties, tenantContext, controlTransactions,
 			Clock.systemUTC());
 	}
 

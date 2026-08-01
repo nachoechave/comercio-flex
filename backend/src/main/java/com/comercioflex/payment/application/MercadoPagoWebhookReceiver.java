@@ -14,7 +14,6 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -40,9 +39,9 @@ public class MercadoPagoWebhookReceiver {
 			CheckoutProProperties properties,
 			PaymentOAuthProperties oauthProperties,
 			ObjectMapper objectMapper,
-			@Qualifier("transactionManager") PlatformTransactionManager transactionManager) {
+			@Qualifier("controlTransactionTemplate") TransactionTemplate transactions) {
 		this(repository, properties, oauthProperties, objectMapper,
-			new TransactionTemplate(transactionManager), Clock.systemUTC());
+			transactions, Clock.systemUTC());
 	}
 
 	MercadoPagoWebhookReceiver(

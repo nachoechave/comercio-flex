@@ -17,7 +17,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.comercioflex.identity.application.PlatformPrincipal;
@@ -46,8 +45,8 @@ public class MerchantPaymentConnectionService {
 			MerchantOAuthClient client,
 			CredentialCipher cipher,
 			PaymentOAuthProperties properties,
-			@Qualifier("transactionManager") PlatformTransactionManager transactionManager) {
-		this(repository, client, cipher, properties, new TransactionTemplate(transactionManager),
+			@Qualifier("controlTransactionTemplate") TransactionTemplate transactions) {
+		this(repository, client, cipher, properties, transactions,
 			new SecureRandom(), Clock.systemUTC());
 	}
 
