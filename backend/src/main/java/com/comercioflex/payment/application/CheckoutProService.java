@@ -289,14 +289,12 @@ public class CheckoutProService {
 
 	private void validatePayment(
 			StoredCheckoutAttempt attempt, VerifiedProviderPayment payment) {
-		boolean expectedLive = attempt.environment() == PaymentEnvironment.PRODUCTION;
 		if (payment == null
 				|| !attempt.sellerAccountId().equals(payment.sellerAccountId())
 				|| !attempt.preferenceId().equals(payment.preferenceId())
 				|| !attempt.externalReference().equals(payment.externalReference())
 				|| attempt.amount().compareTo(payment.amount()) != 0
-				|| !attempt.currencyCode().equals(payment.currencyCode())
-				|| payment.liveMode() != expectedLive) {
+				|| !attempt.currencyCode().equals(payment.currencyCode())) {
 			throw new CheckoutPaymentException(
 				"PAYMENT_VALIDATION_FAILED", "El pago verificado no coincide con el pedido.");
 		}

@@ -23,7 +23,7 @@
 | PAY-01 | Pagos | Integrar Checkout Pro sandbox | Épica dividida en PAY-01A–D | Alta | En análisis | ORD-02, F0-02 | Coordinación | Cuatro entregas revisables y sandbox verificado | Fraude/secretos | XL |
 | PAY-01A | Pagos | Crear base interna de pagos | Dominio, estados, migraciones, cifrado y proveedor falso | Alta | Terminada | ORD-02 | Backend/Datos/Calidad | Flujo interno verificable sin red ni credenciales reales | Estados inconsistentes | L |
 | PAY-01B | Pagos | Conectar cuenta vendedora | OAuth Authorization Code, state, PKCE y tokens cifrados | Alta | En pruebas | PAY-01A | Backend/Frontend/Seguridad | Sólo OWNER conecta, la identidad vendedora se verifica y no se exponen secretos | Robo/mezcla de tokens | L |
-| PAY-01C | Pagos | Ejecutar y confirmar pagos | Preferencia, retorno, inbox webhook y confirmación idempotente | Alta | En pruebas | PAY-01B | Backend/Frontend/Seguridad | Pago firmado y verificado coordina pedido y stock una vez | Doble cobro/stock | XL |
+| PAY-01C | Pagos | Ejecutar y confirmar pagos | Preferencia, retorno, inbox webhook y confirmación idempotente | Alta | Terminada | PAY-01B | Backend/Frontend/Seguridad | Pago firmado y verificado coordina pedido y stock una vez | Doble cobro/stock | XL |
 | PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | Pendiente | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pendientes y stock bajo | Media | Pendiente | ORD-02 | Backend/Frontend | Datos por tenant y definiciones documentadas | Métricas inconsistentes | M |
 | OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | Pendiente | PAY-01 | Infraestructura | Smoke, backup y restauración probada | Costo/caída | L |
@@ -758,10 +758,9 @@ confirmar pagos, pero todavía no crea preferencias ni procesa webhooks.
 
 ## PAY-01C — Ejecutar y confirmar pagos
 
-> Estado: en pruebas desde el 2026-07-31. Alcance aprobado mediante ADR-096 a
-> ADR-101. Backend y frontend están implementados; la regresión automática pasó
-> 120 pruebas backend y 119 frontend, además de ambos builds. Falta el recorrido
-> integrado con Mercado Pago TEST para cerrar la historia.
+> Estado: terminada el 2026-08-01. Alcance aprobado mediante ADR-096 a ADR-102.
+> Backend y frontend están implementados; la regresión y el recorrido integrado
+> con Mercado Pago TEST fueron aprobados.
 
 ### Historia
 
@@ -799,8 +798,9 @@ una vez.
 - Un worker reclama eventos sin procesarlos dos veces, reintenta fallos transitorios
   con backoff y mueve a `DEAD` los agotados para alerta y reproceso manual seguro.
 - Antes de aplicar un resultado, el backend consulta Mercado Pago con la credencial
-  del vendedor y verifica seller, ambiente, referencia externa, preferencia,
-  importe, moneda y estado. Una discrepancia queda en revisión y no toca stock.
+  del vendedor y verifica seller, referencia externa, preferencia, importe, moneda
+  y estado. El ambiente queda determinado por esa credencial; `live_mode` es
+  informativo según ADR-102. Una discrepancia queda en revisión y no toca stock.
 - Una aprobación verificada confirma el pedido, consume la reserva y descuenta
   stock exactamente una vez, incluso con webhooks repetidos, desordenados o una
   caída entre el commit tenant y el cierre del inbox global.
@@ -843,10 +843,16 @@ una vez.
 - Recorrido manual sólo en TEST con HTTPS público controlado, tenant demo o cuentas
   OAuth de prueba y secreto de webhook suministrado por variables de entorno.
 
-Evidencia automática del 2026-07-31:
+Evidencia automática e integrada:
 
-- backend: `mvnw.cmd clean test`, 120 pruebas, 0 fallos y migraciones control V005
-  y tenant V010 aplicadas sobre MySQL 8.4;
+- backend: 123 pruebas, 0 fallos y migraciones control V005 y tenant V010
+  aplicadas sobre MySQL 8.4 el 2026-08-01;
 - frontend: 119 pruebas aprobadas y build de producción correcto;
-- pendiente: pago completo con comprador TEST, retorno, webhook firmado y
-  confirmación visible del pedido.
+- Checkout Pro TEST: pago acreditado por Mercado Pago, retorno HTTPS y pantalla
+  pendiente sin confiar en la redirección;
+- notificación firmada de prueba: inbox `PROCESSED`, consulta autoritativa del pago,
+  pedido 8 `CONFIRMED`, intento `APPROVED` y reserva `CONSUMED`;
+- replay de la misma notificación: una transacción, un evento, una confirmación y
+  una reserva consumida; el Product Owner confirmó visualmente “Pago confirmado”;
+- pago tardío del pedido 6: `REQUIRES_REVIEW`, pedido/reserva vencidos y stock sin
+  consumo, validando el cierre seguro de la excepción.

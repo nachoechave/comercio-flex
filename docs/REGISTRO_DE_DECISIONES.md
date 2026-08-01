@@ -106,6 +106,7 @@
 | ADR-099 | Webhooks de pago | Inbox global, worker, reintentos y `DEAD` | Aceptada |
 | ADR-100 | Habilitación de cobros | Separada de la conexión técnica | Aceptada |
 | ADR-101 | Firma de webhook | Obligatoria en TEST y producción | Aceptada |
+| ADR-102 | Ambiente del pago verificado | Credencial y coincidencias comerciales, no `live_mode` | Aceptada |
 
 ## Plantilla ADR
 
@@ -1530,3 +1531,24 @@
 - **Consecuencias:** la prueba local sin Mercado Pago usa dobles explícitos; la
   prueba integrada necesita HTTPS y el secreto de webhook correspondiente. La
   rotación de secretos debe contemplar una transición operativa controlada.
+
+### ADR-102 — Ambiente determinado por credencial y coincidencias comerciales
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** Checkout Pro puede devolver `live_mode=true` al consultar por API
+  un pago realizado entre cuentas de prueba, aun cuando la preferencia se haya
+  creado con la credencial TEST y se haya abierto mediante `sandbox_init_point`.
+- **Problema:** usar `live_mode` como equivalencia de TEST/producción rechaza un
+  pago de prueba legítimo y no representa fielmente el aislamiento efectivo.
+- **Alternativas:** mantener esa igualdad y crear una reconciliación manual
+  exclusiva de TEST; determinar el ambiente por la credencial usada para consultar
+  al proveedor y validar todas las coincidencias comerciales.
+- **Decisión:** `live_mode` se conserva como dato informativo, pero no clasifica el
+  ambiente del pago verificado. La aceptación exige que la consulta autenticada con
+  la credencial del comercio coincida en vendedor, preferencia, referencia externa,
+  importe y moneda. La firma y el ambiente del webhook se validan antes del inbox.
+- **Consecuencias:** TEST reproduce el comportamiento real de Checkout Pro sin un
+  camino manual alternativo. Producción conserva la validación de firma, cuenta,
+  preferencia y valores; una discrepancia sigue fallando cerrada.

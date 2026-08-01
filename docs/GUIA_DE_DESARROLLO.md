@@ -334,8 +334,8 @@ usar la API. No pruebes producción ni credenciales reales en esta entrega.
 
 ## Preparar y probar PAY-01C
 
-> PAY-01C está implementado y la regresión automática está aprobada. Falta el
-> recorrido integrado con Mercado Pago TEST antes de marcar la historia terminada.
+> PAY-01C quedó validado el 2026-08-01 con regresión automática y recorrido
+> integrado de Checkout Pro TEST. Esta guía se conserva para repetir la prueba.
 
 ### Configuración segura
 
@@ -357,7 +357,7 @@ usar la API. No pruebes producción ni credenciales reales en esta entrega.
 - Tratar el secreto de firma como distinto del `Client Secret`, access token,
   refresh token y clave AES. Rotar uno no implica rotar los demás.
 
-### Recorrido manual pendiente
+### Recorrido manual reproducible
 
 1. Levantar MySQL, backend y frontend con PAY-01C habilitado en TEST.
 2. Confirmar que el tenant demo tenga conexión utilizable o la excepción TEST
@@ -366,6 +366,8 @@ usar la API. No pruebes producción ni credenciales reales en esta entrega.
 4. Iniciar el pago una sola vez. Verificar que Angular muestre estado ocupado y
    navegue automáticamente al dominio HTTPS esperado en la misma pestaña.
 5. Completar Checkout Pro con comprador de prueba diferente del vendedor.
+   Mercado Pago no envía webhooks automáticos para pagos creados con credenciales
+   de prueba; usar el simulador oficial de Webhooks para validar la recepción.
 6. Confirmar que el retorno muestre estado de procesamiento sin confiar en los
    parámetros visibles y que el polling se detenga al alcanzar resultado terminal.
 7. Verificar el recorrido `RECEIVED → PROCESSING → PROCESSED` en la inbox y que el
@@ -393,5 +395,7 @@ edad de cola y latencia del proveedor. Buscar sentinelas de prueba en logs para
 demostrar que no aparecen firma, secret, Authorization, tokens, callback/query
 completa, payload remoto ni datos del comprador.
 
-La validación manual completa con cuentas TEST y HTTPS público pertenece al cierre
-de PAY-01C/PAY-01D. Hasta entonces no debe afirmarse que el sandbox está validado.
+La validación del 2026-08-01 comprobó retorno HTTPS, pago acreditado consultado en
+Mercado Pago, procesamiento firmado, confirmación única, consumo único de reserva,
+replay idempotente y protección del pago tardío. PAY-01D conserva la ampliación a
+escenarios rechazados/pendientes, observabilidad operativa y runbooks.
