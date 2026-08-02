@@ -84,6 +84,15 @@
   proveedor o una base que está fallando.
 - **Dead-letter / `DEAD`:** estado de un evento que agotó sus reintentos
   automáticos y necesita alerta, diagnóstico y reproceso controlado.
+- **Métrica:** medición numérica agregada que permite observar el comportamiento
+  del sistema, por ejemplo cuántos webhooks se procesaron o agotaron sus reintentos.
+- **Micrometer:** capa de instrumentación usada por Spring para registrar métricas
+  sin acoplar la aplicación a un proveedor de monitoreo específico.
+- **Cardinalidad:** cantidad de combinaciones posibles de etiquetas de una métrica.
+  Incluir IDs, URLs o tenants produce cardinalidad alta, aumenta costos y puede
+  filtrar información; por eso las métricas de pagos usan etiquetas cerradas.
+- **Actuator:** módulo de Spring Boot que ofrece información operativa como salud y
+  métricas. Sus endpoints sensibles no deben quedar expuestos públicamente.
 - **Polling acotado:** consultas periódicas con intervalo, cantidad y duración
   máximos. Evita esperar indefinidamente por un webhook.
 - **Token opaco de retorno:** secreto temporal sin datos interpretables que permite

@@ -1552,3 +1552,56 @@
 - **Consecuencias:** TEST reproduce el comportamiento real de Checkout Pro sin un
   camino manual alternativo. Producción conserva la validación de firma, cuenta,
   preferencia y valores; una discrepancia sigue fallando cerrada.
+
+## ADR aceptadas el 2026-08-01 para Sprint 11
+
+### ADR-103 — Observabilidad local mediante Micrometer y Actuator
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el inbox durable ya reintenta fallos, pero una operación real
+  necesita reconocer recepciones, duplicados, reintentos y eventos agotados.
+- **Problema:** obtener señales operativas sin contratar todavía una plataforma de
+  monitoreo ni exponer datos financieros o secretos.
+- **Alternativas:** usar sólo logs y consultas SQL; instrumentar con Micrometer y
+  Actuator manteniendo las métricas fuera de la superficie pública.
+- **Decisión:** instrumentar el flujo con métricas de baja cardinalidad y conservar
+  su exposición restringida. No se usan como etiquetas tenant, pago, pedido,
+  vendedor, URL, error crudo ni ningún token.
+- **Consecuencias:** el backend queda preparado para Prometheus u otro colector
+  futuro sin incorporarlo a este sprint; logs y respuestas también deben permanecer
+  sanitizados.
+
+### ADR-104 — Recuperación manual mínima para webhooks agotados
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** un evento `DEAD` agotó sus reintentos automáticos y, sin una acción
+  operativa, requeriría acceso directo a MySQL.
+- **Problema:** permitir recuperación segura sin construir una consola general de
+  colas ni permitir efectos duplicados.
+- **Alternativas:** procedimiento SQL exclusivo de soporte; vista `OWNER` con
+  listado mínimo y reintento explícito, tenant-safe e idempotente.
+- **Decisión:** el panel de pagos listará sólo metadatos sanitizados de eventos
+  agotados del comercio y permitirá reprogramarlos. Nunca expone payload, IDs
+  internos, request IDs, credenciales, comprador ni identificadores del proveedor.
+- **Consecuencias:** la mutación exige sesión, CSRF y `MANAGE_PAYMENTS`; queda
+  auditada y no modifica eventos ya procesados. El reproceso masivo permanece fuera.
+
+### ADR-105 — Rama y commits del hardening de pagos
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** PAY-01D combina pruebas, observabilidad, recuperación y
+  documentación.
+- **Problema:** mantener revisable el cierre de pagos y evitar cambios directos en
+  `main`.
+- **Alternativas:** un único commit sobre `main`; rama dedicada y commits por
+  responsabilidad.
+- **Decisión:** trabajar en `codex/feat-payment-hardening` con commits separados
+  para pruebas, observabilidad, recuperación y documentación.
+- **Consecuencias:** el merge y el push requieren autorización posterior del Product
+  Owner, aun cuando los commits del sprint ya estén autorizados.

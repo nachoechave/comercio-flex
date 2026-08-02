@@ -20,11 +20,11 @@
 | CART-01 | Compra | Carrito local | Selección de variante, cantidades, persistencia local y revalidación | Alta | Terminada | STORE-01 | Frontend | Aislado por tienda, accesible, sin datos personales y revalidado | Datos locales obsoletos | L |
 | ORD-01 | Compra | Checkout invitado | Retiro, contacto, reserva temporal y creación transaccional del pedido | Alta | Terminada | CART-01, INV-01 | Frontend/Backend | Backend recalcula, reserva y persiste snapshot idempotente | Precio manipulado, abuso y sobreventa | XL |
 | ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Terminada | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
-| PAY-01 | Pagos | Integrar Checkout Pro sandbox | Épica dividida en PAY-01A–D | Alta | En análisis | ORD-02, F0-02 | Coordinación | Cuatro entregas revisables y sandbox verificado | Fraude/secretos | XL |
+| PAY-01 | Pagos | Integrar Checkout Pro sandbox | Épica dividida en PAY-01A–D | Alta | En pruebas | ORD-02, F0-02 | Coordinación | Cuatro entregas revisables y sandbox verificado | Fraude/secretos | XL |
 | PAY-01A | Pagos | Crear base interna de pagos | Dominio, estados, migraciones, cifrado y proveedor falso | Alta | Terminada | ORD-02 | Backend/Datos/Calidad | Flujo interno verificable sin red ni credenciales reales | Estados inconsistentes | L |
-| PAY-01B | Pagos | Conectar cuenta vendedora | OAuth Authorization Code, state, PKCE y tokens cifrados | Alta | En pruebas | PAY-01A | Backend/Frontend/Seguridad | Sólo OWNER conecta, la identidad vendedora se verifica y no se exponen secretos | Robo/mezcla de tokens | L |
+| PAY-01B | Pagos | Conectar cuenta vendedora | OAuth Authorization Code, state, PKCE y tokens cifrados | Alta | Terminada | PAY-01A | Backend/Frontend/Seguridad | Sólo OWNER conecta, la identidad vendedora se verifica y no se exponen secretos | Robo/mezcla de tokens | L |
 | PAY-01C | Pagos | Ejecutar y confirmar pagos | Preferencia, retorno, inbox webhook y confirmación idempotente | Alta | Terminada | PAY-01B | Backend/Frontend/Seguridad | Pago firmado y verificado coordina pedido y stock una vez | Doble cobro/stock | XL |
-| PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | Pendiente | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
+| PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | En pruebas | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pendientes y stock bajo | Media | Pendiente | ORD-02 | Backend/Frontend | Datos por tenant y definiciones documentadas | Métricas inconsistentes | M |
 | OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | Pendiente | PAY-01 | Infraestructura | Smoke, backup y restauración probada | Costo/caída | L |
 | SEC-01 | Seguridad | Separar credenciales runtime por base | Usuario de mínimo privilegio para control y para cada tenant | Alta | Pendiente | CORE-01 | Datos/Infraestructura | Un usuario tenant no accede a control ni a otra base | Movimiento lateral | M |
@@ -856,3 +856,36 @@ Evidencia automática e integrada:
   una reserva consumida; el Product Owner confirmó visualmente “Pago confirmado”;
 - pago tardío del pedido 6: `REQUIRES_REVIEW`, pedido/reserva vencidos y stock sin
   consumo, validando el cierre seguro de la excepción.
+
+## PAY-01D — Observabilidad y recuperación operativa
+
+> Estado: en pruebas el 2026-08-01. La implementación, revisión y regresión
+> automática están completas; faltan los recorridos manuales sandbox rechazado y
+> pendiente antes de marcarla `Terminada`.
+
+### Criterios implementados
+
+- Micrometer registra webhooks recibidos, duplicados, procesados, reintentados,
+  agotados, terminales y reprogramados manualmente con etiquetas cerradas.
+- Actuator continúa exponiendo públicamente sólo `health`; las métricas globales
+  no quedan disponibles para cualquier usuario autenticado.
+- Un `OWNER` lista hasta 100 eventos `DEAD` de su tenant y ambiente sin recibir
+  payload, IDs internos, recursos del proveedor, secretos ni PII.
+- El reintento manual exige sesión, `MANAGE_PAYMENTS`, CSRF y registra actor,
+  tenant, fecha e intentos previos en la base de control.
+- Repetir el POST es idempotente: conserva `scheduledAt`, no duplica auditoría ni
+  contador y no modifica un evento `PROCESSED`.
+- El cierre del worker usa `attempt_count` como fencing token: un worker cuyo lease
+  venció no puede sobrescribir el resultado de un claim posterior.
+- Angular cancela consultas y reintentos al cambiar de comercio, previene doble
+  envío y ofrece un diálogo accesible con Escape y restauración de foco.
+
+### Evidencia automática
+
+- Backend focalizado: 4 pruebas unitarias y 1 integración MySQL/MockMvc en verde.
+- Backend completo: 129 pruebas, 0 fallos y 0 errores; Flyway aplicó V006 sobre
+  MySQL 8.4.
+- Frontend completo: 37 archivos y 126 pruebas en verde; build de producción
+  correcto con el warning preexistente de `cart-page.scss`.
+- Revisión de seguridad: aislamiento tenant/ambiente, roles, CSRF, CAS de lease,
+  baja cardinalidad, datos expuestos y cancelación Angular verificados.

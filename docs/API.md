@@ -691,6 +691,51 @@ consulta el recurso a Mercado Pago con la credencial del vendedor y verifica
 seller, ambiente, referencia, preferencia, importe y moneda antes de aplicar un
 estado. El payload recibido no se devuelve ni se usa como fuente financiera.
 
+### Operación de webhooks agotados
+
+El `OWNER` puede consultar hasta 100 eventos `DEAD` de su comercio. La respuesta
+no incluye payload, IDs internos, request ID, notification ID, recurso de Mercado
+Pago, vendedor ni datos del comprador.
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/payment-webhooks?status=DEAD
+```
+
+```json
+[
+  {
+    "eventId": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "DEAD",
+    "attemptCount": 8,
+    "safeErrorCode": "PAYMENT_LOOKUP_FAILED",
+    "occurredAt": "2026-08-01T21:00:00Z",
+    "retryAllowed": true
+  }
+]
+```
+
+La recuperación es explícita, requiere CSRF y vuelve a colocar el evento en la
+cola durable. Repetir el mismo POST no crea otra auditoría ni otro contador.
+
+```http
+POST /api/v1/stores/{storeSlug}/admin/payment-webhooks/{eventId}/retry
+X-XSRF-TOKEN: {token CSRF}
+Content-Type: application/json
+
+{}
+```
+
+```json
+{
+  "eventId": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "RETRY_SCHEDULED",
+  "scheduledAt": "2026-08-01T21:05:00Z"
+}
+```
+
+El backend obtiene tenant y ambiente desde la sesión y configuración confiable.
+Un evento ajeno responde como inexistente; uno ya procesado no se modifica.
+
 Errores públicos implementados:
 
 - `400`: formato, token temporal o clave idempotente inválidos;
