@@ -70,6 +70,11 @@ dl div {
   background: #fff2d8;
 }
 
+.status[data-status='DEAD'] {
+  color: #9d1d14;
+  background: #fff0ef;
+}
+
 dl {
   display: grid;
   gap: 0.75rem;
@@ -154,8 +159,58 @@ button:disabled {
   color: var(--color-muted);
 }
 
+.operations {
+  margin-top: 1.5rem;
+}
+
+.operational-help,
+.not-retryable {
+  color: var(--color-muted);
+}
+
+.compact {
+  min-height: 2.25rem;
+  padding: 0.4rem 0.75rem;
+}
+
+.event-list {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-list > li {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-background);
+}
+
+.event-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.event-heading strong {
+  overflow-wrap: anywhere;
+}
+
+.event-list dl {
+  margin-bottom: 1rem;
+}
+
+.error p {
+  margin-bottom: 0.75rem;
+}
+
 @media (max-width: 36rem) {
   .card-heading,
+  .event-heading,
   dl div {
     align-items: flex-start;
     flex-direction: column;

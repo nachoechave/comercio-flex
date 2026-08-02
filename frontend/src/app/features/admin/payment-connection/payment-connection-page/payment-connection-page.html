@@ -128,4 +128,100 @@
       </small>
     </section>
   }
+  <section class="card operations" aria-labelledby="payment-operations-title">
+    <div class="card-heading">
+      <div>
+        <p class="eyebrow">Operación</p>
+        <h2 id="payment-operations-title">Eventos que requieren atención</h2>
+      </div>
+      <button
+        #operationsRefreshButton
+        type="button"
+        class="compact"
+        (click)="reloadFailedWebhooks()"
+        [disabled]="webhooksLoading() || retryingEventId() !== null"
+      >
+        Actualizar
+      </button>
+    </div>
+
+    <p class="operational-help">
+      Esta vista sólo muestra datos técnicos seguros. No contiene información del pago ni del cliente.
+    </p>
+
+    @if (webhooksErrorMessage()) {
+      <div class="error" role="alert">
+        <p>{{ webhooksErrorMessage() }}</p>
+        <button type="button" (click)="reloadFailedWebhooks()" [disabled]="webhooksLoading()">
+          Volver a intentar
+        </button>
+      </div>
+    } @else if (webhooksLoading()) {
+      <p class="loading" role="status" aria-live="polite">Cargando eventos operativos…</p>
+    } @else if (webhookEvents().length === 0) {
+      <p class="empty" role="status">No hay eventos fallidos que requieran atención.</p>
+    } @else {
+      <ul class="event-list" aria-label="Webhooks de pago con fallas">
+        @for (event of webhookEvents(); track event.eventId) {
+          <li>
+            <div class="event-heading">
+              <strong>Evento {{ event.eventId }}</strong>
+              <span class="status" [attr.data-status]="event.status">
+                Reintentos agotados
+              </span>
+            </div>
+            <dl>
+              <div><dt>Intentos:</dt><dd>{{ event.attemptCount }}</dd></div>
+              <div><dt>Código:</dt><dd>{{ event.safeErrorCode || 'Sin código' }}</dd></div>
+              <div><dt>Fecha:</dt><dd>{{ event.occurredAt | date: 'short' }}</dd></div>
+            </dl>
+
+            @if (confirmingRetryEventId() === event.eventId) {
+              <section
+                class="confirmation"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="retry-title"
+                (keydown.escape)="handleRetryDialogEscape($event)"
+              >
+                <h3 id="retry-title">¿Reintentar este evento?</h3>
+                <p>El backend volverá a procesarlo de forma idempotente.</p>
+                <div class="actions">
+                  <button
+                    #retryCancelButton
+                    type="button"
+                    (click)="cancelRetry()"
+                    [disabled]="retryingEventId() !== null"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    class="primary"
+                    (click)="retryWebhook(event)"
+                    [disabled]="retryingEventId() !== null"
+                  >
+                    {{ retryingEventId() === event.eventId ? 'Programando…' : 'Confirmar reintento' }}
+                  </button>
+                </div>
+              </section>
+            } @else if (event.retryAllowed) {
+              <button
+                #retryTriggerButton
+                type="button"
+                (click)="askToRetry(event)"
+                [disabled]="retryingEventId() !== null"
+                [attr.data-event-id]="event.eventId"
+                [attr.aria-label]="'Reintentar evento ' + event.eventId"
+              >
+                Reintentar
+              </button>
+            } @else {
+              <p class="not-retryable">Este evento todavía no admite un reintento manual.</p>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
 </section>
