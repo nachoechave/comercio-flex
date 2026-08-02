@@ -132,7 +132,9 @@ public class SecurityConfig {
 					TenantPermission.MANAGE_ORDERS))
 				.requestMatchers(
 					"/api/v1/stores/*/admin/payment-connection",
-					"/api/v1/stores/*/admin/payment-connection/**")
+					"/api/v1/stores/*/admin/payment-connection/**",
+					"/api/v1/stores/*/admin/payment-webhooks",
+					"/api/v1/stores/*/admin/payment-webhooks/**")
 				.access(new TenantPermissionAuthorizationManager(
 					TenantPermission.MANAGE_PAYMENTS))
 				.requestMatchers(

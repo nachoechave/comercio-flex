@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,7 +17,10 @@ import com.comercioflex.payment.application.CheckoutControlRepository;
 import com.comercioflex.payment.application.CheckoutPaymentException;
 import com.comercioflex.payment.application.CheckoutRoute;
 import com.comercioflex.payment.application.ClaimedWebhookEvent;
+import com.comercioflex.payment.application.FailedWebhookEvent;
 import com.comercioflex.payment.application.ReceivedWebhook;
+import com.comercioflex.payment.application.WebhookRetryResult;
+import com.comercioflex.payment.application.WebhookRetryOutcome;
 import com.comercioflex.payment.domain.PaymentEnvironment;
 
 @Repository
@@ -187,23 +191,102 @@ public class JdbcCheckoutControlRepository implements CheckoutControlRepository 
 	}
 
 	@Override
-	public void markProcessed(long eventId, Instant now) {
-		jdbcTemplate.update("""
+	public boolean markProcessed(long eventId, int expectedAttemptCount, Instant now) {
+		return jdbcTemplate.update("""
 			UPDATE payment_webhook_events
 			SET status = 'PROCESSED', leased_until = NULL, processed_at = ?,
 				last_error_code = NULL
-			WHERE id = ? AND status = 'PROCESSING'
-			""", Timestamp.from(now), eventId);
+			WHERE id = ? AND status = 'PROCESSING' AND attempt_count = ?
+			""", Timestamp.from(now), eventId, expectedAttemptCount) == 1;
 	}
 
 	@Override
-	public void markFailed(
-			long eventId, boolean dead, String errorCode, Instant availableAt) {
-		jdbcTemplate.update("""
+	public boolean markFailed(
+			long eventId, int expectedAttemptCount, boolean dead,
+			String errorCode, Instant availableAt) {
+		return jdbcTemplate.update("""
 			UPDATE payment_webhook_events
 			SET status = ?, leased_until = NULL, available_at = ?, last_error_code = ?
-			WHERE id = ? AND status = 'PROCESSING'
-			""", dead ? "DEAD" : "RETRY", Timestamp.from(availableAt), errorCode, eventId);
+			WHERE id = ? AND status = 'PROCESSING' AND attempt_count = ?
+			""", dead ? "DEAD" : "RETRY", Timestamp.from(availableAt), errorCode,
+			eventId, expectedAttemptCount) == 1;
+	}
+
+	@Override
+	public List<FailedWebhookEvent> findDeadWebhooks(
+			long tenantId, PaymentEnvironment environment, int limit) {
+		return jdbcTemplate.query("""
+			SELECT BIN_TO_UUID(event.public_id) event_public_id,
+				event.status, event.attempt_count, event.last_error_code,
+				event.updated_at
+			FROM payment_webhook_events event
+			JOIN payment_webhook_routes route ON route.id = event.route_id
+			WHERE route.tenant_id = ? AND event.environment = ? AND event.status = 'DEAD'
+			ORDER BY event.updated_at DESC, event.id DESC
+			LIMIT ?
+			""", (resultSet, rowNumber) -> new FailedWebhookEvent(
+			UUID.fromString(resultSet.getString("event_public_id")),
+			resultSet.getString("status"),
+			resultSet.getInt("attempt_count"),
+			resultSet.getString("last_error_code"),
+			resultSet.getTimestamp("updated_at").toInstant(),
+			true), tenantId, environment.name(), limit);
+	}
+
+	@Override
+	public WebhookRetryOutcome retryWebhook(
+			long tenantId, PaymentEnvironment environment,
+			UUID eventPublicId, long actorUserId,
+			UUID actorUserPublicId, Instant now) {
+		Optional<WebhookState> current = jdbcTemplate.query("""
+			SELECT event.status, event.attempt_count, event.available_at
+			FROM payment_webhook_events event
+			JOIN payment_webhook_routes route ON route.id = event.route_id
+			WHERE event.public_id = UUID_TO_BIN(?) AND route.tenant_id = ?
+				AND event.environment = ?
+			FOR UPDATE
+			""", (resultSet, rowNumber) -> new WebhookState(
+			resultSet.getString("status"), resultSet.getInt("attempt_count"),
+			resultSet.getTimestamp("available_at").toInstant()),
+			eventPublicId.toString(), tenantId, environment.name()).stream().findFirst();
+		if (current.isEmpty()) {
+			return new WebhookRetryOutcome(WebhookRetryResult.NOT_FOUND, null);
+		}
+		WebhookState state = current.get();
+		if ("PROCESSED".equals(state.status())) {
+			return new WebhookRetryOutcome(WebhookRetryResult.PROCESSED, state.availableAt());
+		}
+		if (!"DEAD".equals(state.status())) {
+			return new WebhookRetryOutcome(
+				WebhookRetryResult.ALREADY_SCHEDULED, state.availableAt());
+		}
+		int changed = jdbcTemplate.update("""
+			UPDATE payment_webhook_events
+			SET status = 'RETRY', attempt_count = 0, available_at = ?,
+				leased_until = NULL, processed_at = NULL,
+				last_error_code = 'MANUAL_RETRY'
+			WHERE public_id = UUID_TO_BIN(?) AND status = 'DEAD'
+			""", Timestamp.from(now), eventPublicId.toString());
+		if (changed != 1) {
+			return new WebhookRetryOutcome(
+				WebhookRetryResult.ALREADY_SCHEDULED, state.availableAt());
+		}
+		jdbcTemplate.update("""
+			INSERT INTO payment_webhook_retry_audit (
+				public_id, webhook_event_id, tenant_id, actor_user_id,
+				actor_user_public_id, action_name, previous_attempt_count, created_at
+			)
+			SELECT UUID_TO_BIN(?), event.id, ?, ?, UUID_TO_BIN(?),
+				'MANUAL_RETRY_SCHEDULED', ?, ?
+			FROM payment_webhook_events event
+			WHERE event.public_id = UUID_TO_BIN(?)
+			""", UUID.randomUUID().toString(), tenantId, actorUserId,
+			actorUserPublicId.toString(), state.attemptCount(), Timestamp.from(now),
+			eventPublicId.toString());
+		return new WebhookRetryOutcome(WebhookRetryResult.SCHEDULED, now);
+	}
+
+	private record WebhookState(String status, int attemptCount, Instant availableAt) {
 	}
 
 	private CheckoutRoute mapRoute(ResultSet resultSet, int rowNumber) throws SQLException {

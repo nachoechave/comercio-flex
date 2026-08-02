@@ -31,6 +31,7 @@ public class MercadoPagoWebhookReceiver {
 	private final PaymentOAuthProperties oauthProperties;
 	private final ObjectMapper objectMapper;
 	private final TransactionTemplate transactions;
+	private final PaymentWebhookMetrics metrics;
 	private final Clock clock;
 
 	@Autowired
@@ -39,9 +40,10 @@ public class MercadoPagoWebhookReceiver {
 			CheckoutProProperties properties,
 			PaymentOAuthProperties oauthProperties,
 			ObjectMapper objectMapper,
-			@Qualifier("controlTransactionTemplate") TransactionTemplate transactions) {
+			@Qualifier("controlTransactionTemplate") TransactionTemplate transactions,
+			PaymentWebhookMetrics metrics) {
 		this(repository, properties, oauthProperties, objectMapper,
-			transactions, Clock.systemUTC());
+			transactions, metrics, Clock.systemUTC());
 	}
 
 	MercadoPagoWebhookReceiver(
@@ -50,12 +52,14 @@ public class MercadoPagoWebhookReceiver {
 			PaymentOAuthProperties oauthProperties,
 			ObjectMapper objectMapper,
 			TransactionTemplate transactions,
+			PaymentWebhookMetrics metrics,
 			Clock clock) {
 		this.repository = repository;
 		this.properties = properties;
 		this.oauthProperties = oauthProperties;
 		this.objectMapper = objectMapper;
 		this.transactions = transactions;
+		this.metrics = metrics;
 		this.clock = clock;
 	}
 
@@ -85,7 +89,7 @@ public class MercadoPagoWebhookReceiver {
 			throw invalid("WEBHOOK_ENVIRONMENT_MISMATCH", "La notificación no pertenece al ambiente.");
 		}
 		Instant now = clock.instant();
-		return Objects.requireNonNull(transactions.execute(status -> {
+		boolean inserted = Objects.requireNonNull(transactions.execute(status -> {
 			CheckoutRoute route = repository.findRoute(sha256(routeToken), environment())
 				.orElseThrow(() -> invalid("INVALID_WEBHOOK_ROUTE", "La ruta no es válida."));
 			if (!route.expectedSellerAccountId().equals(userId)) {
@@ -95,6 +99,8 @@ public class MercadoPagoWebhookReceiver {
 				notificationId, requestId, type, action, resourceId, userId,
 				liveMode, sha256(rawBody)), now);
 		}));
+		metrics.received(inserted);
+		return inserted;
 	}
 
 	private void validateSignature(String header, String dataId, String requestId) {
