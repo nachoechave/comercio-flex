@@ -672,6 +672,23 @@ El polling se ejecuta cada 3 segundos durante un máximo aproximado de 30 segund
 agotar el límite se detiene y ofrece actualización manual. Un `status` recibido
 en la back URL nunca cambia el pedido.
 
+Si Mercado Pago incluyó un `payment_id` numérico en el retorno y el webhook se
+demora, la acción manual solicita una reconciliación autenticada contra el
+proveedor:
+
+```http
+POST /api/v1/stores/{storeSlug}/payment-returns/{returnToken}/reconcile?paymentId={providerPaymentId}
+X-XSRF-TOKEN: {token CSRF}
+Content-Type: application/json
+
+{}
+```
+
+El `paymentId` visible no es autoritativo. El backend consulta Mercado Pago con
+la credencial del comercio y sólo aplica el resultado si coinciden vendedor,
+preferencia, referencia externa, importe y moneda. La confirmación y el consumo
+de stock conservan las mismas garantías idempotentes del webhook.
+
 ### Webhook público
 
 ```http

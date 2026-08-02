@@ -86,6 +86,10 @@ public class SecurityConfig {
 				.permitAll()
 				.requestMatchers(
 					HttpMethod.POST,
+					"/api/v1/stores/*/payment-returns/*/reconcile")
+				.permitAll()
+				.requestMatchers(
+					HttpMethod.POST,
 					"/api/v1/integrations/mercado-pago/webhooks")
 				.permitAll()
 				.requestMatchers(

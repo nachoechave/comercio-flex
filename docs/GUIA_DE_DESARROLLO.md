@@ -386,7 +386,10 @@ usar la API. No pruebes producción ni credenciales reales en esta entrega.
 13. Intentar usar la credencial TEST central desde otro tenant y arrancar esa
     modalidad en producción: ambos casos deben rechazarse sin revelar secretos.
 14. Dejar que el polling alcance su límite y comprobar que se detenga, explique la
-    demora y permita actualización manual sin crear otra preferencia.
+    demora y permita actualización manual sin crear otra preferencia. Si el retorno
+    incluye `payment_id`, la acción debe consultar Mercado Pago y validar vendedor,
+    preferencia, referencia, importe y moneda antes de aplicar el resultado; nunca
+    debe confiar en `status=approved` de la URL.
 
 ### Observabilidad y revisión
 

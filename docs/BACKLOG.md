@@ -900,3 +900,10 @@ Evidencia automática e integrada:
   el pedido confirmado, demostrando replay idempotente sin dinero real.
 - La prueba detectó y corrigió la sesión UTC de control DB, la zona horaria
   explícita del comercio y la separación visual entre OAuth y operación.
+- El pago aprobado del pedido 10 expuso que `Actualizar estado` sólo releía la
+  base local. Se incorporó reconciliación segura contra Mercado Pago, protegida
+  por token opaco y CSRF, sin confiar en el `approved` de la URL.
+- Evidencia manual: pedido 10 `CONFIRMED`, intento/transacción `APPROVED`, reserva
+  `CONSUMED`, stock de 6 a 5 y un único movimiento `ORDER_CONFIRMED`.
+- El escenario aprobado queda validado; rechazado y pendiente continúan pendientes
+  antes de marcar PAY-01D como `Terminada`.

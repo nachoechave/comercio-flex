@@ -29,6 +29,19 @@ export class PaymentApiService {
     );
   }
 
+  reconcileReturn(
+    storeSlug: string,
+    returnToken: string,
+    providerPaymentId: string,
+  ): Observable<PaymentReturnStatus> {
+    const params = new HttpParams().set('paymentId', providerPaymentId);
+    return this.http.post<PaymentReturnStatus>(
+      `/api/v1/stores/${encodeURIComponent(storeSlug)}/payment-returns/${encodeURIComponent(returnToken)}/reconcile`,
+      {},
+      { params },
+    );
+  }
+
   private ordersUrl(storeSlug: string): string {
     return `/api/v1/stores/${encodeURIComponent(storeSlug)}/orders`;
   }

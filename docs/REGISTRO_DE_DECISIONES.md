@@ -107,6 +107,11 @@
 | ADR-100 | Habilitación de cobros | Separada de la conexión técnica | Aceptada |
 | ADR-101 | Firma de webhook | Obligatoria en TEST y producción | Aceptada |
 | ADR-102 | Ambiente del pago verificado | Credencial y coincidencias comerciales, no `live_mode` | Aceptada |
+| ADR-103 | Observabilidad de pagos | Micrometer con baja cardinalidad | Aceptada |
+| ADR-104 | Recuperación de webhooks | Reintento manual mínimo y auditado | Aceptada |
+| ADR-105 | Entrega del hardening | Rama y commits por responsabilidad | Aceptada |
+| ADR-106 | Fechas operativas | UTC al persistir y zona del comercio al mostrar | Aceptada |
+| ADR-107 | Retorno demorado | Reconciliación verificada bajo demanda | Aceptada |
 
 ## Plantilla ADR
 
@@ -1624,3 +1629,22 @@
 - **Consecuencias:** los instantes son comparables entre ambientes y cada comercio
   ve su hora operativa aunque el navegador esté en otra zona. Toda nueva conexión
   JDBC que lea `TIMESTAMP` debe mantener la misma política UTC.
+
+### ADR-107 — Reconciliación verificada desde el retorno demorado
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** Mercado Pago devolvió un pago aprobado, pero el webhook no llegó a
+  tiempo y la pantalla seguía mostrando el intento como pendiente.
+- **Problema:** el botón `Actualizar estado` sólo releía la base local y no podía
+  resolver una demora del webhook.
+- **Alternativas:** esperar indefinidamente el webhook; confiar en los parámetros
+  de retorno; consultar al proveedor bajo demanda y aplicar el mismo flujo seguro.
+- **Decisión:** el retorno conserva lectura y polling acotados. Tras el timeout, el
+  comprador puede enviar el `payment_id` recibido mediante POST con CSRF y token
+  opaco. El backend consulta Mercado Pago con la credencial esperada y valida todas
+  las coincidencias comerciales antes de confirmar.
+- **Consecuencias:** la recuperación no crea otra preferencia ni otro cobro y es
+  idempotente. La URL nunca es fuente financiera; un identificador falso, una
+  credencial distinta o cualquier discrepancia fallan cerrados.

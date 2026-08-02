@@ -53,4 +53,15 @@ public class CheckoutProController {
 			.cacheControl(CacheControl.noStore())
 			.body(PaymentReturnResponse.from(service.findReturn(returnToken)));
 	}
+
+	@PostMapping("/payment-returns/{returnToken}/reconcile")
+	ResponseEntity<PaymentReturnResponse> reconcileReturn(
+			@PathVariable String storeSlug,
+			@PathVariable @Pattern(regexp = TOKEN) String returnToken,
+			@RequestParam @Pattern(regexp = "^[0-9]{1,20}$") String paymentId) {
+		return ResponseEntity.ok()
+			.cacheControl(CacheControl.noStore())
+			.body(PaymentReturnResponse.from(
+				service.reconcileReturn(storeSlug, returnToken, paymentId)));
+	}
 }

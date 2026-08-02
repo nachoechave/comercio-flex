@@ -1,7 +1,17 @@
 import { DatePipe } from '@angular/common';
 import { Component, ElementRef, OnDestroy, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { EMPTY, Subscription, catchError, exhaustMap, finalize, take, takeWhile, tap, timer } from 'rxjs';
+import {
+  EMPTY,
+  Subscription,
+  catchError,
+  exhaustMap,
+  finalize,
+  take,
+  takeWhile,
+  tap,
+  timer,
+} from 'rxjs';
 
 import { CsrfService } from '../../../../core/auth/csrf.service';
 import { CheckoutProNavigationService } from '../checkout-pro-navigation.service';
@@ -30,6 +40,9 @@ export class PaymentReturnPage implements OnDestroy {
 
   protected readonly storeSlug = this.route.snapshot.paramMap.get('storeSlug') ?? '';
   protected readonly returnToken = this.route.snapshot.paramMap.get('returnToken') ?? '';
+  private readonly providerPaymentId = this.validProviderPaymentId(
+    this.route.snapshot.queryParamMap.get('payment_id'),
+  );
   protected readonly result = signal<PaymentReturnStatus | null>(null);
   protected readonly loading = signal(true);
   protected readonly refreshing = signal(false);
@@ -55,16 +68,22 @@ export class PaymentReturnPage implements OnDestroy {
     if (this.refreshing()) return;
     this.refreshing.set(true);
     this.errorMessage.set(null);
-    this.api
-      .getReturnStatus(this.storeSlug, this.returnToken)
-      .pipe(finalize(() => this.refreshing.set(false)))
-      .subscribe({
-        next: (result) => this.receive(result),
-        error: (error: unknown) =>
-          this.errorMessage.set(
-            paymentErrorMessage(error, 'No pudimos actualizar el estado. Intentá nuevamente.'),
-          ),
-      });
+    const request = this.providerPaymentId
+      ? this.csrf
+          .ensureToken()
+          .pipe(
+            exhaustMap(() =>
+              this.api.reconcileReturn(this.storeSlug, this.returnToken, this.providerPaymentId!),
+            ),
+          )
+      : this.api.getReturnStatus(this.storeSlug, this.returnToken);
+    request.pipe(finalize(() => this.refreshing.set(false))).subscribe({
+      next: (result) => this.receive(result),
+      error: (error: unknown) =>
+        this.errorMessage.set(
+          paymentErrorMessage(error, 'No pudimos actualizar el estado. Intentá nuevamente.'),
+        ),
+    });
   }
 
   protected retryPayment(): void {
@@ -72,9 +91,7 @@ export class PaymentReturnPage implements OnDestroy {
     if (!result?.canRetry || this.retrying()) return;
     const recovery = this.recovery.find(this.storeSlug, result.orderId);
     if (!recovery) {
-      this.errorMessage.set(
-        'Abrí el enlace privado del pedido para volver a intentar el pago.',
-      );
+      this.errorMessage.set('Abrí el enlace privado del pedido para volver a intentar el pago.');
       return;
     }
     this.retrying.set(true);
@@ -179,8 +196,14 @@ export class PaymentReturnPage implements OnDestroy {
     this.errorMessage.set(null);
     if (result.paymentStatus !== this.lastAnnouncedStatus) {
       this.lastAnnouncedStatus = result.paymentStatus;
-      this.announcement.set(`${this.statusLabel(result.paymentStatus)}. ${this.statusMessage(result.paymentStatus)}`);
+      this.announcement.set(
+        `${this.statusLabel(result.paymentStatus)}. ${this.statusMessage(result.paymentStatus)}`,
+      );
     }
     if (firstResult) queueMicrotask(() => this.title()?.nativeElement.focus());
+  }
+
+  private validProviderPaymentId(value: string | null): string | null {
+    return value && /^[0-9]{1,20}$/.test(value) ? value : null;
   }
 }
