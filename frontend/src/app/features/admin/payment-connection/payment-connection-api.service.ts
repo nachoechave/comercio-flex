@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import {
   PaymentAuthorizationStart,
   PaymentConnection,
+  PaymentStoreSettings,
   PaymentWebhookEventSummary,
   PaymentWebhookRetryResult,
 } from './payment-connection.models';
@@ -31,6 +32,12 @@ export class PaymentConnectionApiService {
   getFailedWebhooks(storeSlug: string): Observable<PaymentWebhookEventSummary[]> {
     return this.http.get<PaymentWebhookEventSummary[]>(
       `${this.webhooksUrl(storeSlug)}?status=DEAD`,
+    );
+  }
+
+  getStoreSettings(storeSlug: string): Observable<PaymentStoreSettings> {
+    return this.http.get<PaymentStoreSettings>(
+      `/api/v1/stores/${encodeURIComponent(storeSlug)}/settings`,
     );
   }
 

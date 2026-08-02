@@ -53,6 +53,14 @@ describe('PaymentConnectionApiService', () => {
     request.flush([]);
   });
 
+  it('loads the store timezone without duplicating the complete storefront client', () => {
+    service.getStoreSettings('tienda/a').subscribe();
+
+    const request = http.expectOne('/api/v1/stores/tienda%2Fa/settings');
+    expect(request.request.method).toBe('GET');
+    request.flush({ timezone: 'America/Argentina/Buenos_Aires' });
+  });
+
   it('schedules an explicit webhook retry without sending operational data', () => {
     service.retryWebhook('tienda-a', 'event/42').subscribe();
 

@@ -1605,3 +1605,22 @@
   para pruebas, observabilidad, recuperación y documentación.
 - **Consecuencias:** el merge y el push requieren autorización posterior del Product
   Owner, aun cuando los commits del sprint ya estén autorizados.
+
+### ADR-106 — UTC en persistencia y zona del comercio en presentación
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la prueba manual de recuperación mostró un evento tres horas
+  desplazado y, simultáneamente, un error OAuth no relacionado con el reintento.
+- **Problema:** evitar que el driver interprete dos veces la zona de un `TIMESTAMP`
+  y que el operador confunda mensajes de subsistemas independientes.
+- **Alternativas:** usar la zona del navegador; guardar horas locales; conservar
+  instantes UTC y presentarlos con `store_settings.timezone`.
+- **Decisión:** la sesión JDBC de control DB se fuerza a UTC y Angular formatea los
+  eventos con la zona IANA configurada para el comercio, mostrándola explícitamente.
+  Los avisos del inbox quedan dentro de su tarjeta y los errores OAuth usan un
+  mensaje independiente y específico.
+- **Consecuencias:** los instantes son comparables entre ambientes y cada comercio
+  ve su hora operativa aunque el navegador esté en otra zona. Toda nueva conexión
+  JDBC que lea `TIMESTAMP` debe mantener la misma política UTC.

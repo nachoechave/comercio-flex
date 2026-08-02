@@ -46,6 +46,7 @@ class PaymentWebhookOperationsIntegrationTests {
 	private static final UUID DEAD_PRODUCTION = UUID.fromString("018f0000-0000-7000-8000-000000000103");
 	private static final UUID DEAD_B = UUID.fromString("018f0000-0000-7000-8000-000000000104");
 	private static final UUID PROCESSING_A = UUID.fromString("018f0000-0000-7000-8000-000000000105");
+	private static final Instant OCCURRED_AT = Instant.parse("2026-08-01T12:00:00Z");
 
 	@Container
 	static final MySQLContainer<?> DATABASE = new MySQLContainer<>(
@@ -117,6 +118,7 @@ class PaymentWebhookOperationsIntegrationTests {
 			.andExpect(jsonPath("$[0].eventId").value(DEAD_A.toString()))
 			.andExpect(jsonPath("$[0].status").value("DEAD"))
 			.andExpect(jsonPath("$[0].safeErrorCode").value("PAYMENT_LOOKUP_FAILED"))
+			.andExpect(jsonPath("$[0].occurredAt").value(OCCURRED_AT.toString()))
 			.andExpect(jsonPath("$[0].providerResourceId").doesNotExist());
 
 		mockMvc.perform(get("/api/v1/stores/tienda-b/admin/payment-webhooks")
@@ -209,9 +211,10 @@ class PaymentWebhookOperationsIntegrationTests {
 				public_id, route_id, provider, environment, notification_id,
 				request_id, event_type, action_name, provider_resource_id,
 				provider_user_id, live_mode, payload_hash, status, attempt_count,
-				available_at, leased_until, processed_at, last_error_code)
+				available_at, leased_until, processed_at, last_error_code,
+				created_at, updated_at)
 			SELECT UUID_TO_BIN(?), route.id, 'MERCADO_PAGO', ?, ?, ?, 'payment',
-				'payment.updated', ?, 'seller', ?, UNHEX(SHA2(?, 256)), ?, ?, ?, ?, ?, ?
+				'payment.updated', ?, 'seller', ?, UNHEX(SHA2(?, 256)), ?, ?, ?, ?, ?, ?, ?, ?
 			FROM payment_webhook_routes route WHERE route.public_id = UUID_TO_BIN(?)
 			""", eventId.toString(), environment, "notification-" + eventId,
 			"request-" + eventId, "resource-" + eventId,
@@ -219,7 +222,8 @@ class PaymentWebhookOperationsIntegrationTests {
 			java.sql.Timestamp.from(Instant.now()),
 			"PROCESSING".equals(status) ? java.sql.Timestamp.from(Instant.now().plusSeconds(60)) : null,
 			"PROCESSED".equals(status) ? java.sql.Timestamp.from(Instant.now()) : null,
-			errorCode, routeId.toString());
+			errorCode, java.sql.Timestamp.from(OCCURRED_AT),
+			java.sql.Timestamp.from(OCCURRED_AT), routeId.toString());
 	}
 
 	private Authenticated login(String email) throws Exception {

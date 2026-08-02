@@ -149,6 +149,10 @@
       Esta vista sólo muestra datos técnicos seguros. No contiene información del pago ni del cliente.
     </p>
 
+    @if (webhooksNoticeMessage()) {
+      <p class="notice" role="status" aria-live="polite">{{ webhooksNoticeMessage() }}</p>
+    }
+
     @if (webhooksErrorMessage()) {
       <div class="error" role="alert">
         <p>{{ webhooksErrorMessage() }}</p>
@@ -173,7 +177,10 @@
             <dl>
               <div><dt>Intentos:</dt><dd>{{ event.attemptCount }}</dd></div>
               <div><dt>Código:</dt><dd>{{ event.safeErrorCode || 'Sin código' }}</dd></div>
-              <div><dt>Fecha:</dt><dd>{{ event.occurredAt | date: 'short' }}</dd></div>
+              <div>
+                <dt>Fecha:</dt>
+                <dd>{{ formatEventDate(event.occurredAt) }} ({{ storeTimezone() }})</dd>
+              </div>
             </dl>
 
             @if (confirmingRetryEventId() === event.eventId) {

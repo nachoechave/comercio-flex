@@ -7,6 +7,10 @@ spring:
     url: ${CONTROL_DB_URL:jdbc:mysql://localhost:3306/comercio_flex_control}
     username: ${CONTROL_DB_USER:comercio_flex_app}
     password: ${CONTROL_DB_PASSWORD}
+    hikari:
+      data-source-properties:
+        connectionTimeZone: UTC
+        forceConnectionTimeZoneToSession: true
   flyway:
     locations: classpath:db/migration/control
   jpa:

@@ -48,6 +48,9 @@ describe('PaymentConnectionPage', () => {
     http
       .expectOne('/api/v1/stores/tienda-a/admin/payment-webhooks?status=DEAD')
       .flush(webhooks);
+    http.expectOne('/api/v1/stores/tienda-a/settings').flush({
+      timezone: 'America/Argentina/Buenos_Aires',
+    });
     fixture.detectChanges();
   }
 
@@ -236,6 +239,15 @@ describe('PaymentConnectionPage', () => {
     );
   });
 
+  it('formats operational dates in the configured store timezone', () => {
+    createComponent([DEAD_WEBHOOK]);
+    flushConnection(CONNECTED);
+
+    const text = fixture.nativeElement.textContent.replace(/\s+/g, ' ');
+    expect(text).toContain('Fecha:1/8/26, 9:00');
+    expect(text).toContain('(America/Argentina/Buenos_Aires)');
+  });
+
   it('closes retry confirmation with Escape and restores focus to its trigger', async () => {
     createComponent([DEAD_WEBHOOK]);
     flushConnection(CONNECTED);
@@ -260,6 +272,9 @@ describe('PaymentConnectionPage', () => {
   it('shows an operational error independently from the connection', () => {
     fixture = TestBed.createComponent(PaymentConnectionPage);
     fixture.detectChanges();
+    http.expectOne('/api/v1/stores/tienda-a/settings').flush({
+      timezone: 'America/Argentina/Buenos_Aires',
+    });
     http
       .expectOne('/api/v1/stores/tienda-a/admin/payment-webhooks?status=DEAD')
       .flush({}, { status: 503, statusText: 'Unavailable' });
@@ -280,15 +295,53 @@ describe('PaymentConnectionPage', () => {
     const storeAWebhooks = http.expectOne(
       '/api/v1/stores/tienda-a/admin/payment-webhooks?status=DEAD',
     );
+    const storeASettings = http.expectOne('/api/v1/stores/tienda-a/settings');
 
     storeParams.next(convertToParamMap({ storeSlug: 'tienda-b' }));
     fixture.detectChanges();
 
     expect(storeAConnection.cancelled).toBe(true);
     expect(storeAWebhooks.cancelled).toBe(true);
+    expect(storeASettings.cancelled).toBe(true);
     http.expectOne('/api/v1/stores/tienda-b/admin/payment-connection').flush(NOT_CONNECTED);
     http
       .expectOne('/api/v1/stores/tienda-b/admin/payment-webhooks?status=DEAD')
       .flush([]);
+    http.expectOne('/api/v1/stores/tienda-b/settings').flush({
+      timezone: 'America/Argentina/Buenos_Aires',
+    });
+  });
+
+  it('keeps OAuth configuration errors separate from webhook retry success', () => {
+    createComponent([DEAD_WEBHOOK]);
+    http.expectOne('/api/v1/stores/tienda-a/admin/payment-connection').flush(
+      { code: 'PAYMENT_CONNECTION_DISABLED' },
+      { status: 503, statusText: 'Unavailable' },
+    );
+    fixture.detectChanges();
+
+    const retry = fixture.nativeElement.querySelector(
+      '[aria-label="Reintentar evento evt-safe-42"]',
+    ) as HTMLButtonElement;
+    retry.click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.event-list .confirmation .primary') as HTMLButtonElement)
+      .click();
+    http.expectOne('/api/v1/auth/csrf').flush(null);
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/payment-webhooks/evt-safe-42/retry')
+      .flush({ eventId: 'evt-safe-42', status: 'RETRY_SCHEDULED', scheduledAt: DEAD_WEBHOOK.occurredAt });
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/payment-webhooks?status=DEAD')
+      .flush([]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('header + .notice')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.operations .notice')?.textContent).toContain(
+      'programado para reintento',
+    );
+    expect(fixture.nativeElement.textContent).toContain(
+      'La conexión de cuentas de Mercado Pago está deshabilitada en este entorno.',
+    );
   });
 });

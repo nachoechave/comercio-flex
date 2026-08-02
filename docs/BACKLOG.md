@@ -885,7 +885,18 @@ Evidencia automática e integrada:
 - Backend focalizado: 4 pruebas unitarias y 1 integración MySQL/MockMvc en verde.
 - Backend completo: 129 pruebas, 0 fallos y 0 errores; Flyway aplicó V006 sobre
   MySQL 8.4.
-- Frontend completo: 37 archivos y 126 pruebas en verde; build de producción
+- Frontend completo: 37 archivos y 129 pruebas en verde; build de producción
   correcto con el warning preexistente de `cart-page.scss`.
 - Revisión de seguridad: aislamiento tenant/ambiente, roles, CSRF, CAS de lease,
   baja cardinalidad, datos expuestos y cancelación Angular verificados.
+
+### Evidencia manual de recuperación
+
+- El 2026-08-01 un `OWNER` visualizó un evento sintético `DEAD` de `tienda-a`,
+  confirmó su reintento y comprobó que desapareció del listado.
+- La auditoría conservó los 8 intentos anteriores y registró al actor; el evento
+  terminó `PROCESSED` en un intento.
+- Permanecieron una sola transacción aprobada, un solo movimiento de inventario y
+  el pedido confirmado, demostrando replay idempotente sin dinero real.
+- La prueba detectó y corrigió la sesión UTC de control DB, la zona horaria
+  explícita del comercio y la separación visual entre OAuth y operación.

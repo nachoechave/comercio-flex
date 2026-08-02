@@ -36,3 +36,7 @@ export interface PaymentWebhookRetryResult {
   status: 'RETRY_SCHEDULED';
   scheduledAt: string;
 }
+
+export interface PaymentStoreSettings {
+  timezone: string;
+}

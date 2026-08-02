@@ -446,6 +446,8 @@ PAY-01D amplía las mismas fronteras sin crear carpetas transversales nuevas:
   por intento y auditoría atómica;
 - `payment-connection-page` incorpora la vista operativa y cancela solicitudes al
   cambiar de tenant.
+- la vista consulta el `timezone` público de `store_settings` para presentar los
+  instantes UTC en la zona del comercio, sin duplicar ese dato en el inbox.
 
 ```text
 OrderConfirmationPage

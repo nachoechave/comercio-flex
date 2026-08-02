@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize, Subscription, switchMap } from 'rxjs';
+import { catchError, finalize, forkJoin, of, Subscription, switchMap } from 'rxjs';
 
 import { CsrfService } from '../../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
@@ -56,6 +56,8 @@ export class PaymentConnectionPage {
   readonly webhookEvents = signal<PaymentWebhookEventSummary[]>([]);
   readonly webhooksLoading = signal(true);
   readonly webhooksErrorMessage = signal<string | null>(null);
+  readonly webhooksNoticeMessage = signal<string | null>(null);
+  readonly storeTimezone = signal('UTC');
   readonly retryingEventId = signal<string | null>(null);
   readonly confirmingRetryEventId = signal<string | null>(null);
   readonly busy = computed(() => this.startingAuthorization() || this.disconnecting());
@@ -73,6 +75,8 @@ export class PaymentConnectionPage {
       this.connection.set(null);
       this.errorMessage.set(null);
       this.noticeMessage.set(null);
+      this.webhooksNoticeMessage.set(null);
+      this.storeTimezone.set('UTC');
       this.confirmingDisconnect.set(false);
       this.loading.set(true);
       this.cancelOperationalRequests();
@@ -99,6 +103,7 @@ export class PaymentConnectionPage {
 
   askToRetry(event: PaymentWebhookEventSummary): void {
     if (!event.retryAllowed || this.retryingEventId()) return;
+    this.webhooksNoticeMessage.set(null);
     this.retryTriggerEventId = event.eventId;
     this.confirmingRetryEventId.set(event.eventId);
     queueMicrotask(() => this.retryCancelButton()?.nativeElement.focus());
@@ -141,7 +146,7 @@ export class PaymentConnectionPage {
         next: (events) => {
           this.webhookEvents.set(events);
           this.confirmingRetryEventId.set(null);
-          this.noticeMessage.set('El webhook fue programado para reintento.');
+          this.webhooksNoticeMessage.set('El webhook fue programado para reintento.');
           queueMicrotask(() => this.operationsRefreshButton()?.nativeElement.focus());
         },
         error: (error: unknown) => {
@@ -154,7 +159,22 @@ export class PaymentConnectionPage {
 
   reloadFailedWebhooks(): void {
     const storeSlug = this.storeSlug();
-    if (storeSlug && !this.webhooksLoading()) this.loadFailedWebhooks(storeSlug);
+    if (storeSlug && !this.webhooksLoading()) {
+      this.webhooksNoticeMessage.set(null);
+      this.loadFailedWebhooks(storeSlug);
+    }
+  }
+
+  formatEventDate(occurredAt: string): string {
+    try {
+      return new Intl.DateTimeFormat('es-AR', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+        timeZone: this.storeTimezone(),
+      }).format(new Date(occurredAt));
+    } catch {
+      return occurredAt;
+    }
   }
 
   startAuthorization(): void {
@@ -251,11 +271,18 @@ export class PaymentConnectionPage {
     this.webhooksSubscription?.unsubscribe();
     this.webhooksLoading.set(true);
     this.webhooksErrorMessage.set(null);
-    this.webhooksSubscription = this.api
-      .getFailedWebhooks(storeSlug)
+    this.webhooksSubscription = forkJoin({
+      events: this.api.getFailedWebhooks(storeSlug),
+      settings: this.api.getStoreSettings(storeSlug).pipe(
+        catchError(() => of({ timezone: 'UTC' })),
+      ),
+    })
       .pipe(finalize(() => this.webhooksLoading.set(false)))
       .subscribe({
-        next: (events) => this.webhookEvents.set(events),
+        next: ({ events, settings }) => {
+          this.storeTimezone.set(settings.timezone || 'UTC');
+          this.webhookEvents.set(events);
+        },
         error: (error: unknown) => {
           this.webhookEvents.set([]);
           this.webhooksErrorMessage.set(

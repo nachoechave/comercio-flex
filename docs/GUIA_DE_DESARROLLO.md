@@ -416,6 +416,15 @@ escenarios rechazados/pendientes, observabilidad operativa y runbooks.
 7. Si vuelve a `DEAD`, conservar el UUID público y el código seguro para soporte;
    no realizar actualizaciones SQL manuales ni compartir secretos.
 
+Las fechas del inbox se conservan como instantes UTC. La conexión JDBC de la base
+de control fuerza su sesión a UTC y Angular las presenta con la zona IANA de
+`store_settings.timezone`. La pantalla muestra el nombre de esa zona para que el
+operador no confunda la hora del comercio con la de su dispositivo.
+
+Los avisos de reintento pertenecen a la tarjeta operativa. Un error de conexión
+OAuth se muestra por separado y no significa que el reintento del inbox haya
+fallado; el estado autoritativo se revisa en esa misma tarjeta.
+
 Micrometer registra contadores internos bajo
 `comercio.flex.payment.webhooks` con resultados cerrados: `received`,
 `duplicate`, `processed`, `retried`, `dead_exhausted`, `dead_terminal` y
