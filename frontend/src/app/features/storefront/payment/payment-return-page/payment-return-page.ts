@@ -36,13 +36,15 @@ export class PaymentReturnPage implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly title = viewChild<ElementRef<HTMLElement>>('resultTitle');
   private pollingSubscription?: Subscription;
-  private lastAnnouncedStatus?: PublicPaymentStatus;
+  private lastAnnouncementKey?: string;
 
   protected readonly storeSlug = this.route.snapshot.paramMap.get('storeSlug') ?? '';
   protected readonly returnToken = this.route.snapshot.paramMap.get('returnToken') ?? '';
   private readonly providerPaymentId = this.validProviderPaymentId(
     this.route.snapshot.queryParamMap.get('payment_id'),
   );
+  private readonly shouldInspectReturn =
+    !this.providerPaymentId && this.hasProviderReturnContext();
   protected readonly result = signal<PaymentReturnStatus | null>(null);
   protected readonly loading = signal(true);
   protected readonly refreshing = signal(false);
@@ -76,7 +78,14 @@ export class PaymentReturnPage implements OnDestroy {
               this.api.reconcileReturn(this.storeSlug, this.returnToken, this.providerPaymentId!),
             ),
           )
-      : this.api.getReturnStatus(this.storeSlug, this.returnToken);
+      : this.shouldInspectReturn
+        ? this.csrf
+            .ensureToken()
+            .pipe(
+              exhaustMap(() => this.api.inspectReturn(this.storeSlug, this.returnToken)),
+              catchError(() => this.api.getReturnStatus(this.storeSlug, this.returnToken)),
+            )
+        : this.api.getReturnStatus(this.storeSlug, this.returnToken);
     request.pipe(finalize(() => this.refreshing.set(false))).subscribe({
       next: (result) => this.receive(result),
       error: (error: unknown) =>
@@ -130,7 +139,9 @@ export class PaymentReturnPage implements OnDestroy {
     return PENDING_STATUSES.has(status);
   }
 
-  protected statusLabel(status: PublicPaymentStatus): string {
+  protected statusLabel(result: PaymentReturnStatus): string {
+    if (result.returnOutcome === 'PAYMENT_NOT_RECORDED') return 'Pago no completado';
+    const status = result.paymentStatus;
     return {
       CREATED: 'Pago iniciado',
       PENDING: 'Pago pendiente',
@@ -141,7 +152,11 @@ export class PaymentReturnPage implements OnDestroy {
     }[status];
   }
 
-  protected statusMessage(status: PublicPaymentStatus): string {
+  protected statusMessage(result: PaymentReturnStatus): string {
+    if (result.returnOutcome === 'PAYMENT_NOT_RECORDED') {
+      return 'Mercado Pago no registró ningún cobro. Tu pedido sigue reservado temporalmente y podés intentar nuevamente.';
+    }
+    const status = result.paymentStatus;
     return {
       CREATED: 'Estamos confirmando tu pago. No vuelvas a pagar.',
       PENDING: 'Estamos confirmando tu pago. No vuelvas a pagar.',
@@ -167,8 +182,8 @@ export class PaymentReturnPage implements OnDestroy {
     this.pollingSubscription = timer(0, 3_000)
       .pipe(
         take(11),
-        exhaustMap(() =>
-          this.api.getReturnStatus(this.storeSlug, this.returnToken).pipe(
+        exhaustMap((iteration) =>
+          this.pollRequest(iteration).pipe(
             catchError((error: unknown) => {
               this.loading.set(false);
               this.errorMessage.set(
@@ -179,11 +194,11 @@ export class PaymentReturnPage implements OnDestroy {
           ),
         ),
         tap((result) => this.receive(result)),
-        takeWhile((result) => this.isPending(result.paymentStatus), true),
+        takeWhile((result) => this.isAwaitingConfirmation(result), true),
         finalize(() => {
           const result = this.result();
           this.loading.set(false);
-          if (result && this.isPending(result.paymentStatus)) this.timedOut.set(true);
+          if (result && this.isAwaitingConfirmation(result)) this.timedOut.set(true);
         }),
       )
       .subscribe();
@@ -194,10 +209,11 @@ export class PaymentReturnPage implements OnDestroy {
     this.result.set(result);
     this.loading.set(false);
     this.errorMessage.set(null);
-    if (result.paymentStatus !== this.lastAnnouncedStatus) {
-      this.lastAnnouncedStatus = result.paymentStatus;
+    const announcementKey = `${result.paymentStatus}:${result.returnOutcome ?? ''}`;
+    if (announcementKey !== this.lastAnnouncementKey) {
+      this.lastAnnouncementKey = announcementKey;
       this.announcement.set(
-        `${this.statusLabel(result.paymentStatus)}. ${this.statusMessage(result.paymentStatus)}`,
+        `${this.statusLabel(result)}. ${this.statusMessage(result)}`,
       );
     }
     if (firstResult) queueMicrotask(() => this.title()?.nativeElement.focus());
@@ -205,5 +221,27 @@ export class PaymentReturnPage implements OnDestroy {
 
   private validProviderPaymentId(value: string | null): string | null {
     return value && /^[0-9]{1,20}$/.test(value) ? value : null;
+  }
+
+  private hasProviderReturnContext(): boolean {
+    return ['payment', 'status', 'collection_status', 'preference_id', 'merchant_order_id'].some(
+      (name) => this.route.snapshot.queryParamMap.has(name),
+    );
+  }
+
+  private pollRequest(iteration: number) {
+    if (iteration === 0 && this.shouldInspectReturn) {
+      return this.csrf
+        .ensureToken()
+        .pipe(
+          exhaustMap(() => this.api.inspectReturn(this.storeSlug, this.returnToken)),
+          catchError(() => this.api.getReturnStatus(this.storeSlug, this.returnToken)),
+        );
+    }
+    return this.api.getReturnStatus(this.storeSlug, this.returnToken);
+  }
+
+  private isAwaitingConfirmation(result: PaymentReturnStatus): boolean {
+    return this.isPending(result.paymentStatus) && result.returnOutcome !== 'PAYMENT_NOT_RECORDED';
   }
 }

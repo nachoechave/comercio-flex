@@ -9,4 +9,9 @@ public interface CheckoutProGateway {
 	VerifiedProviderPayment findPayment(
 		PaymentCredential credential,
 		String providerPaymentId);
+
+	ProviderCheckoutState inspectPreference(
+		PaymentCredential credential,
+		String preferenceId,
+		String externalReference);
 }

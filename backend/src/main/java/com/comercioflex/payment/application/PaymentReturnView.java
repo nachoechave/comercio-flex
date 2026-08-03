@@ -8,6 +8,7 @@ public record PaymentReturnView(
 	long orderNumber,
 	String orderStatus,
 	String paymentStatus,
+	PaymentReturnOutcome returnOutcome,
 	boolean canRetry,
 	Instant updatedAt) {
 }

@@ -61,6 +61,8 @@
   temporal del cliente, reduciendo el riesgo de usar un código interceptado.
 - **Preferencia de pago:** configuración creada en Checkout Pro con importe,
   productos, referencia y URLs que produce el enlace de inicio del pago.
+- **Orden comercial de Mercado Pago:** recurso que agrupa una preferencia y los
+  pagos que Mercado Pago registró para ella. No equivale por sí solo a un cobro.
 - **PaymentGateway:** puerto del dominio que abstrae al proveedor de pagos; permite
   usar Mercado Pago real o un proveedor falso sin cambiar las reglas de negocio.
 - **Intento de pago:** registro interno que vincula un pedido con un intento de

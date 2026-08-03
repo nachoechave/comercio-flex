@@ -21,6 +21,8 @@ import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
+import com.mercadopago.net.MPElementsResourcesPage;
+import com.mercadopago.net.MPSearchRequest;
 
 import com.comercioflex.payment.application.CheckoutPaymentException;
 import com.comercioflex.payment.application.CheckoutPreferenceCommand;
@@ -28,6 +30,7 @@ import com.comercioflex.payment.application.CheckoutProGateway;
 import com.comercioflex.payment.application.CheckoutProProperties;
 import com.comercioflex.payment.application.CreatedCheckoutPreference;
 import com.comercioflex.payment.application.PaymentCredential;
+import com.comercioflex.payment.application.ProviderCheckoutState;
 import com.comercioflex.payment.application.VerifiedProviderPayment;
 import com.comercioflex.payment.domain.PaymentResultStatus;
 
@@ -132,6 +135,45 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 		}
 		catch (MPApiException | MPException exception) {
 			throw gatewayFailure("PAYMENT_LOOKUP_FAILED", exception);
+		}
+	}
+
+	@Override
+	public ProviderCheckoutState inspectPreference(
+			PaymentCredential credential, String preferenceId, String externalReference) {
+		try {
+			MPSearchRequest request = MPSearchRequest.builder()
+				.limit(10)
+				.offset(0)
+				.filters(Map.of("preference_id", preferenceId))
+				.build();
+			MPElementsResourcesPage<MerchantOrder> page = merchantOrders.search(
+				request, options(credential));
+			if (page == null || page.getElements() == null || page.getElements().isEmpty()) {
+				return ProviderCheckoutState.INCONCLUSIVE;
+			}
+			boolean matched = false;
+			for (MerchantOrder order : page.getElements()) {
+				if (order == null || !preferenceId.equals(order.getPreferenceId())) {
+					continue;
+				}
+				matched = true;
+				if (!externalReference.equals(order.getExternalReference())
+						|| order.getCollector() == null || order.getCollector().getId() == null
+						|| !credential.sellerAccountId().equals(order.getCollector().getId().toString())
+						|| order.getPayments() == null) {
+					throw invalidProviderResponse();
+				}
+				if (!order.getPayments().isEmpty()) {
+					return ProviderCheckoutState.PAYMENT_RECORDED;
+				}
+			}
+			return matched
+				? ProviderCheckoutState.NO_PAYMENT_RECORDED
+				: ProviderCheckoutState.INCONCLUSIVE;
+		}
+		catch (MPApiException | MPException exception) {
+			throw gatewayFailure("PREFERENCE_LOOKUP_FAILED", exception);
 		}
 	}
 

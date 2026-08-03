@@ -48,6 +48,7 @@ describe('PaymentApiService', () => {
       orderNumber: 'PED-1',
       orderStatus: 'CONFIRMED',
       paymentStatus: 'APPROVED',
+      returnOutcome: null,
       canRetry: false,
       updatedAt: '2026-08-01T12:00:00Z',
     });
@@ -68,7 +69,27 @@ describe('PaymentApiService', () => {
       orderNumber: 'PED-1',
       orderStatus: 'CONFIRMED',
       paymentStatus: 'APPROVED',
+      returnOutcome: null,
       canRetry: false,
+      updatedAt: '2026-08-01T12:00:00Z',
+    });
+  });
+
+  it('asks the backend to inspect a provider return without trusting browser status', () => {
+    api.inspectReturn('tienda a', 'return/token').subscribe();
+
+    const request = http.expectOne(
+      '/api/v1/stores/tienda%20a/payment-returns/return%2Ftoken/inspect',
+    );
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush({
+      orderId: 'order-1',
+      orderNumber: 'PED-1',
+      orderStatus: 'PENDING_CONFIRMATION',
+      paymentStatus: 'PENDING',
+      returnOutcome: 'PAYMENT_NOT_RECORDED',
+      canRetry: true,
       updatedAt: '2026-08-01T12:00:00Z',
     });
   });

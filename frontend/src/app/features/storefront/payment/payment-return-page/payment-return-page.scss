@@ -39,6 +39,10 @@
   background: #26734d;
 }
 
+.not-completed .status-icon {
+  background: #9a5b1d;
+}
+
 .rejected .status-icon,
 .expired .status-icon,
 .error .status-icon {

@@ -64,4 +64,14 @@ public class CheckoutProController {
 			.body(PaymentReturnResponse.from(
 				service.reconcileReturn(storeSlug, returnToken, paymentId)));
 	}
+
+	@PostMapping("/payment-returns/{returnToken}/inspect")
+	ResponseEntity<PaymentReturnResponse> inspectReturn(
+			@PathVariable String storeSlug,
+			@PathVariable @Pattern(regexp = TOKEN) String returnToken) {
+		return ResponseEntity.ok()
+			.cacheControl(CacheControl.noStore())
+			.body(PaymentReturnResponse.from(
+				service.inspectReturn(storeSlug, returnToken)));
+	}
 }

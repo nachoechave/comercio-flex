@@ -112,6 +112,7 @@
 | ADR-105 | Entrega del hardening | Rama y commits por responsabilidad | Aceptada |
 | ADR-106 | Fechas operativas | UTC al persistir y zona del comercio al mostrar | Aceptada |
 | ADR-107 | Retorno demorado | Reconciliación verificada bajo demanda | Aceptada |
+| ADR-108 | Retorno sin pago | Inspección autoritativa sin mutar el negocio | Aceptada |
 
 ## Plantilla ADR
 
@@ -1648,3 +1649,24 @@
 - **Consecuencias:** la recuperación no crea otra preferencia ni otro cobro y es
   idempotente. La URL nunca es fuente financiera; un identificador falso, una
   credencial distinta o cualquier discrepancia fallan cerrados.
+
+### ADR-108 — Retorno de Checkout Pro sin pago registrado
+
+- **Fecha:** 2026-08-02
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una compra de prueba rechazada volvió sin `payment_id`. Mercado
+  Pago mantenía la orden comercial abierta con una lista de pagos vacía, mientras
+  la pantalla de Comercio Flex mostraba el mensaje genérico de pago pendiente.
+- **Problema:** afirmar que se estaba confirmando un pago inexistente confundía al
+  comprador, pero confiar en el estado visible de la URL podía cancelar un pago
+  real o liberar stock incorrectamente.
+- **Alternativas:** conservar siempre el mensaje pendiente; marcar rechazado desde
+  la redirección; consultar al proveedor y exponer un resultado sólo informativo.
+- **Decisión:** se elige la inspección autoritativa. El backend usa la preferencia
+  almacenada, valida vendedor y referencia externa, y sólo informa
+  `PAYMENT_NOT_RECORDED` cuando la orden comercial coincidente tiene cero pagos.
+  El estado interno permanece pendiente y la reserva conserva su vencimiento.
+- **Consecuencias:** Angular puede explicar que no hubo cobro y permitir reintento
+  sin crear efectos financieros. Una respuesta ausente, ambigua o errónea vuelve
+  al mensaje conservador; ningún parámetro del navegador modifica pedido o stock.

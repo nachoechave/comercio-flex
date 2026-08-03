@@ -17,6 +17,7 @@ describe('PaymentReturnPage', () => {
     orderNumber: 'PED-0001',
     orderStatus: 'CONFIRMED',
     paymentStatus: 'APPROVED',
+    returnOutcome: null,
     canRetry: false,
     updatedAt: '2026-08-01T12:00:00Z',
   };

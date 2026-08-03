@@ -119,6 +119,32 @@ class CheckoutProServiceTests {
 		assertThat(result.paymentStatus()).isEqualTo("APPROVED");
 	}
 
+	@Test
+	void exposesNoPaymentAsInformationWithoutChangingBusinessState() {
+		String token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+		ResolvedTenant tenant = new ResolvedTenant(1L, "tienda-a", "Tienda A", "tenant_a");
+		PaymentCredential credential = new PaymentCredential(
+			"access-token", "seller-1", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+		when(tenantResolver.resolveActive("tienda-a")).thenReturn(tenant);
+		when(repository.findByReturnTokenHash(any())).thenReturn(Optional.of(storedAttempt));
+		when(credentials.resolve(tenant.id(), tenant.slug())).thenReturn(credential);
+		when(gateway.inspectPreference(credential, "pref-6", "external-6"))
+			.thenReturn(ProviderCheckoutState.NO_PAYMENT_RECORDED);
+
+		PaymentReturnView result = service.inspectReturn("tienda-a", token);
+
+		assertThat(result.paymentStatus()).isEqualTo("PENDING");
+		assertThat(result.returnOutcome()).isEqualTo(PaymentReturnOutcome.PAYMENT_NOT_RECORDED);
+		assertThat(result.canRetry()).isTrue();
+		verify(gateway).inspectPreference(credential, "pref-6", "external-6");
+		org.mockito.Mockito.verifyNoInteractions(orderConfirmer);
+		org.mockito.Mockito.verify(repository, org.mockito.Mockito.never())
+			.applyVerifiedPayment(
+				any(), any(), org.mockito.ArgumentMatchers.anyBoolean(),
+				org.mockito.ArgumentMatchers.anyBoolean(), any());
+	}
+
 	private StoredCheckoutAttempt attempt() {
 		return new StoredCheckoutAttempt(
 			2L, ATTEMPT_ID, 6L,

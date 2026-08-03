@@ -666,7 +666,7 @@ GET /api/v1/stores/{storeSlug}/payment-returns/{returnToken}
 ```
 
 La respuesta pública contiene `orderId`, `orderNumber`, `orderStatus`,
-`paymentStatus`, `canRetry` y `updatedAt`. Los estados de pago públicos son
+`paymentStatus`, `returnOutcome`, `canRetry` y `updatedAt`. Los estados de pago públicos son
 `CREATED`, `PENDING`, `APPROVED`, `REJECTED`, `EXPIRED` y `REQUIRES_REVIEW`.
 El polling se ejecuta cada 3 segundos durante un máximo aproximado de 30 segundos; al
 agotar el límite se detiene y ofrece actualización manual. Un `status` recibido
@@ -688,6 +688,25 @@ El `paymentId` visible no es autoritativo. El backend consulta Mercado Pago con
 la credencial del comercio y sólo aplica el resultado si coinciden vendedor,
 preferencia, referencia externa, importe y moneda. La confirmación y el consumo
 de stock conservan las mismas garantías idempotentes del webhook.
+
+Si el navegador vuelve desde Checkout Pro sin un `payment_id`, Angular puede
+solicitar una inspección de sólo lectura:
+
+```http
+POST /api/v1/stores/{storeSlug}/payment-returns/{returnToken}/inspect
+X-XSRF-TOKEN: {token CSRF}
+Content-Type: application/json
+
+{}
+```
+
+El backend no confía en `status`, `payment` ni otros parámetros de la URL. Busca
+la orden comercial usando la preferencia ya almacenada y valida referencia
+externa, vendedor y credencial. Sólo cuando Mercado Pago devuelve una orden
+coincidente con una lista de pagos vacía informa
+`returnOutcome: PAYMENT_NOT_RECORDED`. Este resultado no cambia el intento, el
+pedido, la reserva ni el stock. Si la consulta es vacía, ambigua o falla, la UI
+conserva el estado seguro `PENDING`.
 
 ### Webhook público
 

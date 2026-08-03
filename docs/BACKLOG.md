@@ -905,5 +905,9 @@ Evidencia automática e integrada:
   por token opaco y CSRF, sin confiar en el `approved` de la URL.
 - Evidencia manual: pedido 10 `CONFIRMED`, intento/transacción `APPROVED`, reserva
   `CONSUMED`, stock de 6 a 5 y un único movimiento `ORDER_CONFIRMED`.
+- El escenario de rechazo Sandbox sin recurso de pago (pedido 12) dejó la orden
+  comercial `opened` con cero pagos. La inspección autoritativa ahora distingue
+  `PAYMENT_NOT_RECORDED` sin cancelar el pedido, liberar la reserva ni modificar
+  stock; Angular permite reintentar mientras la reserva siga vigente.
 - El escenario aprobado queda validado; rechazado y pendiente continúan pendientes
   antes de marcar PAY-01D como `Terminada`.
