@@ -1,5 +1,6 @@
 package com.comercioflex.payment.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -19,6 +20,7 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.comercioflex.order.application.OrderTransitionExecution;
@@ -26,6 +28,7 @@ import com.comercioflex.order.application.PaidOrderConfirmer;
 import com.comercioflex.payment.domain.PaymentEnvironment;
 import com.comercioflex.payment.domain.PaymentIntentStatus;
 import com.comercioflex.payment.domain.PaymentResultStatus;
+import com.comercioflex.tenant.application.ResolvedTenant;
 import com.comercioflex.tenant.application.TenantResolver;
 
 class CheckoutProServiceTests {
@@ -35,6 +38,11 @@ class CheckoutProServiceTests {
 		"11111111-1111-4111-8111-111111111111");
 	private final CheckoutRepository repository = mock(CheckoutRepository.class);
 	private final PaidOrderConfirmer orderConfirmer = mock(PaidOrderConfirmer.class);
+	private final PaymentCredentialResolver credentials = mock(PaymentCredentialResolver.class);
+	private final CheckoutProGateway gateway = mock(CheckoutProGateway.class);
+	private final TenantResolver tenantResolver = mock(TenantResolver.class);
+	private final CheckoutProProperties checkoutProperties = mock(CheckoutProProperties.class);
+	private final PaymentOAuthProperties oauthProperties = mock(PaymentOAuthProperties.class);
 	private final StoredCheckoutAttempt storedAttempt = attempt();
 	private CheckoutProService service;
 
@@ -43,12 +51,12 @@ class CheckoutProServiceTests {
 		service = new CheckoutProService(
 			repository,
 			mock(CheckoutControlRepository.class),
-			mock(PaymentCredentialResolver.class),
-			mock(CheckoutProGateway.class),
+			credentials,
+			gateway,
 			orderConfirmer,
-			mock(TenantResolver.class),
-			mock(CheckoutProProperties.class),
-			mock(PaymentOAuthProperties.class),
+			tenantResolver,
+			checkoutProperties,
+			oauthProperties,
 			immediateTransactions(),
 			immediateTransactions(),
 			Clock.fixed(NOW, ZoneOffset.UTC));
@@ -56,6 +64,8 @@ class CheckoutProServiceTests {
 			.thenReturn(Optional.of(storedAttempt));
 		when(orderConfirmer.confirmWithinCurrentTransaction(any(), any()))
 			.thenReturn(OrderTransitionExecution.completed(null));
+		when(oauthProperties.environment()).thenReturn(PaymentEnvironment.TEST);
+		when(checkoutProperties.enabled()).thenReturn(true);
 	}
 
 	@Test
@@ -81,6 +91,60 @@ class CheckoutProServiceTests {
 			.isEqualTo("PAYMENT_VALIDATION_FAILED");
 	}
 
+	@Test
+	void reconcilesReturnByFetchingAndValidatingTheProviderPayment() {
+		String token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+		ResolvedTenant tenant = new ResolvedTenant(1L, "tienda-a", "Tienda A", "tenant_a");
+		PaymentCredential credential = new PaymentCredential(
+			"access-token", "seller-1", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+		VerifiedProviderPayment payment = payment("seller-1", true);
+		when(tenantResolver.resolveActive("tienda-a")).thenReturn(tenant);
+		when(repository.findByReturnTokenHash(any())).thenReturn(Optional.of(storedAttempt));
+		when(credentials.resolve(tenant.id(), tenant.slug())).thenReturn(credential);
+		when(gateway.findPayment(credential, "171652320068")).thenReturn(payment);
+		when(repository.latestProviderStatus(storedAttempt.internalId())).thenReturn("APPROVED");
+
+		PaymentReturnView result = service.reconcileReturn(
+			"tienda-a", token, "171652320068");
+
+		verify(gateway).findPayment(credential, "171652320068");
+		verify(orderConfirmer).confirmWithinCurrentTransaction(
+			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey());
+		verify(repository).applyVerifiedPayment(
+			same(storedAttempt), same(payment),
+			org.mockito.ArgumentMatchers.eq(true),
+			org.mockito.ArgumentMatchers.eq(false),
+			org.mockito.ArgumentMatchers.eq(NOW));
+		assertThat(result.paymentStatus()).isEqualTo("APPROVED");
+	}
+
+	@Test
+	void exposesNoPaymentAsInformationWithoutChangingBusinessState() {
+		String token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+		ResolvedTenant tenant = new ResolvedTenant(1L, "tienda-a", "Tienda A", "tenant_a");
+		PaymentCredential credential = new PaymentCredential(
+			"access-token", "seller-1", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+		when(tenantResolver.resolveActive("tienda-a")).thenReturn(tenant);
+		when(repository.findByReturnTokenHash(any())).thenReturn(Optional.of(storedAttempt));
+		when(credentials.resolve(tenant.id(), tenant.slug())).thenReturn(credential);
+		when(gateway.inspectPreference(credential, "pref-6", "external-6"))
+			.thenReturn(ProviderCheckoutState.NO_PAYMENT_RECORDED);
+
+		PaymentReturnView result = service.inspectReturn("tienda-a", token);
+
+		assertThat(result.paymentStatus()).isEqualTo("PENDING");
+		assertThat(result.returnOutcome()).isEqualTo(PaymentReturnOutcome.PAYMENT_NOT_RECORDED);
+		assertThat(result.canRetry()).isTrue();
+		verify(gateway).inspectPreference(credential, "pref-6", "external-6");
+		org.mockito.Mockito.verifyNoInteractions(orderConfirmer);
+		org.mockito.Mockito.verify(repository, org.mockito.Mockito.never())
+			.applyVerifiedPayment(
+				any(), any(), org.mockito.ArgumentMatchers.anyBoolean(),
+				org.mockito.ArgumentMatchers.anyBoolean(), any());
+	}
+
 	private StoredCheckoutAttempt attempt() {
 		return new StoredCheckoutAttempt(
 			2L, ATTEMPT_ID, 6L,
@@ -104,6 +168,10 @@ class CheckoutProServiceTests {
 
 	private TransactionTemplate immediateTransactions() {
 		TransactionTemplate transactions = mock(TransactionTemplate.class);
+		org.mockito.Mockito.doAnswer(invocation -> {
+			TransactionCallback<?> callback = invocation.getArgument(0);
+			return callback.doInTransaction(mock(TransactionStatus.class));
+		}).when(transactions).execute(any(TransactionCallback.class));
 		org.mockito.Mockito.doAnswer(invocation -> {
 			Consumer<TransactionStatus> callback = invocation.getArgument(0);
 			callback.accept(mock(TransactionStatus.class));

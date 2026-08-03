@@ -436,6 +436,19 @@ Angular incluye la pantalla `payment/payment-return-page`, los servicios
 extiende confirmación/checkout para iniciar la preferencia. Esa pantalla no
 depende del feature administrativo `payment-connection`.
 
+PAY-01D amplía las mismas fronteras sin crear carpetas transversales nuevas:
+
+- `PaymentWebhookMetrics` instrumenta resultados con etiquetas cerradas;
+- `PaymentWebhookOperationsService` lista y reprograma eventos `DEAD` mediante el
+  puerto `CheckoutControlRepository`;
+- `PaymentWebhookOperationsController` publica la operación exclusiva de `OWNER`;
+- `JdbcCheckoutControlRepository` mantiene aislamiento tenant/ambiente, fencing
+  por intento y auditoría atómica;
+- `payment-connection-page` incorpora la vista operativa y cancela solicitudes al
+  cambiar de tenant.
+- la vista consulta el `timezone` público de `store_settings` para presentar los
+  instantes UTC en la zona del comercio, sin duplicar ese dato en el inbox.
+
 ```text
 OrderConfirmationPage
 → API de inicio con lookupToken + Idempotency-Key
@@ -451,6 +464,13 @@ WebhookController
 → worker con lease/retry/DEAD
 → PaymentGateway consulta el pago real
 → repositorio tenant aplica transacción idempotente
+
+OWNER → PaymentConnectionPage
+→ API administrativa tenant-safe
+→ control DB lista un evento DEAD sanitizado
+→ confirmación manual con CSRF
+→ auditoría + RETRY en una transacción
+→ worker retoma el flujo idempotente
 ```
 
 Dependencias prohibidas:

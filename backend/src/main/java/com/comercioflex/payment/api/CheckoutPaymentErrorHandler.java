@@ -12,14 +12,16 @@ import com.comercioflex.payment.application.CheckoutPaymentException;
 
 @RestControllerAdvice(assignableTypes = {
 	CheckoutProController.class,
-	MercadoPagoWebhookController.class
+	MercadoPagoWebhookController.class,
+	PaymentWebhookOperationsController.class
 })
 public class CheckoutPaymentErrorHandler {
 
 	private static final Set<String> CONFLICTS = Set.of(
 		"PAYMENTS_NOT_ENABLED", "ORDER_NOT_PAYABLE", "PAYMENT_ALREADY_IN_PROGRESS",
 		"IDEMPOTENCY_CONFLICT", "PAYMENT_REQUIRES_REVIEW",
-		"PAYMENT_CONCURRENT_UPDATE", "PROVIDER_PAYMENT_CONFLICT");
+		"PAYMENT_CONCURRENT_UPDATE", "PROVIDER_PAYMENT_CONFLICT",
+		"WEBHOOK_ALREADY_PROCESSED");
 
 	@ExceptionHandler(CheckoutPaymentException.class)
 	ProblemDetail checkout(CheckoutPaymentException exception) {
@@ -32,7 +34,8 @@ public class CheckoutPaymentErrorHandler {
 	}
 
 	private HttpStatus status(String code) {
-		if (code.equals("PAYMENT_NOT_FOUND") || code.equals("INVALID_WEBHOOK_ROUTE")) {
+		if (code.equals("PAYMENT_NOT_FOUND") || code.equals("INVALID_WEBHOOK_ROUTE")
+				|| code.equals("WEBHOOK_EVENT_NOT_FOUND")) {
 			return HttpStatus.NOT_FOUND;
 		}
 		if (code.equals("INVALID_WEBHOOK_SIGNATURE")

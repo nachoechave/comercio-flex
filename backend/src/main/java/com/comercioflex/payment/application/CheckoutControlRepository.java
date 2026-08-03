@@ -2,6 +2,7 @@ package com.comercioflex.payment.application;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import com.comercioflex.payment.domain.PaymentEnvironment;
@@ -29,7 +30,17 @@ public interface CheckoutControlRepository {
 
 	Optional<ClaimedWebhookEvent> claimNext(Instant now, Instant leasedUntil);
 
-	void markProcessed(long eventId, Instant now);
+	boolean markProcessed(long eventId, int expectedAttemptCount, Instant now);
 
-	void markFailed(long eventId, boolean dead, String errorCode, Instant availableAt);
+	boolean markFailed(
+		long eventId, int expectedAttemptCount, boolean dead,
+		String errorCode, Instant availableAt);
+
+	List<FailedWebhookEvent> findDeadWebhooks(
+		long tenantId, PaymentEnvironment environment, int limit);
+
+	WebhookRetryOutcome retryWebhook(
+		long tenantId, PaymentEnvironment environment,
+		UUID eventPublicId, long actorUserId,
+		UUID actorUserPublicId, Instant now);
 }

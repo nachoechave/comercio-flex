@@ -154,15 +154,9 @@ public class CheckoutProService {
 
 	public PaymentReturnView findReturn(String returnToken) {
 		requireEnabled();
-		if (returnToken == null || !returnToken.matches("^[A-Za-z0-9_-]{43}$")) {
-			throw notFound();
-		}
+		validateReturnToken(returnToken);
 		return Objects.requireNonNull(tenantTransactions.execute(status -> {
-			StoredCheckoutAttempt attempt = repository.findByReturnTokenHash(sha256(returnToken))
-				.orElseThrow(this::notFound);
-			if (!attempt.returnTokenExpiresAt().isAfter(clock.instant())) {
-				throw notFound();
-			}
+			StoredCheckoutAttempt attempt = requireReturnAttempt(returnToken);
 			String latest = repository.latestProviderStatus(attempt.internalId());
 			String paymentStatus = attempt.orderStatus().equals(OrderStatus.EXPIRED.name())
 					&& attempt.status() != PaymentIntentStatus.APPROVED
@@ -178,8 +172,54 @@ public class CheckoutProService {
 				&& attempt.reservationExpiresAt().isAfter(clock.instant());
 			return new PaymentReturnView(
 				attempt.orderId(), attempt.orderNumber(), attempt.orderStatus(),
-				paymentStatus, canRetry, attempt.updatedAt());
+				paymentStatus, null, canRetry, attempt.updatedAt());
 		}));
+	}
+
+	public PaymentReturnView inspectReturn(String tenantSlug, String returnToken) {
+		requireEnabled();
+		validateReturnToken(returnToken);
+		ResolvedTenant tenant = tenantResolver.resolveActive(tenantSlug);
+		StoredCheckoutAttempt attempt = Objects.requireNonNull(tenantTransactions.execute(
+			status -> requireReturnAttempt(returnToken)));
+		if (attempt.status() != PaymentIntentStatus.PENDING) {
+			return findReturn(returnToken);
+		}
+		PaymentCredential credential = credentials.resolve(tenant.id(), tenant.slug());
+		validateCredential(attempt, credential);
+		ProviderCheckoutState providerState = gateway.inspectPreference(
+			credential, attempt.preferenceId(), attempt.externalReference());
+		PaymentReturnView current = findReturn(returnToken);
+		if (providerState != ProviderCheckoutState.NO_PAYMENT_RECORDED) {
+			return current;
+		}
+		return new PaymentReturnView(
+			current.orderId(), current.orderNumber(), current.orderStatus(),
+			current.paymentStatus(), PaymentReturnOutcome.PAYMENT_NOT_RECORDED,
+			current.canRetry(), current.updatedAt());
+	}
+
+	public PaymentReturnView reconcileReturn(
+			String tenantSlug, String returnToken, String providerPaymentId) {
+		requireEnabled();
+		validateReturnToken(returnToken);
+		if (providerPaymentId == null || !providerPaymentId.matches("^[0-9]{1,20}$")) {
+			throw new CheckoutPaymentException(
+				"INVALID_PROVIDER_RESOURCE", "El identificador de pago no es vÃ¡lido.");
+		}
+		ResolvedTenant tenant = tenantResolver.resolveActive(tenantSlug);
+		StoredCheckoutAttempt attempt = Objects.requireNonNull(tenantTransactions.execute(
+			status -> requireReturnAttempt(returnToken)));
+		if (attempt.status() == PaymentIntentStatus.APPROVED
+				|| attempt.status() == PaymentIntentStatus.REJECTED
+				|| attempt.status() == PaymentIntentStatus.REQUIRES_REVIEW) {
+			return findReturn(returnToken);
+		}
+		PaymentCredential credential = credentials.resolve(tenant.id(), tenant.slug());
+		validateCredential(attempt, credential);
+		VerifiedProviderPayment payment = gateway.findPayment(credential, providerPaymentId);
+		applyVerifiedPayment(attempt.id(), payment);
+		return findReturn(returnToken);
 	}
 
 	public void applyVerifiedPayment(
@@ -366,6 +406,31 @@ public class CheckoutProService {
 
 	private CheckoutPaymentException notFound() {
 		return new CheckoutPaymentException("PAYMENT_NOT_FOUND", "El pago no existe.");
+	}
+
+	private void validateCredential(
+			StoredCheckoutAttempt attempt, PaymentCredential credential) {
+		if (!attempt.sellerAccountId().equals(credential.sellerAccountId())
+				|| attempt.environment() != credential.environment()
+				|| credential.environment() != environment()) {
+			throw new CheckoutPaymentException(
+				"PAYMENT_CREDENTIAL_MISMATCH", "La credencial no coincide con el pago.");
+		}
+	}
+
+	private StoredCheckoutAttempt requireReturnAttempt(String returnToken) {
+		StoredCheckoutAttempt attempt = repository.findByReturnTokenHash(sha256(returnToken))
+			.orElseThrow(this::notFound);
+		if (!attempt.returnTokenExpiresAt().isAfter(clock.instant())) {
+			throw notFound();
+		}
+		return attempt;
+	}
+
+	private void validateReturnToken(String returnToken) {
+		if (returnToken == null || !returnToken.matches("^[A-Za-z0-9_-]{43}$")) {
+			throw notFound();
+		}
 	}
 
 	private boolean blank(String value) {

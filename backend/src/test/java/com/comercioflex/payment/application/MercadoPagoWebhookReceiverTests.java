@@ -38,6 +38,7 @@ class MercadoPagoWebhookReceiverTests {
 	private static final String SECRET = "webhook-test-secret-with-enough-entropy";
 	private static final String ROUTE = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 	private final CheckoutControlRepository repository = mock(CheckoutControlRepository.class);
+	private final PaymentWebhookMetrics metrics = mock(PaymentWebhookMetrics.class);
 	private MercadoPagoWebhookReceiver receiver;
 
 	@BeforeEach
@@ -50,7 +51,7 @@ class MercadoPagoWebhookReceiverTests {
 		});
 		receiver = new MercadoPagoWebhookReceiver(
 			repository, checkoutProperties(), oauthProperties(), new ObjectMapper(),
-			transactions, Clock.fixed(NOW, ZoneOffset.UTC));
+			transactions, metrics, Clock.fixed(NOW, ZoneOffset.UTC));
 	}
 
 	@Test
@@ -73,6 +74,26 @@ class MercadoPagoWebhookReceiverTests {
 
 		assertThat(inserted).isTrue();
 		verify(repository).insertWebhook(any(), any(ReceivedWebhook.class), any());
+		verify(metrics).received(true);
+	}
+
+	@Test
+	void recordsDuplicateWithoutPersistingSensitiveMetricTags() throws Exception {
+		String dataId = "998877";
+		String requestId = "request-1";
+		String timestamp = Long.toString(NOW.getEpochSecond());
+		String signature = "ts=" + timestamp + ",v1=" + signature(
+			"id:" + dataId + ";request-id:" + requestId + ";ts:" + timestamp + ";");
+		when(repository.findRoute(any(), any())).thenReturn(Optional.of(route()));
+		when(repository.insertWebhook(any(), any(), any())).thenReturn(false);
+
+		boolean inserted = receiver.receive(ROUTE, dataId, signature, requestId, """
+			{"id":"notification-1","type":"payment","action":"payment.updated",
+			 "user_id":"123456","live_mode":false,"data":{"id":"998877"}}
+			""");
+
+		assertThat(inserted).isFalse();
+		verify(metrics).received(false);
 	}
 
 	@Test

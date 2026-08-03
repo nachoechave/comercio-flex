@@ -17,6 +17,7 @@ describe('PaymentReturnPage', () => {
     orderNumber: 'PED-0001',
     orderStatus: 'CONFIRMED',
     paymentStatus: 'APPROVED',
+    returnOutcome: null,
     canRetry: false,
     updatedAt: '2026-08-01T12:00:00Z',
   };
@@ -39,6 +40,7 @@ describe('PaymentReturnPage', () => {
                 storeSlug: 'tienda-a',
                 returnToken: 'opaque-token',
               }),
+              queryParamMap: convertToParamMap({ payment_id: '171652320068' }),
             },
           },
         },
@@ -72,7 +74,11 @@ describe('PaymentReturnPage', () => {
 
   it('polls pending payments every three seconds until a final state', () => {
     vi.advanceTimersByTime(0);
-    statusRequest().flush({ ...approved, orderStatus: 'PENDING_CONFIRMATION', paymentStatus: 'PENDING' });
+    statusRequest().flush({
+      ...approved,
+      orderStatus: 'PENDING_CONFIRMATION',
+      paymentStatus: 'PENDING',
+    });
     vi.advanceTimersByTime(3_000);
     statusRequest().flush({ ...approved, paymentStatus: 'REQUIRES_REVIEW' });
     fixture.detectChanges();
@@ -81,6 +87,33 @@ describe('PaymentReturnPage', () => {
     expect(fixture.nativeElement.textContent).toContain('No vuelvas a pagar');
     vi.advanceTimersByTime(6_000);
     http.expectNone(statusUrl);
+  });
+
+  it('reconciles the verified provider payment when the customer refreshes', () => {
+    vi.advanceTimersByTime(0);
+    statusRequest().flush({
+      ...approved,
+      orderStatus: 'PENDING_CONFIRMATION',
+      paymentStatus: 'PENDING',
+    });
+    fixture.detectChanges();
+
+    (
+      fixture.componentInstance as unknown as {
+        refresh(): void;
+      }
+    ).refresh();
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    const reconciliation = http.expectOne(
+      (request) =>
+        request.url === `${statusUrl}/reconcile` &&
+        request.params.get('paymentId') === '171652320068',
+    );
+    expect(reconciliation.request.method).toBe('POST');
+    reconciliation.flush(approved);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Pago aprobado');
   });
 
   it('allows retry only with backend permission and local recovery data', () => {

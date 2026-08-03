@@ -21,15 +21,15 @@ variantes de talle/color y stock.
 
 Catálogo público, carrito, checkout invitado, pedidos, estados y entrega básica.
 
-Avance al 2026-07-31:
+Avance al 2026-08-01:
 
 - Terminados: catálogo público, detalle de producto, carrito local aislado por
   comercio, checkout invitado con retiro y reserva temporal, y operación
   administrativa de pedidos con historial y consistencia de inventario.
-- Terminadas `ORD-02` y `PAY-01A`; `PAY-01B` está en pruebas con backend,
-  frontend, identidad vendedora visible y tokens cifrados implementados. Falta
-  el recorrido manual con credenciales TEST; todavía no crea cobros.
-- Fuera de esta etapa: envíos configurables, pago y clientes persistentes.
+- Terminadas `ORD-02`, `PAY-01A`, `PAY-01B` y `PAY-01C`: cada comercio puede
+  conectar su cuenta vendedora, crear un Checkout Pro TEST y confirmar el pedido
+  mediante un webhook verificado e idempotente.
+- Fuera de esta etapa: envíos configurables y clientes persistentes.
 
 ## Fase 4 — Pagos
 
@@ -37,9 +37,13 @@ PAY-01 se divide en entregas revisables:
 
 1. `PAY-01A`: dominio, estados, migraciones, cifrado y proveedor falso.
 2. `PAY-01B`: OAuth Authorization Code con PKCE por comercio.
-3. `PAY-01C` (en pruebas): preferencia, retorno Angular con token opaco,
+3. `PAY-01C` (terminada): preferencia, retorno Angular con token opaco,
    inbox global de webhooks y coordinación idempotente con pedidos/stock.
-4. `PAY-01D`: sandbox real, HTTPS público controlado, observabilidad y hardening.
+4. `PAY-01D` (en pruebas): sandbox real, HTTPS público controlado,
+   observabilidad, recuperación operativa y hardening.
+
+El Sprint 11 cierra `PAY-01D` con métricas internas, una vista `OWNER` de eventos
+agotados, reintento manual idempotente, pruebas operativas y runbooks.
 
 El MVP excluye medios offline, reembolsos automáticos, disputas y comisiones de
 marketplace.

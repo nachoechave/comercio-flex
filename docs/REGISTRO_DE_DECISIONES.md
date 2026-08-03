@@ -107,6 +107,12 @@
 | ADR-100 | Habilitación de cobros | Separada de la conexión técnica | Aceptada |
 | ADR-101 | Firma de webhook | Obligatoria en TEST y producción | Aceptada |
 | ADR-102 | Ambiente del pago verificado | Credencial y coincidencias comerciales, no `live_mode` | Aceptada |
+| ADR-103 | Observabilidad de pagos | Micrometer con baja cardinalidad | Aceptada |
+| ADR-104 | Recuperación de webhooks | Reintento manual mínimo y auditado | Aceptada |
+| ADR-105 | Entrega del hardening | Rama y commits por responsabilidad | Aceptada |
+| ADR-106 | Fechas operativas | UTC al persistir y zona del comercio al mostrar | Aceptada |
+| ADR-107 | Retorno demorado | Reconciliación verificada bajo demanda | Aceptada |
+| ADR-108 | Retorno sin pago | Inspección autoritativa sin mutar el negocio | Aceptada |
 
 ## Plantilla ADR
 
@@ -1552,3 +1558,155 @@
 - **Consecuencias:** TEST reproduce el comportamiento real de Checkout Pro sin un
   camino manual alternativo. Producción conserva la validación de firma, cuenta,
   preferencia y valores; una discrepancia sigue fallando cerrada.
+
+## ADR aceptadas el 2026-08-01 para Sprint 11
+
+### ADR-103 — Observabilidad local mediante Micrometer y Actuator
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el inbox durable ya reintenta fallos, pero una operación real
+  necesita reconocer recepciones, duplicados, reintentos y eventos agotados.
+- **Problema:** obtener señales operativas sin contratar todavía una plataforma de
+  monitoreo ni exponer datos financieros o secretos.
+- **Alternativas:** usar sólo logs y consultas SQL; instrumentar con Micrometer y
+  Actuator manteniendo las métricas fuera de la superficie pública.
+- **Decisión:** instrumentar el flujo con métricas de baja cardinalidad y conservar
+  su exposición restringida. No se usan como etiquetas tenant, pago, pedido,
+  vendedor, URL, error crudo ni ningún token.
+- **Consecuencias:** el backend queda preparado para Prometheus u otro colector
+  futuro sin incorporarlo a este sprint; logs y respuestas también deben permanecer
+  sanitizados.
+
+### ADR-104 — Recuperación manual mínima para webhooks agotados
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** un evento `DEAD` agotó sus reintentos automáticos y, sin una acción
+  operativa, requeriría acceso directo a MySQL.
+- **Problema:** permitir recuperación segura sin construir una consola general de
+  colas ni permitir efectos duplicados.
+- **Alternativas:** procedimiento SQL exclusivo de soporte; vista `OWNER` con
+  listado mínimo y reintento explícito, tenant-safe e idempotente.
+- **Decisión:** el panel de pagos listará sólo metadatos sanitizados de eventos
+  agotados del comercio y permitirá reprogramarlos. Nunca expone payload, IDs
+  internos, request IDs, credenciales, comprador ni identificadores del proveedor.
+- **Consecuencias:** la mutación exige sesión, CSRF y `MANAGE_PAYMENTS`; queda
+  auditada y no modifica eventos ya procesados. El reproceso masivo permanece fuera.
+
+### ADR-105 — Rama y commits del hardening de pagos
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** PAY-01D combina pruebas, observabilidad, recuperación y
+  documentación.
+- **Problema:** mantener revisable el cierre de pagos y evitar cambios directos en
+  `main`.
+- **Alternativas:** un único commit sobre `main`; rama dedicada y commits por
+  responsabilidad.
+- **Decisión:** trabajar en `codex/feat-payment-hardening` con commits separados
+  para pruebas, observabilidad, recuperación y documentación.
+- **Consecuencias:** el merge y el push requieren autorización posterior del Product
+  Owner, aun cuando los commits del sprint ya estén autorizados.
+
+### ADR-106 — UTC en persistencia y zona del comercio en presentación
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la prueba manual de recuperación mostró un evento tres horas
+  desplazado y, simultáneamente, un error OAuth no relacionado con el reintento.
+- **Problema:** evitar que el driver interprete dos veces la zona de un `TIMESTAMP`
+  y que el operador confunda mensajes de subsistemas independientes.
+- **Alternativas:** usar la zona del navegador; guardar horas locales; conservar
+  instantes UTC y presentarlos con `store_settings.timezone`.
+- **Decisión:** la sesión JDBC de control DB se fuerza a UTC y Angular formatea los
+  eventos con la zona IANA configurada para el comercio, mostrándola explícitamente.
+  Los avisos del inbox quedan dentro de su tarjeta y los errores OAuth usan un
+  mensaje independiente y específico.
+- **Consecuencias:** los instantes son comparables entre ambientes y cada comercio
+  ve su hora operativa aunque el navegador esté en otra zona. Toda nueva conexión
+  JDBC que lea `TIMESTAMP` debe mantener la misma política UTC.
+
+### ADR-107 — Reconciliación verificada desde el retorno demorado
+
+- **Fecha:** 2026-08-01
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** Mercado Pago devolvió un pago aprobado, pero el webhook no llegó a
+  tiempo y la pantalla seguía mostrando el intento como pendiente.
+- **Problema:** el botón `Actualizar estado` sólo releía la base local y no podía
+  resolver una demora del webhook.
+- **Alternativas:** esperar indefinidamente el webhook; confiar en los parámetros
+  de retorno; consultar al proveedor bajo demanda y aplicar el mismo flujo seguro.
+- **Decisión:** el retorno conserva lectura y polling acotados. Tras el timeout, el
+  comprador puede enviar el `payment_id` recibido mediante POST y token opaco. El
+  backend consulta Mercado Pago con la credencial esperada y valida todas las
+  coincidencias comerciales antes de confirmar. La exigencia original de CSRF para
+  este POST público fue reemplazada por ADR-109.
+- **Consecuencias:** la recuperación no crea otra preferencia ni otro cobro y es
+  idempotente. La URL nunca es fuente financiera; un identificador falso, una
+  credencial distinta o cualquier discrepancia fallan cerrados.
+
+### ADR-108 — Retorno de Checkout Pro sin pago registrado
+
+- **Fecha:** 2026-08-02
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una compra de prueba rechazada volvió sin `payment_id`. Mercado
+  Pago mantenía la orden comercial abierta con una lista de pagos vacía, mientras
+  la pantalla de Comercio Flex mostraba el mensaje genérico de pago pendiente.
+- **Problema:** afirmar que se estaba confirmando un pago inexistente confundía al
+  comprador, pero confiar en el estado visible de la URL podía cancelar un pago
+  real o liberar stock incorrectamente.
+- **Alternativas:** conservar siempre el mensaje pendiente; marcar rechazado desde
+  la redirección; consultar al proveedor y exponer un resultado sólo informativo.
+- **Decisión:** se elige la inspección autoritativa. El backend usa la preferencia
+  almacenada, valida vendedor y referencia externa, y sólo informa
+  `PAYMENT_NOT_RECORDED` cuando la orden comercial coincidente tiene cero pagos.
+  El estado interno permanece pendiente y la reserva conserva su vencimiento.
+- **Consecuencias:** Angular puede explicar que no hubo cobro y permitir reintento
+  sin crear efectos financieros. Una respuesta ausente, ambigua o errónea vuelve
+  al mensaje conservador; ningún parámetro del navegador modifica pedido o stock.
+
+### ADR-109 — CSRF limitado a operaciones basadas en sesión
+
+- **Fecha:** 2026-08-03
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el checkout invitado falló antes de crear el pedido porque las
+  operaciones públicas exigían una cookie CSRF pese a no depender de una sesión
+  autenticada.
+- **Problema:** conservar CSRF en estos contratos agregaba estado de navegador y
+  puntos de fallo sin proteger una acción realizada con autoridad de usuario.
+- **Alternativas:** transportar explícitamente un token CSRF entre Angular y
+  Spring Boot; excluir únicamente los POST públicos y mantener las defensas de
+  negocio y todas las protecciones administrativas.
+- **Decisión:** pedidos invitados, inicio de Checkout Pro, inspección,
+  reconciliación y webhook no requieren CSRF. Siguen sujetos a validación,
+  idempotencia, tokens opacos, verificación contra Mercado Pago y aislamiento
+  tenant. Autenticación y toda mutación administrativa conservan CSRF.
+- **Consecuencias:** el checkout deja de depender de una cookie previa. El spam y
+  la automatización abusiva se abordarán con rate limiting porque CSRF no sustituye
+  ese control. Las pruebas de seguridad deben demostrar ambos lados de la frontera.
+
+### ADR-110 — Separación entre orígenes CORS y URL pública de retorno
+
+- **Fecha:** 2026-08-03
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la prueba local necesitaba aceptar `http://localhost:4200`, mientras
+  Mercado Pago exige una URL HTTPS pública para regresar al frontend.
+- **Problema:** una sola variable `FRONTEND_ORIGIN` representaba dos conceptos y
+  hacía que habilitar el retorno público bloqueara los POST del frontend local.
+- **Alternativas:** usar siempre el túnel para toda la navegación; permitir todos
+  los orígenes; separar la lista CORS de la URL pública de retorno.
+- **Decisión:** `FRONTEND_ORIGINS` define una lista explícita de orígenes CORS y
+  `PUBLIC_FRONTEND_BASE_URI` define una única base HTTPS para OAuth y Checkout Pro.
+  Se conserva `FRONTEND_ORIGIN` como fallback compatible para entornos simples.
+- **Consecuencias:** desarrollo local y retorno público pueden coexistir sin
+  wildcard CORS. Cada nuevo túnel requiere actualizar ambas variables explícitas
+  y reiniciar el backend.

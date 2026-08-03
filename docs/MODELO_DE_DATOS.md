@@ -394,3 +394,16 @@ Control DB: PROCESSED
 Una caída después del commit tenant deja el evento reintentable. El siguiente
 intento observa el pago ya aplicado y finaliza sin duplicar inventario ni
 historial; no se intenta simular una transacción distribuida.
+
+### Auditoría de reintentos manuales de PAY-01D
+
+La migración de control `V006__audit_manual_webhook_retries.sql` agrega
+`payment_webhook_retry_audit`. Cada fila registra UUID público, evento, tenant,
+actor, cantidad de intentos previa, acción y fecha. No conserva payloads, secretos,
+recursos de Mercado Pago ni PII.
+
+El cambio `DEAD → RETRY` y la inserción de auditoría ocurren en una misma
+transacción. Una segunda solicitud observa el evento ya programado, devuelve la
+misma fecha almacenada en `available_at` y no inserta otra auditoría. Las
+actualizaciones del worker incluyen `attempt_count` en su condición para impedir
+que un claim antiguo cierre trabajo reclamado nuevamente.

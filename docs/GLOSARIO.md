@@ -61,6 +61,8 @@
   temporal del cliente, reduciendo el riesgo de usar un código interceptado.
 - **Preferencia de pago:** configuración creada en Checkout Pro con importe,
   productos, referencia y URLs que produce el enlace de inicio del pago.
+- **Orden comercial de Mercado Pago:** recurso que agrupa una preferencia y los
+  pagos que Mercado Pago registró para ella. No equivale por sí solo a un cobro.
 - **PaymentGateway:** puerto del dominio que abstrae al proveedor de pagos; permite
   usar Mercado Pago real o un proveedor falso sin cambiar las reglas de negocio.
 - **Intento de pago:** registro interno que vincula un pedido con un intento de
@@ -84,6 +86,15 @@
   proveedor o una base que está fallando.
 - **Dead-letter / `DEAD`:** estado de un evento que agotó sus reintentos
   automáticos y necesita alerta, diagnóstico y reproceso controlado.
+- **Métrica:** medición numérica agregada que permite observar el comportamiento
+  del sistema, por ejemplo cuántos webhooks se procesaron o agotaron sus reintentos.
+- **Micrometer:** capa de instrumentación usada por Spring para registrar métricas
+  sin acoplar la aplicación a un proveedor de monitoreo específico.
+- **Cardinalidad:** cantidad de combinaciones posibles de etiquetas de una métrica.
+  Incluir IDs, URLs o tenants produce cardinalidad alta, aumenta costos y puede
+  filtrar información; por eso las métricas de pagos usan etiquetas cerradas.
+- **Actuator:** módulo de Spring Boot que ofrece información operativa como salud y
+  métricas. Sus endpoints sensibles no deben quedar expuestos públicamente.
 - **Polling acotado:** consultas periódicas con intervalo, cantidad y duración
   máximos. Evita esperar indefinidamente por un webhook.
 - **Token opaco de retorno:** secreto temporal sin datos interpretables que permite

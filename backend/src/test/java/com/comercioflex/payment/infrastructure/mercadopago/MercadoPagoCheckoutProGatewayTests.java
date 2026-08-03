@@ -10,6 +10,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -20,14 +21,46 @@ import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceRequest;
 import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.resources.preference.Preference;
+import com.mercadopago.net.MPElementsResourcesPage;
+import com.mercadopago.resources.merchantorder.MerchantOrder;
+import com.mercadopago.resources.merchantorder.MerchantOrderCollector;
 
 import com.comercioflex.payment.application.CheckoutPreferenceCommand;
 import com.comercioflex.payment.application.CheckoutProProperties;
 import com.comercioflex.payment.application.CreatedCheckoutPreference;
 import com.comercioflex.payment.application.PaymentCredential;
+import com.comercioflex.payment.application.ProviderCheckoutState;
 import com.comercioflex.payment.domain.PaymentEnvironment;
 
 class MercadoPagoCheckoutProGatewayTests {
+
+	@Test
+	void reportsNoPaymentOnlyForAValidatedEmptyMerchantOrder() throws Exception {
+		PreferenceClient preferences = mock(PreferenceClient.class);
+		PaymentClient payments = mock(PaymentClient.class);
+		MerchantOrderClient merchantOrders = mock(MerchantOrderClient.class);
+		@SuppressWarnings("unchecked")
+		MPElementsResourcesPage<MerchantOrder> page = mock(MPElementsResourcesPage.class);
+		MerchantOrder order = mock(MerchantOrder.class);
+		MerchantOrderCollector collector = mock(MerchantOrderCollector.class);
+		when(page.getElements()).thenReturn(List.of(order));
+		when(order.getPreferenceId()).thenReturn("pref-123");
+		when(order.getExternalReference()).thenReturn("external-123");
+		when(order.getCollector()).thenReturn(collector);
+		when(collector.getId()).thenReturn(123456L);
+		when(order.getPayments()).thenReturn(List.of());
+		when(merchantOrders.search(any(), any(MPRequestOptions.class))).thenReturn(page);
+		MercadoPagoCheckoutProGateway gateway = new MercadoPagoCheckoutProGateway(
+			preferences, payments, merchantOrders, properties());
+		PaymentCredential credential = new PaymentCredential(
+			"TEST-secret-token", "123456", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+
+		ProviderCheckoutState result = gateway.inspectPreference(
+			credential, "pref-123", "external-123");
+
+		assertThat(result).isEqualTo(ProviderCheckoutState.NO_PAYMENT_RECORDED);
+	}
 
 	@Test
 	void createsOnlineOnlyPreferenceWithPerRequestCredentialAndNoMarketplaceFee()

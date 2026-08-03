@@ -30,6 +30,7 @@ public class PaymentWebhookWorker {
 	private final PaymentOAuthProperties oauthProperties;
 	private final TenantContext tenantContext;
 	private final TransactionTemplate controlTransactions;
+	private final PaymentWebhookMetrics metrics;
 	private final Clock clock;
 
 	@Autowired
@@ -41,9 +42,10 @@ public class PaymentWebhookWorker {
 			CheckoutProProperties properties,
 			PaymentOAuthProperties oauthProperties,
 			TenantContext tenantContext,
-			@Qualifier("controlTransactionTemplate") TransactionTemplate controlTransactions) {
+			@Qualifier("controlTransactionTemplate") TransactionTemplate controlTransactions,
+			PaymentWebhookMetrics metrics) {
 		this(repository, credentials, gateway, checkoutService, properties,
-			oauthProperties, tenantContext, controlTransactions,
+			oauthProperties, tenantContext, controlTransactions, metrics,
 			Clock.systemUTC());
 	}
 
@@ -56,6 +58,7 @@ public class PaymentWebhookWorker {
 			PaymentOAuthProperties oauthProperties,
 			TenantContext tenantContext,
 			TransactionTemplate controlTransactions,
+			PaymentWebhookMetrics metrics,
 			Clock clock) {
 		this.repository = repository;
 		this.credentials = credentials;
@@ -65,6 +68,7 @@ public class PaymentWebhookWorker {
 		this.oauthProperties = oauthProperties;
 		this.tenantContext = tenantContext;
 		this.controlTransactions = controlTransactions;
+		this.metrics = metrics;
 		this.clock = clock;
 	}
 
@@ -98,22 +102,34 @@ public class PaymentWebhookWorker {
 			try (TenantContext.Scope ignored = tenantContext.open(route.tenantDatabaseKey())) {
 				checkoutService.applyVerifiedPayment(route.paymentAttemptId(), payment);
 			}
-			controlTransactions.executeWithoutResult(status ->
-				repository.markProcessed(event.internalId(), clock.instant()));
+			Boolean changed = controlTransactions.execute(status ->
+				repository.markProcessed(
+					event.internalId(), event.attemptCount(), clock.instant()));
+			if (Boolean.TRUE.equals(changed)) {
+				metrics.processed();
+			}
 		}
 		catch (RuntimeException exception) {
 			boolean retryable = retryable(exception);
 			boolean dead = !retryable || event.attemptCount() >= properties.maxWebhookAttempts();
 			String code = safeCode(exception);
 			Instant next = clock.instant().plus(retryDelay(event.attemptCount()));
-			controlTransactions.executeWithoutResult(status ->
-				repository.markFailed(event.internalId(), dead, code, next));
+			Boolean changed = controlTransactions.execute(status ->
+				repository.markFailed(
+					event.internalId(), event.attemptCount(), dead, code, next));
+			if (Boolean.TRUE.equals(changed)) {
+				metrics.failed(dead, retryable);
+			}
 		}
 	}
 
 	private boolean retryable(RuntimeException exception) {
 		if (exception instanceof TransientDataAccessException) {
 			return true;
+		}
+		if (exception instanceof PaymentOAuthException oauth) {
+			return oauth.code().equals("OAUTH_PROVIDER_UNAVAILABLE")
+				|| oauth.code().equals("SELLER_PROFILE_UNAVAILABLE");
 		}
 		return exception instanceof CheckoutPaymentException checkout
 			&& (checkout.code().equals("PAYMENT_LOOKUP_FAILED")
@@ -129,6 +145,10 @@ public class PaymentWebhookWorker {
 		if (exception instanceof CheckoutPaymentException checkout) {
 			return checkout.code().length() <= 64
 				? checkout.code() : "WEBHOOK_PROCESSING_FAILED";
+		}
+		if (exception instanceof PaymentOAuthException oauth
+				&& oauth.code().length() <= 64) {
+			return oauth.code();
 		}
 		return "WEBHOOK_PROCESSING_FAILED";
 	}

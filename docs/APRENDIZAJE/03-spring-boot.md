@@ -41,10 +41,11 @@ Un `PasswordEncoder` usa un hash lento y adaptativo; no cifra para luego
 descifrar. La sesión evita repetir ese cálculo costoso en cada solicitud. Spring
 renueva el identificador al autenticar para evitar fijación de sesión.
 
-CSRF sigue habilitado porque el navegador envía cookies automáticamente. La SPA
-obtiene `XSRF-TOKEN` y lo devuelve en `X-XSRF-TOKEN` para las operaciones con
-estado. El limitador de login agrega otra defensa frente a fuerza bruta y consumo
-deliberado de CPU.
+CSRF sigue habilitado donde el navegador usa una sesión autenticada, porque envía
+esa cookie automáticamente. La SPA obtiene `XSRF-TOKEN` y lo devuelve en
+`X-XSRF-TOKEN` para esas operaciones. Los POST públicos del checkout invitado no
+usan autoridad de sesión y se excluyen según ADR-109. El limitador de login agrega
+otra defensa frente a fuerza bruta y consumo deliberado de CPU.
 
 Conceptos para estudiar: `SecurityFilterChain`, `AuthenticationManager`,
 `SecurityContext`, `PasswordEncoder`, Spring Session, CSRF, CORS y autorización

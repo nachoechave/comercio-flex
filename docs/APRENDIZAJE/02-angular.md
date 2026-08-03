@@ -47,9 +47,11 @@ arranque
 ```
 
 El interceptor XSRF de `HttpClient` copia el token a `X-XSRF-TOKEN` en solicitudes
-que modifican datos. El guard mejora la experiencia, pero no es una barrera de
-seguridad: una persona puede modificar JavaScript en su navegador y por eso el
-backend siempre vuelve a autorizar.
+que modifican datos mediante una sesión autenticada. El checkout invitado no usa
+esa sesión y se protege con validación, idempotencia y tokens opacos. El guard
+mejora la experiencia, pero no es una barrera de seguridad: una persona puede
+modificar JavaScript en su navegador y por eso el backend siempre vuelve a
+autorizar las rutas administrativas.
 
 Conceptos para estudiar: cookies, credenciales HTTP, XSRF, interceptor, guard,
 estado de sesión y rutas protegidas.

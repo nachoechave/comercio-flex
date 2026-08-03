@@ -344,6 +344,10 @@ usar la API. No pruebes producción ni credenciales reales en esta entrega.
   `MP_TEST_ACCESS_TOKEN`, `MP_TEST_SELLER_ACCOUNT_ID`,
   `MP_TEST_DEMO_TENANT_SLUG`, `MP_WEBHOOK_SECRET` y
   `PUBLIC_BACKEND_BASE_URI` mediante variables de entorno.
+- `FRONTEND_ORIGINS` acepta una lista separada por comas de orígenes autorizados
+  para consumir la API, por ejemplo localhost y el túnel de demostración.
+  `PUBLIC_FRONTEND_BASE_URI` identifica exclusivamente la URL HTTPS que Mercado
+  Pago usa para regresar al frontend; no debe reutilizarse como política CORS.
 - `PAYMENT_RETURN_TOKEN_TTL` controla la vigencia del enlace opaco de retorno;
   el valor predeterminado es `24h`.
 - Cargar OAuth, access token demo y secreto de webhook mediante variables de
@@ -386,7 +390,10 @@ usar la API. No pruebes producción ni credenciales reales en esta entrega.
 13. Intentar usar la credencial TEST central desde otro tenant y arrancar esa
     modalidad en producción: ambos casos deben rechazarse sin revelar secretos.
 14. Dejar que el polling alcance su límite y comprobar que se detenga, explique la
-    demora y permita actualización manual sin crear otra preferencia.
+    demora y permita actualización manual sin crear otra preferencia. Si el retorno
+    incluye `payment_id`, la acción debe consultar Mercado Pago y validar vendedor,
+    preferencia, referencia, importe y moneda antes de aplicar el resultado; nunca
+    debe confiar en `status=approved` de la URL.
 
 ### Observabilidad y revisión
 
@@ -399,3 +406,36 @@ La validación del 2026-08-01 comprobó retorno HTTPS, pago acreditado consultad
 Mercado Pago, procesamiento firmado, confirmación única, consumo único de reserva,
 replay idempotente y protección del pago tardío. PAY-01D conserva la ampliación a
 escenarios rechazados/pendientes, observabilidad operativa y runbooks.
+
+### Runbook de un webhook `DEAD`
+
+1. Ingresar como `OWNER` al comercio correcto y abrir **Pagos**.
+2. Revisar el código sanitizado y la cantidad de intentos. No buscar ni copiar
+   tokens, firmas, payloads o datos del comprador en logs.
+3. Confirmar que MySQL y la conexión de Mercado Pago estén disponibles. Si el
+   código indica una discrepancia de credencial, no reintentar hasta corregirla.
+4. Elegir **Reintentar** una sola vez. La acción exige sesión `OWNER`, CSRF y queda
+   auditada con actor, fecha e intentos anteriores.
+5. Actualizar la lista. El evento debe desaparecer de `DEAD`, pasar por el worker
+   y terminar en `PROCESSED` o regresar a `DEAD` de manera acotada.
+6. Verificar el pedido y el inventario. Un replay nunca debe crear una segunda
+   transacción, confirmación ni salida de stock.
+7. Si vuelve a `DEAD`, conservar el UUID público y el código seguro para soporte;
+   no realizar actualizaciones SQL manuales ni compartir secretos.
+
+Las fechas del inbox se conservan como instantes UTC. La conexión JDBC de la base
+de control fuerza su sesión a UTC y Angular las presenta con la zona IANA de
+`store_settings.timezone`. La pantalla muestra el nombre de esa zona para que el
+operador no confunda la hora del comercio con la de su dispositivo.
+
+Los avisos de reintento pertenecen a la tarjeta operativa. Un error de conexión
+OAuth se muestra por separado y no significa que el reintento del inbox haya
+fallado; el estado autoritativo se revisa en esa misma tarjeta.
+
+Micrometer registra contadores internos bajo
+`comercio.flex.payment.webhooks` con resultados cerrados: `received`,
+`duplicate`, `processed`, `retried`, `dead_exhausted`, `dead_terminal` y
+`manual_retry`. La separación permite distinguir reintentos agotados de errores
+no recuperables. No usan tenant, pedido, pago, URL ni error libre como etiquetas.
+En el MVP el endpoint global de métricas no se expone por HTTP; su conexión a un
+colector pertenece a `OPS-01`.

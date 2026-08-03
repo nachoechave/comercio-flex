@@ -20,6 +20,7 @@ export interface PaymentReturnStatus {
   orderNumber: string;
   orderStatus: GuestOrderStatus;
   paymentStatus: PublicPaymentStatus;
+  returnOutcome: 'PAYMENT_NOT_RECORDED' | null;
   canRetry: boolean;
   updatedAt: string;
 }

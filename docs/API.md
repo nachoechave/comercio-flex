@@ -458,14 +458,16 @@ ningún total al backend en este sprint.
 ## Checkout invitado y consulta de pedidos
 
 Las rutas son públicas, pero se resuelven contra la base del comercio indicado
-por `storeSlug`. Las respuestas usan `Cache-Control: no-store`.
+por `storeSlug`. Las respuestas usan `Cache-Control: no-store`. Como no usan una
+sesión autenticada ni conceden permisos administrativos, sus `POST` no requieren
+CSRF. Conservan validación, claves idempotentes y tokens opacos; el control de
+abuso mediante rate limiting se mantiene como hardening posterior.
 
 ### Crear pedido con retiro
 
 ```http
 POST /api/v1/stores/{storeSlug}/orders
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
-X-XSRF-TOKEN: {token de la cookie XSRF-TOKEN}
 Content-Type: application/json
 ```
 
@@ -515,7 +517,6 @@ el mismo `404` genérico. Al consultar una reserva ya vencida, el pedido pasa a
 ### Errores del checkout
 
 - `400`: campos, cantidad, UUID v4 o encabezado inválidos.
-- `403`: falta o es inválido el token CSRF del `POST`.
 - `404`: comercio o combinación privada de pedido no encontrados.
 - `409 order-item-unavailable`: publicación o cantidad no disponible.
 - `409 idempotency-conflict`: clave reutilizada con otro comando.
@@ -626,7 +627,6 @@ datos autoritativos.
 ```http
 POST /api/v1/stores/{storeSlug}/orders/{orderId}/payments/checkout-pro?token={lookupToken}
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
-X-XSRF-TOKEN: {token CSRF}
 Content-Type: application/json
 
 {}
@@ -666,11 +666,45 @@ GET /api/v1/stores/{storeSlug}/payment-returns/{returnToken}
 ```
 
 La respuesta pública contiene `orderId`, `orderNumber`, `orderStatus`,
-`paymentStatus`, `canRetry` y `updatedAt`. Los estados de pago públicos son
+`paymentStatus`, `returnOutcome`, `canRetry` y `updatedAt`. Los estados de pago públicos son
 `CREATED`, `PENDING`, `APPROVED`, `REJECTED`, `EXPIRED` y `REQUIRES_REVIEW`.
 El polling se ejecuta cada 3 segundos durante un máximo aproximado de 30 segundos; al
 agotar el límite se detiene y ofrece actualización manual. Un `status` recibido
 en la back URL nunca cambia el pedido.
+
+Si Mercado Pago incluyó un `payment_id` numérico en el retorno y el webhook se
+demora, la acción manual solicita una reconciliación autenticada contra el
+proveedor:
+
+```http
+POST /api/v1/stores/{storeSlug}/payment-returns/{returnToken}/reconcile?paymentId={providerPaymentId}
+Content-Type: application/json
+
+{}
+```
+
+El `paymentId` visible no es autoritativo. El backend consulta Mercado Pago con
+la credencial del comercio y sólo aplica el resultado si coinciden vendedor,
+preferencia, referencia externa, importe y moneda. La confirmación y el consumo
+de stock conservan las mismas garantías idempotentes del webhook.
+
+Si el navegador vuelve desde Checkout Pro sin un `payment_id`, Angular puede
+solicitar una inspección de sólo lectura:
+
+```http
+POST /api/v1/stores/{storeSlug}/payment-returns/{returnToken}/inspect
+Content-Type: application/json
+
+{}
+```
+
+El backend no confía en `status`, `payment` ni otros parámetros de la URL. Busca
+la orden comercial usando la preferencia ya almacenada y valida referencia
+externa, vendedor y credencial. Sólo cuando Mercado Pago devuelve una orden
+coincidente con una lista de pagos vacía informa
+`returnOutcome: PAYMENT_NOT_RECORDED`. Este resultado no cambia el intento, el
+pedido, la reserva ni el stock. Si la consulta es vacía, ambigua o falla, la UI
+conserva el estado seguro `PENDING`.
 
 ### Webhook público
 
@@ -690,6 +724,51 @@ La aceptación HTTP no significa que el pedido ya esté confirmado. Un worker
 consulta el recurso a Mercado Pago con la credencial del vendedor y verifica
 seller, ambiente, referencia, preferencia, importe y moneda antes de aplicar un
 estado. El payload recibido no se devuelve ni se usa como fuente financiera.
+
+### Operación de webhooks agotados
+
+El `OWNER` puede consultar hasta 100 eventos `DEAD` de su comercio. La respuesta
+no incluye payload, IDs internos, request ID, notification ID, recurso de Mercado
+Pago, vendedor ni datos del comprador.
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/payment-webhooks?status=DEAD
+```
+
+```json
+[
+  {
+    "eventId": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "DEAD",
+    "attemptCount": 8,
+    "safeErrorCode": "PAYMENT_LOOKUP_FAILED",
+    "occurredAt": "2026-08-01T21:00:00Z",
+    "retryAllowed": true
+  }
+]
+```
+
+La recuperación es explícita, requiere CSRF y vuelve a colocar el evento en la
+cola durable. Repetir el mismo POST no crea otra auditoría ni otro contador.
+
+```http
+POST /api/v1/stores/{storeSlug}/admin/payment-webhooks/{eventId}/retry
+X-XSRF-TOKEN: {token CSRF}
+Content-Type: application/json
+
+{}
+```
+
+```json
+{
+  "eventId": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "RETRY_SCHEDULED",
+  "scheduledAt": "2026-08-01T21:05:00Z"
+}
+```
+
+El backend obtiene tenant y ambiente desde la sesión y configuración confiable.
+Un evento ajeno responde como inexistente; uno ya procesado no se modifica.
 
 Errores públicos implementados:
 
