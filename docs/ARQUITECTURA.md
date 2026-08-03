@@ -243,8 +243,10 @@ fuera del MVP.
 
 ### CSRF, CORS y cookies
 
-- Las operaciones que cambian estado requieren el par `XSRF-TOKEN` /
-  `X-XSRF-TOKEN`.
+- Las operaciones que cambian estado mediante una sesión autenticada requieren el
+  par `XSRF-TOKEN` / `X-XSRF-TOKEN`. Los contratos públicos del checkout invitado
+  no dependen de sesión y aplican idempotencia, tokens opacos, validación y
+  aislamiento tenant según ADR-109.
 - La cookie de sesión usa `HttpOnly`, `SameSite=Lax` y `Secure` en ambientes con
   HTTPS; el perfil local puede desactivar `Secure` para `http://localhost`.
 - CORS admite credenciales sólo desde orígenes explícitos, nunca con wildcard.

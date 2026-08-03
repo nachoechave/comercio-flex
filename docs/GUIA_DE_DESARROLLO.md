@@ -344,6 +344,10 @@ usar la API. No pruebes producción ni credenciales reales en esta entrega.
   `MP_TEST_ACCESS_TOKEN`, `MP_TEST_SELLER_ACCOUNT_ID`,
   `MP_TEST_DEMO_TENANT_SLUG`, `MP_WEBHOOK_SECRET` y
   `PUBLIC_BACKEND_BASE_URI` mediante variables de entorno.
+- `FRONTEND_ORIGINS` acepta una lista separada por comas de orígenes autorizados
+  para consumir la API, por ejemplo localhost y el túnel de demostración.
+  `PUBLIC_FRONTEND_BASE_URI` identifica exclusivamente la URL HTTPS que Mercado
+  Pago usa para regresar al frontend; no debe reutilizarse como política CORS.
 - `PAYMENT_RETURN_TOKEN_TTL` controla la vigencia del enlace opaco de retorno;
   el valor predeterminado es `24h`.
 - Cargar OAuth, access token demo y secreto de webhook mediante variables de

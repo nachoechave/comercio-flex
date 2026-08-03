@@ -1643,9 +1643,10 @@
 - **Alternativas:** esperar indefinidamente el webhook; confiar en los parámetros
   de retorno; consultar al proveedor bajo demanda y aplicar el mismo flujo seguro.
 - **Decisión:** el retorno conserva lectura y polling acotados. Tras el timeout, el
-  comprador puede enviar el `payment_id` recibido mediante POST con CSRF y token
-  opaco. El backend consulta Mercado Pago con la credencial esperada y valida todas
-  las coincidencias comerciales antes de confirmar.
+  comprador puede enviar el `payment_id` recibido mediante POST y token opaco. El
+  backend consulta Mercado Pago con la credencial esperada y valida todas las
+  coincidencias comerciales antes de confirmar. La exigencia original de CSRF para
+  este POST público fue reemplazada por ADR-109.
 - **Consecuencias:** la recuperación no crea otra preferencia ni otro cobro y es
   idempotente. La URL nunca es fuente financiera; un identificador falso, una
   credencial distinta o cualquier discrepancia fallan cerrados.
@@ -1670,3 +1671,42 @@
 - **Consecuencias:** Angular puede explicar que no hubo cobro y permitir reintento
   sin crear efectos financieros. Una respuesta ausente, ambigua o errónea vuelve
   al mensaje conservador; ningún parámetro del navegador modifica pedido o stock.
+
+### ADR-109 — CSRF limitado a operaciones basadas en sesión
+
+- **Fecha:** 2026-08-03
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el checkout invitado falló antes de crear el pedido porque las
+  operaciones públicas exigían una cookie CSRF pese a no depender de una sesión
+  autenticada.
+- **Problema:** conservar CSRF en estos contratos agregaba estado de navegador y
+  puntos de fallo sin proteger una acción realizada con autoridad de usuario.
+- **Alternativas:** transportar explícitamente un token CSRF entre Angular y
+  Spring Boot; excluir únicamente los POST públicos y mantener las defensas de
+  negocio y todas las protecciones administrativas.
+- **Decisión:** pedidos invitados, inicio de Checkout Pro, inspección,
+  reconciliación y webhook no requieren CSRF. Siguen sujetos a validación,
+  idempotencia, tokens opacos, verificación contra Mercado Pago y aislamiento
+  tenant. Autenticación y toda mutación administrativa conservan CSRF.
+- **Consecuencias:** el checkout deja de depender de una cookie previa. El spam y
+  la automatización abusiva se abordarán con rate limiting porque CSRF no sustituye
+  ese control. Las pruebas de seguridad deben demostrar ambos lados de la frontera.
+
+### ADR-110 — Separación entre orígenes CORS y URL pública de retorno
+
+- **Fecha:** 2026-08-03
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la prueba local necesitaba aceptar `http://localhost:4200`, mientras
+  Mercado Pago exige una URL HTTPS pública para regresar al frontend.
+- **Problema:** una sola variable `FRONTEND_ORIGIN` representaba dos conceptos y
+  hacía que habilitar el retorno público bloqueara los POST del frontend local.
+- **Alternativas:** usar siempre el túnel para toda la navegación; permitir todos
+  los orígenes; separar la lista CORS de la URL pública de retorno.
+- **Decisión:** `FRONTEND_ORIGINS` define una lista explícita de orígenes CORS y
+  `PUBLIC_FRONTEND_BASE_URI` define una única base HTTPS para OAuth y Checkout Pro.
+  Se conserva `FRONTEND_ORIGIN` como fallback compatible para entornos simples.
+- **Consecuencias:** desarrollo local y retorno público pueden coexistir sin
+  wildcard CORS. Cada nuevo túnel requiere actualizar ambas variables explícitas
+  y reiniciar el backend.

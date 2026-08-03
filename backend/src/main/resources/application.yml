@@ -47,7 +47,7 @@ management:
 
 app:
   cors:
-    allowed-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
+    allowed-origin: ${FRONTEND_ORIGINS:${FRONTEND_ORIGIN:http://localhost:4200}}
   payments:
     mercado-pago:
       enabled: ${PAYMENTS_MERCADO_PAGO_ENABLED:false}
@@ -55,7 +55,7 @@ app:
       client-id: ${MP_CLIENT_ID:}
       client-secret: ${MP_CLIENT_SECRET:}
       redirect-uri: ${MP_OAUTH_REDIRECT_URI:http://localhost:8080/api/v1/integrations/mercado-pago/oauth/callback}
-      frontend-base-uri: ${FRONTEND_ORIGIN:http://localhost:4200}
+      frontend-base-uri: ${PUBLIC_FRONTEND_BASE_URI:${FRONTEND_ORIGIN:http://localhost:4200}}
       active-key-id: ${PAYMENT_TOKEN_ACTIVE_KEY_ID:v1}
       encryption-key: ${PAYMENT_TOKEN_ENCRYPTION_KEY_V1:}
       connect-timeout: ${MP_CONNECT_TIMEOUT:3s}
@@ -66,7 +66,7 @@ app:
       test-seller-account-id: ${MP_TEST_SELLER_ACCOUNT_ID:}
       test-demo-tenant-slug: ${MP_TEST_DEMO_TENANT_SLUG:}
       public-backend-base-uri: ${PUBLIC_BACKEND_BASE_URI:http://localhost:8080}
-      frontend-base-uri: ${FRONTEND_ORIGIN:http://localhost:4200}
+      frontend-base-uri: ${PUBLIC_FRONTEND_BASE_URI:${FRONTEND_ORIGIN:http://localhost:4200}}
       webhook-secret: ${MP_WEBHOOK_SECRET:}
       connect-timeout: ${MP_CONNECT_TIMEOUT:3s}
       read-timeout: ${MP_READ_TIMEOUT:8s}

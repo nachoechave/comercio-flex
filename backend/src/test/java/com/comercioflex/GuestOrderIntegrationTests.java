@@ -693,12 +693,12 @@ class GuestOrderIntegrationTests {
 	}
 
 	@Test
-	void validatesCsrfHeaderPayloadAndUnavailableTenantScope() throws Exception {
+	void allowsPublicOrderWithoutCsrfAndValidatesPayloadAndTenantScope() throws Exception {
 		mockMvc.perform(post(orders("tienda-a"))
 				.header("Idempotency-Key", UUID.randomUUID())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(body("1")))
-			.andExpect(status().isForbidden());
+			.andExpect(status().isCreated());
 		mockMvc.perform(post(orders("tienda-a"))
 				.with(csrf())
 				.header("Idempotency-Key", UUID.randomUUID())

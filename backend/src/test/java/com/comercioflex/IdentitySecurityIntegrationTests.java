@@ -61,6 +61,8 @@ class IdentitySecurityIntegrationTests {
 		registry.add("spring.flyway.user", DATABASE::getUsername);
 		registry.add("spring.flyway.password", DATABASE::getPassword);
 		registry.add("app.database.tenant-migration-enabled", () -> "false");
+		registry.add("app.cors.allowed-origin",
+			() -> "http://localhost:4200,https://demo.example");
 		registerTenant(registry, "tenant-a");
 		registerTenant(registry, "tenant-b");
 	}
@@ -227,6 +229,12 @@ class IdentitySecurityIntegrationTests {
 				.header("Access-Control-Request-Headers", "content-type,x-xsrf-token"))
 			.andExpect(status().isOk())
 			.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4200"));
+
+		mockMvc.perform(options("/api/v1/auth/login")
+				.header("Origin", "https://demo.example")
+				.header("Access-Control-Request-Method", "POST"))
+			.andExpect(status().isOk())
+			.andExpect(header().string("Access-Control-Allow-Origin", "https://demo.example"));
 
 		mockMvc.perform(options("/api/v1/auth/login")
 				.header("Origin", "https://attacker.example")

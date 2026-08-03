@@ -458,14 +458,16 @@ ningún total al backend en este sprint.
 ## Checkout invitado y consulta de pedidos
 
 Las rutas son públicas, pero se resuelven contra la base del comercio indicado
-por `storeSlug`. Las respuestas usan `Cache-Control: no-store`.
+por `storeSlug`. Las respuestas usan `Cache-Control: no-store`. Como no usan una
+sesión autenticada ni conceden permisos administrativos, sus `POST` no requieren
+CSRF. Conservan validación, claves idempotentes y tokens opacos; el control de
+abuso mediante rate limiting se mantiene como hardening posterior.
 
 ### Crear pedido con retiro
 
 ```http
 POST /api/v1/stores/{storeSlug}/orders
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
-X-XSRF-TOKEN: {token de la cookie XSRF-TOKEN}
 Content-Type: application/json
 ```
 
@@ -515,7 +517,6 @@ el mismo `404` genérico. Al consultar una reserva ya vencida, el pedido pasa a
 ### Errores del checkout
 
 - `400`: campos, cantidad, UUID v4 o encabezado inválidos.
-- `403`: falta o es inválido el token CSRF del `POST`.
 - `404`: comercio o combinación privada de pedido no encontrados.
 - `409 order-item-unavailable`: publicación o cantidad no disponible.
 - `409 idempotency-conflict`: clave reutilizada con otro comando.
@@ -626,7 +627,6 @@ datos autoritativos.
 ```http
 POST /api/v1/stores/{storeSlug}/orders/{orderId}/payments/checkout-pro?token={lookupToken}
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
-X-XSRF-TOKEN: {token CSRF}
 Content-Type: application/json
 
 {}
@@ -678,7 +678,6 @@ proveedor:
 
 ```http
 POST /api/v1/stores/{storeSlug}/payment-returns/{returnToken}/reconcile?paymentId={providerPaymentId}
-X-XSRF-TOKEN: {token CSRF}
 Content-Type: application/json
 
 {}
@@ -694,7 +693,6 @@ solicitar una inspección de sólo lectura:
 
 ```http
 POST /api/v1/stores/{storeSlug}/payment-returns/{returnToken}/inspect
-X-XSRF-TOKEN: {token CSRF}
 Content-Type: application/json
 
 {}

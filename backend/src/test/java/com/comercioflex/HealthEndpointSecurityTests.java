@@ -1,5 +1,6 @@
 package com.comercioflex;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,5 +31,24 @@ class HealthEndpointSecurityTests {
 	void unknownApplicationEndpointRequiresAuthentication() throws Exception {
 		mockMvc.perform(get("/api/v1/not-yet-implemented"))
 			.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void publicCheckoutWritesDoNotRequireCsrf() throws Exception {
+		String token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+		mockMvc.perform(post("/api/v1/stores/tienda-a/orders"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.title").value("Tienda no encontrada"));
+		mockMvc.perform(post("/api/v1/stores/tienda-a/orders/order-id/payments/checkout-pro"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.title").value("Tienda no encontrada"));
+		mockMvc.perform(post("/api/v1/stores/tienda-a/payment-returns/"
+				+ token + "/inspect"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.title").value("Tienda no encontrada"));
+		mockMvc.perform(post("/api/v1/stores/tienda-a/payment-returns/"
+				+ token + "/reconcile"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.title").value("Tienda no encontrada"));
 	}
 }

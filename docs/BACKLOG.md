@@ -87,8 +87,9 @@ Como integrante de un comercio quiero iniciar y cerrar sesión para operar
 - `GET /api/v1/auth/session` devuelve `200` con `{"authenticated":false}` cuando
   no existe una sesión, y cuando está autenticado devuelve el usuario y sólo sus
   membresías activas.
-- Las operaciones con estado, incluidos login y logout, requieren un token CSRF
-  válido usando la cookie `XSRF-TOKEN` y el header `X-XSRF-TOKEN`.
+- Las operaciones de identidad y las mutaciones con sesión autenticada, incluidos
+  login y logout, requieren un token CSRF válido usando la cookie `XSRF-TOKEN` y
+  el header `X-XSRF-TOKEN`. Los contratos públicos del checkout siguen ADR-109.
 - El frontend ofrece login global, selecciona automáticamente una única membresía
   o permite elegir entre varias, y no usa `localStorage` para guardar credenciales
   o sesiones.
@@ -902,7 +903,8 @@ Evidencia automática e integrada:
   explícita del comercio y la separación visual entre OAuth y operación.
 - El pago aprobado del pedido 10 expuso que `Actualizar estado` sólo releía la
   base local. Se incorporó reconciliación segura contra Mercado Pago, protegida
-  por token opaco y CSRF, sin confiar en el `approved` de la URL.
+  por token opaco y verificación autoritativa, sin confiar en el `approved` de la
+  URL. ADR-109 retiró la dependencia CSRF de este contrato público.
 - Evidencia manual: pedido 10 `CONFIRMED`, intento/transacción `APPROVED`, reserva
   `CONSUMED`, stock de 6 a 5 y un único movimiento `ORDER_CONFIRMED`.
 - El escenario de rechazo Sandbox sin recurso de pago (pedido 12) dejó la orden
@@ -911,3 +913,10 @@ Evidencia automática e integrada:
   stock; Angular permite reintentar mientras la reserva siga vigente.
 - El escenario aprobado queda validado; rechazado y pendiente continúan pendientes
   antes de marcar PAY-01D como `Terminada`.
+- El 2026-08-03 se corrigió el bloqueo CSRF del checkout invitado según ADR-109.
+  Cinco pruebas focalizadas verifican que los POST públicos atraviesan seguridad
+  sin CSRF y que las transiciones administrativas continúan rechazándolo.
+- La validación manual posterior identificó además una colisión de configuración:
+  `FRONTEND_ORIGIN` mezclaba CORS y la back URL pública. ADR-110 separa
+  `FRONTEND_ORIGINS` de `PUBLIC_FRONTEND_BASE_URI`; queda pendiente repetir el
+  recorrido con un túnel HTTPS nuevo antes de cerrar el escenario pendiente.

@@ -27,6 +27,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -52,7 +53,11 @@ public class SecurityConfig {
 			.csrf(csrf -> csrf
 				.csrfTokenRepository(csrfTokenRepository)
 				.ignoringRequestMatchers(
-					"/api/v1/integrations/mercado-pago/webhooks")
+					postMatcher("/api/v1/stores/*/orders"),
+					postMatcher("/api/v1/stores/*/orders/*/payments/checkout-pro"),
+					postMatcher("/api/v1/stores/*/payment-returns/*/reconcile"),
+					postMatcher("/api/v1/stores/*/payment-returns/*/inspect"),
+					postMatcher("/api/v1/integrations/mercado-pago/webhooks"))
 				.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
 			.securityContext(context -> context
 				.requireExplicitSave(true)
@@ -86,7 +91,8 @@ public class SecurityConfig {
 				.permitAll()
 				.requestMatchers(
 					HttpMethod.POST,
-					"/api/v1/stores/*/payment-returns/*/reconcile")
+					"/api/v1/stores/*/payment-returns/*/reconcile",
+					"/api/v1/stores/*/payment-returns/*/inspect")
 				.permitAll()
 				.requestMatchers(
 					HttpMethod.POST,
@@ -150,6 +156,10 @@ public class SecurityConfig {
 			.build();
 	}
 
+	private static PathPatternRequestMatcher postMatcher(String pattern) {
+		return PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, pattern);
+	}
+
 	@Bean
 	PasswordEncoder passwordEncoder() {
 		return new DelegatingPasswordEncoder(
@@ -197,9 +207,13 @@ public class SecurityConfig {
 
 	@Bean
 	CorsConfigurationSource corsConfigurationSource(
-			@Value("${app.cors.allowed-origin}") String allowedOrigin) {
+			@Value("${app.cors.allowed-origin}") String allowedOriginCsv) {
+		List<String> allowedOrigins = List.of(allowedOriginCsv.split(",")).stream()
+			.map(String::trim)
+			.filter(origin -> !origin.isEmpty())
+			.toList();
 		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(List.of(allowedOrigin));
+		configuration.setAllowedOrigins(allowedOrigins);
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		configuration.setAllowedHeaders(List.of(
 			"Content-Type",
