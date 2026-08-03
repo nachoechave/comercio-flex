@@ -780,3 +780,50 @@ Errores públicos implementados:
 
 Las respuestas nunca incluyen access/refresh token, secreto de firma, digest,
 seller interno, payload completo, ciphertext ni error crudo del SDK.
+
+## Dashboard administrativo
+
+`OWNER` y `ADMIN` pueden consultar el resumen operativo del comercio seleccionado:
+
+```http
+GET /api/v1/stores/{storeSlug}/admin/dashboard
+```
+
+```json
+{
+  "currencyCode": "ARS",
+  "timezone": "America/Argentina/Buenos_Aires",
+  "lowStockThreshold": "5.000",
+  "salesToday": "1250.50",
+  "salesThisMonth": "8600.00",
+  "openOrders": 2,
+  "lowStockVariants": 1,
+  "criticalStock": [{
+    "variantId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0101",
+    "productName": "Remera",
+    "sku": "REM-M",
+    "size": "M",
+    "color": "Negro",
+    "quantity": "2.500"
+  }],
+  "generatedAt": "2026-08-03T16:00:00Z"
+}
+```
+
+Las ventas se asignan al día y mes de la primera confirmación, usando la zona
+horaria del comercio. Sólo suman pedidos cuyo estado actual sea `CONFIRMED`,
+`READY_FOR_PICKUP` o `COMPLETED`. Los pedidos abiertos son los dos primeros.
+
+El umbral global de stock bajo admite tres decimales y se modifica con sesión,
+permiso de configuración y CSRF:
+
+```http
+PUT /api/v1/stores/{storeSlug}/admin/dashboard/settings
+X-XSRF-TOKEN: {token CSRF}
+Content-Type: application/json
+
+{"lowStockThreshold": "2.500"}
+```
+
+La respuesta es el resumen recalculado. `STAFF` recibe `403`; un umbral negativo
+o con formato inválido recibe `400`.

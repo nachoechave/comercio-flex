@@ -25,10 +25,50 @@
 | PAY-01B | Pagos | Conectar cuenta vendedora | OAuth Authorization Code, state, PKCE y tokens cifrados | Alta | Terminada | PAY-01A | Backend/Frontend/Seguridad | Sólo OWNER conecta, la identidad vendedora se verifica y no se exponen secretos | Robo/mezcla de tokens | L |
 | PAY-01C | Pagos | Ejecutar y confirmar pagos | Preferencia, retorno, inbox webhook y confirmación idempotente | Alta | Terminada | PAY-01B | Backend/Frontend/Seguridad | Pago firmado y verificado coordina pedido y stock una vez | Doble cobro/stock | XL |
 | PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | En pruebas | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
-| DASH-01 | Dashboard | Métricas mínimas | Día, mes, pendientes y stock bajo | Media | Pendiente | ORD-02 | Backend/Frontend | Datos por tenant y definiciones documentadas | Métricas inconsistentes | M |
+| DASH-01 | Dashboard | Métricas mínimas | Día, mes, pedidos abiertos y stock bajo | Media | Terminada | ORD-02 | Backend/Frontend | Datos por tenant, roles y definiciones documentadas | Métricas inconsistentes | M |
 | OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | Pendiente | PAY-01 | Infraestructura | Smoke, backup y restauración probada | Costo/caída | L |
 | SEC-01 | Seguridad | Separar credenciales runtime por base | Usuario de mínimo privilegio para control y para cada tenant | Alta | Pendiente | CORE-01 | Datos/Infraestructura | Un usuario tenant no accede a control ni a otra base | Movimiento lateral | M |
 | AUTH-02 | Identidad | Evaluar Firebase Authentication | Analizarlo como proveedor externo para clientes y administradores sin trasladar membresías ni permisos | Baja | Pendiente | MVP validado | Arquitectura/Seguridad/PO | ADR de migración, costos, sesiones, revocación y coexistencia aprobado | Dependencia externa y migración de cuentas | L |
+
+## DASH-01 — Dashboard operativo mínimo
+
+> Estado: terminada el 2026-08-03 después de implementar, probar y documentar
+> las definiciones aprobadas en ADR-111, ADR-112 y ADR-113.
+
+### Historia
+
+Como `OWNER` o `ADMIN` quiero ver un resumen operativo de mi comercio para
+detectar pedidos pendientes y faltantes de stock sin recorrer varias pantallas.
+
+### Criterios de aceptación
+
+- Las ventas del día y del mes usan la zona horaria configurada por el comercio,
+  cuentan el importe una sola vez desde la primera confirmación y excluyen pedidos
+  cuyo estado actual sea pendiente, rechazado, vencido o cancelado.
+- Los pedidos abiertos cuentan solamente estados `CONFIRMED` y
+  `READY_FOR_PICKUP`.
+- El stock bajo usa un umbral global configurable por tenant, admite cantidades
+  decimales de hasta tres posiciones y muestra como máximo cinco variantes.
+- El resumen y su configuración se consultan únicamente en la base del comercio
+  resuelto; datos de otro tenant no participan en los totales.
+- `OWNER` y `ADMIN` pueden consultar; `STAFF` recibe `403`. El cambio del umbral
+  requiere además permiso de configuración y protección CSRF.
+- Angular presenta carga, error, vacío y éxito, enlaces a pedidos e inventario,
+  formato monetario argentino y una composición responsive y accesible.
+
+### Evidencia de cierre
+
+- Suite backend completa: 137 pruebas sin fallos ni errores.
+- Pruebas específicas: límites UTC para la zona
+  `America/Argentina/Buenos_Aires`, aislamiento tenant, exclusión de cancelados,
+  permisos por rol, actualización decimal y validaciones.
+- Frontend: 136 pruebas sin fallos y build de producción correcto; permanece la
+  advertencia conocida de 98 bytes del presupuesto CSS del carrito.
+- Prueba manual local: el resumen mostró ventas mensuales, dos pedidos abiertos y
+  una variante con stock `5.000`; al guardar `4.500` la alerta pasó a cero y, al
+  restaurar `5.000`, reapareció. No hubo errores de consola.
+- La cuenta temporal usada para QA se cerró y eliminó; la configuración original
+  del tenant quedó restaurada.
 
 ## Definición de terminado
 

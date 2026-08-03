@@ -110,6 +110,10 @@
 - **Rate limiting:** límite temporal de solicitudes para reducir abuso, fuerza
   bruta y agotamiento de recursos.
 - **Repository:** abstracción para leer o guardar datos del dominio.
+- **Agregación:** consulta que resume varias filas, por ejemplo sumar ventas o
+  contar pedidos, sin devolver cada registro individual.
+- **Umbral:** valor de referencia que activa una condición; en el dashboard una
+  variante queda en stock bajo cuando su saldo es menor o igual al configurado.
 - **Reserva de stock:** compromiso temporal que reduce la cantidad vendible sin
   alterar el balance físico.
 - **Service / caso de uso:** coordina reglas y una operación de negocio.
