@@ -827,3 +827,61 @@ Content-Type: application/json
 
 La respuesta es el resumen recalculado. `STAFF` recibe `403`; un umbral negativo
 o con formato inválido recibe `400`.
+## Cierre del MVP: medios y configuración del comercio
+
+### Imagen principal de producto (`MEDIA-01`)
+
+La administración requiere sesión tenant, permiso `MANAGE_CATALOG` y token CSRF
+para las operaciones que modifican datos.
+
+| Método | Ruta | Uso |
+|---|---|---|
+| `PUT` | `/api/v1/stores/{slug}/admin/products/{productId}/image` | Crea o reemplaza la imagen. `multipart/form-data`: `file` y `altText`. |
+| `DELETE` | `/api/v1/stores/{slug}/admin/products/{productId}/image` | Elimina la imagen del producto. |
+| `GET` | `/api/v1/stores/{slug}/admin/product-images/{imageId}/{size}` | Sirve `display` o `thumbnail` a usuarios con `VIEW_CATALOG`; no se cachea. |
+| `GET` | `/api/v1/stores/{slug}/media/product-images/{imageId}/{size}` | Sirve la imagen de un producto publicado; cache pública corta y `ETag`. |
+
+`PUT` acepta solamente JPEG o PNG reales de hasta 5 MiB y `altText` de 1 a 180
+caracteres. El backend no confía en la extensión: verifica firma, decodifica,
+normaliza la orientación EXIF y recodifica. Genera `display` (máximo 1600 px) y
+`thumbnail` (máximo 480 px). Un producto archivado responde conflicto (`409`).
+Los errores de archivo inválido o tamaño responden `400`; inexistencia, `404`;
+fallo del almacenamiento, `503`.
+
+Las respuestas de catálogo incorporan un objeto `image` nullable:
+
+```json
+{
+  "id": "uuid",
+  "url": "/api/v1/stores/tienda-a/media/product-images/uuid/display",
+  "thumbnailUrl": "/api/v1/stores/tienda-a/media/product-images/uuid/thumbnail",
+  "altText": "Remera negra de algodón"
+}
+```
+
+### Configuración básica (`STORE-02`)
+
+| Método | Ruta | Permiso |
+|---|---|---|
+| `GET` | `/api/v1/stores/{slug}/settings` | Pública; datos de presentación de la tienda. |
+| `GET` | `/api/v1/stores/{slug}/admin/settings` | `MANAGE_BASIC_SETTINGS`. |
+| `PUT` | `/api/v1/stores/{slug}/admin/settings` | `MANAGE_BASIC_SETTINGS` y CSRF. |
+
+Ejemplo de actualización:
+
+```json
+{
+  "storeName": "Tienda A",
+  "contactPhone": "+54 11 5555-5555",
+  "contactEmail": "ventas@example.com",
+  "pickupAddress": "Av. Siempre Viva 742",
+  "pickupInstructions": "Retirar de lunes a viernes de 10 a 18.",
+  "brandTheme": "BURGUNDY"
+}
+```
+
+El nombre tiene 2–160 caracteres, la dirección 5–240 y es obligatoria, las
+instrucciones admiten hasta 500, y debe existir al menos teléfono o correo. Los
+temas admitidos son `VIOLET`, `BURGUNDY`, `FOREST` y `NAVY`. `OWNER` y `ADMIN`
+pueden administrar esta configuración; `STAFF` conserva acceso operativo a
+pedidos, sin permisos de configuración.

@@ -42,3 +42,17 @@ a dos comercios sin tener dos contraseñas. Las claves foráneas y restricciones
 Spring Session usa tablas relacionales con vencimiento. El navegador conserva
 sólo un identificador opaco; los datos reales permanecen del lado servidor. El
 esquema se administra con Flyway igual que el resto de la base de control.
+## Aprendizaje del cierre: metadatos, privilegios y recuperación
+
+`product_images` guarda metadatos y claves, no los bytes. Una restricción única en
+`product_id` expresa “una imagen principal” incluso ante concurrencia. Las FK y
+checks protegen MIME, tamaños, texto alternativo y dimensiones.
+
+V013 agrega contacto/retiro/tema como nullable para no inventar datos al migrar
+tiendas existentes; la aplicación exige completarlos al guardar. Es un ejemplo de
+migración compatible hacia adelante.
+
+El usuario de runtime necesita DML, no DDL. Separar control y tenants limita el
+impacto de una credencial filtrada. Un backup sólo se vuelve evidencia de
+recuperación al restaurarlo en otra base y validar Flyway, tenants, pedidos y
+stock. La copia de MySQL debe coordinarse con la retención del bucket de imágenes.

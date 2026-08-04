@@ -470,3 +470,64 @@ npm run build
 
 El dashboard no consulta Mercado Pago ni depende de sus redirecciones sandbox.
 Resume datos autoritativos ya persistidos en MySQL por pedidos e inventario.
+## Desarrollo de las funciones de cierre del MVP
+
+### Imágenes de producto
+
+En el perfil local `app.media.storage=local` guarda objetos derivados bajo
+`.data/media/`, carpeta ignorada por Git. No colocar imágenes reales de clientes
+en fixtures ni versionarlas. Desde administración:
+
+1. abrir un producto activo;
+2. elegir JPEG/PNG de hasta 5 MiB;
+3. escribir texto alternativo descriptivo;
+4. guardar y verificar miniatura en catálogo y versión grande en detalle;
+5. reemplazar y eliminar para comprobar compensación/fallback.
+
+Errores comunes: extensión permitida con contenido inválido, archivo mayor al
+límite, imagen con demasiados píxeles, producto archivado (`409`) o falta de CSRF.
+El backend siempre vuelve a decodificar y recodificar: la validación del navegador
+es sólo una ayuda de UX.
+
+Para probar S3/R2 usar un bucket de desarrollo privado y variables temporales; no
+reutilizar credenciales productivas. El perfil `prod` cambia el adaptador a S3.
+
+### Configuración del comercio y roles
+
+`OWNER` y `ADMIN` pueden editar nombre, al menos un contacto, dirección de retiro,
+instrucciones y tema. `STAFF` debe ingresar a pedidos y no a dashboard/comercio/
+pagos. Probar siempre dos tenants para verificar que el tema y los datos no se
+mezclen. El checkout sólo debe mostrar retiro (`PICKUP`).
+
+### Verificación antes de un commit
+
+```powershell
+cd frontend
+npm.cmd ci
+npm.cmd test -- --watch=false
+npm.cmd run build
+
+cd ..\backend
+.\mvnw.cmd test
+
+cd ..
+docker build -t comercio-flex:local .
+```
+
+La CI repite estos tres bloques en Linux. Un fallo exclusivo de CI suele indicar
+diferencia de mayúsculas/minúsculas en rutas, archivo no versionado o dependencia
+del entorno local.
+
+### Variables locales y productivas
+
+Los valores locales pueden salir de Docker Compose y variables de la terminal.
+La lista productiva se documenta en `infra/production.env.example`, pero sus
+valores reales pertenecen al gestor de secretos. No copiar tokens, claves AES,
+contraseñas de MySQL ni credenciales S3 a `application.yml`, commits o capturas.
+
+### Diagnóstico
+
+Ante un error HTTP, conservar el `X-Request-Id` de la respuesta y buscarlo en los
+logs. Esto vincula frontend/backend sin registrar datos sensibles. Readiness puede
+estar `DOWN` aunque el proceso esté vivo; revisar primero conectividad y permisos
+de MySQL, migraciones y variables requeridas.
