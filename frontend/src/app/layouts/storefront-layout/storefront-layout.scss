@@ -1,9 +1,7 @@
 :host {
   display: block;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 92% 0, rgb(107 63 214 / 10%), transparent 28rem),
-    var(--color-background);
+  background: var(--color-background);
 }
 
 .store-theme {
@@ -17,19 +15,49 @@
   );
 }
 
-.store-theme[data-theme='burgundy'] { --store-accent: #8b2f45; }
-.store-theme[data-theme='forest'] { --store-accent: #276749; }
-.store-theme[data-theme='navy'] { --store-accent: #244a7c; }
+.store-theme[data-theme='burgundy'] {
+  --store-accent: #8b2f45;
+}
+.store-theme[data-theme='forest'] {
+  --store-accent: #276749;
+}
+.store-theme[data-theme='navy'] {
+  --store-accent: #244a7c;
+}
+
+.store-theme[data-visual-identity='apparel-editorial'] {
+  --store-accent: #111111;
+  --color-accent: #111111;
+  --color-background: #f6f5f2;
+  --color-surface: #ffffff;
+  --color-text: #151515;
+  --color-muted: #66645f;
+  --color-border: #dedcd6;
+  background: var(--color-background);
+}
+
+.announcement {
+  min-height: 2rem;
+  margin: 0;
+  padding: 0.45rem 1rem;
+  color: #fff;
+  background: var(--store-accent);
+  font-size: 0.74rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+}
 
 .site-header,
 .site-footer {
-  width: min(100% - 2rem, 76rem);
+  width: min(100% - 2rem, 82rem);
   margin: 0 auto;
 }
 
 .site-header {
   display: flex;
-  min-height: 5rem;
+  min-height: 5.5rem;
   align-items: center;
   justify-content: space-between;
   gap: 1.25rem;
@@ -41,8 +69,15 @@
   gap: 0.7rem;
   color: var(--color-text);
   font-size: 1.1rem;
-  font-weight: 800;
+  font-weight: 850;
+  letter-spacing: -0.03em;
   text-decoration: none;
+}
+
+[data-visual-identity='apparel-editorial'] .brand {
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+  letter-spacing: -0.055em;
+  text-transform: uppercase;
 }
 
 .brand-mark {
@@ -52,64 +87,81 @@
   place-items: center;
   border-radius: 0.8rem;
   color: #fff;
-  background: linear-gradient(145deg, var(--store-accent), color-mix(in srgb, var(--store-accent) 65%, white));
+  background: linear-gradient(
+    145deg,
+    var(--store-accent),
+    color-mix(in srgb, var(--store-accent) 65%, white)
+  );
   box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, var(--store-accent) 24%, transparent);
-}
-
-nav a {
-  color: var(--color-text);
-  font-weight: 700;
-  text-decoration: none;
 }
 
 nav {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: clamp(0.8rem, 2.5vw, 1.8rem);
+}
+
+nav a {
+  color: var(--color-text);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .cart-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
-.cart-link span {
+.cart-count {
   display: grid;
-  min-width: 1.55rem;
-  height: 1.55rem;
+  min-width: 1.6rem;
+  height: 1.6rem;
   padding: 0 0.35rem;
   place-items: center;
   border-radius: 999px;
   color: #fff;
   background: var(--store-accent);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
 }
 
 .site-footer {
-  display: flex;
-  min-height: 6rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 4rem;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 2rem;
+  margin-top: clamp(4rem, 9vw, 8rem);
+  padding: 2.5rem 0 3.5rem;
   border-top: 1px solid var(--color-border);
   color: var(--color-muted);
-  font-size: 0.9rem;
-}
-
-.site-footer a {
-  font-weight: 650;
+  font-size: 0.88rem;
 }
 
 .site-footer > div {
   display: flex;
+  align-items: flex-start;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.45rem;
 }
 
-.site-footer > div:last-child {
-  align-items: flex-end;
+.site-footer strong {
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.footer-brand strong {
+  font-size: 1.2rem;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer a {
+  color: inherit;
+  font-weight: 650;
 }
 
 .store-state {
@@ -160,21 +212,28 @@ nav {
   background: #e8e3f7;
 }
 
-@media (max-width: 36rem) {
+@media (max-width: 42rem) {
   .site-header {
-    min-height: 4.5rem;
+    min-height: 4.7rem;
     gap: 0.75rem;
   }
 
   nav {
-    gap: 0.65rem;
-    font-size: 0.9rem;
+    gap: 0.75rem;
+  }
+
+  nav > a:not(.cart-link):first-child {
+    display: none;
   }
 
   .site-footer {
-    align-items: flex-start;
-    flex-direction: column;
-    justify-content: center;
-    padding: 1.5rem 0;
+    grid-template-columns: 1fr;
+    padding: 2rem 0;
+  }
+}
+
+@media (max-width: 28rem) {
+  nav > a:not(.cart-link) {
+    display: none;
   }
 }

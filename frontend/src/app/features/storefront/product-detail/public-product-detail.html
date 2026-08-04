@@ -1,7 +1,9 @@
 <section class="product-page" aria-labelledby="product-title">
   <nav class="breadcrumbs" aria-label="Migas de pan">
-    <a [routerLink]="['/tiendas', storeSlug()]">Productos</a>
+    <a [routerLink]="['/tiendas', storeSlug()]">Colección</a>
     @if (product(); as currentProduct) {
+      <span aria-hidden="true">/</span>
+      <span>{{ currentProduct.category.name }}</span>
       <span aria-hidden="true">/</span>
       <span>{{ currentProduct.name }}</span>
     }
@@ -33,81 +35,92 @@
           <img [src]="image.url" [alt]="image.altText" />
         } @else {
           <span>{{ initial() }}</span>
+          <small>Imagen próximamente</small>
         }
       </div>
+
       <div class="summary">
         <p class="eyebrow">{{ currentProduct.category.name }}</p>
         <h1 id="product-title">{{ currentProduct.name }}</h1>
         <p class="availability" [class.availability--out]="!available()">
           {{ available() ? 'Disponible' : 'Sin stock' }}
         </p>
+        @if (selectedVariant(); as variant) {
+          <p class="current-price">
+            {{ variant.price | storefrontMoney: context.currencyCode() }}
+          </p>
+        }
         @if (currentProduct.description) {
           <p class="description">{{ currentProduct.description }}</p>
         } @else {
-          <p class="description">Consultá las opciones y precios disponibles.</p>
+          <p class="description">Una prenda versátil para sumar a tu guardarropa diario.</p>
         }
+
+        <section class="variants" aria-labelledby="variants-title">
+          <header>
+            <h2 id="variants-title">
+              {{ currentProduct.variants.length === 1 ? 'Opción disponible' : 'Elegí tu variante' }}
+            </h2>
+            <p>El precio y el stock corresponden a cada combinación.</p>
+          </header>
+          <div class="variant-grid">
+            @for (variant of currentProduct.variants; track variant.id) {
+              <label
+                class="variant-card"
+                [class.variant-card--out]="!variant.available"
+                [class.variant-card--selected]="selectedVariantId() === variant.id"
+              >
+                <input
+                  type="radio"
+                  name="product-variant"
+                  [value]="variant.id"
+                  [checked]="selectedVariantId() === variant.id"
+                  [disabled]="!variant.available"
+                  (change)="selectVariant(variant)"
+                />
+                <span>{{ variantLabel(variant) }}</span>
+                <strong>{{ variant.price | storefrontMoney: context.currencyCode() }}</strong>
+                @if (!variant.available) {
+                  <small>Sin stock</small>
+                }
+              </label>
+            }
+          </div>
+
+          @if (available()) {
+            <div class="purchase-panel">
+              <label>
+                <span>Cantidad</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="99"
+                  step="1"
+                  inputmode="numeric"
+                  [value]="quantity()"
+                  (input)="updateQuantity($event)"
+                />
+              </label>
+              <button type="button" [disabled]="!selectedVariant()" (click)="addToCart()">
+                Agregar al carrito
+              </button>
+              <p class="cart-feedback" aria-live="polite">
+                {{ cartMessage() }}
+                @if (cartMessage() && selectedVariant()) {
+                  <a [routerLink]="['/tiendas', storeSlug(), 'carrito']">Ver carrito</a>
+                }
+              </p>
+              <small>La disponibilidad final se verifica al confirmar el pedido.</small>
+            </div>
+          }
+        </section>
+
+        <ul class="product-benefits" aria-label="Beneficios de compra">
+          <li><strong>Retiro coordinado</strong><span>En el comercio</span></li>
+          <li><strong>Pago seguro</strong><span>Con Mercado Pago</span></li>
+          <li><strong>Stock real</strong><span>Por talle y color</span></li>
+        </ul>
       </div>
     </div>
-
-    <section class="variants" aria-labelledby="variants-title">
-      <header>
-        <p class="eyebrow">Opciones</p>
-        <h2 id="variants-title">
-          {{
-            currentProduct.variants.length === 1 ? 'Precio y disponibilidad' : 'Elegí tu variante'
-          }}
-        </h2>
-        <p>El precio y la disponibilidad corresponden a cada combinación.</p>
-      </header>
-      <div class="variant-grid">
-        @for (variant of currentProduct.variants; track variant.id) {
-          <label
-            class="variant-card"
-            [class.variant-card--out]="!variant.available"
-            [class.variant-card--selected]="selectedVariantId() === variant.id"
-          >
-            <input
-              type="radio"
-              name="product-variant"
-              [value]="variant.id"
-              [checked]="selectedVariantId() === variant.id"
-              [disabled]="!variant.available"
-              (change)="selectVariant(variant)"
-            />
-            <div>
-              <h3>{{ variantLabel(variant) }}</h3>
-              <p>{{ variant.available ? 'Disponible' : 'Sin stock' }}</p>
-            </div>
-            <strong>{{ variant.price | storefrontMoney: context.currencyCode() }}</strong>
-          </label>
-        }
-      </div>
-      @if (available()) {
-        <div class="purchase-panel">
-          <label>
-            Cantidad
-            <input
-              type="number"
-              min="1"
-              max="99"
-              step="1"
-              inputmode="numeric"
-              [value]="quantity()"
-              (input)="updateQuantity($event)"
-            />
-          </label>
-          <button type="button" [disabled]="!selectedVariant()" (click)="addToCart()">
-            Agregar al carrito
-          </button>
-          <p class="cart-feedback" aria-live="polite">
-            {{ cartMessage() }}
-            @if (cartMessage() && selectedVariant()) {
-              <a [routerLink]="['/tiendas', storeSlug(), 'carrito']">Ver carrito</a>
-            }
-          </p>
-          <small>La disponibilidad final se verificará al confirmar el pedido.</small>
-        </div>
-      }
-    </section>
   }
 </section>

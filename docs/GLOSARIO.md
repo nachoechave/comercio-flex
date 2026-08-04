@@ -216,3 +216,15 @@ validar los datos importantes.
 Cada usuario técnico recibe sólo los permisos que necesita. Por ejemplo, el
 runtime tenant no debería leer la base de control ni otra tienda, y sólo el usuario
 de migración necesita permisos DDL.
+
+### Identidad visual interna
+
+Configuración de diseño versionada y administrada por Comercio Flex. Define
+composición, copy editorial y activos de una tienda sin permitir que los roles del
+comercio editen CSS, tipografías o estructura desde el panel.
+
+### WebP
+
+Formato moderno de imagen para la web. En la demo de indumentaria reduce las
+fotografías generadas a una fracción de su peso PNG conservando calidad visual, lo
+que mejora la velocidad de carga sin almacenar imágenes en MySQL.

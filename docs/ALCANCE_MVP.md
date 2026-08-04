@@ -24,8 +24,9 @@
 - Inicio/cierre de sesión y roles mínimos `OWNER`, `ADMIN`, `STAFF`.
 - Gestión de categorías, productos, variantes base, precio y stock.
 - Listado, detalle y cambio válido de estado de pedidos.
-- Configuración básica del comercio: nombre, teléfono/correo, dirección e
-  instrucciones de retiro y tema visual.
+- Configuración operativa del comercio: nombre, teléfono/correo, dirección e
+  instrucciones de retiro. La identidad visual es administrada y desplegada
+  exclusivamente por Comercio Flex; el cliente no puede editarla desde el panel.
 - Dashboard mínimo: ventas del día, ventas del mes, pedidos pendientes y stock bajo.
 
 ### Plataforma y calidad

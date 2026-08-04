@@ -1,5 +1,5 @@
 import { Meta, Title } from '@angular/platform-browser';
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
@@ -11,6 +11,7 @@ import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { storefrontErrorMessage } from '../storefront-errors';
 import { PublicCategory, PublicProductPage } from '../storefront.models';
+import { storefrontVisualIdentityFor } from '../storefront-visual-identity';
 
 const PAGE_SIZE = 24;
 const EMPTY_PAGE: PublicProductPage = {
@@ -54,6 +55,9 @@ export class CatalogPage {
     category: [''],
   });
   protected readonly currencyCode = this.context.currencyCode;
+  protected readonly visualIdentity = computed(() =>
+    storefrontVisualIdentityFor(this.storeSlug() ?? ''),
+  );
 
   constructor() {
     effect((onCleanup) => {
@@ -104,10 +108,7 @@ export class CatalogPage {
         error: (error: unknown) => {
           this.loading.set(false);
           this.errorMessage.set(
-            storefrontErrorMessage(
-              error,
-              'No pudimos cargar los productos. Intentá nuevamente.',
-            ),
+            storefrontErrorMessage(error, 'No pudimos cargar los productos. Intentá nuevamente.'),
           );
         },
       });

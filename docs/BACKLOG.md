@@ -27,6 +27,8 @@
 | PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | En pruebas | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pedidos abiertos y stock bajo | Media | Terminada | ORD-02 | Backend/Frontend | Datos por tenant, roles y definiciones documentadas | Métricas inconsistentes | M |
 | STORE-02 | Tienda | Configurar datos y tema | Nombre, contacto, retiro y cuatro temas por tenant | Alta | Terminada | STORE-01, CORE-02 | Frontend/Backend | OWNER/ADMIN editan; tienda refleja; STAFF no accede | Configuración incompleta | M |
+| VISUAL-01 | Tienda | Restringir la identidad visual a la plataforma | Retirar controles visuales del cliente y mantener temas versionados por tenant | Alta | Terminada | STORE-02, ADR-121 | Frontend | Roles del comercio sólo editan operación; tema se asigna internamente, se prueba y se despliega por Comercio Flex | El backend conserva temporalmente el campo histórico | M |
+| DEMO-IND-01 | Demo comercial | Crear demo editorial de indumentaria | Portada, colecciones, catálogo, detalle y activos originales responsive para `tienda-a` | Alta | Terminada | VISUAL-01, STORE-01, MEDIA-01 | Frontend | Usa datos tenant reales, conserva compra, es accesible, responsive, probada y documentada | Requiere fotos reales por producto para una demo final de cliente | L |
 | CI-01 | Calidad | Automatizar regresión y build | Pruebas Angular/Maven y build Docker en GitHub Actions | Alta | Terminada | BT-02, BT-03 | Calidad/Infraestructura | Workflow verde en push/PR | Diferencias con entorno local | S |
 | DEPLOY-01 | Operación | Artefacto de mismo origen | Angular dentro de Spring, Docker no-root y Railway readiness | Alta | Terminada | CI-01 | Infraestructura | Imagen construye, SPA/API comparten HTTPS y readiness responde | Memoria/sesiones | M |
 | OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | En pruebas | PAY-01, DEPLOY-01 | Infraestructura/PO | Smoke, backup y restauración real probada | Recursos externos/costo/caída | L |
@@ -996,15 +998,18 @@ Evidencia automática e integrada:
 ## STORE-02 — Configuración básica y tema
 
 > Estado: terminada. No incluye envío; el único método del MVP es `PICKUP`.
+> La capacidad de editar el tema desde el panel representa el estado histórico de
+> esta entrega y fue reemplazada por ADR-121. `VISUAL-01` retiró el selector del
+> panel y conservó el campo técnico sólo por compatibilidad del contrato backend.
 
 ### Criterios de aceptación
 
 - `OWNER` y `ADMIN` consultan/actualizan nombre, contacto, dirección e
-  instrucciones de retiro y tema; `STAFF` recibe `403` y navega a pedidos.
+  instrucciones de retiro; `STAFF` recibe `403` y navega a pedidos.
 - Nombre 2–160, dirección 5–240, instrucciones hasta 500 y al menos teléfono o
   correo válido.
-- Temas `VIOLET`, `BURGUNDY`, `FOREST` y `NAVY` se reflejan en la tienda sin
-  duplicar componentes.
+- La identidad visual se asigna internamente sin duplicar componentes y no puede
+  editarse desde roles del comercio.
 - Checkout/confirmación muestran retiro y contacto; no ofrecen envío.
 - Los datos se persisten en la base tenant y no se mezclan entre comercios.
 
@@ -1015,6 +1020,33 @@ Evidencia automática e integrada:
 - Regresión final registrada el 2026-08-04: 158 pruebas backend y 146 frontend sin
   fallos, además del build de producción Angular. La validación visual del comercio
   piloto seguirá siendo parte del onboarding, no una deuda de implementación.
+
+## DEMO-IND-01 — Demo editorial de indumentaria
+
+> Estado: terminada el 2026-08-04. La identidad se aplica a `tienda-a` sin
+> duplicar Angular ni reemplazar datos reales por contenido estático.
+
+### Criterios de aceptación
+
+- Portada, navegación, beneficios, colecciones, catálogo y detalle comparten una
+  estética editorial propia en escritorio y celular.
+- Productos, categorías, precios, variantes y stock continúan viniendo de la API
+  tenant; carrito, checkout y pago conservan sus rutas y reglas existentes.
+- Las fotografías son originales, están versionadas como WebP optimizado y no
+  contienen marcas, texto incrustado ni datos de terceros.
+- No existe selector visual en el panel del comercio. Nombre, contacto, retiro y
+  operación siguen disponibles para los roles autorizados.
+- No hay desbordamiento horizontal a 390 px y los controles conservan nombre
+  accesible, estados de carga/error y navegación por teclado.
+
+### Evidencia
+
+- Revisión visual real de portada y detalle de `Remera Sprint 5` contra backend y
+  MySQL locales, tanto en viewport de escritorio como de 390 × 844 px.
+- Regresión final: 41 archivos y 148 pruebas Angular aprobadas; build productivo
+  sin errores ni advertencias de presupuesto.
+- `git diff --check` no detectó whitespace inválido; sólo informó la normalización
+  LF→CRLF definida por el entorno Windows.
 
 ## CI-01 / DEPLOY-01 — Integración y artefacto desplegable
 

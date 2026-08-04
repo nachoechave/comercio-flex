@@ -19,31 +19,45 @@
     <a routerLink="/">Volver a Comercio Flex</a>
   </main>
 } @else if (context.settings(); as settings) {
-  <div class="store-theme" [attr.data-theme]="theme()">
+  <div
+    class="store-theme"
+    [attr.data-theme]="theme()"
+    [attr.data-visual-identity]="visualIdentity().key"
+  >
+    <p class="announcement">{{ visualIdentity().announcement }}</p>
     <header class="site-header">
-    <a class="brand" [routerLink]="['/tiendas', settings.slug]">
-      <span class="brand-mark" aria-hidden="true">{{ settings.storeName.slice(0, 1) }}</span>
-      <span>{{ settings.storeName }}</span>
-    </a>
-    <nav aria-label="Navegación principal">
-      <a [routerLink]="['/tiendas', settings.slug]">Productos</a>
-      <a
-        class="cart-link"
-        [routerLink]="['/tiendas', settings.slug, 'carrito']"
-        [attr.aria-label]="'Carrito, ' + cartUnits() + ' unidades'"
-      >
-        Carrito
-        <span aria-hidden="true">{{ cartUnits() }}</span>
+      <a class="brand" [routerLink]="['/tiendas', settings.slug]">
+        @if (visualIdentity().key === 'default') {
+          <span class="brand-mark" aria-hidden="true">{{ settings.storeName.slice(0, 1) }}</span>
+        }
+        <span>{{ settings.storeName }}</span>
       </a>
-    </nav>
+      <nav aria-label="Navegación principal">
+        <a [routerLink]="['/tiendas', settings.slug]">Inicio</a>
+        <a [routerLink]="['/tiendas', settings.slug]" fragment="coleccion">Colección</a>
+        <a
+          class="cart-link"
+          [routerLink]="['/tiendas', settings.slug, 'carrito']"
+          [attr.aria-label]="'Carrito, ' + cartUnits() + ' unidades'"
+        >
+          <span class="cart-label">Carrito</span>
+          <span class="cart-count" aria-hidden="true">{{ cartUnits() }}</span>
+        </a>
+      </nav>
     </header>
     <main id="main-content">
       <router-outlet />
     </main>
     <footer class="site-footer">
-      <div>
+      <div class="footer-brand">
         <strong>{{ settings.storeName }}</strong>
-        @if (settings.pickupAddress) { <span>{{ settings.pickupAddress }}</span> }
+        <p>Prendas simples para días reales.</p>
+      </div>
+      <div class="footer-contact">
+        <strong>Contacto</strong>
+        @if (settings.pickupAddress) {
+          <span>{{ settings.pickupAddress }}</span>
+        }
         @if (settings.contactPhone) {
           <a [href]="'tel:' + settings.contactPhone">{{ settings.contactPhone }}</a>
         }
@@ -51,9 +65,10 @@
           <a [href]="'mailto:' + settings.contactEmail">{{ settings.contactEmail }}</a>
         }
       </div>
-      <div>
-        <p>Tienda creada con <a routerLink="/">Comercio Flex</a></p>
+      <div class="footer-platform">
+        <strong>La tienda</strong>
         <a [routerLink]="['/tiendas', settings.slug, 'admin']">Administrar tienda</a>
+        <p>Creada con <a routerLink="/">Comercio Flex</a></p>
       </div>
     </footer>
   </div>

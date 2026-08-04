@@ -531,3 +531,16 @@ Ante un error HTTP, conservar el `X-Request-Id` de la respuesta y buscarlo en lo
 logs. Esto vincula frontend/backend sin registrar datos sensibles. Readiness puede
 estar `DOWN` aunque el proceso esté vivo; revisar primero conectividad y permisos
 de MySQL, migraciones y variables requeridas.
+## Prueba manual de la demo de indumentaria
+
+1. Iniciar MySQL desde `infra/` con `docker compose up -d`.
+2. Iniciar Spring Boot con el perfil local y luego Angular con `npm start`.
+3. Abrir `http://localhost:4200/tiendas/tienda-a`.
+4. Verificar portada editorial, beneficios, tres colecciones y catálogo real.
+5. Probar búsqueda y categoría; abrir un producto y elegir talle/color disponible.
+6. Agregar al carrito y continuar hasta checkout para comprobar que el rediseño no
+   alteró el flujo de pedido y Mercado Pago.
+7. Repetir en una ventana angosta: no debe existir desplazamiento horizontal y el
+   acceso al carrito debe conservar su etiqueta y cantidad.
+8. En administración, abrir Configuración del comercio: nombre, contacto y retiro
+   siguen editables, pero no existe un selector de estética para el cliente.

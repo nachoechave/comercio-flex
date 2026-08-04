@@ -122,9 +122,11 @@
 | ADR-115 | Almacenamiento de medios | Puerto privado con adaptadores local y S3 compatible | Aceptada |
 | ADR-116 | Seguridad de imágenes | JPEG/PNG verificados y recodificados por el backend | Aceptada |
 | ADR-117 | Consistencia de medios | Compensación entre objetos y metadatos tenant | Aceptada |
-| ADR-118 | Configuración de tienda | Contacto, retiro y cuatro temas por tenant | Aceptada |
+| ADR-118 | Configuración de tienda | Contacto, retiro y cuatro temas por tenant | Reemplazada parcialmente por ADR-121 |
 | ADR-119 | Despliegue MVP | Angular y Spring Boot bajo un mismo origen Docker | Aceptada |
 | ADR-120 | Operación productiva | MySQL administrado, storage privado y restore probado | Aceptada |
+| ADR-121 | Gobierno visual | La plataforma diseña; el comercio sólo opera su negocio | Aceptada |
+| ADR-122 | Demo de indumentaria | Identidad editorial interna asignada por tenant | Aceptada |
 
 ## Plantilla ADR
 
@@ -1842,7 +1844,7 @@
 ### ADR-118 — Configuración básica del comercio sin ampliar logística
 
 - **Fecha:** 2026-08-04
-- **Estado:** Aceptada
+- **Estado:** Reemplazada parcialmente por ADR-121
 - **Responsable de aprobación:** Product Owner
 - **Contexto:** el piloto necesita mostrar identidad, contacto y lugar de retiro
   propios de cada tenant.
@@ -1892,3 +1894,48 @@
 - **Consecuencias:** aumenta preparación operativa y costo externo, pero reduce
   pérdida de datos y movimiento lateral. Hosting, dominio, credenciales y prueba
   real permanecen pendientes del Product Owner/proveedor.
+
+### ADR-121 — Identidad visual administrada por Comercio Flex
+
+- **Fecha:** 2026-08-04
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** Comercio Flex se ofrecerá como un servicio administrado. El cliente
+  propone una identidad y el Product Owner/desarrollador construye y mantiene la
+  experiencia visual de la tienda.
+- **Problema:** permitir que cada comercio edite temas, colores o estructura desde
+  el panel trasladaría decisiones de diseño al cliente, aumentaría soporte y podría
+  producir tiendas inconsistentes o inaccesibles.
+- **Alternativas:** editor visual autoservicio; selector de temas para el cliente;
+  identidad visual versionada y operada exclusivamente por Comercio Flex.
+- **Decisión:** `OWNER`, `ADMIN` y `STAFF` administran sólo datos y operación del
+  negocio: catálogo, precios, stock, pedidos y configuración operativa autorizada.
+  No pueden cambiar temas, colores, tipografías, layout, CSS, JavaScript ni activos
+  de marca desde el panel. Los cambios visuales se implementan como código y
+  configuración validada, se revisan, prueban y despliegan por Comercio Flex.
+- **Consecuencias:** ADR-118 queda reemplazada en lo referido a edición de temas
+  por el comercio. Debe retirarse el control visual actualmente expuesto en la
+  administración, conservarse la configuración operativa y crearse un mecanismo
+  interno y versionado para asignar identidades por tenant. No se construirá un
+  editor visual para clientes.
+
+### ADR-122 — Demo de indumentaria con identidad interna versionada
+
+- **Fecha:** 2026-08-04
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la vertical piloto necesita una demostración visual profesional
+  que use el catálogo, variantes, carrito y checkout reales sin crear otra app.
+- **Problema:** hardcodear estilos dentro de datos operativos o habilitar un editor
+  al cliente mezclaría responsabilidades y dificultaría mantener identidades
+  diferentes por subdominio/tenant.
+- **Alternativas:** sitio estático separado; constructor visual autoservicio;
+  registro interno de identidades que reutiliza el storefront funcional.
+- **Decisión:** `tienda-a` recibe la identidad `apparel-editorial` mediante un
+  registro Angular versionado. Copys y activos editoriales son internos; productos,
+  categorías, precios, variantes y stock continúan llegando desde la API tenant.
+  Las fotografías originales se sirven como WebP desde `public/assets/demo`.
+- **Consecuencias:** una sola aplicación conserva el flujo comercial y permite
+  diseñar futuras tiendas sin exponer CSS ni layout al cliente. El registro actual
+  por slug es suficiente para la demo; una consola interna de asignación queda para
+  crecimiento futuro, no para el MVP.

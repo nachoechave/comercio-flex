@@ -6,6 +6,7 @@ import { map } from 'rxjs';
 import { StorefrontApiService } from '../../features/storefront/storefront-api.service';
 import { StorefrontContextService } from '../../features/storefront/storefront-context.service';
 import { CartService } from '../../features/storefront/cart/cart.service';
+import { storefrontVisualIdentityFor } from '../../features/storefront/storefront-visual-identity';
 
 @Component({
   selector: 'app-storefront-layout',
@@ -26,6 +27,7 @@ export class StorefrontLayout {
   protected readonly theme = computed(() =>
     (this.context.settings()?.brandTheme ?? 'VIOLET').toLowerCase(),
   );
+  protected readonly visualIdentity = computed(() => storefrontVisualIdentityFor(this.storeSlug()));
 
   constructor() {
     effect(() => {

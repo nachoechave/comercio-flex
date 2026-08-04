@@ -1,7 +1,8 @@
 # Estructura del proyecto
 
-> Actualizado durante DASH-01 el 2026-08-03. El monolito modular incluye
-> identidad, routing tenant, catálogo, inventario, pedidos, pagos y dashboard.
+> Actualizado durante DEMO-IND-01 el 2026-08-04. El monolito modular incluye
+> identidad, routing tenant, catálogo, inventario, pedidos, pagos, dashboard e
+> identidades visuales administradas por Comercio Flex.
 
 ```text
 comercio-flex/
@@ -19,6 +20,7 @@ comercio-flex/
 ```text
 frontend/
 ├── public/                         # Archivos estáticos públicos
+│   └── assets/demo/indumentaria/  # Fotografías WebP originales de la demo
 ├── proxy.conf.json                 # Proxy local Angular → Spring Boot
 └── src/app/
     ├── core/
@@ -31,6 +33,7 @@ frontend/
     ├── features/
     │   ├── auth/                   # Pantalla de login global
     │   ├── storefront/
+    │   │   ├── storefront-visual-identity.ts # Registro visual interno por tenant
     │   │   ├── home/               # Página pública inicial
     │   │   ├── catalog/            # Catálogo, filtros y paginación
     │   │   ├── product-detail/     # Variantes y alta al carrito

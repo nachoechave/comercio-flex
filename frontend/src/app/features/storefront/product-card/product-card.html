@@ -6,13 +6,24 @@
     aria-hidden="true"
   >
     @if (product().image; as image) {
-      <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" width="640" height="480" />
+      <img
+        [src]="image.thumbnailUrl"
+        [alt]="image.altText"
+        loading="lazy"
+        width="640"
+        height="480"
+      />
     } @else {
       <span>{{ initial() }}</span>
     }
   </a>
   <div class="content">
-    <p class="category">{{ product().category.name }}</p>
+    <div class="meta">
+      <p class="category">{{ product().category.name }}</p>
+      <p class="availability" [class.availability--out]="!product().available">
+        {{ product().available ? 'En stock' : 'Sin stock' }}
+      </p>
+    </div>
     <h2>
       <a [routerLink]="['/tiendas', storeSlug(), 'productos', product().slug]">
         {{ product().name }}
@@ -26,9 +37,7 @@
           Desde {{ product().priceFrom | storefrontMoney: currencyCode() }}
         }
       </p>
-      <p class="availability" [class.availability--out]="!product().available">
-        {{ product().available ? 'Disponible' : 'Sin stock' }}
-      </p>
+      <span aria-hidden="true">→</span>
     </div>
   </div>
 </article>
