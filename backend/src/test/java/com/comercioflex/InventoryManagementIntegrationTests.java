@@ -664,6 +664,60 @@ class InventoryManagementIntegrationTests {
 			.andExpect(status().isForbidden());
 	}
 
+	@Test
+	void storeSettingsAreTenantScopedEditableByOwnerAndAdminButNotStaff() throws Exception {
+		Auth admin = login("admin@example.com");
+		String body = """
+			{
+			  "storeName": "La Esquina",
+			  "contactPhone": "+54 11 4444-5555",
+			  "contactEmail": "ventas@laesquina.test",
+			  "pickupAddress": "Av. Siempre Viva 742",
+			  "pickupInstructions": "Retirar por el mostrador principal.",
+			  "brandTheme": "FOREST"
+			}
+			""";
+
+		mockMvc.perform(auth(put(storeSettings("tienda-a")), admin)
+				.contentType(MediaType.APPLICATION_JSON).content(body))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.storeName").value("La Esquina"))
+			.andExpect(jsonPath("$.pickupAddress").value("Av. Siempre Viva 742"))
+			.andExpect(jsonPath("$.brandTheme").value("FOREST"));
+
+		mockMvc.perform(get("/api/v1/stores/tienda-a/settings"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.contactPhone").value("+54 11 4444-5555"))
+			.andExpect(jsonPath("$.contactEmail").value("ventas@laesquina.test"));
+		mockMvc.perform(get("/api/v1/stores/tienda-b/settings"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.storeName").value("Tienda de prueba"))
+			.andExpect(jsonPath("$.brandTheme").value("VIOLET"));
+
+		Auth staff = login("staff@example.com");
+		mockMvc.perform(get(storeSettings("tienda-a")).cookie(staff.session()))
+			.andExpect(status().isForbidden());
+
+		mockMvc.perform(put(storeSettings("tienda-a")).cookie(admin.session())
+				.contentType(MediaType.APPLICATION_JSON).content(body))
+			.andExpect(status().isForbidden());
+		mockMvc.perform(auth(put(storeSettings("tienda-a")), staff)
+				.contentType(MediaType.APPLICATION_JSON).content(body))
+			.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void storeSettingsRequireValidContactAddressAndTheme() throws Exception {
+		Auth owner = login("owner@example.com");
+		String invalid = """
+			{"storeName":" A ","contactPhone":"","contactEmail":"",
+			 "pickupAddress":" x ","pickupInstructions":"","brandTheme":"VIOLET"}
+			""";
+		mockMvc.perform(auth(put(storeSettings("tienda-a")), owner)
+				.contentType(MediaType.APPLICATION_JSON).content(invalid))
+			.andExpect(status().isBadRequest());
+	}
+
 	private void runConcurrentAdjustments(
 			Auth auth,
 			String variantId,
@@ -778,6 +832,10 @@ class InventoryManagementIntegrationTests {
 
 	private String dashboard(String store) {
 		return "/api/v1/stores/" + store + "/admin/dashboard";
+	}
+
+	private String storeSettings(String store) {
+		return "/api/v1/stores/" + store + "/admin/settings";
 	}
 
 	private String variant(String store, String variantId) {

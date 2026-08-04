@@ -51,6 +51,94 @@
       }
     </form>
 
+    @if (editing()) {
+      <section class="image-editor" aria-labelledby="product-image-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="product-image-title">Imagen principal</h2>
+            <p>Se mostrará en el catálogo y en el detalle del producto.</p>
+          </div>
+        </div>
+
+        @if (imageError()) { <p class="error" role="alert">{{ imageError() }}</p> }
+
+        <div class="image-editor-grid">
+          <div class="image-preview">
+            @if (imagePreviewUrl(); as previewUrl) {
+              <img [src]="previewUrl" [alt]="imageAltText.value || 'Vista previa de la imagen seleccionada'" />
+            } @else {
+              <span aria-hidden="true">Sin imagen</span>
+            }
+          </div>
+
+          <div>
+            <label for="product-image">Archivo JPEG o PNG</label>
+            <input
+              #imageInput
+              id="product-image"
+              type="file"
+              accept="image/jpeg,image/png"
+              [disabled]="archived() || imageBusy()"
+              aria-describedby="product-image-help"
+              (change)="selectImage($event)"
+            />
+            <p id="product-image-help" class="field-help">Tamaño máximo: 5 MiB.</p>
+
+            <label for="product-image-alt">Texto alternativo</label>
+            <input
+              id="product-image-alt"
+              type="text"
+              maxlength="180"
+              [formControl]="imageAltText"
+              [disabled]="archived() || imageBusy()"
+              [attr.aria-invalid]="imageAltText.touched && imageAltText.invalid"
+              aria-describedby="product-image-alt-help product-image-alt-error"
+            />
+            <p id="product-image-alt-help" class="field-help">Describí brevemente lo que aparece en la imagen.</p>
+            @if (imageAltText.touched && imageAltText.invalid) {
+              <p id="product-image-alt-error" class="field-error">Ingresá entre 1 y 180 caracteres.</p>
+            }
+
+            <div class="image-actions">
+              <button
+                type="button"
+                class="primary"
+                [disabled]="!selectedImageFile() || imageBusy() || archived()"
+                (click)="uploadImage()"
+              >
+                {{ imageBusy() ? 'Guardando…' : 'Guardar imagen' }}
+              </button>
+              @if (product()?.image) {
+                <button
+                  type="button"
+                  [disabled]="imageBusy() || archived()"
+                  (click)="requestImageRemoval($event)"
+                >Eliminar imagen</button>
+              }
+            </div>
+          </div>
+        </div>
+
+        @if (confirmingImageRemoval()) {
+          <div
+            class="image-confirmation"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="remove-image-title"
+            aria-describedby="remove-image-description"
+            (keydown.escape)="cancelImageRemoval($event)"
+          >
+            <h3 id="remove-image-title">¿Eliminar la imagen principal?</h3>
+            <p id="remove-image-description">El producto volverá a mostrar el identificador visual predeterminado.</p>
+            <div class="image-actions">
+              <button type="button" (click)="cancelImageRemoval()">Cancelar</button>
+              <button #imageRemovalConfirm type="button" class="danger" (click)="deleteImage()">Confirmar eliminación</button>
+            </div>
+          </div>
+        }
+      </section>
+    }
+
     <section aria-labelledby="variants-title">
       <header class="section-heading">
         <div><h2 id="variants-title">Variantes</h2><p>Talle y color son opcionales. SKU y precio son obligatorios.</p></div>

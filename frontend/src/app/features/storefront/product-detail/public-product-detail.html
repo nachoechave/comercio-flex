@@ -28,8 +28,12 @@
     </div>
   } @else if (product(); as currentProduct) {
     <div class="product-hero">
-      <div class="visual" aria-hidden="true">
-        <span>{{ initial() }}</span>
+      <div class="visual" [attr.aria-hidden]="currentProduct.image ? null : 'true'">
+        @if (currentProduct.image; as image) {
+          <img [src]="image.url" [alt]="image.altText" />
+        } @else {
+          <span>{{ initial() }}</span>
+        }
       </div>
       <div class="summary">
         <p class="eyebrow">{{ currentProduct.category.name }}</p>

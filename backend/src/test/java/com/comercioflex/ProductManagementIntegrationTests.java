@@ -2,6 +2,8 @@ package com.comercioflex;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -12,6 +14,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
@@ -20,6 +24,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import javax.sql.DataSource;
+import javax.imageio.ImageIO;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +34,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -93,6 +99,7 @@ class ProductManagementIntegrationTests {
 		registry.add("app.database.migration-password", TENANT_A_DATABASE::getPassword);
 		registerTenant(registry, "tenant-a", TENANT_A_DATABASE);
 		registerTenant(registry, "tenant-b", TENANT_B_DATABASE);
+		registry.add("app.media.local-root", () -> "target/test-media-product-management");
 	}
 
 	@BeforeEach
@@ -140,6 +147,65 @@ class ProductManagementIntegrationTests {
 		assertThat(product.at("/variants/0/price").asText()).isEqualTo("1500.50");
 		assertThat(product.at("/variants/0/version").asLong()).isZero();
 		assertThat(product.has("internalId")).isFalse();
+	}
+
+	@Test
+	void securesProductImagesByTenantRoleCsrfAndPublicationState() throws Exception {
+		Auth owner = login("owner@example.com");
+		Auth admin = login("admin@example.com");
+		Auth staff = login("staff@example.com");
+		JsonNode product = createProduct(
+			"tienda-a", CATEGORY_A, "Producto visual", "MEDIA-1", "100", owner);
+		String productId = product.get("id").asText();
+		String imageUrl = products("tienda-a") + "/" + productId + "/image";
+		MockMultipartFile file = imageFile();
+
+		mockMvc.perform(multipartPut(imageUrl, file)
+				.param("altText", "Producto visual")
+				.cookie(owner.session()))
+			.andExpect(status().isForbidden());
+		mockMvc.perform(auth(multipartPut(imageUrl, imageFile())
+				.param("altText", "Producto visual"), staff))
+			.andExpect(status().isForbidden());
+
+		JsonNode uploaded = json(mockMvc.perform(auth(multipartPut(imageUrl, imageFile())
+				.param("altText", "Producto visual"), admin))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.thumbnailUrl").isString())
+			.andReturn().getResponse());
+		String imageId = uploaded.get("id").asText();
+		String publicImage = "/api/v1/stores/tienda-a/media/product-images/"
+			+ imageId + "/thumbnail";
+
+		mockMvc.perform(get(publicImage)).andExpect(status().isNotFound());
+		mockMvc.perform(get("/api/v1/stores/tienda-b/media/product-images/"
+				+ imageId + "/thumbnail"))
+			.andExpect(status().isNotFound());
+
+		mockMvc.perform(auth(patch(products("tienda-a") + "/" + productId + "/status"), owner)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"status\":\"PUBLISHED\",\"version\":0}"))
+			.andExpect(status().isOk());
+		mockMvc.perform(get(publicImage))
+			.andExpect(status().isOk())
+			.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+				.header().string("X-Content-Type-Options", "nosniff"))
+			.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+				.header().exists("ETag"));
+
+		mockMvc.perform(auth(patch(products("tienda-a") + "/" + productId + "/status"), owner)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"status\":\"ARCHIVED\",\"version\":1}"))
+			.andExpect(status().isOk());
+		mockMvc.perform(get(publicImage)).andExpect(status().isNotFound());
+		mockMvc.perform(auth(multipartPut(imageUrl, imageFile())
+				.param("altText", "No editable"), owner))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.type").value(
+				"https://comercio-flex.local/problems/product-image-conflict"));
+
+		mockMvc.perform(auth(delete(imageUrl), owner))
+			.andExpect(status().isConflict());
 	}
 
 	@Test
@@ -482,6 +548,20 @@ class ProductManagementIntegrationTests {
 			.header("X-XSRF-TOKEN", auth.csrf().getValue());
 	}
 
+	private MockHttpServletRequestBuilder multipartPut(String url, MockMultipartFile file) {
+		return multipart(url).file(file).with(request -> {
+			request.setMethod("PUT");
+			return request;
+		});
+	}
+
+	private MockMultipartFile imageFile() throws Exception {
+		BufferedImage image = new BufferedImage(20, 10, BufferedImage.TYPE_INT_RGB);
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+		ImageIO.write(image, "png", output);
+		return new MockMultipartFile("file", "product.png", "image/png", output.toByteArray());
+	}
+
 	private String products(String store) {
 		return "/api/v1/stores/" + store + "/admin/products";
 	}
@@ -533,6 +613,7 @@ class ProductManagementIntegrationTests {
 	}
 
 	private static void resetTenant(MySQLContainer<?> database) throws SQLException {
+		execute(database, "DELETE FROM product_images");
 		execute(database, "DELETE FROM product_variants");
 		execute(database, "DELETE FROM products");
 		execute(database, "DELETE FROM categories");

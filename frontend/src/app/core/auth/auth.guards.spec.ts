@@ -81,6 +81,16 @@ describe('authentication guards', () => {
     );
   });
 
+  it('sends a staff user directly to orders', async () => {
+    session = { ...SESSION, memberships: [{ ...SESSION.memberships[0], role: 'STAFF' }] };
+    const result = TestBed.runInInjectionContext(() =>
+      adminEntryGuard({} as ActivatedRouteSnapshot, { url: '/admin' } as RouterStateSnapshot),
+    ) as Observable<boolean | UrlTree>;
+    expect(router.serializeUrl((await firstValueFrom(result)) as UrlTree)).toBe(
+      '/tiendas/tienda-a/admin/pedidos',
+    );
+  });
+
   it('does not allow a membership from another store', async () => {
     const route = {
       paramMap: convertToParamMap({ storeSlug: 'tienda-b' }),

@@ -19,6 +19,6 @@ public class StoreSettingsController {
 
 	@GetMapping
 	StoreSettingsResponse getSettings(@PathVariable String slug) {
-		return storeSettingsQueryService.findCurrent(slug);
+		return StoreSettingsResponse.from(slug, storeSettingsQueryService.findCurrent());
 	}
 }

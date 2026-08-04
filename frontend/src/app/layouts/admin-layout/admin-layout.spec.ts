@@ -65,4 +65,15 @@ describe('AdminLayout payment navigation', () => {
       expect(labels).not.toContain('Pagos');
     },
   );
+
+  it('shows commerce settings to owner and admin but hides them with home from staff', () => {
+    role = 'STAFF';
+    render();
+    const labels = [...fixture.nativeElement.querySelectorAll('nav a')].map(
+      (candidate: HTMLAnchorElement) => candidate.textContent?.trim(),
+    );
+    expect(labels).not.toContain('Inicio');
+    expect(labels).not.toContain('Comercio');
+    expect(labels).toContain('Pedidos');
+  });
 });

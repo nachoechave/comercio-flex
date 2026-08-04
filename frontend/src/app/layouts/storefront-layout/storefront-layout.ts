@@ -23,6 +23,9 @@ export class StorefrontLayout {
     { initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '' },
   );
   protected readonly cartUnits = computed(() => this.cart.totalUnits(this.storeSlug()));
+  protected readonly theme = computed(() =>
+    (this.context.settings()?.brandTheme ?? 'VIOLET').toLowerCase(),
+  );
 
   constructor() {
     effect(() => {

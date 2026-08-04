@@ -47,6 +47,15 @@
 
       <aside>
         <h2>Retiro en el comercio</h2>
+        @if (context.settings()?.pickupAddress; as address) {
+          <p><strong>{{ address }}</strong></p>
+        }
+        @if (context.settings()?.pickupInstructions; as instructions) {
+          <p>{{ instructions }}</p>
+        }
+        @if (context.settings()?.contactPhone; as phone) {
+          <p>Teléfono: <a [href]="'tel:' + phone">{{ phone }}</a></p>
+        }
         <p>Conservá este enlace: es la llave privada para volver a consultar el pedido.</p>
         @if (currentOrder.status === 'PENDING_CONFIRMATION') {
           <p>

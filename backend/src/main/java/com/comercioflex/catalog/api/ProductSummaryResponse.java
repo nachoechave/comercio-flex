@@ -4,6 +4,7 @@ import java.time.Instant;
 
 import com.comercioflex.catalog.domain.ProductStatus;
 import com.comercioflex.catalog.domain.ProductSummary;
+import com.comercioflex.media.api.ProductImageResponse;
 
 public record ProductSummaryResponse(
 	String id,
@@ -11,6 +12,7 @@ public record ProductSummaryResponse(
 	String slug,
 	ProductStatus status,
 	ProductCategoryResponse category,
+	ProductImageResponse image,
 	long variantCount,
 	long activeVariantCount,
 	String priceFrom,
@@ -18,13 +20,14 @@ public record ProductSummaryResponse(
 	long version,
 	Instant updatedAt) {
 
-	static ProductSummaryResponse from(ProductSummary product) {
+	static ProductSummaryResponse from(ProductSummary product, String storeSlug) {
 		return new ProductSummaryResponse(
 			product.id().toString(),
 			product.name(),
 			product.slug(),
 			product.status(),
 			ProductCategoryResponse.from(product.category()),
+			product.image() == null ? null : ProductImageResponse.admin(storeSlug, product.image()),
 			product.variantCount(),
 			product.activeVariantCount(),
 			product.priceFrom() == null

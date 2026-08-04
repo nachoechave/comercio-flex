@@ -7,6 +7,7 @@ import {
   ProductCategory,
   ProductDetail,
   ProductPage,
+  ProductImage,
   ProductQuery,
   ProductStatus,
   ProductVariant,
@@ -49,6 +50,22 @@ export class ProductApiService {
       `${this.productUrl(storeSlug, productId)}/status`,
       { status, version },
     );
+  }
+
+  uploadImage(
+    storeSlug: string,
+    productId: string,
+    file: File,
+    altText: string,
+  ): Observable<ProductImage> {
+    const body = new FormData();
+    body.append('file', file);
+    body.append('altText', altText);
+    return this.http.put<ProductImage>(`${this.productUrl(storeSlug, productId)}/image`, body);
+  }
+
+  deleteImage(storeSlug: string, productId: string): Observable<void> {
+    return this.http.delete<void>(`${this.productUrl(storeSlug, productId)}/image`);
   }
 
   createVariant(

@@ -200,3 +200,175 @@ describe('ProductForm tenant reuse', () => {
     expect(fixture.componentInstance.form.controls.name.value).toBe('Producto B');
   });
 });
+
+describe('ProductForm image management', () => {
+  let fixture: ComponentFixture<ProductForm>;
+  let http: HttpTestingController;
+
+  beforeEach(async () => {
+    const parent = { paramMap: convertToParamMap({ storeSlug: 'tienda-a' }), parent: null };
+    await TestBed.configureTestingModule({
+      imports: [ProductForm],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ productId: 'product-1' }), parent },
+          },
+        },
+      ],
+    }).compileComponents();
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ProductForm);
+    fixture.detectChanges();
+    http.expectOne('/api/v1/stores/tienda-a/admin/categories').flush([
+      { id: 'category-1', name: 'Remeras', active: true },
+    ]);
+    http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1').flush({
+      id: 'product-1',
+      name: 'Remera',
+      slug: 'remera',
+      description: null,
+      status: 'DRAFT',
+      category: { id: 'category-1', name: 'Remeras', active: true },
+      variants: [],
+      image: null,
+      version: 1,
+      createdAt: '',
+      updatedAt: '',
+    });
+    fixture.detectChanges();
+  });
+
+  afterEach(() => http.verify());
+
+  it('rejects unsupported files before sending a request', () => {
+    const file = new File(['plain text'], 'producto.txt', { type: 'text/plain' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: { item: () => file } });
+
+    fixture.componentInstance.selectImage({ target: input } as unknown as Event);
+
+    expect(fixture.componentInstance.selectedImageFile()).toBeNull();
+    expect(fixture.componentInstance.imageError()).toContain('JPEG o PNG');
+  });
+
+  it('uploads a valid image with trimmed alternative text', () => {
+    const file = new File(['image'], 'producto.png', { type: 'image/png' });
+    fixture.componentInstance.selectedImageFile.set(file);
+    fixture.componentInstance.imageAltText.setValue('  Remera azul  ');
+
+    fixture.componentInstance.uploadImage();
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    const upload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image');
+    expect((upload.request.body as FormData).get('file')).toBe(file);
+    expect((upload.request.body as FormData).get('altText')).toBe('Remera azul');
+    upload.flush({
+      id: 'image-1',
+      url: '/media/image-1',
+      thumbnailUrl: '/media/image-1/thumbnail',
+      altText: 'Remera azul',
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.product()?.image?.id).toBe('image-1');
+    expect(fixture.nativeElement.textContent).toContain('imagen del producto fue guardada');
+  });
+
+  it('accepts exactly 5 MiB, rejects larger files and revokes the preview on destroy', () => {
+    const createObjectUrl = vi.fn(() => 'blob:preview');
+    const revokeObjectUrl = vi.fn();
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectUrl });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectUrl });
+    const oversized = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'large.png', {
+      type: 'image/png',
+    });
+    const oversizedInput = document.createElement('input');
+    Object.defineProperty(oversizedInput, 'files', { value: { item: () => oversized } });
+    fixture.componentInstance.selectImage({ target: oversizedInput } as unknown as Event);
+    expect(fixture.componentInstance.selectedImageFile()).toBeNull();
+    expect(fixture.componentInstance.imageError()).toContain('5 MiB');
+
+    const exactFile = new File([new Uint8Array(5 * 1024 * 1024)], 'exact.png', {
+      type: 'image/png',
+    });
+    const exactInput = document.createElement('input');
+    Object.defineProperty(exactInput, 'files', { value: { item: () => exactFile } });
+    fixture.componentInstance.selectImage({ target: exactInput } as unknown as Event);
+    expect(fixture.componentInstance.selectedImageFile()).toBe(exactFile);
+    expect(fixture.componentInstance.imagePreviewUrl()).toBe('blob:preview');
+
+    fixture.destroy();
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:preview');
+  });
+
+  it('deletes an image with CSRF protection and exposes an accessible confirmation', () => {
+    fixture.componentInstance.product.update((product) =>
+      product
+        ? {
+            ...product,
+            image: {
+              id: 'image-1',
+              url: '/media/image-1',
+              thumbnailUrl: '/media/image-1/thumbnail',
+              altText: 'Remera azul',
+            },
+          }
+        : product,
+    );
+    fixture.detectChanges();
+    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.image-actions button:not(.primary)',
+    );
+    fixture.componentInstance.requestImageRemoval({ currentTarget: trigger } as unknown as Event);
+    fixture.detectChanges();
+    const dialog: HTMLElement = fixture.nativeElement.querySelector('[role="alertdialog"]');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-describedby')).toBe('remove-image-description');
+
+    fixture.componentInstance.deleteImage();
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    const removal = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image');
+    expect(removal.request.method).toBe('DELETE');
+    removal.flush(null);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.product()?.image).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('imagen del producto fue eliminada');
+  });
+
+  it('keeps the selected file available for retry after an upload error', () => {
+    const file = new File(['image'], 'producto.png', { type: 'image/png' });
+    fixture.componentInstance.selectedImageFile.set(file);
+    fixture.componentInstance.imageAltText.setValue('Remera azul');
+    fixture.componentInstance.successMessage.set('Mensaje anterior');
+
+    fixture.componentInstance.uploadImage();
+    expect(fixture.componentInstance.successMessage()).toBeNull();
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image').flush(
+      { detail: 'No se pudo almacenar la imagen.' },
+      { status: 503, statusText: 'Unavailable' },
+    );
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selectedImageFile()).toBe(file);
+    expect(fixture.componentInstance.imageError()).toContain('No se pudo almacenar');
+  });
+
+  it('cancels an in-flight upload when the component is destroyed', () => {
+    const file = new File(['image'], 'producto.png', { type: 'image/png' });
+    fixture.componentInstance.selectedImageFile.set(file);
+    fixture.componentInstance.imageAltText.setValue('Remera azul');
+    fixture.componentInstance.uploadImage();
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    const upload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image');
+
+    fixture.destroy();
+
+    expect(upload.cancelled).toBe(true);
+  });
+});

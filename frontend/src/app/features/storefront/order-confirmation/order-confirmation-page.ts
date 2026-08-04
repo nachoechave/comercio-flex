@@ -11,6 +11,7 @@ import { PaymentApiService } from '../payment/payment-api.service';
 import { paymentErrorMessage } from '../payment/payment-errors';
 import { PaymentRecoveryService } from '../payment/payment-recovery.service';
 import { StorefrontApiService } from '../storefront-api.service';
+import { StorefrontContextService } from '../storefront-context.service';
 import { storefrontErrorMessage } from '../storefront-errors';
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
 import { GuestOrder, GuestOrderItem, GuestOrderStatus } from '../storefront.models';
@@ -28,6 +29,7 @@ export class OrderConfirmationPage {
   private readonly paymentNavigation = inject(CheckoutProNavigationService);
   private readonly paymentRecovery = inject(PaymentRecoveryService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly context = inject(StorefrontContextService);
   protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
     initialValue: '',
   });

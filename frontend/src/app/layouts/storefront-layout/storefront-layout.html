@@ -19,7 +19,8 @@
     <a routerLink="/">Volver a Comercio Flex</a>
   </main>
 } @else if (context.settings(); as settings) {
-  <header class="site-header">
+  <div class="store-theme" [attr.data-theme]="theme()">
+    <header class="site-header">
     <a class="brand" [routerLink]="['/tiendas', settings.slug]">
       <span class="brand-mark" aria-hidden="true">{{ settings.storeName.slice(0, 1) }}</span>
       <span>{{ settings.storeName }}</span>
@@ -35,12 +36,25 @@
         <span aria-hidden="true">{{ cartUnits() }}</span>
       </a>
     </nav>
-  </header>
-  <main id="main-content">
-    <router-outlet />
-  </main>
-  <footer class="site-footer">
-    <p>Tienda creada con <a routerLink="/">Comercio Flex</a></p>
-    <a [routerLink]="['/tiendas', settings.slug, 'admin']">Administrar tienda</a>
-  </footer>
+    </header>
+    <main id="main-content">
+      <router-outlet />
+    </main>
+    <footer class="site-footer">
+      <div>
+        <strong>{{ settings.storeName }}</strong>
+        @if (settings.pickupAddress) { <span>{{ settings.pickupAddress }}</span> }
+        @if (settings.contactPhone) {
+          <a [href]="'tel:' + settings.contactPhone">{{ settings.contactPhone }}</a>
+        }
+        @if (settings.contactEmail) {
+          <a [href]="'mailto:' + settings.contactEmail">{{ settings.contactEmail }}</a>
+        }
+      </div>
+      <div>
+        <p>Tienda creada con <a routerLink="/">Comercio Flex</a></p>
+        <a [routerLink]="['/tiendas', settings.slug, 'admin']">Administrar tienda</a>
+      </div>
+    </footer>
+  </div>
 }

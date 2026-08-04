@@ -30,6 +30,7 @@ import com.comercioflex.catalog.domain.ProductCategory;
 import com.comercioflex.catalog.domain.ProductStatus;
 import com.comercioflex.catalog.domain.ProductSummary;
 import com.comercioflex.catalog.domain.ProductVariant;
+import com.comercioflex.media.domain.ProductImageReference;
 
 @Repository
 public class JdbcProductRepository implements ProductRepository {
@@ -46,9 +47,12 @@ public class JdbcProductRepository implements ProductRepository {
 			product.updated_at,
 			BIN_TO_UUID(category.public_id) category_public_id,
 			category.name category_name,
-			category.status category_status
+			category.status category_status,
+			BIN_TO_UUID(image.public_id) image_public_id,
+			image.alt_text image_alt_text
 		FROM products product
 		JOIN categories category ON category.id = product.category_id
+		LEFT JOIN product_images image ON image.product_id = product.id
 		""";
 
 	private static final String VARIANT_COLUMNS = """
@@ -95,6 +99,8 @@ public class JdbcProductRepository implements ProductRepository {
 				BIN_TO_UUID(category.public_id) category_public_id,
 				category.name category_name,
 				category.status category_status,
+				BIN_TO_UUID(image.public_id) image_public_id,
+				image.alt_text image_alt_text,
 				(SELECT COUNT(*) FROM product_variants variant
 					WHERE variant.product_id = product.id) variant_count,
 				(SELECT COUNT(*) FROM product_variants variant
@@ -106,6 +112,7 @@ public class JdbcProductRepository implements ProductRepository {
 					WHERE variant.product_id = product.id) price_to
 			FROM products product
 			JOIN categories category ON category.id = product.category_id
+			LEFT JOIN product_images image ON image.product_id = product.id
 			""" + where + " ORDER BY product.updated_at DESC, product.id DESC LIMIT ? OFFSET ?";
 		parameters.add(search.size());
 		parameters.add(Math.multiplyExact((long) search.page(), search.size()));
@@ -118,6 +125,7 @@ public class JdbcProductRepository implements ProductRepository {
 				resultSet.getString("slug"),
 				ProductStatus.valueOf(resultSet.getString("status")),
 				mapCategory(resultSet),
+				mapImage(resultSet),
 				resultSet.getLong("variant_count"),
 				resultSet.getLong("active_variant_count"),
 				resultSet.getBigDecimal("price_from"),
@@ -423,6 +431,7 @@ public class JdbcProductRepository implements ProductRepository {
 			resultSet.getString("description"),
 			ProductStatus.valueOf(resultSet.getString("status")),
 			mapCategory(resultSet),
+			mapImage(resultSet),
 			resultSet.getLong("version"),
 			resultSet.getTimestamp("created_at").toInstant(),
 			resultSet.getTimestamp("updated_at").toInstant());
@@ -433,6 +442,12 @@ public class JdbcProductRepository implements ProductRepository {
 			UUID.fromString(resultSet.getString("category_public_id")),
 			resultSet.getString("category_name"),
 			"ACTIVE".equals(resultSet.getString("category_status")));
+	}
+
+	private ProductImageReference mapImage(ResultSet resultSet) throws SQLException {
+		String id = resultSet.getString("image_public_id");
+		return id == null ? null : new ProductImageReference(
+			UUID.fromString(id), resultSet.getString("image_alt_text"));
 	}
 
 	private ProductVariant mapVariant(ResultSet resultSet, int rowNumber)
@@ -465,6 +480,7 @@ public class JdbcProductRepository implements ProductRepository {
 		String description,
 		ProductStatus status,
 		ProductCategory category,
+		ProductImageReference image,
 		long version,
 		java.time.Instant createdAt,
 		java.time.Instant updatedAt) {
@@ -477,6 +493,7 @@ public class JdbcProductRepository implements ProductRepository {
 				description,
 				status,
 				category,
+				image,
 				variants,
 				version,
 				createdAt,

@@ -65,8 +65,16 @@ public class SecurityConfig {
 			.exceptionHandling(exceptions -> exceptions
 				.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 			.authorizeHttpRequests(authorize -> authorize
+				.requestMatchers(
+					"/", "/index.html", "/*.js", "/*.css", "/*.ico", "/assets/**",
+					"/admin", "/admin/**", "/tiendas/**")
+				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers("/api/v1/stores/*/settings").permitAll()
+				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/stores/*/media/product-images/*/*")
+				.permitAll()
 				.requestMatchers(
 					HttpMethod.GET,
 					"/api/v1/stores/*/catalog/categories",

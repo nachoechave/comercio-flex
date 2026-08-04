@@ -81,6 +81,12 @@ describe('PublicProductDetail', () => {
       slug: 'remera-azul',
       description: 'Algodón suave.',
       category: { id: 'category-1', name: 'Remeras', slug: 'remeras' },
+      image: {
+        id: 'image-1',
+        url: '/media/image-1',
+        thumbnailUrl: '/media/image-1/thumbnail',
+        altText: 'Remera azul sobre fondo claro',
+      },
       variants: [
         { id: 'variant-1', price: '2500.00', size: 'M', color: 'Azul', available: true },
         { id: 'variant-2', price: '2600.00', size: 'L', color: 'Azul', available: false },
@@ -94,6 +100,9 @@ describe('PublicProductDetail', () => {
     expect(text).toContain('Talle L · Azul');
     expect(text).toContain('Sin stock');
     expect(TestBed.inject(Title).getTitle()).toBe('Remera azul | Tienda A');
+    const image: HTMLImageElement = fixture.nativeElement.querySelector('.product-hero img');
+    expect(image.getAttribute('src')).toBe('/media/image-1');
+    expect(image.alt).toBe('Remera azul sobre fondo claro');
   });
 
   it('requires an explicit available variant and adds it to the tenant cart', () => {

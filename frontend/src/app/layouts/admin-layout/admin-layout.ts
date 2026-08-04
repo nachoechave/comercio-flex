@@ -31,13 +31,15 @@ import { AuthService } from '../../core/auth/auth.service';
     </header>
     @if (membership(); as currentMembership) {
       <nav class="admin-nav" aria-label="Administración">
-        <a
-          [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin']"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: true }"
-        >
-          Inicio
-        </a>
+        @if (currentMembership.role !== 'STAFF') {
+          <a
+            [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin']"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
+            Inicio
+          </a>
+        }
         <a
           [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'categorias']"
           routerLinkActive="active"
@@ -62,6 +64,16 @@ import { AuthService } from '../../core/auth/auth.service';
         >
           Pedidos
         </a>
+        @if (currentMembership.role !== 'STAFF') {
+          <a
+            [routerLink]="[
+              '/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'comercio'
+            ]"
+            routerLinkActive="active"
+          >
+            Comercio
+          </a>
+        }
         @if (currentMembership.role === 'OWNER') {
           <a
             [routerLink]="[

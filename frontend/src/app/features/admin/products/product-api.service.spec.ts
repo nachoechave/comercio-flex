@@ -62,6 +62,27 @@ describe('ProductApiService', () => {
     request.flush({});
   });
 
+  it('uploads and deletes the main image using the product image endpoint', () => {
+    const file = new File(['image'], 'producto.png', { type: 'image/png' });
+    service.uploadImage('tienda-a', 'product-1', file, 'Remera azul').subscribe();
+    const upload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image');
+    expect(upload.request.method).toBe('PUT');
+    expect(upload.request.body).toBeInstanceOf(FormData);
+    expect((upload.request.body as FormData).get('file')).toBe(file);
+    expect((upload.request.body as FormData).get('altText')).toBe('Remera azul');
+    upload.flush({
+      id: 'image-1',
+      url: '/media/image-1',
+      thumbnailUrl: '/media/image-1/thumbnail',
+      altText: 'Remera azul',
+    });
+
+    service.deleteImage('tienda-a', 'product-1').subscribe();
+    const removal = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image');
+    expect(removal.request.method).toBe('DELETE');
+    removal.flush(null);
+  });
+
   it('uses independent versioned endpoints for variant changes', () => {
     service
       .updateVariant('tienda-a', 'product-1', 'variant-1', {

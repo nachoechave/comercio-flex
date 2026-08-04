@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import {
   adminEntryGuard,
+  adminHomeGuard,
   allowedRolesGuard,
   authGuard,
   membershipGuard,
@@ -53,9 +54,18 @@ export const routes: Routes = [
     children: [
       {
         path: '',
+        canActivate: [adminHomeGuard],
         loadComponent: () =>
           import('./features/admin/dashboard/admin-dashboard').then(
             (module) => module.AdminDashboard,
+          ),
+      },
+      {
+        path: 'configuracion/comercio',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/admin/store-settings/store-settings-page').then(
+            (module) => module.StoreSettingsPage,
           ),
       },
       {

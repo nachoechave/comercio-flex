@@ -3,7 +3,14 @@ export interface StoreSettings {
   storeName: string;
   currencyCode: string;
   timezone: string;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+  pickupAddress?: string | null;
+  pickupInstructions?: string | null;
+  brandTheme?: BrandTheme;
 }
+
+export type BrandTheme = 'VIOLET' | 'BURGUNDY' | 'FOREST' | 'NAVY';
 
 export interface PublicCategory {
   id: string;
@@ -17,6 +24,16 @@ export interface PublicProductCategory {
   slug: string;
 }
 
+export interface PublicProductImage {
+  id: string;
+  url: string;
+  thumbnailUrl: string;
+  altText: string;
+  width?: number;
+  height?: number;
+  updatedAt?: string;
+}
+
 export interface PublicProductSummary {
   id: string;
   name: string;
@@ -25,6 +42,7 @@ export interface PublicProductSummary {
   priceFrom: string;
   priceTo: string;
   available: boolean;
+  image: PublicProductImage | null;
 }
 
 export interface PublicProductPage {
@@ -50,6 +68,7 @@ export interface PublicProductDetail {
   description: string | null;
   category: PublicProductCategory;
   variants: PublicProductVariant[];
+  image: PublicProductImage | null;
 }
 
 export interface PublicProductQuery {

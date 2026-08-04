@@ -2,8 +2,11 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   inject,
+  OnDestroy,
   signal,
+  ViewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -15,9 +18,10 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { finalize, forkJoin, map, Observable, Subscription } from 'rxjs';
+import { finalize, forkJoin, map, Observable, Subscription, switchMap } from 'rxjs';
 
 import { routeParam } from '../../../../core/auth/auth.guards';
+import { CsrfService } from '../../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
 import { ProductApiService } from '../product-api.service';
 import { productErrorMessage } from '../product-errors';
@@ -56,12 +60,19 @@ function normalizedProductNameLength(
   templateUrl: './product-form.html',
   styleUrl: './product-form.scss',
 })
-export class ProductForm {
+export class ProductForm implements OnDestroy {
   private readonly api = inject(ProductApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly csrf = inject(CsrfService);
   private readonly mutations: Subscription[] = [];
+  private previewObjectUrl: string | null = null;
+  private imageRemovalTrigger?: HTMLButtonElement;
+
+  @ViewChild('imageInput') private imageInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('imageRemovalConfirm')
+  private imageRemovalConfirm?: ElementRef<HTMLButtonElement>;
 
   readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
     initialValue: routeParam(this.route.snapshot, 'storeSlug') ?? '',
@@ -78,6 +89,11 @@ export class ProductForm {
   readonly formError = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
   readonly pendingVariantId = signal<string | null>(null);
+  readonly selectedImageFile = signal<File | null>(null);
+  readonly imagePreviewUrl = signal<string | null>(null);
+  readonly imageError = signal<string | null>(null);
+  readonly imageBusy = signal(false);
+  readonly confirmingImageRemoval = signal(false);
   readonly archived = computed(() => this.product()?.status === 'ARCHIVED');
 
   readonly form = this.formBuilder.nonNullable.group({
@@ -85,6 +101,11 @@ export class ProductForm {
     description: ['', [Validators.maxLength(2000)]],
     categoryId: ['', [Validators.required]],
   });
+  readonly imageAltText = this.formBuilder.nonNullable.control('', [
+    Validators.required,
+    Validators.minLength(1),
+    Validators.maxLength(180),
+  ]);
   readonly variants = new FormArray([this.newVariantForm()]);
 
   constructor() {
@@ -237,6 +258,114 @@ export class ProductForm {
     this.mutations.push(subscription);
   }
 
+  selectImage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.item(0) ?? null;
+    this.clearPreviewObjectUrl();
+    this.selectedImageFile.set(null);
+    this.imagePreviewUrl.set(this.product()?.image?.url ?? null);
+    this.imageError.set(null);
+    this.successMessage.set(null);
+    if (!file) return;
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      this.imageError.set('Elegí una imagen JPEG o PNG.');
+      input.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.imageError.set('La imagen no puede superar los 5 MiB.');
+      input.value = '';
+      return;
+    }
+    this.selectedImageFile.set(file);
+    this.previewObjectUrl = URL.createObjectURL(file);
+    this.imagePreviewUrl.set(this.previewObjectUrl);
+  }
+
+  uploadImage(): void {
+    const slug = this.storeSlug();
+    const product = this.product();
+    const file = this.selectedImageFile();
+    const altText = this.imageAltText.value.trim();
+    this.imageAltText.markAsTouched();
+    this.imageError.set(null);
+    this.successMessage.set(null);
+    if (!slug || !product || !file || this.imageBusy()) return;
+    if (!altText || altText.length > 180) {
+      this.imageError.set('Ingresá un texto alternativo de entre 1 y 180 caracteres.');
+      return;
+    }
+
+    this.imageBusy.set(true);
+    const subscription = this.csrf
+      .ensureToken()
+      .pipe(
+        switchMap(() => this.api.uploadImage(slug, product.id, file, altText)),
+        finalize(() => this.imageBusy.set(false)),
+      )
+      .subscribe({
+        next: (image) => {
+          this.product.update((current) => (current ? { ...current, image } : current));
+          this.clearPreviewObjectUrl();
+          this.selectedImageFile.set(null);
+          this.imagePreviewUrl.set(image.url);
+          if (this.imageInput) this.imageInput.nativeElement.value = '';
+          this.successMessage.set('La imagen del producto fue guardada.');
+          queueMicrotask(() => this.imageInput?.nativeElement.focus());
+        },
+        error: (error: unknown) =>
+          this.imageError.set(productErrorMessage(error, 'No pudimos guardar la imagen.')),
+      });
+    this.mutations.push(subscription);
+  }
+
+  requestImageRemoval(event: Event): void {
+    if (!this.archived() && this.product()?.image) {
+      this.imageRemovalTrigger = event.currentTarget as HTMLButtonElement;
+      this.confirmingImageRemoval.set(true);
+      queueMicrotask(() => this.imageRemovalConfirm?.nativeElement.focus());
+    }
+  }
+
+  cancelImageRemoval(event?: Event): void {
+    event?.preventDefault();
+    this.confirmingImageRemoval.set(false);
+    queueMicrotask(() => this.imageRemovalTrigger?.focus());
+  }
+
+  deleteImage(): void {
+    const slug = this.storeSlug();
+    const product = this.product();
+    if (!slug || !product?.image || this.imageBusy()) return;
+    this.confirmingImageRemoval.set(false);
+    this.imageError.set(null);
+    this.successMessage.set(null);
+    this.imageBusy.set(true);
+    const subscription = this.csrf
+      .ensureToken()
+      .pipe(
+        switchMap(() => this.api.deleteImage(slug, product.id)),
+        finalize(() => this.imageBusy.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.product.update((current) => (current ? { ...current, image: null } : current));
+          this.clearPreviewObjectUrl();
+          this.selectedImageFile.set(null);
+          this.imagePreviewUrl.set(null);
+          this.imageAltText.setValue('');
+          if (this.imageInput) this.imageInput.nativeElement.value = '';
+          this.successMessage.set('La imagen del producto fue eliminada.');
+          queueMicrotask(() => this.imageInput?.nativeElement.focus());
+        },
+        error: (error: unknown) => {
+          this.imageError.set(productErrorMessage(error, 'No pudimos eliminar la imagen.'));
+          queueMicrotask(() => this.imageRemovalTrigger?.focus());
+        },
+      });
+    this.mutations.push(subscription);
+  }
+
   private newVariantForm(variant?: ProductVariant) {
     return this.formBuilder.group({
       id: this.formBuilder.control<string | null>(variant?.id ?? null),
@@ -270,6 +399,8 @@ export class ProductForm {
       description: product.description ?? '',
       categoryId: product.category.id,
     });
+    this.imageAltText.setValue(product.image?.altText ?? '');
+    this.imagePreviewUrl.set(product.image?.url ?? null);
     this.variants.clear();
     for (const variant of product.variants) this.variants.push(this.newVariantForm(variant));
     if (product.status === 'ARCHIVED') {
@@ -331,5 +462,22 @@ export class ProductForm {
     this.formError.set(null);
     this.successMessage.set(null);
     this.pendingVariantId.set(null);
+    this.clearPreviewObjectUrl();
+    this.selectedImageFile.set(null);
+    this.imagePreviewUrl.set(null);
+    this.imageAltText.reset('');
+    this.imageError.set(null);
+    this.imageBusy.set(false);
+    this.confirmingImageRemoval.set(false);
+  }
+
+  private clearPreviewObjectUrl(): void {
+    if (this.previewObjectUrl) URL.revokeObjectURL(this.previewObjectUrl);
+    this.previewObjectUrl = null;
+  }
+
+  ngOnDestroy(): void {
+    for (const mutation of this.mutations.splice(0)) mutation.unsubscribe();
+    this.clearPreviewObjectUrl();
   }
 }

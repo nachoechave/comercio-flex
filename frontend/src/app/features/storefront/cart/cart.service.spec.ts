@@ -6,6 +6,7 @@ import { CartService } from './cart.service';
 describe('CartService', () => {
   let service: CartService;
   const product: PublicProductDetail = {
+    image: null,
     id: 'product-1',
     slug: 'remera',
     name: 'Remera',
