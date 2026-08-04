@@ -27,7 +27,7 @@
 | PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | En pruebas | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pedidos abiertos y stock bajo | Media | Terminada | ORD-02 | Backend/Frontend | Datos por tenant, roles y definiciones documentadas | Métricas inconsistentes | M |
 | STORE-02 | Tienda | Configurar datos y tema | Nombre, contacto, retiro y cuatro temas por tenant | Alta | Terminada | STORE-01, CORE-02 | Frontend/Backend | OWNER/ADMIN editan; tienda refleja; STAFF no accede | Configuración incompleta | M |
-| CI-01 | Calidad | Automatizar regresión y build | Pruebas Angular/Maven y build Docker en GitHub Actions | Alta | En revisión | BT-02, BT-03 | Calidad/Infraestructura | Workflow verde en push/PR | Diferencias con entorno local | S |
+| CI-01 | Calidad | Automatizar regresión y build | Pruebas Angular/Maven y build Docker en GitHub Actions | Alta | Terminada | BT-02, BT-03 | Calidad/Infraestructura | Workflow verde en push/PR | Diferencias con entorno local | S |
 | DEPLOY-01 | Operación | Artefacto de mismo origen | Angular dentro de Spring, Docker no-root y Railway readiness | Alta | Terminada | CI-01 | Infraestructura | Imagen construye, SPA/API comparten HTTPS y readiness responde | Memoria/sesiones | M |
 | OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | En pruebas | PAY-01, DEPLOY-01 | Infraestructura/PO | Smoke, backup y restauración real probada | Recursos externos/costo/caída | L |
 | SEC-01 | Seguridad | Separar credenciales runtime por base | Usuario de mínimo privilegio para control y para cada tenant | Alta | En pruebas | CORE-01, OPS-01 | Datos/Infraestructura | Un usuario tenant no accede a control ni a otra base | Movimiento lateral | M |
@@ -1030,10 +1030,10 @@ Evidencia automática e integrada:
 
 - Workflow, Dockerfile, fallback SPA, filtro de correlación, perfil `prod` y
   configuración Railway están versionados.
-- CI permanece `En revisión` hasta observar el workflow remoto verde. DEPLOY-01
-  queda `Terminada`: el build Angular, el empaquetado Spring y la imagen Docker
-  reproducible se construyeron correctamente; el smoke del proveedor corresponde
-  a OPS-01 porque depende de infraestructura externa.
+- CI-01 y DEPLOY-01 quedan `Terminadas`: GitHub Actions #2 completó correctamente
+  frontend (146 pruebas), backend (158 pruebas) y construcción del contenedor el
+  2026-08-04. El smoke del proveedor corresponde a OPS-01 porque depende de
+  infraestructura externa.
 
 ## OPS-01 / SEC-01 — Preparación y límites externos
 
