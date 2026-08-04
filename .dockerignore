@@ -1,0 +1,11 @@
+.git
+.github
+**/node_modules
+**/dist
+**/target
+**/.angular
+**/.env
+**/.env.*
+!**/.env.example
+.data
+*.log

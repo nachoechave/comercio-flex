@@ -418,3 +418,44 @@ transacción. Una segunda solicitud observa el evento ya programado, devuelve la
 misma fecha almacenada en `available_at` y no inserta otra auditoría. Las
 actualizaciones del worker incluyen `attempt_count` en su condición para impedir
 que un claim antiguo cierre trabajo reclamado nuevamente.
+## Extensiones de cierre del MVP
+
+### `product_images` (base de cada tenant, V012)
+
+Una fila representa la única imagen principal de un producto. `product_id` tiene
+restricción única y FK a `products`; `public_id` es el UUID que se expone en URL.
+La tabla conserva:
+
+- claves privadas `display_storage_key` y `thumbnail_storage_key`;
+- MIME real (`image/jpeg` o `image/png`), tamaños y dimensiones;
+- `alt_text` de 1–180 caracteres;
+- SHA-256, versión y fechas.
+
+Los bytes no se guardan en MySQL. En desarrollo viven bajo `.data/media`; en
+producción, en un bucket S3/R2 privado. La eliminación del producto no debe saltar
+el caso de uso de medios: la FK usa `RESTRICT` para evitar metadatos/objetos
+inconsistentes.
+
+### `store_settings` (V013)
+
+Se agregan columnas tenant:
+
+| Campo | Tipo | Regla |
+|---|---|---|
+| `contact_phone` | `VARCHAR(40)` nullable | al guardar debe existir teléfono o correo |
+| `contact_email` | `VARCHAR(254)` nullable | formato de correo válido |
+| `pickup_address` | `VARCHAR(240)` nullable en migración | obligatorio en una actualización válida |
+| `pickup_instructions` | `VARCHAR(500)` nullable | indicaciones visibles al cliente |
+| `brand_theme` | `ENUM` no nulo | `VIOLET`, `BURGUNDY`, `FOREST`, `NAVY` |
+
+Las columnas inicialmente nullable permiten migrar tenants existentes sin inventar
+datos. La pantalla administrativa obliga a completarlos antes de guardar. El MVP
+no agrega tablas de envío porque el único método es `PICKUP`.
+
+### Credenciales y recuperación
+
+En producción se espera un usuario DML para control, uno distinto para cada base
+tenant y un usuario de migración DDL. Las copias deben incluir la base de control
+y todas las bases tenant del mismo instante lógico. Los objetos de imagen exigen
+versionado/retención del proveedor o una política equivalente; restaurar sólo
+MySQL no recupera por sí solo los archivos.

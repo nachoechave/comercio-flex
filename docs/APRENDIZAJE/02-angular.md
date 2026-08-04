@@ -55,3 +55,17 @@ autorizar las rutas administrativas.
 
 Conceptos para estudiar: cookies, credenciales HTTP, XSRF, interceptor, guard,
 estado de sesión y rutas protegidas.
+## Aprendizaje del cierre: archivos e identidad visual
+
+Un `<input type="file">` entrega un `File`. Angular valida tipo/tamaño para dar
+feedback rápido, crea una URL temporal para la vista previa y la revoca al cambiar
+de archivo o destruir el componente; no hacerlo produce una fuga de memoria. La
+carga usa `FormData` porque combina bytes (`file`) y texto (`altText`).
+
+El texto alternativo describe la imagen para lectores de pantalla. Una miniatura
+en el catálogo reduce transferencia; el detalle usa la versión de exhibición. Si
+`image` es `null` se conserva un fallback accesible.
+
+Los temas visuales se aplican con un atributo de tema y variables CSS, no con
+cuatro copias de componentes. El guard y el menú deben reflejar permisos reales:
+ocultar un enlace mejora UX, pero la autorización definitiva sigue en el backend.

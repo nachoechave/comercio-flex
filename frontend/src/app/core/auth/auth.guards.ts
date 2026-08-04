@@ -53,10 +53,12 @@ export const adminEntryGuard: CanActivateFn = (_route, state) => {
         return loginRedirect(router, state.url);
       }
       if (session.memberships.length === 1) {
+		const membership = session.memberships[0];
         return router.createUrlTree([
           '/tiendas',
-          session.memberships[0].storeSlug,
+          membership.storeSlug,
           'admin',
+		  ...(membership.role === 'STAFF' ? ['pedidos'] : []),
         ]);
       }
       return router.createUrlTree(['/admin/comercios']);
@@ -74,10 +76,12 @@ export const membershipSelectionGuard: CanActivateFn = (_route, state) => {
         return loginRedirect(router, state.url);
       }
       if (session.memberships.length === 1) {
+		const membership = session.memberships[0];
         return router.createUrlTree([
           '/tiendas',
-          session.memberships[0].storeSlug,
+          membership.storeSlug,
           'admin',
+		  ...(membership.role === 'STAFF' ? ['pedidos'] : []),
         ]);
       }
       return true;
@@ -129,3 +133,18 @@ export function allowedRolesGuard(allowedRoles: readonly AdminRole[]): CanActiva
     );
   };
 }
+
+export const adminHomeGuard: CanActivateFn = (route) => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  const storeSlug = routeParam(route, 'storeSlug');
+  return auth.loadSession().pipe(
+    map((session) => {
+      if (!session.authenticated) return router.createUrlTree(['/admin/login']);
+      const membership = session.memberships.find((item) => item.storeSlug === storeSlug);
+      return membership?.role === 'STAFF'
+        ? router.createUrlTree(['/tiendas', storeSlug, 'admin', 'pedidos'])
+        : true;
+    }),
+  );
+};

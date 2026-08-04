@@ -409,3 +409,62 @@ El dashboard no mantiene una base analítica ni caché en el MVP. Lee agregados 
 la base tenant bajo demanda. Esto evita duplicar datos mientras el volumen es
 pequeño; métricas históricas complejas podrán usar proyecciones en una versión
 posterior sin convertir ahora el sistema en microservicios.
+## Arquitectura de cierre del MVP (2026-08-04)
+
+### Un solo origen desplegable
+
+El despliegue recomendado empaqueta la compilación Angular dentro del JAR de
+Spring Boot y publica ambos desde el mismo host HTTPS. Esta decisión mantiene la
+sesión basada en cookie, CSRF y rutas `/api` bajo un mismo origen y evita depender
+de CORS o cookies cross-site en el primer piloto.
+
+```text
+Navegador
+  → HTTPS / (Angular estático) y /api (Spring Boot)
+  → monolito modular Java 21, una réplica inicial
+  → base de control MySQL + base MySQL por tenant
+  → bucket privado S3/R2 para imágenes
+  → Mercado Pago Checkout Pro
+```
+
+El `Dockerfile` multi-stage compila frontend y backend, ejecuta la JVM con un
+usuario sin privilegios y expone el puerto configurado. `railway.json` usa
+`/actuator/health/readiness` como health check. No se declara una instancia real
+desplegada: faltan proveedor/base/bucket/dominio/secretos elegidos por el PO.
+
+### Módulo de medios
+
+`media` es un módulo vertical con API, aplicación, dominio e infraestructura. El
+catálogo sólo conoce una referencia nullable; no accede directamente a S3 ni al
+sistema de archivos.
+
+```text
+Formulario Angular → API multipart → ProductImageService
+  → verificación/EXIF/recodificación → display 1600 + thumbnail 480
+  → puerto ProductImageStorage → local (desarrollo) o S3/R2 privado (producción)
+  → ProductImageRepository → metadatos en la base del tenant
+```
+
+Una restricción única asegura una imagen por producto. El servicio compensa
+fallos entre almacenamiento de objetos y MySQL, y nunca hace pública la imagen de
+un producto no publicado. La deuda aceptada es incorporar una reconciliación
+periódica de objetos huérfanos cuando el volumen operativo lo justifique.
+
+### Configuración y operación
+
+`tenant` administra nombre, contacto, retiro y tema. El checkout sólo ofrece
+`PICKUP`. `OWNER`/`ADMIN` tienen `MANAGE_BASIC_SETTINGS`; `STAFF` ingresa a
+pedidos y no ve navegación de dashboard, comercio o pagos que no pueda usar.
+
+Las respuestas incluyen `X-Request-Id`: se conserva el identificador válido que
+envía el proxy o se genera uno, se incorpora a logs y se devuelve al cliente.
+Actuator separa liveness de readiness. La CI ejecuta pruebas/build de Angular,
+pruebas Maven y construcción de la imagen Docker antes de integrar.
+
+### Datos y recuperación
+
+Las credenciales de runtime se separan para control y cada tenant; el usuario de
+migración se reserva para DDL. Los scripts de `infra/operations` crean backups
+consistentes de InnoDB, verifican el gzip y bloquean un restore accidental salvo
+confirmación explícita. Un restore sólo se considera probado después de ejecutarlo
+en una base aislada y validar Flyway, tenants, pedidos e inventario.

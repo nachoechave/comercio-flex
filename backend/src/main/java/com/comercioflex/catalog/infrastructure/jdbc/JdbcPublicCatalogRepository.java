@@ -18,6 +18,7 @@ import com.comercioflex.catalog.domain.PublicCategory;
 import com.comercioflex.catalog.domain.PublicProductDetail;
 import com.comercioflex.catalog.domain.PublicProductSummary;
 import com.comercioflex.catalog.domain.PublicVariant;
+import com.comercioflex.media.domain.ProductImageReference;
 
 @Repository
 public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
@@ -100,6 +101,8 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				BIN_TO_UUID(category.public_id) category_public_id,
 				category.name category_name,
 				category.slug category_slug,
+				BIN_TO_UUID(image.public_id) image_public_id,
+				image.alt_text image_alt_text,
 				(
 					SELECT MIN(price)
 					FROM product_variants priced_variant
@@ -132,12 +135,14 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				) available
 			FROM products product
 			JOIN categories category ON category.id = product.category_id
+			LEFT JOIN product_images image ON image.product_id = product.id
 			""" + where + " ORDER BY product.name, product.id LIMIT ? OFFSET ?",
 			(resultSet, rowNumber) -> new PublicProductSummary(
 				UUID.fromString(resultSet.getString("product_public_id")),
 				resultSet.getString("product_name"),
 				resultSet.getString("product_slug"),
 				mapCategory(resultSet),
+				mapImage(resultSet),
 				resultSet.getBigDecimal("price_from"),
 				resultSet.getBigDecimal("price_to"),
 				resultSet.getBoolean("available")),
@@ -160,9 +165,12 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				product.description,
 				BIN_TO_UUID(category.public_id) category_public_id,
 				category.name category_name,
-				category.slug category_slug
+				category.slug category_slug,
+				BIN_TO_UUID(image.public_id) image_public_id,
+				image.alt_text image_alt_text
 			FROM products product
 			JOIN categories category ON category.id = product.category_id
+			LEFT JOIN product_images image ON image.product_id = product.id
 			WHERE product.slug = ?
 				AND """ + " " + VISIBLE_PRODUCT,
 			(resultSet, rowNumber) -> new ProductHeader(
@@ -171,7 +179,8 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				resultSet.getString("product_name"),
 				resultSet.getString("product_slug"),
 				resultSet.getString("description"),
-				mapCategory(resultSet)),
+				mapCategory(resultSet),
+				mapImage(resultSet)),
 			productSlug);
 		if (products.isEmpty()) {
 			return Optional.empty();
@@ -238,6 +247,12 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 			resultSet.getString("category_slug"));
 	}
 
+	private ProductImageReference mapImage(ResultSet resultSet) throws SQLException {
+		String id = resultSet.getString("image_public_id");
+		return id == null ? null : new ProductImageReference(
+			UUID.fromString(id), resultSet.getString("image_alt_text"));
+	}
+
 	private String nullableOption(String value) {
 		return value == null || value.isEmpty() ? null : value;
 	}
@@ -248,7 +263,8 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 		String name,
 		String slug,
 		String description,
-		PublicCategory category) {
+		PublicCategory category,
+		ProductImageReference image) {
 
 		PublicProductDetail toDetail(List<PublicVariant> variants) {
 			return new PublicProductDetail(
@@ -257,6 +273,7 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				slug,
 				description,
 				category,
+				image,
 				variants);
 		}
 	}

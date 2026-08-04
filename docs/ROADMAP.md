@@ -52,9 +52,36 @@ marketplace.
 
 Dashboard mínimo, mejoras administrativas y alertas de stock.
 
+Estado de cierre del repositorio (2026-08-04): dashboard mínimo, imagen principal,
+configuración de contacto/retiro/tema y permisos de navegación de `STAFF`
+implementados. El checkout del MVP continúa limitado a retiro (`PICKUP`).
+
+La regresión de cierre ejecutó 158 pruebas backend y 146 frontend sin fallos. El
+build Angular y la imagen Docker de producción también se construyeron
+correctamente. El código del MVP queda listo para iniciar el despliegue piloto.
+
 ## Fase 6 — Piloto
 
 Despliegue, dominio/HTTPS, logs, backups, restauración y monitoreo.
+
+El artefacto está preparado para esta fase: Docker de mismo origen, Railway, CI,
+readiness, request ID, contrato de variables y scripts de backup/restore. La fase
+**no está terminada** hasta contratar/configurar infraestructura, cargar secretos,
+ejecutar smoke tests HTTPS y demostrar una restauración aislada.
+
+## Puerta de salida del MVP
+
+1. CI verde y construcción reproducible del contenedor.
+2. Recorrido tienda → carrito → checkout `PICKUP` → Checkout Pro TEST → pedido.
+3. Pruebas negativas entre tenants y roles verificadas.
+4. MySQL administrado y bucket privado configurados con secretos fuera de Git.
+5. Dominio/HTTPS, alertas/logs y responsables operativos definidos.
+6. Backup automático y restore practicado con evidencia.
+7. Cuenta vendedora/credenciales productivas de Mercado Pago habilitadas sólo
+   después de aprobación y prueba controlada.
+
+Los puntos 4–7 son pendientes externos; el repositorio no los puede completar
+sin cuentas, dominio, credenciales y comercio piloto reales.
 
 ## Puertas de control
 

@@ -118,6 +118,13 @@
 | ADR-111 | Ventas del dashboard | Primera confirmación y estado actual válido | Aceptada |
 | ADR-112 | Pedidos abiertos | Confirmados y listos para retirar | Aceptada |
 | ADR-113 | Stock bajo | Umbral global tenant, decimal y configurable | Aceptada |
+| ADR-114 | Imagen de producto | Una imagen principal con display y thumbnail | Aceptada |
+| ADR-115 | Almacenamiento de medios | Puerto privado con adaptadores local y S3 compatible | Aceptada |
+| ADR-116 | Seguridad de imágenes | JPEG/PNG verificados y recodificados por el backend | Aceptada |
+| ADR-117 | Consistencia de medios | Compensación entre objetos y metadatos tenant | Aceptada |
+| ADR-118 | Configuración de tienda | Contacto, retiro y cuatro temas por tenant | Aceptada |
+| ADR-119 | Despliegue MVP | Angular y Spring Boot bajo un mismo origen Docker | Aceptada |
+| ADR-120 | Operación productiva | MySQL administrado, storage privado y restore probado | Aceptada |
 
 ## Plantilla ADR
 
@@ -1760,3 +1767,128 @@
   la lista prioriza las cinco cantidades más bajas.
 - **Consecuencias:** cubre unidades y preparación futura para peso con una interfaz
   simple. Los umbrales por categoría o variante quedan para una versión posterior.
+
+### ADR-114 — Una imagen principal con dos derivados
+
+- **Fecha:** 2026-08-04
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la tienda pública necesita fotografías reales antes de una demo,
+  pero una galería completa amplía carga, ordenamiento y administración.
+- **Problema:** ofrecer una presentación visual útil sin convertir MEDIA-01 en un
+  gestor general de archivos.
+- **Alternativas:** URL manual; una imagen original; una imagen principal con dos
+  tamaños; galería de múltiples imágenes.
+- **Decisión:** cada producto admite una imagen principal y el backend genera una
+  versión de detalle de hasta 1600 px y un thumbnail de hasta 480 px. El texto
+  alternativo es obligatorio y el frontend conserva un fallback cuando no existe.
+- **Consecuencias:** catálogo y detalle cargan el tamaño adecuado. Galerías, zoom y
+  variantes con fotografías propias quedan fuera del MVP.
+
+### ADR-115 — Almacenamiento privado y compatible con S3
+
+- **Fecha:** 2026-08-04
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** los binarios pesados no deben almacenarse en MySQL y desarrollo no
+  debe depender de una cuenta cloud.
+- **Problema:** mantener URLs estables, aislamiento tenant y portabilidad entre un
+  disco local y Cloudflare R2, S3 o un proveedor compatible.
+- **Alternativas:** BLOB en MySQL; URLs públicas pegadas al producto; un puerto de
+  almacenamiento con adaptadores local y S3 compatible.
+- **Decisión:** MySQL conserva únicamente metadatos y claves opacas. El bucket es
+  privado y el backend sirve el contenido mediante rutas tenant. Desarrollo usa
+  una raíz local fuera de Git y producción un storage S3 compatible mediante AWS
+  SDK Java v2 alineado con BOM.
+- **Consecuencias:** Angular no conoce credenciales ni rutas físicas y puede
+  cambiarse de proveedor sin alterar sus contratos. El proxy podrá reemplazarse
+  por CDN o URLs firmadas cuando el tráfico lo justifique.
+
+### ADR-116 — Verificación y recodificación de imágenes
+
+- **Fecha:** 2026-08-04
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** nombre y `Content-Type` enviados por el navegador no prueban que un
+  archivo sea una imagen segura.
+- **Problema:** reducir contenido activo, metadatos sensibles y bombas de
+  descompresión sin incorporar un pipeline multimedia excesivo.
+- **Alternativas:** confiar en el navegador; aceptar formatos modernos sin
+  procesar; limitar a JPEG/PNG y reconstruir los píxeles.
+- **Decisión:** se aceptan JPEG y PNG de hasta 5 MiB y 10 megapíxeles, se valida la
+  firma real, se normaliza la orientación EXIF, se decodifica y se vuelve a
+  codificar para producir ambos derivados.
+  No se aceptan SVG ni nombres de ruta proporcionados por el cliente.
+- **Consecuencias:** se eliminan EXIF y estructuras agregadas. WebP y AVIF pueden
+  evaluarse después con una biblioteca de procesamiento específica.
+
+### ADR-117 — Consistencia compensatoria entre MySQL y objetos
+
+- **Fecha:** 2026-08-04
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** una transacción MySQL no puede incluir atómicamente un bucket de
+  objetos externo.
+- **Problema:** evitar referencias rotas al reemplazar o eliminar una imagen.
+- **Alternativas:** escribir primero la base; escribir primero los objetos sin
+  compensación; objetos nuevos, commit tenant y limpieza compensatoria.
+- **Decisión:** se almacenan ambos objetos nuevos antes del upsert. Si falla MySQL,
+  se eliminan los nuevos; después del commit se retiran los anteriores. Al borrar,
+  primero se elimina la referencia tenant y luego los objetos inaccesibles.
+- **Consecuencias:** un fallo de limpieza puede dejar un objeto huérfano, pero nunca
+  una imagen pública apuntando a contenido ausente. La recolección periódica de
+  huérfanos queda como mejora operativa.
+
+### ADR-118 — Configuración básica del comercio sin ampliar logística
+
+- **Fecha:** 2026-08-04
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el piloto necesita mostrar identidad, contacto y lugar de retiro
+  propios de cada tenant.
+- **Problema:** personalizar la tienda sin incorporar constructor visual, envíos ni
+  reglas logísticas que amplíen el MVP.
+- **Alternativas:** valores fijos; configuración completa de diseño/logística;
+  nombre, contacto, retiro y paleta acotada.
+- **Decisión:** `OWNER`/`ADMIN` editan nombre, teléfono/correo, dirección e
+  instrucciones de retiro y uno de cuatro temas (`VIOLET`, `BURGUNDY`, `FOREST`,
+  `NAVY`). `STAFF` se orienta a pedidos y no administra estas opciones. El checkout
+  continúa exclusivamente con `PICKUP`.
+- **Consecuencias:** cada comercio tiene una identidad útil sin duplicar Angular.
+  Logo, tipografías arbitrarias, dominio propio y envío quedan para versiones
+  posteriores.
+
+### ADR-119 — Monolito desplegable bajo un mismo origen
+
+- **Fecha:** 2026-08-04
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la SPA usa sesión HttpOnly y CSRF; separar dominios en el piloto
+  agrega CORS, cookies cross-site y dos despliegues coordinados.
+- **Problema:** producir un artefacto simple, reproducible y compatible con la
+  seguridad ya implementada.
+- **Alternativas:** Cloudflare Pages + API separada; reverse proxy adicional;
+  compilar Angular dentro del JAR Spring Boot.
+- **Decisión:** un Docker multi-stage empaqueta Angular en Spring Boot, corre Java
+  21 con usuario no-root y publica SPA/API bajo un único origen HTTPS. Railway es
+  la primera opción de demo; readiness determina recepción de tráfico.
+- **Consecuencias:** se simplifican cookies, CSRF y operación. La primera versión
+  usa una réplica; escalar requiere resolver sesiones compartidas/sticky sessions.
+
+### ADR-120 — Servicios administrados, mínimo privilegio y restore como puerta
+
+- **Fecha:** 2026-08-04
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el código no puede garantizar continuidad si base, objetos,
+  secretos y copias se operan sin responsables ni pruebas.
+- **Problema:** definir una salida comercial responsable sin declarar desplegados
+  servicios todavía no contratados.
+- **Alternativas:** MySQL/storage dentro del contenedor; servicios administrados
+  sin restore; MySQL administrado + S3/R2 privado + backups restaurados.
+- **Decisión:** el piloto usa MySQL administrado, bucket privado, secretos del
+  proveedor, usuarios runtime separados y usuario DDL de migración. Backup y
+  restore aislado con evidencia son condición de OPS-01; CI/build no los reemplaza.
+- **Consecuencias:** aumenta preparación operativa y costo externo, pero reduce
+  pérdida de datos y movimiento lateral. Hosting, dominio, credenciales y prueba
+  real permanecen pendientes del Product Owner/proveedor.

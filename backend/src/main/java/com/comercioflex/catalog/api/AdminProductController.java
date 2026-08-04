@@ -44,6 +44,7 @@ public class AdminProductController {
 
 	@GetMapping
 	ProductPageResponse findAll(
+			@PathVariable String storeSlug,
 			@RequestParam(defaultValue = "0") @Min(0) @Max(1_000_000) int page,
 			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
 			@RequestParam(defaultValue = "ALL") ProductStatusFilter status,
@@ -52,16 +53,17 @@ public class AdminProductController {
 			HttpServletRequest request) {
 		require(request, TenantPermission.VIEW_CATALOG);
 		return ProductPageResponse.from(productService.findPage(
-			new ProductSearch(page, size, status, categoryId, q)));
+			new ProductSearch(page, size, status, categoryId, q)), storeSlug);
 	}
 
 	@PostMapping
 	ResponseEntity<ProductDetailResponse> create(
+			@PathVariable String storeSlug,
 			@Valid @RequestBody CreateProductRequest body,
 			HttpServletRequest request) {
 		require(request, TenantPermission.MANAGE_CATALOG);
 		ProductDetailResponse response =
-			ProductDetailResponse.from(productService.create(body.toCommand()));
+			ProductDetailResponse.from(productService.create(body.toCommand()), storeSlug);
 		URI location = ServletUriComponentsBuilder.fromCurrentRequest()
 			.path("/{id}")
 			.buildAndExpand(response.id())
@@ -71,14 +73,16 @@ public class AdminProductController {
 
 	@GetMapping("/{productId}")
 	ProductDetailResponse findById(
+			@PathVariable String storeSlug,
 			@PathVariable UUID productId,
 			HttpServletRequest request) {
 		require(request, TenantPermission.VIEW_CATALOG);
-		return ProductDetailResponse.from(productService.findById(productId));
+		return ProductDetailResponse.from(productService.findById(productId), storeSlug);
 	}
 
 	@PutMapping("/{productId}")
 	ProductDetailResponse update(
+			@PathVariable String storeSlug,
 			@PathVariable UUID productId,
 			@Valid @RequestBody UpdateProductRequest body,
 			HttpServletRequest request) {
@@ -88,11 +92,12 @@ public class AdminProductController {
 			body.name(),
 			body.description(),
 			body.categoryId(),
-			body.version()));
+			body.version()), storeSlug);
 	}
 
 	@PatchMapping("/{productId}/status")
 	ProductDetailResponse changeStatus(
+			@PathVariable String storeSlug,
 			@PathVariable UUID productId,
 			@Valid @RequestBody ChangeProductStatusRequest body,
 			HttpServletRequest request) {
@@ -100,7 +105,7 @@ public class AdminProductController {
 		return ProductDetailResponse.from(productService.changeStatus(
 			productId,
 			body.status(),
-			body.version()));
+			body.version()), storeSlug);
 	}
 
 	@PostMapping("/{productId}/variants")

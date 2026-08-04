@@ -27,6 +27,7 @@ describe('CheckoutPage', () => {
     timezone: 'America/Argentina/Buenos_Aires',
   });
   const product: PublicProductDetail = {
+    image: null,
     id: 'product-1',
     name: 'Asado',
     slug: 'asado',

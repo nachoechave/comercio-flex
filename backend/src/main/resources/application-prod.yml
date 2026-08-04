@@ -1,0 +1,21 @@
+spring:
+  flyway:
+    user: ${MIGRATION_DB_USER}
+    password: ${MIGRATION_DB_PASSWORD}
+
+app:
+  media:
+    storage: s3
+  database:
+    tenant-migration-enabled: true
+    migration-username: ${MIGRATION_DB_USER}
+    migration-password: ${MIGRATION_DB_PASSWORD}
+    tenant-connections:
+      tenant-a:
+        url: ${TENANT_A_DB_URL}
+        username: ${TENANT_A_DB_USER}
+        password: ${TENANT_A_DB_PASSWORD}
+      tenant-b:
+        url: ${TENANT_B_DB_URL}
+        username: ${TENANT_B_DB_USER}
+        password: ${TENANT_B_DB_PASSWORD}

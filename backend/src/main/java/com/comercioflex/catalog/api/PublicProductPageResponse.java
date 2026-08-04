@@ -11,9 +11,10 @@ public record PublicProductPageResponse(
 	long totalItems,
 	long totalPages) {
 
-	static PublicProductPageResponse from(PublicProductPage page) {
+	static PublicProductPageResponse from(PublicProductPage page, String storeSlug) {
 		return new PublicProductPageResponse(
-			page.items().stream().map(PublicProductSummaryResponse::from).toList(),
+			page.items().stream()
+				.map(item -> PublicProductSummaryResponse.from(item, storeSlug)).toList(),
 			page.page(),
 			page.size(),
 			page.totalItems(),

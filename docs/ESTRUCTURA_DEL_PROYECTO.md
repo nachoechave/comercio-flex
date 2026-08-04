@@ -515,3 +515,61 @@ Dependencias permitidas:
   administrativa concreta.
 - `features/auth` usa `core/auth` y `shared`, pero ninguna feature de negocio debe
   importar detalles internos de la pantalla de login.
+## Carpetas incorporadas para el cierre del MVP
+
+```text
+comercio-flex/
+├── .github/workflows/ci.yml       # pruebas y builds por push/PR
+├── Dockerfile                     # Angular + Spring Boot en un solo contenedor
+├── railway.json                   # build Docker y readiness de Railway
+├── backend/src/main/java/com/comercioflex/
+│   ├── media/                     # imagen principal de producto
+│   │   ├── api/                   # endpoints admin y públicos
+│   │   ├── application/           # procesamiento, puertos y casos de uso
+│   │   ├── config/                # propiedades y selección local/S3
+│   │   ├── domain/                # imagen y referencia de catálogo
+│   │   └── infrastructure/        # JDBC, almacenamiento local y S3
+│   ├── tenant/
+│   │   ├── api/                   # settings públicos y administrativos
+│   │   ├── application/           # consulta/actualización y puerto de repositorio
+│   │   ├── domain/                # StoreSettings y BrandTheme
+│   │   └── infrastructure/jdbc/   # persistencia tenant
+│   └── config/
+│       ├── RequestCorrelationFilter.java # X-Request-Id y contexto de logs
+│       └── SpaForwardController.java      # fallback de rutas Angular
+├── frontend/src/app/features/admin/
+│   ├── products/                  # formulario y gestión de imagen
+│   └── store-settings/            # contacto, retiro y tema
+└── infra/
+    ├── production.env.example     # contrato de variables sin secretos
+    └── operations/
+        ├── mysql-backup.sh        # copia consistente y retención
+        └── mysql-restore.sh       # recuperación protegida
+```
+
+### Dependencias permitidas
+
+- `media.api` depende de `media.application`; `media.infrastructure` implementa
+  puertos de aplicación. El dominio no depende de Spring, JDBC ni S3.
+- `catalog` puede exponer `ProductImageReference`, pero no puede escribir archivos
+  ni usar el cliente S3 directamente.
+- `tenant.api` depende de servicios de aplicación; la persistencia se resuelve en
+  `tenant.infrastructure.jdbc` con el contexto tenant ya abierto.
+- Angular consume contratos HTTP y no conoce tablas, claves de almacenamiento ni
+  credenciales.
+- Los scripts de operación no forman parte del runtime de la aplicación.
+
+### Viaje completo con una imagen
+
+```text
+Administrador → ProductForm Angular → PUT multipart + CSRF
+→ AdminProductImageController → ProductImageService
+→ ProductImageProcessor → ProductImageStorage
+→ ProductImageRepository → MySQL tenant
+→ ProductImageResponse → Angular
+
+Cliente → ProductCard Angular → URL thumbnail
+→ PublicProductImageController → tenant de la URL
+→ ProductImageRepository → clave privada → Storage
+→ bytes + Content-Type + ETag → navegador
+```

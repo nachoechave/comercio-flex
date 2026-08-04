@@ -159,3 +159,60 @@
   del proveedor con el usuario y comercio que iniciaron la autorización.
 - **Nickname vendedor:** nombre de usuario público devuelto por `/users/me`. Se
   muestra como referencia visual, pero el `user_id` es la identidad canónica.
+## Términos incorporados en el cierre del MVP
+
+### Imagen derivada
+
+Versión generada por el backend a partir del archivo original. Comercio Flex crea
+una versión `display` para detalle (hasta 1600 px) y una `thumbnail` para listados
+(hasta 480 px); así no descarga una imagen pesada en cada tarjeta.
+
+### EXIF
+
+Metadatos que algunas cámaras incluyen en JPEG. La orientación EXIF indica cómo
+debe rotarse la foto; el backend la aplica antes de recodificar para evitar fotos
+de costado y descarta los metadatos no necesarios.
+
+### Recodificación
+
+Decodificar una imagen validada y volver a escribirla como JPEG/PNG. Evita confiar
+en nombre/extensión, limita dimensiones y elimina contenido o metadatos que no
+deben publicarse.
+
+### Almacenamiento de objetos
+
+Servicio para guardar archivos por clave, como Amazon S3 o Cloudflare R2. El
+bucket del MVP es privado: el backend autoriza la solicitud y transmite los bytes.
+
+### ETag
+
+Identificador de una representación HTTP. Permite al navegador revalidar una
+imagen sin descargarla nuevamente cuando no cambió.
+
+### Mismo origen
+
+Frontend y API comparten esquema, host y puerto. Simplifica cookies de sesión,
+CSRF y despliegue del MVP porque Angular y Spring Boot se sirven juntos.
+
+### Readiness
+
+Health check que indica si una instancia está lista para recibir tráfico. Se
+diferencia de liveness, que indica si el proceso sigue vivo.
+
+### Request ID / identificador de correlación
+
+Valor seguro asociado a una solicitud y devuelto como `X-Request-Id`. Permite
+relacionar un error visto por el usuario con los logs técnicos sin mostrar datos
+del pago o del cliente.
+
+### Backup y restore
+
+Backup es una copia recuperable; restore es el proceso de restaurarla. Una copia
+no se considera confiable hasta practicar el restore en un entorno aislado y
+validar los datos importantes.
+
+### Principio de mínimo privilegio
+
+Cada usuario técnico recibe sólo los permisos que necesita. Por ejemplo, el
+runtime tenant no debería leer la base de control ni otra tienda, y sólo el usuario
+de migración necesita permisos DDL.

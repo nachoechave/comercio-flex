@@ -23,7 +23,9 @@ import { AuthService } from '../../../core/auth/auth.service';
           <ul class="store-list">
             @for (membership of auth.memberships(); track membership.storeSlug) {
               <li>
-                <a [routerLink]="['/tiendas', membership.storeSlug, 'admin']">
+                <a [routerLink]="membership.role === 'STAFF'
+                  ? ['/tiendas', membership.storeSlug, 'admin', 'pedidos']
+                  : ['/tiendas', membership.storeSlug, 'admin']">
                   <span>{{ membership.storeName }}</span>
                   <small>{{ roleLabel(membership.role) }}</small>
                 </a>

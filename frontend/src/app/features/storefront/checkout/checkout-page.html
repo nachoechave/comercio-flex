@@ -8,7 +8,7 @@
   <header>
     <p class="eyebrow">Último paso</p>
     <h1 id="checkout-title">Confirmá tu pedido</h1>
-    <p>Por ahora los pedidos se retiran en el comercio y se coordinan después de confirmarlos.</p>
+    <p>El pedido se retira en {{ context.settings()?.pickupAddress || 'el comercio' }}.</p>
   </header>
 
   @if (!ready()) {
@@ -58,7 +58,10 @@
           <legend>Entrega</legend>
           <div class="pickup-option">
             <strong>Retiro en el comercio</strong>
-            <span>El comercio se comunicará para coordinarlo.</span>
+            <span>{{ context.settings()?.pickupAddress || 'Dirección a coordinar con el comercio.' }}</span>
+            @if (context.settings()?.pickupInstructions; as instructions) {
+              <span>{{ instructions }}</span>
+            }
           </div>
         </fieldset>
 

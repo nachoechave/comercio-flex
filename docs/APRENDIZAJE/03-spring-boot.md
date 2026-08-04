@@ -50,3 +50,20 @@ otra defensa frente a fuerza bruta y consumo deliberado de CPU.
 Conceptos para estudiar: `SecurityFilterChain`, `AuthenticationManager`,
 `SecurityContext`, `PasswordEncoder`, Spring Session, CSRF, CORS y autorización
 por roles.
+## Aprendizaje del cierre: procesamiento y puertos de medios
+
+El controlador multipart recibe el archivo, pero el caso de uso vive en
+`ProductImageService`. `ProductImageProcessor` verifica firma, decodifica, aplica
+EXIF, limita píxeles y recodifica; no se debe confiar en extensión ni MIME enviado
+por el navegador.
+
+`ProductImageStorage` es un puerto: desarrollo usa filesystem y producción S3/R2.
+Así la regla de negocio no depende del proveedor. Como MySQL y el bucket no
+comparten una transacción, el servicio aplica compensaciones: si falla metadata,
+borra el objeto nuevo; si reemplaza, elimina los objetos anteriores al completar.
+Esto reduce inconsistencias, aunque una reconciliación periódica es una mejora
+futura razonable.
+
+El filtro de correlación agrega `X-Request-Id` al contexto de logs. Liveness
+responde si el proceso vive; readiness decide si debe recibir tráfico. Son señales
+operativas diferentes.

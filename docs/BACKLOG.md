@@ -16,7 +16,7 @@
 | CAT-02 | Catálogo | Gestionar productos de indumentaria | Alta/edición/publicación, talle, color, SKU y precio | Alta | Terminada | CAT-01 | Backend/Frontend | Precio > 0, categoría y variante válidos | Combinaciones inválidas | XL |
 | INV-01 | Inventario | Ajustar stock | Existencia por variante y movimiento auditable | Alta | Terminada | CAT-02 | Backend/Frontend | No negativo, concurrencia y pruebas | Sobreventa | L |
 | STORE-01 | Tienda | Navegar catálogo | Listar, buscar y ver detalle público | Alta | Terminada | CAT-02 | Frontend/Backend | Responsive, estados y tenant correcto | Rendimiento/SEO | L |
-| MEDIA-01 | Medios | Gestionar imagen principal | Carga, almacenamiento externo, thumbnail y texto alternativo | Alta | Pendiente | STORE-01 | Frontend/Backend/Infraestructura | MIME/tamaño, aislamiento, fallback y eliminación segura | Costo, contenido malicioso y archivos huérfanos | L |
+| MEDIA-01 | Medios | Gestionar imagen principal | Carga, storage privado, derivados y texto alternativo | Alta | Terminada | STORE-01 | Frontend/Backend/Infraestructura | JPEG/PNG 5 MiB, EXIF, aislamiento, fallback y eliminación segura | Costo y objetos huérfanos | L |
 | CART-01 | Compra | Carrito local | Selección de variante, cantidades, persistencia local y revalidación | Alta | Terminada | STORE-01 | Frontend | Aislado por tienda, accesible, sin datos personales y revalidado | Datos locales obsoletos | L |
 | ORD-01 | Compra | Checkout invitado | Retiro, contacto, reserva temporal y creación transaccional del pedido | Alta | Terminada | CART-01, INV-01 | Frontend/Backend | Backend recalcula, reserva y persiste snapshot idempotente | Precio manipulado, abuso y sobreventa | XL |
 | ORD-02 | Pedidos | Operar pedidos | Listado, detalle y transiciones válidas | Alta | Terminada | ORD-01 | Backend/Frontend | Roles, historial y pruebas | Estados ambiguos | L |
@@ -26,8 +26,11 @@
 | PAY-01C | Pagos | Ejecutar y confirmar pagos | Preferencia, retorno, inbox webhook y confirmación idempotente | Alta | Terminada | PAY-01B | Backend/Frontend/Seguridad | Pago firmado y verificado coordina pedido y stock una vez | Doble cobro/stock | XL |
 | PAY-01D | Pagos | Validar sandbox y operación | HTTPS temporal, cuentas de prueba, observabilidad y runbooks | Alta | En pruebas | PAY-01C | Calidad/Infraestructura | E2E aprobado/rechazado/pendiente sin secretos reales | Configuración externa | L |
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pedidos abiertos y stock bajo | Media | Terminada | ORD-02 | Backend/Frontend | Datos por tenant, roles y definiciones documentadas | Métricas inconsistentes | M |
-| OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | Pendiente | PAY-01 | Infraestructura | Smoke, backup y restauración probada | Costo/caída | L |
-| SEC-01 | Seguridad | Separar credenciales runtime por base | Usuario de mínimo privilegio para control y para cada tenant | Alta | Pendiente | CORE-01 | Datos/Infraestructura | Un usuario tenant no accede a control ni a otra base | Movimiento lateral | M |
+| STORE-02 | Tienda | Configurar datos y tema | Nombre, contacto, retiro y cuatro temas por tenant | Alta | Terminada | STORE-01, CORE-02 | Frontend/Backend | OWNER/ADMIN editan; tienda refleja; STAFF no accede | Configuración incompleta | M |
+| CI-01 | Calidad | Automatizar regresión y build | Pruebas Angular/Maven y build Docker en GitHub Actions | Alta | En revisión | BT-02, BT-03 | Calidad/Infraestructura | Workflow verde en push/PR | Diferencias con entorno local | S |
+| DEPLOY-01 | Operación | Artefacto de mismo origen | Angular dentro de Spring, Docker no-root y Railway readiness | Alta | Terminada | CI-01 | Infraestructura | Imagen construye, SPA/API comparten HTTPS y readiness responde | Memoria/sesiones | M |
+| OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | En pruebas | PAY-01, DEPLOY-01 | Infraestructura/PO | Smoke, backup y restauración real probada | Recursos externos/costo/caída | L |
+| SEC-01 | Seguridad | Separar credenciales runtime por base | Usuario de mínimo privilegio para control y para cada tenant | Alta | En pruebas | CORE-01, OPS-01 | Datos/Infraestructura | Un usuario tenant no accede a control ni a otra base | Movimiento lateral | M |
 | AUTH-02 | Identidad | Evaluar Firebase Authentication | Analizarlo como proveedor externo para clientes y administradores sin trasladar membresías ni permisos | Baja | Pendiente | MVP validado | Arquitectura/Seguridad/PO | ADR de migración, costos, sesiones, revocación y coexistencia aprobado | Dependencia externa y migración de cuentas | L |
 
 ## DASH-01 — Dashboard operativo mínimo
@@ -960,3 +963,92 @@ Evidencia automática e integrada:
   `FRONTEND_ORIGIN` mezclaba CORS y la back URL pública. ADR-110 separa
   `FRONTEND_ORIGINS` de `PUBLIC_FRONTEND_BASE_URI`; queda pendiente repetir el
   recorrido con un túnel HTTPS nuevo antes de cerrar el escenario pendiente.
+## MEDIA-01 — Imagen principal de producto
+
+> Estado: terminada. Implementación, pruebas específicas y regresión completa
+> cerradas el 2026-08-04.
+
+### Criterios de aceptación
+
+- Una imagen principal por producto, reemplazable y eliminable por
+  `OWNER`/`ADMIN` con `MANAGE_CATALOG` y CSRF.
+- JPEG/PNG real de hasta 5 MiB, límite de píxeles, orientación EXIF normalizada y
+  recodificación; SVG y contenido falso se rechazan.
+- Derivados `display` de hasta 1600 px y `thumbnail` de hasta 480 px; texto
+  alternativo obligatorio de 1–180 caracteres.
+- Storage local fuera de Git en desarrollo y S3/R2 privado en producción; MySQL
+  conserva sólo metadata y claves.
+- Catálogo usa thumbnail, detalle usa display y ambos muestran fallback si falta.
+- Producto no publicado no expone la imagen pública; tenant B no puede leer la de
+  tenant A. Producto archivado no admite reemplazo/eliminación.
+- Fallos entre MySQL/storage se compensan sin dejar una referencia pública rota.
+
+### Evidencia versionada
+
+- Migración tenant V012, módulo `media`, adaptadores local/S3 y contratos de
+  catálogo/admin implementados.
+- Pruebas de procesador, servicio, storage y flujos HTTP/Angular cubren validación,
+  ETag, compensación, aislamiento, roles, CSRF, publicación y cleanup de previews.
+- Evidencia local final: 158 pruebas backend y 146 frontend sin fallos; build Angular
+  y construcción de la imagen Docker completados. El bucket real se valida en el
+  despliegue piloto y no condiciona el cierre funcional del repositorio.
+
+## STORE-02 — Configuración básica y tema
+
+> Estado: terminada. No incluye envío; el único método del MVP es `PICKUP`.
+
+### Criterios de aceptación
+
+- `OWNER` y `ADMIN` consultan/actualizan nombre, contacto, dirección e
+  instrucciones de retiro y tema; `STAFF` recibe `403` y navega a pedidos.
+- Nombre 2–160, dirección 5–240, instrucciones hasta 500 y al menos teléfono o
+  correo válido.
+- Temas `VIOLET`, `BURGUNDY`, `FOREST` y `NAVY` se reflejan en la tienda sin
+  duplicar componentes.
+- Checkout/confirmación muestran retiro y contacto; no ofrecen envío.
+- Los datos se persisten en la base tenant y no se mezclan entre comercios.
+
+### Evidencia versionada
+
+- Migración V013, endpoints públicos/admin, servicio/repositorio tenant y pantalla
+  Angular incorporados con pruebas de permisos, validación y presentación.
+- Regresión final registrada el 2026-08-04: 158 pruebas backend y 146 frontend sin
+  fallos, además del build de producción Angular. La validación visual del comercio
+  piloto seguirá siendo parte del onboarding, no una deuda de implementación.
+
+## CI-01 / DEPLOY-01 — Integración y artefacto desplegable
+
+### Criterios de aceptación
+
+- GitHub Actions ejecuta tests y build Angular, tests Maven y build Docker.
+- El contenedor usa Java 21 no-root, sirve Angular/API bajo el mismo origen y
+  responde liveness/readiness.
+- La SPA conserva rutas al recargar y las API no son interceptadas por el fallback.
+- Las solicitudes incluyen `X-Request-Id` correlacionable con logs.
+
+### Evidencia y pendientes
+
+- Workflow, Dockerfile, fallback SPA, filtro de correlación, perfil `prod` y
+  configuración Railway están versionados.
+- CI permanece `En revisión` hasta observar el workflow remoto verde. DEPLOY-01
+  queda `Terminada`: el build Angular, el empaquetado Spring y la imagen Docker
+  reproducible se construyeron correctamente; el smoke del proveedor corresponde
+  a OPS-01 porque depende de infraestructura externa.
+
+## OPS-01 / SEC-01 — Preparación y límites externos
+
+### Preparado en el repositorio
+
+- Contrato de variables productivas sin secretos.
+- Usuarios separados previstos para control, tenants y migraciones.
+- Scripts de backup consistente, validación gzip, retención y restore protegido.
+- Runbook de despliegue, smoke, paso TEST→producción y recuperación.
+
+### Pendiente externo antes de `Terminada`
+
+- Elegir/contratar runtime, MySQL y bucket; configurar dominio, DNS y HTTPS.
+- Crear usuarios reales de mínimo privilegio y probar aislamiento de permisos.
+- Cargar credenciales S3/R2, Mercado Pago y cifrado en un gestor de secretos.
+- Programar backups en un destino persistente y practicar restore aislado con
+  evidencia. Validar también retención/recuperación de objetos de imagen.
+- Seleccionar comercio piloto y completar smoke funcional/operativo.

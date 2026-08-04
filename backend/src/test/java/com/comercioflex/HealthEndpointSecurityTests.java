@@ -3,6 +3,7 @@ package com.comercioflex;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,16 @@ class HealthEndpointSecurityTests {
 	void unknownApplicationEndpointRequiresAuthentication() throws Exception {
 		mockMvc.perform(get("/api/v1/not-yet-implemented"))
 			.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void storefrontAndAdminShellRoutesArePublic() throws Exception {
+		mockMvc.perform(get("/tiendas/tienda-a/catalogo"))
+			.andExpect(status().isOk())
+			.andExpect(forwardedUrl("/index.html"));
+		mockMvc.perform(get("/admin/login"))
+			.andExpect(status().isOk())
+			.andExpect(forwardedUrl("/index.html"));
 	}
 
 	@Test

@@ -353,3 +353,31 @@ CSRF, ejecuta el `PUT` y reemplaza todo el resumen con la respuesta recalculada.
 
 Conceptos para repasar: agregación SQL (`SUM`, `COUNT`), límites temporales
 semiabiertos, zona IANA, DTO, autorización por permiso y formularios reactivos.
+## Recorrido de cierre: imagen, configuración y despliegue
+
+```text
+OWNER/ADMIN
+→ formulario Angular (archivo + alt + CSRF)
+→ API Spring Boot del tenant
+→ validación, EXIF y dos derivados
+→ objeto privado local/S3 + metadata MySQL
+→ catálogo devuelve URLs
+→ navegador solicita thumbnail/display
+→ backend verifica tenant/publicación y responde bytes + ETag
+```
+
+La configuración viaja por un flujo equivalente: el formulario envía nombre,
+contacto, retiro y tema; Spring valida permiso y reglas; MySQL tenant persiste; la
+tienda pública vuelve a consultar settings y aplica variables CSS. `STAFF` se
+dirige a operación de pedidos y no recibe permiso para modificar settings.
+
+En producción Angular no se despliega en otro dominio: su build se copia al JAR y
+Spring sirve SPA y API bajo el mismo HTTPS. Eso conserva cookies/CSRF y simplifica
+el piloto. MySQL y S3/R2 siguen siendo servicios externos privados. La CI prueba
+las dos aplicaciones y construye Docker; Railway consulta readiness.
+
+Un recorrido manual completo debe cubrir catálogo con imagen, carrito, checkout
+`PICKUP`, Checkout Pro TEST, webhook, pedido administrativo, cambio de tema y una
+prueba negativa desde otro tenant/rol. Luego se valida backup y restore aislado.
+Sin infraestructura, credenciales y evidencia real, el código puede estar listo
+para desplegar pero el piloto todavía no está desplegado.

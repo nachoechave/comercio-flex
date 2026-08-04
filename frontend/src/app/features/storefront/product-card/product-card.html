@@ -5,7 +5,11 @@
     tabindex="-1"
     aria-hidden="true"
   >
-    <span>{{ initial() }}</span>
+    @if (product().image; as image) {
+      <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" width="640" height="480" />
+    } @else {
+      <span>{{ initial() }}</span>
+    }
   </a>
   <div class="content">
     <p class="category">{{ product().category.name }}</p>

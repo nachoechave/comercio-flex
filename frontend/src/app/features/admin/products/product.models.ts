@@ -1,5 +1,15 @@
 export type ProductStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
+export interface ProductImage {
+  id: string;
+  url: string;
+  thumbnailUrl: string;
+  altText: string;
+  width?: number;
+  height?: number;
+  updatedAt?: string;
+}
+
 export interface ProductCategory {
   id: string;
   name: string;
@@ -26,6 +36,7 @@ export interface ProductDetail {
   status: ProductStatus;
   category: ProductCategory;
   variants: ProductVariant[];
+  image: ProductImage | null;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +52,7 @@ export interface ProductSummary {
   activeVariantCount: number;
   priceFrom: string | null;
   priceTo: string | null;
+  image: ProductImage | null;
   version: number;
   updatedAt: string;
 }

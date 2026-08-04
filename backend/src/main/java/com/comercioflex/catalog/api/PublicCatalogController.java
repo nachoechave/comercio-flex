@@ -44,6 +44,7 @@ public class PublicCatalogController {
 
 	@GetMapping("/products")
 	ResponseEntity<PublicProductPageResponse> findProducts(
+			@PathVariable String storeSlug,
 			@RequestParam(defaultValue = "0") @Min(0) @Max(10_000) int page,
 			@RequestParam(defaultValue = "24") @Min(1) @Max(60) int size,
 			@RequestParam(required = false) @Size(max = 100) String q,
@@ -51,15 +52,16 @@ public class PublicCatalogController {
 			@Pattern(regexp = SLUG_PATTERN) String category) {
 		PublicProductPageResponse response = PublicProductPageResponse.from(
 			catalogService.findProducts(
-				new PublicCatalogSearch(page, size, q, category)));
+				new PublicCatalogSearch(page, size, q, category)), storeSlug);
 		return noStore(response);
 	}
 
 	@GetMapping("/products/{productSlug}")
 	ResponseEntity<PublicProductDetailResponse> findProduct(
+			@PathVariable String storeSlug,
 			@PathVariable @Pattern(regexp = SLUG_PATTERN) String productSlug) {
 		return noStore(PublicProductDetailResponse.from(
-			catalogService.findProduct(productSlug)));
+			catalogService.findProduct(productSlug), storeSlug));
 	}
 
 	private <T> ResponseEntity<T> noStore(T body) {

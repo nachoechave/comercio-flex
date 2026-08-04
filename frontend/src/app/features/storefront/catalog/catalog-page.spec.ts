@@ -151,6 +151,12 @@ describe('CatalogPage', () => {
           priceFrom: '1000.00',
           priceTo: '1500.00',
           available: false,
+          image: {
+            id: 'image-1',
+            url: '/media/image-1',
+            thumbnailUrl: '/media/image-1/thumbnail',
+            altText: 'Remera blanca doblada',
+          },
         },
       ],
       page: 0,
@@ -164,6 +170,9 @@ describe('CatalogPage', () => {
     expect(text).toContain('Desde $');
     expect(text).toContain('Sin stock');
     expect(text).not.toContain('cantidad');
+    const image: HTMLImageElement = fixture.nativeElement.querySelector('.product-card img');
+    expect(image.getAttribute('src')).toBe('/media/image-1/thumbnail');
+    expect(image.alt).toBe('Remera blanca doblada');
   });
 
   it('shows a retryable error state', () => {
