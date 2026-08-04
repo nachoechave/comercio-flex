@@ -439,3 +439,34 @@ Micrometer registra contadores internos bajo
 no recuperables. No usan tenant, pedido, pago, URL ni error libre como etiquetas.
 En el MVP el endpoint global de métricas no se expone por HTTP; su conexión a un
 colector pertenece a `OPS-01`.
+
+## Prueba manual del dashboard operativo
+
+1. Levantar MySQL, backend y frontend siguiendo la ejecución local de esta guía.
+2. Ingresar con una cuenta `OWNER` o `ADMIN` de `tienda-a` y abrir
+   `http://localhost:4200/tiendas/tienda-a/admin`.
+3. Verificar que aparezcan ventas de hoy, ventas del mes, pedidos abiertos y
+   variantes con stock bajo. Los valores deben corresponder sólo a `tienda-a`.
+4. Comparar los pedidos abiertos con los estados `CONFIRMED` y
+   `READY_FOR_PICKUP` del panel de pedidos.
+5. En **Umbral de stock bajo**, guardar un valor decimal de tres posiciones. La
+   lista y el contador deben actualizarse sin recargar la página.
+6. Restaurar el valor original para no alterar la configuración de prueba.
+7. Repetir la consulta con `ADMIN`; debe poder verla. Una cuenta `STAFF` debe
+   recibir acceso denegado y no datos parciales.
+8. Probar teclado, enlaces hacia pedidos e inventario, ancho móvil y consola del
+   navegador. No debe haber desborde horizontal ni errores de ejecución.
+
+Comandos de verificación automática:
+
+```powershell
+cd backend
+.\mvnw.cmd test
+
+cd ..\frontend
+npm test -- --watch=false
+npm run build
+```
+
+El dashboard no consulta Mercado Pago ni depende de sus redirecciones sandbox.
+Resume datos autoritativos ya persistidos en MySQL por pedidos e inventario.

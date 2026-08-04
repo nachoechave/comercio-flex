@@ -59,7 +59,7 @@ versionada; la inicialización automática de esquema no reemplaza a Flyway.
 
 | Entidad | Responsabilidad |
 |---|---|
-| `store_settings` | Branding, contacto, moneda y configuración pública |
+| `store_settings` | Branding, moneda, zona horaria y umbral global de stock bajo |
 | `categories` | Organización del catálogo |
 | `products` | Información común y publicación |
 | `product_variants` | SKU, precio, unidad y opciones vendibles |
@@ -69,6 +69,17 @@ versionada; la inicialización automática de esquema no reemplaza a Flyway.
 | `orders`, `order_items`, `order_status_history` | Compra y fotografía histórica |
 | `payment_intents`, `payment_transactions` | Intentos y resultados internos implementados en PAY-01A |
 | `audit_events` | Acciones administrativas sensibles |
+
+### Configuración y soporte del dashboard
+
+La migración tenant `V011__add_dashboard_settings.sql` agrega
+`store_settings.low_stock_threshold DECIMAL(15,3)`, no negativo y con valor
+inicial `5.000`. Es una configuración propia de cada base tenant: cambiarla en un
+comercio no afecta a los demás. El saldo inexistente se interpreta como cero.
+
+El índice `order_status_history(new_status, created_at, order_id)` permite ubicar
+la primera confirmación de cada pedido dentro de una ventana temporal. El total
+se toma del snapshot `orders.subtotal`; no se recalculan precios históricos.
 
 ### Categorías
 

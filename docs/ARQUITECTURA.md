@@ -389,3 +389,23 @@ autorización, firmas, tokens, query completa o cuerpo del proveedor.
 Fuentes: [Angular](https://angular.dev/reference/versions),
 [Spring Boot](https://docs.spring.io/spring-boot/system-requirements.html),
 [MySQL 8.4](https://dev.mysql.com/doc/refman/8.4/en/).
+
+## Flujo del dashboard MVP
+
+```text
+OWNER/ADMIN
+→ AdminDashboard Angular
+→ DashboardApiService
+→ GET /admin/dashboard
+→ filtro tenant + permiso VIEW_DASHBOARD
+→ DashboardService calcula ventanas en la zona del comercio
+→ JdbcDashboardRepository agrega pedidos, historial e inventario
+→ MySQL de ese comercio
+→ DTO con importes/cantidades canónicas
+→ tarjetas y lista de stock crítico
+```
+
+El dashboard no mantiene una base analítica ni caché en el MVP. Lee agregados de
+la base tenant bajo demanda. Esto evita duplicar datos mientras el volumen es
+pequeño; métricas históricas complejas podrán usar proyecciones en una versión
+posterior sin convertir ahora el sistema en microservicios.

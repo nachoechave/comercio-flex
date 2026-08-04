@@ -338,3 +338,18 @@ Conceptos para profundizar:
 - consistencia eventual entre bases;
 - credenciales TEST frente a producción;
 - secretos externos, rotación y observabilidad sin PII.
+
+## Ejemplo completo: dashboard operativo
+
+Angular solicita un único resumen para la tienda activa. Spring Boot primero
+valida la sesión, la membresía y el rol; después selecciona el datasource de esa
+tienda. El servicio transforma la fecha actual en la zona horaria configurada y
+el repositorio ejecuta agregaciones SQL sobre pedidos, historial e inventario.
+
+La base devuelve números, el backend los serializa como textos decimales exactos
+y Angular les aplica formato visual argentino. De esta forma ni JavaScript ni la
+UI se convierten en autoridad para importes. Al cambiar el umbral, Angular obtiene
+CSRF, ejecuta el `PUT` y reemplaza todo el resumen con la respuesta recalculada.
+
+Conceptos para repasar: agregación SQL (`SUM`, `COUNT`), límites temporales
+semiabiertos, zona IANA, DTO, autorización por permiso y formularios reactivos.

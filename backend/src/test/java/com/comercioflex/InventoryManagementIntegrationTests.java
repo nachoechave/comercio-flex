@@ -3,6 +3,7 @@ package com.comercioflex;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -605,6 +606,64 @@ class InventoryManagementIntegrationTests {
 			.andExpect(status().isBadRequest());
 	}
 
+	@Test
+	void dashboardAggregatesOnlyCurrentValidSalesAndIsolatesTenantData()
+			throws Exception {
+		insertDashboardOrder(TENANT_A_DATABASE, "CONFIRMED", "1250.50");
+		insertDashboardOrder(TENANT_A_DATABASE, "CANCELLED", "900.00");
+		Auth owner = login("owner@example.com");
+
+		mockMvc.perform(get(dashboard("tienda-a")).cookie(owner.session()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.currencyCode").value("ARS"))
+			.andExpect(jsonPath("$.timezone")
+				.value("America/Argentina/Buenos_Aires"))
+			.andExpect(jsonPath("$.salesToday").value("1250.50"))
+			.andExpect(jsonPath("$.salesThisMonth").value("1250.50"))
+			.andExpect(jsonPath("$.openOrders").value(1))
+			.andExpect(jsonPath("$.lowStockVariants").value(1))
+			.andExpect(jsonPath("$.criticalStock[0].variantId").value(VARIANT_A))
+			.andExpect(jsonPath("$.criticalStock[0].quantity").value("0.000"));
+
+		mockMvc.perform(get(dashboard("tienda-b")).cookie(owner.session()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.salesToday").value("0.00"))
+			.andExpect(jsonPath("$.openOrders").value(0))
+			.andExpect(jsonPath("$.criticalStock[0].variantId").value(VARIANT_B));
+	}
+
+	@Test
+	void dashboardSettingsRequirePermissionAndValidateThreshold() throws Exception {
+		Auth admin = login("admin@example.com");
+		mockMvc.perform(put(dashboard("tienda-a") + "/settings")
+				.cookie(admin.session(), admin.csrf())
+				.header("X-XSRF-TOKEN", admin.csrf().getValue())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"lowStockThreshold\": \"2.750\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.lowStockThreshold").value("2.750"));
+		assertThat(decimal(TENANT_A_DATABASE,
+			"SELECT low_stock_threshold FROM store_settings LIMIT 1"))
+			.isEqualTo("2.750");
+
+		mockMvc.perform(put(dashboard("tienda-a") + "/settings")
+				.cookie(admin.session(), admin.csrf())
+				.header("X-XSRF-TOKEN", admin.csrf().getValue())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"lowStockThreshold\": \"-1.000\"}"))
+			.andExpect(status().isBadRequest());
+
+		Auth staff = login("staff@example.com");
+		mockMvc.perform(get(dashboard("tienda-a")).cookie(staff.session()))
+			.andExpect(status().isForbidden());
+		mockMvc.perform(put(dashboard("tienda-a") + "/settings")
+				.cookie(staff.session(), staff.csrf())
+				.header("X-XSRF-TOKEN", staff.csrf().getValue())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"lowStockThreshold\": \"3.000\"}"))
+			.andExpect(status().isForbidden());
+	}
+
 	private void runConcurrentAdjustments(
 			Auth auth,
 			String variantId,
@@ -717,6 +776,10 @@ class InventoryManagementIntegrationTests {
 		return "/api/v1/stores/" + store + "/admin/inventory";
 	}
 
+	private String dashboard(String store) {
+		return "/api/v1/stores/" + store + "/admin/dashboard";
+	}
+
 	private String variant(String store, String variantId) {
 		return inventory(store) + "/variants/" + variantId;
 	}
@@ -770,11 +833,44 @@ class InventoryManagementIntegrationTests {
 	}
 
 	private static void resetTenant(MySQLContainer<?> database) throws SQLException {
+		execute(database, "DELETE FROM order_status_history");
+		execute(database, "DELETE FROM inventory_reservations");
+		execute(database, "DELETE FROM order_items");
 		execute(database, "DELETE FROM inventory_movements");
+		execute(database, "DELETE FROM orders");
 		execute(database, "DELETE FROM inventory_balances");
 		execute(database, "DELETE FROM product_variants");
 		execute(database, "DELETE FROM products");
 		execute(database, "DELETE FROM categories");
+		execute(database, "DELETE FROM store_settings");
+		execute(database, """
+			INSERT INTO store_settings (store_name, currency_code, timezone)
+			VALUES ('Tienda de prueba', 'ARS', 'America/Argentina/Buenos_Aires')
+			""");
+	}
+
+	private static void insertDashboardOrder(
+			MySQLContainer<?> database,
+			String status,
+			String subtotal) throws SQLException {
+		execute(database, """
+			INSERT INTO orders (
+				public_id, idempotency_key, request_fingerprint, lookup_token_hash,
+				status, fulfillment_type, customer_name, customer_phone,
+				currency_code, subtotal, reservation_expires_at)
+			VALUES (
+				UUID_TO_BIN(UUID()), UUID_TO_BIN(UUID()), RANDOM_BYTES(32), RANDOM_BYTES(32),
+				'%s', 'PICKUP', 'Cliente dashboard', '11111111',
+				'ARS', %s, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 1 HOUR))
+			""".formatted(status, subtotal));
+		execute(database, """
+			INSERT INTO order_status_history (
+				public_id, order_id, previous_status, new_status,
+				actor_display_name, created_at)
+			SELECT UUID_TO_BIN(UUID()), MAX(id), 'PENDING_CONFIRMATION', 'CONFIRMED',
+				'Sistema', UTC_TIMESTAMP(6)
+			FROM orders
+			""");
 	}
 
 	private static void insertCategory(

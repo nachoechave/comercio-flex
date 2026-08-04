@@ -113,6 +113,11 @@
 | ADR-106 | Fechas operativas | UTC al persistir y zona del comercio al mostrar | Aceptada |
 | ADR-107 | Retorno demorado | Reconciliación verificada bajo demanda | Aceptada |
 | ADR-108 | Retorno sin pago | Inspección autoritativa sin mutar el negocio | Aceptada |
+| ADR-109 | CSRF público | Sólo operaciones basadas en sesión | Aceptada |
+| ADR-110 | Configuración frontend | Separar CORS y URL pública | Aceptada |
+| ADR-111 | Ventas del dashboard | Primera confirmación y estado actual válido | Aceptada |
+| ADR-112 | Pedidos abiertos | Confirmados y listos para retirar | Aceptada |
+| ADR-113 | Stock bajo | Umbral global tenant, decimal y configurable | Aceptada |
 
 ## Plantilla ADR
 
@@ -1710,3 +1715,48 @@
 - **Consecuencias:** desarrollo local y retorno público pueden coexistir sin
   wildcard CORS. Cada nuevo túnel requiere actualizar ambas variables explícitas
   y reiniciar el backend.
+
+### ADR-111 — Ventas según primera confirmación y estado actual válido
+
+- **Fecha:** 2026-08-03
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** DASH-01 debe mostrar ventas del día y del mes sin confundir pagos
+  pendientes, rechazos o cancelaciones con ingresos operativos.
+- **Problema:** un pedido puede cambiar de estado después de confirmarse y su fecha
+  de creación no representa necesariamente la fecha de venta.
+- **Alternativas:** sumar por creación; sumar por pago; usar la primera confirmación
+  y exigir un estado actual válido.
+- **Decisión:** se usa la primera transición a `CONFIRMED`, dentro de la zona
+  horaria del comercio. Sólo suman estados actuales `CONFIRMED`,
+  `READY_FOR_PICKUP` y `COMPLETED`.
+- **Consecuencias:** cancelados, rechazados, vencidos y pendientes quedan fuera. Un
+  futuro módulo contable podrá definir ventas netas, reembolsos e impuestos aparte.
+
+### ADR-112 — Pedidos abiertos operativos
+
+- **Fecha:** 2026-08-03
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el dashboard necesita una señal pequeña para la operación diaria.
+- **Problema:** incluir pendientes de pago o pedidos terminados genera un número
+  que no representa trabajo accionable.
+- **Alternativas:** todos los no cancelados; sólo pendientes; confirmados y listos.
+- **Decisión:** `openOrders` cuenta `CONFIRMED` y `READY_FOR_PICKUP`.
+- **Consecuencias:** la tarjeta enlaza a gestión de pedidos; un desglose por estado
+  y tiempos de preparación queda fuera del MVP.
+
+### ADR-113 — Umbral global de stock bajo por comercio
+
+- **Fecha:** 2026-08-03
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** ADR-044 había diferido la definición hasta DASH-01.
+- **Problema:** un umbral por variante ofrece precisión, pero aumenta mucho la
+  configuración inicial y el costo de administración.
+- **Alternativas:** valor fijo; umbral por variante; umbral global configurable.
+- **Decisión:** cada tenant tiene un umbral global decimal, inicial `5.000`. Se
+  consideran variantes activas de productos no archivados y saldo menor o igual;
+  la lista prioriza las cinco cantidades más bajas.
+- **Consecuencias:** cubre unidades y preparación futura para peso con una interfaz
+  simple. Los umbrales por categoría o variante quedan para una versión posterior.

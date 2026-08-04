@@ -1,8 +1,7 @@
 # Estructura del proyecto
 
-> Actualizado durante el diseño de PAY-01C el 2026-07-31. El monolito modular
-> incluye identidad, routing tenant, catálogo, inventario, pedidos, pagos internos
-> y conexión OAuth; Checkout Pro y el inbox permanecen en desarrollo.
+> Actualizado durante DASH-01 el 2026-08-03. El monolito modular incluye
+> identidad, routing tenant, catálogo, inventario, pedidos, pagos y dashboard.
 
 ```text
 comercio-flex/
@@ -42,7 +41,7 @@ frontend/
     │       ├── categories/         # Listado, formulario y API de categorías
     │       ├── inventory/          # Balance, ajustes e historial por variante
     │       ├── products/           # Lista, alta, detalle, edición y API de productos
-    │       ├── dashboard/          # Entrada administrativa protegida
+    │       ├── dashboard/          # Métricas operativas y umbral de stock bajo
     │       ├── payment-connection/ # Conexión OAuth exclusiva de OWNER
     │       └── store-selector/     # Selector para usuarios con varias membresías
     ├── shared/ui/status-pill/      # UI reutilizable sin negocio
@@ -94,6 +93,10 @@ backend/src/main/
 │   │       ├── fake/               # Proveedor determinista sólo para pruebas
 │   │       ├── jdbc/               # Intentos y transacciones en la base tenant
 │   │       └── mercadopago/        # OAuth remoto tipado; Checkout en evolución
+│   ├── dashboard/
+│   │   ├── api/                    # GET del resumen y PUT del umbral
+│   │   ├── application/            # Ventanas horarias y modelos agregados
+│   │   └── infrastructure/jdbc/    # Consultas tenant de ventas, pedidos y stock
 │   ├── tenant/
 │   │   ├── api/                    # Endpoint, filtro y errores HTTP
 │   │   ├── application/            # Resolución, contexto y caso de consulta

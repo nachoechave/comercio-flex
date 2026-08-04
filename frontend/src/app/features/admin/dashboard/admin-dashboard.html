@@ -1,0 +1,104 @@
+<section class="page" aria-labelledby="dashboard-title">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Operación</p>
+      <h1 id="dashboard-title">Resumen del comercio</h1>
+      <p>Ventas confirmadas, pedidos abiertos y alertas de inventario.</p>
+    </div>
+    <button type="button" class="secondary" (click)="reload()" [disabled]="loading()">
+      Actualizar
+    </button>
+  </header>
+
+  @if (loading()) {
+    <p class="state" role="status">Calculando indicadores…</p>
+  } @else if (errorMessage() && !summary()) {
+    <div class="state error" role="alert">
+      <p>{{ errorMessage() }}</p>
+      <button type="button" (click)="reload()">Reintentar</button>
+    </div>
+  } @else if (summary(); as data) {
+    @if (errorMessage()) {
+      <p class="message error" role="alert">{{ errorMessage() }}</p>
+    }
+    @if (noticeMessage()) {
+      <p class="message notice" role="status">{{ noticeMessage() }}</p>
+    }
+
+    <div class="metrics" aria-label="Indicadores principales">
+      <article>
+        <p>Ventas de hoy</p>
+        <strong>{{ formatMoney(data.salesToday, data.currencyCode) }}</strong>
+        <span>Confirmadas en {{ data.timezone }}</span>
+      </article>
+      <article>
+        <p>Ventas del mes</p>
+        <strong>{{ formatMoney(data.salesThisMonth, data.currencyCode) }}</strong>
+        <span>Sin pedidos cancelados</span>
+      </article>
+      <article>
+        <p>Pedidos abiertos</p>
+        <strong>{{ data.openOrders }}</strong>
+        <a [routerLink]="['pedidos']">Ir a pedidos</a>
+      </article>
+      <article>
+        <p>Variantes con stock bajo</p>
+        <strong>{{ data.lowStockVariants }}</strong>
+        <a [routerLink]="['inventario']">Ir al inventario</a>
+      </article>
+    </div>
+
+    <div class="content-grid">
+      <section class="critical" aria-labelledby="critical-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Prioridad</p>
+            <h2 id="critical-title">Stock que requiere atención</h2>
+          </div>
+          <span>Umbral: {{ data.lowStockThreshold }}</span>
+        </div>
+        @if (data.criticalStock.length === 0) {
+          <p class="empty">No hay variantes por debajo del umbral configurado.</p>
+        } @else {
+          <ul>
+            @for (item of data.criticalStock; track item.variantId) {
+              <li>
+                <div>
+                  <strong>{{ item.productName }}</strong>
+                  <span>{{ item.sku }} · {{ item.size || 'Sin talle' }} · {{ item.color || 'Sin color' }}</span>
+                </div>
+                <div class="stock-value">
+                  <span>{{ item.quantity }}</span>
+                  <a [routerLink]="['inventario', item.variantId]" [attr.aria-label]="'Ver inventario de ' + item.sku">Ver</a>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="settings" aria-labelledby="settings-title">
+        <p class="eyebrow">Configuración</p>
+        <h2 id="settings-title">Umbral de stock bajo</h2>
+        <p>Una variante aparece en alerta cuando su existencia es igual o menor a este valor.</p>
+        <form [formGroup]="thresholdForm" (ngSubmit)="saveThreshold()">
+          <label for="low-stock-threshold">Cantidad</label>
+          <input
+            id="low-stock-threshold"
+            type="text"
+            inputmode="decimal"
+            formControlName="threshold"
+            aria-describedby="threshold-help threshold-error"
+          />
+          <small id="threshold-help">Admite hasta tres decimales, por ejemplo 5.000.</small>
+          @if (thresholdForm.controls.threshold.touched && thresholdForm.controls.threshold.invalid) {
+            <p id="threshold-error" class="field-error">Ingresá una cantidad válida mayor o igual a cero.</p>
+          }
+          <button type="submit" [disabled]="saving()">
+            {{ saving() ? 'Guardando…' : 'Guardar umbral' }}
+          </button>
+        </form>
+      </section>
+    </div>
+  }
+</section>
