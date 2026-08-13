@@ -6,12 +6,13 @@ import { exhaustMap, finalize } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
 import { DashboardApiService } from './dashboard-api.service';
 import { DashboardSummary } from './dashboard.models';
 
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [QuantityFormatPipe, ReactiveFormsModule, RouterLink],
   templateUrl: './admin-dashboard.html',
   styleUrl: './admin-dashboard.scss',
 })

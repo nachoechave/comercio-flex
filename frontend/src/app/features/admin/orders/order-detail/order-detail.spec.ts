@@ -102,6 +102,8 @@ describe('OrderDetail', () => {
     expect(fixture.nativeElement.textContent).toContain('ORD-000001');
     expect(fixture.nativeElement.textContent).toContain('cliente@example.test');
     expect(fixture.nativeElement.textContent).toContain('Asado');
+    expect(fixture.nativeElement.textContent).toContain('1 unidad(es)');
+    expect(fixture.nativeElement.textContent).not.toContain('1.000 unidad(es)');
     expect(fixture.nativeElement.textContent).toContain('Confirmar');
     expect(fixture.nativeElement.textContent).toContain('Rechazar');
   });

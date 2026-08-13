@@ -38,6 +38,35 @@ describe('InventoryList tenant reuse', () => {
 
   afterEach(() => http.verify());
 
+  it('renders stock without insignificant decimal zeros', () => {
+    http
+      .expectOne((request) => request.url.includes('/tienda-a/admin/inventory'))
+      .flush({
+        items: [
+          {
+            variantId: 'variant-1',
+            productId: 'product-1',
+            productName: 'Remera',
+            productStatus: 'PUBLISHED',
+            sku: 'REM-M',
+            size: 'M',
+            color: 'Negro',
+            variantActive: true,
+            quantity: '10.000',
+            version: 1,
+            updatedAt: '2026-08-13T12:00:00Z',
+          },
+        ],
+        page: 0,
+        size: 20,
+        totalItems: 1,
+        totalPages: 1,
+      });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.quantity').textContent.trim()).toBe('10');
+  });
+
   it('resets page and filters when navigating A to B', () => {
     http
       .expectOne((request) => request.url.includes('/tienda-a/admin/inventory'))

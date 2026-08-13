@@ -7,6 +7,7 @@ import { finalize, switchMap } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
 import { CartService } from '../cart/cart.service';
 import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
 import { PaymentApiService } from '../payment/payment-api.service';
@@ -19,7 +20,7 @@ import { CreateGuestOrder } from '../storefront.models';
 
 @Component({
   selector: 'app-checkout-page',
-  imports: [ReactiveFormsModule, RouterLink, StorefrontMoneyPipe],
+  imports: [QuantityFormatPipe, ReactiveFormsModule, RouterLink, StorefrontMoneyPipe],
   templateUrl: './checkout-page.html',
   styleUrl: './checkout-page.scss',
 })

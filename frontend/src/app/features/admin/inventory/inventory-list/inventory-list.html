@@ -47,7 +47,7 @@
               <td>{{ item.productName }}</td>
               <td><strong>{{ item.sku }}</strong></td>
               <td>{{ item.size || 'Sin talle' }} · {{ item.color || 'Sin color' }}</td>
-              <td class="quantity">{{ item.quantity }}</td>
+              <td class="quantity">{{ item.quantity | quantityFormat }}</td>
               <td>
                 @if (!item.variantActive || item.productStatus === 'ARCHIVED') {
                   <span class="warning">{{ item.productStatus === 'ARCHIVED' ? 'Producto archivado' : 'Variante inactiva' }}</span>

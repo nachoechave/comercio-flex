@@ -37,7 +37,7 @@ describe('InventoryDetail', () => {
 
   afterEach(() => http.verify());
 
-  it('shows canonical quantities and the immutable movement context', () => {
+  it('shows formatted quantities and the immutable movement context', () => {
     http
       .expectOne('/api/v1/stores/tienda-a/admin/inventory/variants/variant-1')
       .flush({
@@ -81,7 +81,8 @@ describe('InventoryDetail', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('producto está archivado');
-    expect(fixture.nativeElement.textContent).toContain('-3.000');
+    expect(fixture.nativeElement.textContent).toContain('-3');
+    expect(fixture.nativeElement.textContent).not.toContain('.000');
     expect(fixture.nativeElement.textContent).toContain('Daño o pérdida');
     expect(fixture.nativeElement.textContent).toContain('Operador Demo');
   });

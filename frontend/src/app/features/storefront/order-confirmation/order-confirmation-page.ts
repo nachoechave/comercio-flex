@@ -6,6 +6,7 @@ import { finalize, map, Subscription, switchMap } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
 import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
 import { PaymentApiService } from '../payment/payment-api.service';
 import { paymentErrorMessage } from '../payment/payment-errors';
@@ -18,7 +19,7 @@ import { GuestOrder, GuestOrderItem, GuestOrderStatus } from '../storefront.mode
 
 @Component({
   selector: 'app-order-confirmation-page',
-  imports: [DatePipe, RouterLink, StorefrontMoneyPipe],
+  imports: [DatePipe, QuantityFormatPipe, RouterLink, StorefrontMoneyPipe],
   templateUrl: './order-confirmation-page.html',
   styleUrl: './order-confirmation-page.scss',
 })

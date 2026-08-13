@@ -7,6 +7,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
+import { QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pipe';
 import { StorefrontMoneyPipe } from '../../../storefront/storefront-money.pipe';
 import { OrderApiService } from '../order-api.service';
 import {
@@ -19,7 +20,7 @@ import {
 
 @Component({
   selector: 'app-order-detail',
-  imports: [DatePipe, ReactiveFormsModule, RouterLink, StorefrontMoneyPipe],
+  imports: [DatePipe, QuantityFormatPipe, ReactiveFormsModule, RouterLink, StorefrontMoneyPipe],
   templateUrl: './order-detail.html',
   styleUrl: './order-detail.scss',
 })

@@ -33,7 +33,7 @@
                 @if (optionLabel(item)) {
                   <span>{{ optionLabel(item) }}</span>
                 }
-                <span>{{ item.quantity }} unidad(es)</span>
+                <span>{{ item.quantity | quantityFormat }} unidad(es)</span>
               </div>
               <strong>{{ item.lineTotal | storefrontMoney: currentOrder.currencyCode }}</strong>
             </li>

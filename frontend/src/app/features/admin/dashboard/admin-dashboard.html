@@ -55,7 +55,7 @@
             <p class="eyebrow">Prioridad</p>
             <h2 id="critical-title">Stock que requiere atención</h2>
           </div>
-          <span>Umbral: {{ data.lowStockThreshold }}</span>
+          <span>Umbral: {{ data.lowStockThreshold | quantityFormat }}</span>
         </div>
         @if (data.criticalStock.length === 0) {
           <p class="empty">No hay variantes por debajo del umbral configurado.</p>
@@ -68,7 +68,7 @@
                   <span>{{ item.sku }} · {{ item.size || 'Sin talle' }} · {{ item.color || 'Sin color' }}</span>
                 </div>
                 <div class="stock-value">
-                  <span>{{ item.quantity }}</span>
+                  <span>{{ item.quantity | quantityFormat }}</span>
                   <a [routerLink]="['inventario', item.variantId]" [attr.aria-label]="'Ver inventario de ' + item.sku">Ver</a>
                 </div>
               </li>

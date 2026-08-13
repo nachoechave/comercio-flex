@@ -12,7 +12,7 @@
   } @else if (inventory(); as current) {
     <p class="eyebrow">Ajuste auditable</p>
     <h1 id="adjustment-title">Ajustar {{ current.sku }}</h1>
-    <p>{{ current.productName }} · Existencia actual: <strong>{{ current.quantity }}</strong></p>
+    <p>{{ current.productName }} · Existencia actual: <strong>{{ current.quantity | quantityFormat }}</strong></p>
 
     @if (!current.variantActive || current.productStatus === 'ARCHIVED') {
       <p class="warning" role="status">
@@ -58,8 +58,8 @@
 
       @if (preview(); as calculation) {
         <p class="preview" [class.invalid]="!calculation.valid" aria-live="polite">
-          {{ calculation.current }} {{ calculation.operator }} {{ calculation.quantity }} =
-          <strong>{{ calculation.result }}</strong>
+          {{ calculation.current | quantityFormat }} {{ calculation.operator }} {{ calculation.quantity | quantityFormat }} =
+          <strong>{{ calculation.result | quantityFormat }}</strong>
           @if (!calculation.valid) { · Resultado no permitido }
         </p>
       }

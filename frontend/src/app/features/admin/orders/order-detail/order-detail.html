@@ -52,7 +52,7 @@
                   @if (optionLabel(item.size, item.color)) {
                     <span>{{ optionLabel(item.size, item.color) }}</span>
                   }
-                  <span>{{ item.quantity }} unidad(es)</span>
+                  <span>{{ item.quantity | quantityFormat }} unidad(es)</span>
                 </div>
                 <strong>{{ item.lineTotal | storefrontMoney: current.currencyCode }}</strong>
               </li>

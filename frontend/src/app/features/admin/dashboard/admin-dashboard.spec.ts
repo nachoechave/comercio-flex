@@ -64,7 +64,8 @@ describe('AdminDashboard', () => {
     expect(text).toContain('16.900,75');
     expect(text).toContain('Pedidos abiertos2');
     expect(text).toContain('Asado especial');
-    expect(text).toContain('1.250');
+    expect(text).toContain('Umbral: 5');
+    expect(text).toContain('1.25');
   });
 
   it('updates the configurable threshold after obtaining CSRF', () => {

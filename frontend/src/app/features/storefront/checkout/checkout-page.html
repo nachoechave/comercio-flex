@@ -85,7 +85,7 @@
         <ul>
           @for (item of items(); track item.variantId) {
             <li>
-              <span>{{ item.quantity }} × {{ item.productName }}</span>
+              <span>{{ item.quantity | quantityFormat }} × {{ item.productName }}</span>
               <strong>{{ item.unitPrice | storefrontMoney: context.currencyCode() }}</strong>
             </li>
           }

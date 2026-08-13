@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { routeParam } from '../../../../core/auth/auth.guards';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
+import { QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pipe';
 import { InventoryApiService } from '../inventory-api.service';
 import { inventoryErrorMessage } from '../inventory-errors';
 import { InventoryAvailability, InventoryPage } from '../inventory.models';
@@ -19,7 +20,7 @@ const EMPTY_PAGE: InventoryPage = {
 
 @Component({
   selector: 'app-inventory-list',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [QuantityFormatPipe, ReactiveFormsModule, RouterLink],
   templateUrl: './inventory-list.html',
   styleUrl: './inventory-list.scss',
 })

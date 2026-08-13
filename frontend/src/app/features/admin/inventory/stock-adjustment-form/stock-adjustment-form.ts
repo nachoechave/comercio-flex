@@ -7,6 +7,10 @@ import { finalize, Subscription } from 'rxjs';
 
 import { routeParam } from '../../../../core/auth/auth.guards';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
+import {
+  formatQuantity,
+  QuantityFormatPipe,
+} from '../../../../shared/pipes/quantity-format.pipe';
 import { InventoryApiService } from '../inventory-api.service';
 import { inventoryErrorMessage } from '../inventory-errors';
 import {
@@ -33,7 +37,7 @@ function formatThousandths(value: bigint): string {
 
 @Component({
   selector: 'app-stock-adjustment-form',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [QuantityFormatPipe, ReactiveFormsModule, RouterLink],
   templateUrl: './stock-adjustment-form.html',
   styleUrl: './stock-adjustment-form.scss',
 })
@@ -165,7 +169,7 @@ export class StockAdjustmentForm {
         next: (response) => {
           this.inventory.set(response.inventory);
           this.successMessage.set(
-            `Ajuste registrado. Nueva existencia: ${response.inventory.quantity}.`,
+            `Ajuste registrado. Nueva existencia: ${formatQuantity(response.inventory.quantity)}.`,
           );
           this.form.reset({
             direction: 'INCREASE',

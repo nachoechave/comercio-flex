@@ -135,7 +135,8 @@ describe('StockAdjustmentForm', () => {
       },
     });
     fixture.detectChanges();
-    expect(fixture.componentInstance.successMessage()).toContain('10.000');
+    expect(fixture.componentInstance.successMessage()).toContain('10.');
+    expect(fixture.componentInstance.successMessage()).not.toContain('10.000');
   });
 });
 
