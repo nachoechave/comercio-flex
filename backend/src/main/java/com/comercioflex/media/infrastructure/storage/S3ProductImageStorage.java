@@ -13,6 +13,8 @@ import com.comercioflex.media.config.ProductMediaProperties;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
+import software.amazon.awssdk.core.checksums.ResponseChecksumValidation;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -35,6 +37,8 @@ public class S3ProductImageStorage implements ProductImageStorage {
 		}
 		var builder = S3Client.builder()
 			.region(Region.of(values.getRegion()))
+			.requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
+			.responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
 			.serviceConfiguration(S3Configuration.builder()
 				.pathStyleAccessEnabled(values.isPathStyle())
 				.build());
