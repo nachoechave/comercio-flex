@@ -1,11 +1,63 @@
-<section class="catalog" aria-labelledby="catalog-title">
-  <header class="hero">
-    <p class="eyebrow">Catálogo online</p>
-    <h1 id="catalog-title">{{ context.settings()?.storeName }}</h1>
-    <p>Encontrá productos, opciones y precios disponibles en nuestra tienda.</p>
-  </header>
+<section class="catalog" [class.catalog--streetwear]="isStreetwear()" aria-labelledby="catalog-title">
+  @if (isStreetwear()) {
+    <header class="streetwear-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Nueva colección · 2026</p>
+        <h1 id="catalog-title">Hecho distinto.<br />Diseñado para <em>destacar.</em></h1>
+        <p>Streetwear premium para quienes no necesitan permiso para marcar su propio camino.</p>
+        <div class="hero-actions">
+          <a class="hero-primary" href="#catalog-products">Comprar ahora</a>
+          <a class="hero-secondary" href="#category-section">Ver colección</a>
+        </div>
+      </div>
+    </header>
 
-  <form class="filters" [formGroup]="filters" (ngSubmit)="search()" role="search">
+    <section class="trust-strip" aria-label="Beneficios de la tienda">
+      <article><span aria-hidden="true">↗</span><p><strong>Envíos a todo el país</strong><small>Gratis desde $100.000</small></p></article>
+      <article><span aria-hidden="true">↻</span><p><strong>Cambios simples</strong><small>Hasta 30 días</small></p></article>
+      <article><span aria-hidden="true">◇</span><p><strong>Compra segura</strong><small>Pagos protegidos</small></p></article>
+      <article><span aria-hidden="true">◎</span><p><strong>Estamos para ayudarte</strong><small>Atención personalizada</small></p></article>
+    </section>
+
+    @if (categories().length > 0) {
+      <section id="category-section" class="category-showcase" aria-labelledby="category-title">
+        <p class="section-kicker">Elegí tu estilo</p>
+        <h2 id="category-title">Comprá por categoría</h2>
+        <div class="category-grid">
+          @for (category of categories().slice(0, 5); track category.id) {
+            <a
+              class="category-card"
+              [routerLink]="['/tiendas', storeSlug()]"
+              [queryParams]="{ categoria: category.slug }"
+            >
+              @if (categoryImage(category.slug); as image) {
+                <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" />
+              } @else {
+                <span class="category-monogram" aria-hidden="true">{{ category.name.slice(0, 1) }}</span>
+              }
+              <span class="category-shade"></span>
+              <span class="category-copy"><strong>{{ category.name }}</strong><small>Ver productos →</small></span>
+            </a>
+          }
+        </div>
+      </section>
+    }
+  } @else {
+    <header class="hero">
+      <p class="eyebrow">Catálogo online</p>
+      <h1 id="catalog-title">{{ context.settings()?.storeName }}</h1>
+      <p>Encontrá productos, opciones y precios disponibles en nuestra tienda.</p>
+    </header>
+  }
+
+  <form
+    id="catalog-search"
+    class="filters"
+    [class.filters--streetwear]="isStreetwear()"
+    [formGroup]="filters"
+    (ngSubmit)="search()"
+    role="search"
+  >
     <div class="search-field">
       <label for="catalog-query">Buscar productos</label>
       <input
@@ -58,11 +110,18 @@
       }
     </div>
   } @else {
-    <div class="results-heading">
+    <div id="catalog-products" class="results-heading">
       <div>
-        <p class="eyebrow">Productos</p>
-        <h2>{{ page().totalItems }} {{ page().totalItems === 1 ? 'resultado' : 'resultados' }}</h2>
+        <p class="eyebrow">{{ isStreetwear() ? 'Nueva temporada' : 'Productos' }}</p>
+        @if (isStreetwear()) {
+          <h2>Nuevos ingresos</h2>
+        } @else {
+          <h2>{{ page().totalItems }} {{ page().totalItems === 1 ? 'resultado' : 'resultados' }}</h2>
+        }
       </div>
+      @if (isStreetwear()) {
+        <span class="result-count">{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span>
+      }
       @if (query() || selectedCategory()) {
         <button class="text-button" type="button" (click)="clearFilters()">Limpiar filtros</button>
       }
@@ -96,6 +155,21 @@
           Siguiente
         </button>
       </nav>
+    }
+
+    @if (isStreetwear()) {
+      <section class="campaign-grid" aria-label="Campañas destacadas">
+        <article class="campaign campaign--dark">
+          <p>Vestí tu identidad</p>
+          <h2>Lo auténtico<br />no se copia.</h2>
+          <a href="#catalog-products">Ver el drop</a>
+        </article>
+        <article class="campaign campaign--photo">
+          <p>Edición limitada</p>
+          <h2>Piezas que hablan<br />antes que vos.</h2>
+          <a href="#catalog-products">Explorar ahora</a>
+        </article>
+      </section>
     }
   }
 </section>

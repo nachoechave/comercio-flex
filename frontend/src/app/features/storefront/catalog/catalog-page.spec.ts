@@ -175,6 +175,66 @@ describe('CatalogPage', () => {
     expect(image.alt).toBe('Remera blanca doblada');
   });
 
+  it('renders the streetwear campaign only for tienda-a', () => {
+    queryParams.next(convertToParamMap({}));
+    create();
+    flushCategories();
+    http.expectOne((request) => request.url.includes('/catalog/products')).flush({
+      items: [
+        {
+          id: 'product-1',
+          name: 'Remera urbana',
+          slug: 'remera-urbana',
+          category: { id: 'category-1', name: 'Infantil', slug: 'infantil' },
+          priceFrom: '25000.00',
+          priceTo: '25000.00',
+          available: true,
+          image: null,
+        },
+      ],
+      page: 0,
+      size: 24,
+      totalItems: 1,
+      totalPages: 1,
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.catalog--streetwear')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.streetwear-hero')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Hecho distinto');
+    expect(fixture.nativeElement.textContent).toContain('Comprá por categoría');
+    expect(fixture.nativeElement.textContent).toContain('Nuevos ingresos');
+    expect(fixture.nativeElement.querySelector('.product-card--streetwear')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.category-card').getAttribute('href')).toContain(
+      'categoria=infantil',
+    );
+  });
+
+  it('keeps the standard catalog presentation for other stores', () => {
+    settings.set({
+      slug: 'tienda-b',
+      storeName: 'Tienda B',
+      currencyCode: 'ARS',
+      timezone: 'America/Argentina/Buenos_Aires',
+    });
+    storeParams.next(convertToParamMap({ storeSlug: 'tienda-b' }));
+    queryParams.next(convertToParamMap({}));
+    create();
+    flushCategories('tienda-b');
+    http.expectOne((request) => request.url.includes('/tienda-b/catalog/products')).flush({
+      items: [],
+      page: 0,
+      size: 24,
+      totalItems: 0,
+      totalPages: 0,
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.catalog--streetwear')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.streetwear-hero')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.hero')).not.toBeNull();
+  });
+
   it('shows a retryable error state', () => {
     create();
     flushCategories();

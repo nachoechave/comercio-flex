@@ -111,6 +111,116 @@ h2 a::after {
   filter: saturate(0.5);
 }
 
+.product-card--streetwear {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.product-card--streetwear:hover {
+  transform: translateY(-0.18rem);
+  box-shadow: none;
+}
+
+.product-card--streetwear .visual {
+  position: relative;
+  min-height: 18rem;
+  background:
+    linear-gradient(145deg, #f4f4f4, #e8e8e8);
+}
+
+.product-card--streetwear .visual img {
+  height: 18rem;
+  object-fit: cover;
+}
+
+.product-card--streetwear .visual > span:not(.favorite-mark) {
+  border-color: #bdbdbd;
+  color: #111;
+  background: rgb(255 255 255 / 55%);
+  box-shadow: none;
+}
+
+.product-card--streetwear .visual .favorite-mark {
+  position: absolute;
+  z-index: 1;
+  top: 0.65rem;
+  right: 0.75rem;
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #111;
+  background: rgb(255 255 255 / 82%);
+  font-size: 1.15rem;
+  box-shadow: 0 0.15rem 0.55rem rgb(0 0 0 / 10%);
+}
+
+.product-card--streetwear .content {
+  padding: 0.75rem 0 0.5rem;
+}
+
+.product-card--streetwear .category {
+  color: #717171;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+}
+
+.product-card--streetwear h2 {
+  min-height: 2.5rem;
+  margin: 0.25rem 0 0.55rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.015em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.product-card--streetwear .footer {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.product-card--streetwear .price {
+  font-size: 0.82rem;
+}
+
+.product-card--streetwear .availability {
+  color: #4c4c4c;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}
+
+.product-card--streetwear .availability--out {
+  color: #8b2029;
+}
+
+@media (max-width: 72rem) {
+  .product-card--streetwear .visual,
+  .product-card--streetwear .visual img {
+    min-height: 20rem;
+    height: 20rem;
+  }
+}
+
+@media (max-width: 42rem) {
+  .product-card--streetwear .visual,
+  .product-card--streetwear .visual img {
+    min-height: 16rem;
+    height: 16rem;
+  }
+}
+
+@media (max-width: 30rem) {
+  .product-card--streetwear .visual,
+  .product-card--streetwear .visual img {
+    min-height: 13rem;
+    height: 13rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .product-card {
     transition: none;

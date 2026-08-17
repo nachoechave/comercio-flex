@@ -211,3 +211,460 @@ button:disabled {
     animation: none;
   }
 }
+
+.catalog--streetwear {
+  width: 100%;
+  max-width: none;
+  padding: 0 0 2rem;
+  color: #0b0b0b;
+  background: #fff;
+}
+
+.streetwear-hero {
+  display: grid;
+  min-height: clamp(31rem, 53vw, 43rem);
+  align-items: center;
+  padding: clamp(3rem, 7vw, 6rem) max(1rem, calc((100% - 88rem) / 2));
+  color: #fff;
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 92%) 0%, rgb(0 0 0 / 62%) 37%, transparent 70%),
+    url('/assets/storefront/tienda-a/hero-streetwear.png') center / cover no-repeat;
+}
+
+.hero-copy {
+  width: min(100%, 43rem);
+}
+
+.hero-copy .eyebrow {
+  color: #b7ff2a;
+}
+
+.hero-copy h1 {
+  max-width: 43rem;
+  margin: 0.8rem 0 1rem;
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(3.4rem, 7vw, 6.7rem);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 0.88;
+  text-transform: uppercase;
+}
+
+.hero-copy h1 em {
+  color: #b7ff2a;
+  font-style: normal;
+}
+
+.hero-copy > p:not(.eyebrow) {
+  max-width: 30rem;
+  color: #dedede;
+  font-size: clamp(0.95rem, 1.6vw, 1.12rem);
+  line-height: 1.65;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1.8rem;
+}
+
+.hero-actions a,
+.campaign a {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.35rem;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.hero-primary {
+  color: #080808;
+  background: #b7ff2a;
+}
+
+.hero-secondary {
+  border: 1px solid #fff;
+  color: #fff;
+}
+
+.trust-strip {
+  display: grid;
+  width: min(100% - 2rem, 88rem);
+  grid-template-columns: repeat(4, 1fr);
+  margin: 0 auto;
+  border-bottom: 1px solid #e7e7e7;
+}
+
+.trust-strip article {
+  display: flex;
+  min-height: 6.8rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  padding: 1rem;
+  border-right: 1px solid #e7e7e7;
+}
+
+.trust-strip article:last-child {
+  border: 0;
+}
+
+.trust-strip article > span {
+  font-size: 1.7rem;
+}
+
+.trust-strip p {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.trust-strip strong {
+  font-size: 0.72rem;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.trust-strip small {
+  color: #6b6b6b;
+  font-size: 0.68rem;
+}
+
+.category-showcase,
+.catalog--streetwear .filters,
+.catalog--streetwear .state,
+.catalog--streetwear .results-heading,
+.catalog--streetwear .product-grid,
+.catalog--streetwear .pagination,
+.campaign-grid {
+  width: min(100% - 2rem, 88rem);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.category-showcase {
+  padding: clamp(3rem, 6vw, 5.5rem) 0 2rem;
+  text-align: center;
+}
+
+.section-kicker {
+  margin: 0 0 0.4rem;
+  color: #747474;
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.category-showcase > h2,
+.campaign h2 {
+  margin: 0;
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.category-card {
+  position: relative;
+  display: grid;
+  min-height: 18rem;
+  place-items: end center;
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(145deg, #3b3b3b, #080808);
+  text-decoration: none;
+}
+
+.category-card img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.08);
+  transition: transform 220ms ease;
+}
+
+.category-card:hover img {
+  transform: scale(1.035);
+}
+
+.category-monogram {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #353535;
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 8rem;
+}
+
+.category-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 30%, rgb(0 0 0 / 86%));
+}
+
+.category-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.2rem 0.75rem;
+  text-align: center;
+}
+
+.category-copy strong {
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+}
+
+.category-copy small {
+  color: #b7ff2a;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.catalog--streetwear .filters {
+  margin-top: 2rem;
+  margin-bottom: 3.5rem;
+}
+
+.filters--streetwear {
+  border-width: 1px 0;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+}
+
+.filters--streetwear input,
+.filters--streetwear select {
+  border-color: #cacaca;
+  border-radius: 0;
+  background: #fff;
+}
+
+.filters--streetwear button {
+  border-color: #0b0b0b;
+  border-radius: 0;
+  color: #fff;
+  background: #0b0b0b;
+  text-transform: uppercase;
+}
+
+#catalog-products,
+#category-section,
+#catalog-search {
+  scroll-margin-top: 1rem;
+}
+
+.catalog--streetwear .results-heading {
+  align-items: center;
+}
+
+.catalog--streetwear .results-heading h2 {
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.result-count {
+  color: #666;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.catalog--streetwear .product-grid,
+.catalog--streetwear .skeleton-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.catalog--streetwear .pagination button {
+  border-radius: 0;
+  color: #fff;
+  background: #0b0b0b;
+}
+
+.campaign-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 4rem;
+}
+
+.campaign {
+  min-height: 22rem;
+  padding: clamp(2rem, 5vw, 4rem);
+  color: #fff;
+}
+
+.campaign p {
+  margin: 0 0 0.7rem;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.campaign h2 {
+  max-width: 25rem;
+  font-size: clamp(2.5rem, 5vw, 4.3rem);
+  line-height: 0.95;
+}
+
+.campaign a {
+  width: fit-content;
+  margin-top: 1.5rem;
+  color: #080808;
+  background: #b7ff2a;
+}
+
+.campaign--dark {
+  background:
+    radial-gradient(circle at 85% 30%, rgb(183 255 42 / 22%), transparent 11rem),
+    #080808;
+}
+
+.campaign--photo {
+  background:
+    linear-gradient(90deg, rgb(238 238 238 / 98%) 0%, rgb(238 238 238 / 86%) 48%, transparent 78%),
+    url('/assets/storefront/tienda-a/hero-streetwear.png') 72% center / cover no-repeat;
+  color: #080808;
+}
+
+.campaign--photo a {
+  border: 1px solid #080808;
+  background: transparent;
+}
+
+@media (max-width: 72rem) {
+  .category-grid,
+  .catalog--streetwear .product-grid,
+  .catalog--streetwear .skeleton-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .category-card:last-child {
+    display: none;
+  }
+}
+
+@media (max-width: 56rem) {
+  .trust-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .trust-strip article:nth-child(2) {
+    border-right: 0;
+  }
+
+  .trust-strip article:nth-child(-n + 2) {
+    border-bottom: 1px solid #e7e7e7;
+  }
+
+  .category-grid,
+  .catalog--streetwear .product-grid,
+  .catalog--streetwear .skeleton-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .category-card:nth-child(4) {
+    display: none;
+  }
+}
+
+@media (max-width: 42rem) {
+  .streetwear-hero {
+    min-height: 37rem;
+    align-items: end;
+    padding-bottom: 3.5rem;
+    background:
+      linear-gradient(0deg, rgb(0 0 0 / 94%) 0%, rgb(0 0 0 / 34%) 66%, transparent),
+      url('/assets/storefront/tienda-a/hero-streetwear.png') 63% center / cover no-repeat;
+  }
+
+  .hero-copy {
+    width: 100%;
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(3rem, 15vw, 4.7rem);
+  }
+
+  .category-grid,
+  .catalog--streetwear .product-grid,
+  .catalog--streetwear .skeleton-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .category-card:nth-child(4) {
+    display: grid;
+  }
+
+  .campaign-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 30rem) {
+  .trust-strip {
+    width: min(100% - 1.25rem, 88rem);
+  }
+
+  .trust-strip article {
+    min-height: 5.5rem;
+    justify-content: flex-start;
+  }
+
+  .trust-strip article > span {
+    display: none;
+  }
+
+  .category-showcase,
+  .catalog--streetwear .filters,
+  .catalog--streetwear .state,
+  .catalog--streetwear .results-heading,
+  .catalog--streetwear .product-grid,
+  .catalog--streetwear .pagination,
+  .campaign-grid {
+    width: min(100% - 1.25rem, 88rem);
+  }
+
+  .category-card {
+    min-height: 14rem;
+  }
+
+  .catalog--streetwear .product-grid,
+  .catalog--streetwear .skeleton-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .category-card img {
+    transition: none;
+  }
+}

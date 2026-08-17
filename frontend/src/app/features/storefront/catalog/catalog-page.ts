@@ -1,8 +1,8 @@
 import { Meta, Title } from '@angular/platform-browser';
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, ParamMap, Router } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
@@ -10,7 +10,7 @@ import { ProductCard } from '../product-card/product-card';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { storefrontErrorMessage } from '../storefront-errors';
-import { PublicCategory, PublicProductPage } from '../storefront.models';
+import { PublicCategory, PublicProductImage, PublicProductPage } from '../storefront.models';
 
 const PAGE_SIZE = 24;
 const EMPTY_PAGE: PublicProductPage = {
@@ -23,7 +23,7 @@ const EMPTY_PAGE: PublicProductPage = {
 
 @Component({
   selector: 'app-catalog-page',
-  imports: [ReactiveFormsModule, ProductCard],
+  imports: [ReactiveFormsModule, RouterLink, ProductCard],
   templateUrl: './catalog-page.html',
   styleUrl: './catalog-page.scss',
 })
@@ -49,6 +49,7 @@ export class CatalogPage {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly query = signal('');
   protected readonly selectedCategory = signal('');
+  protected readonly isStreetwear = computed(() => this.storeSlug() === 'tienda-a');
   protected readonly filters = this.formBuilder.nonNullable.group({
     q: [''],
     category: [''],
@@ -165,6 +166,14 @@ export class CatalogPage {
 
   protected retry(): void {
     this.retryVersion.update((value) => value + 1);
+  }
+
+  protected categoryImage(categorySlug: string): PublicProductImage | null {
+    return (
+      this.page().items.find(
+        (product) => product.category.slug === categorySlug && product.image !== null,
+      )?.image ?? null
+    );
   }
 
   private readPage(params: ParamMap): number {

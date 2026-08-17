@@ -21,6 +21,17 @@
 .store-theme[data-theme='forest'] { --store-accent: #276749; }
 .store-theme[data-theme='navy'] { --store-accent: #244a7c; }
 
+.store-theme[data-store='tienda-a'] {
+  --store-accent: #b7ff2a;
+  --color-accent: #111;
+  --color-background: #fff;
+  --color-border: #e5e5e5;
+  --color-muted: #656565;
+  --color-text: #0b0b0b;
+  overflow-x: clip;
+  background: #fff;
+}
+
 .site-header,
 .site-footer {
   width: min(100% - 2rem, 76rem);
@@ -43,6 +54,21 @@
   font-size: 1.1rem;
   font-weight: 800;
   text-decoration: none;
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.brand-copy small {
+  margin-top: 0.25rem;
+  color: var(--color-muted);
+  font-size: 0.56rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .brand-mark {
@@ -84,6 +110,259 @@ nav {
   color: #fff;
   background: var(--store-accent);
   font-size: 0.75rem;
+}
+
+.announcement-bar {
+  display: grid;
+  min-height: 2rem;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  padding: 0.4rem max(1rem, calc((100% - 88rem) / 2));
+  color: #f7f7f7;
+  background: #080808;
+  font-size: 0.63rem;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.announcement-bar span:nth-child(2) {
+  text-align: center;
+}
+
+.announcement-bar span:last-child {
+  text-align: right;
+}
+
+.announcement-bar strong {
+  color: #b7ff2a;
+}
+
+.site-header--streetwear {
+  width: min(100% - 2rem, 88rem);
+  min-height: 5.4rem;
+  border-bottom: 1px solid #ededed;
+}
+
+.site-header--streetwear .brand {
+  gap: 0.65rem;
+  color: #080808;
+  font-size: 1.2rem;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.site-header--streetwear .brand-mark {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  color: #080808;
+  background: transparent;
+  box-shadow: none;
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1.75rem;
+  font-style: italic;
+  letter-spacing: -0.08em;
+}
+
+.site-header--streetwear nav {
+  gap: clamp(0.85rem, 2.5vw, 2.4rem);
+}
+
+.site-header--streetwear nav > a:not(.icon-link, .cart-link) {
+  position: relative;
+  color: #111;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.site-header--streetwear nav > a:not(.icon-link, .cart-link)::after {
+  position: absolute;
+  right: 0;
+  bottom: -0.55rem;
+  left: 0;
+  height: 2px;
+  background: #b7ff2a;
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.5);
+  transition: 160ms ease;
+}
+
+.site-header--streetwear nav > a:hover::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.icon-link,
+.site-header--streetwear .cart-link {
+  position: relative;
+  color: #111;
+}
+
+.icon-link svg,
+.site-header--streetwear .cart-link svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.site-header--streetwear .cart-link > span:not(.sr-cart-label) {
+  position: absolute;
+  top: -0.55rem;
+  right: -0.65rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.2rem;
+  color: #080808;
+  background: #b7ff2a;
+  font-size: 0.58rem;
+}
+
+.visually-hidden,
+.sr-cart-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.store-newsletter {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(16rem, 1fr) minmax(24rem, 1.2fr);
+  align-items: center;
+  gap: 2rem;
+  margin: 3rem auto 0;
+  padding: 1.25rem max(1rem, calc((100% - 88rem) / 2));
+  border-bottom: 1px solid #2c2c2c;
+  color: #fff;
+  background: #080808;
+}
+
+.store-newsletter::before {
+  display: none;
+}
+
+.store-newsletter {
+  position: relative;
+  z-index: 0;
+}
+
+.store-newsletter > div,
+.store-newsletter p {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0;
+}
+
+.store-newsletter p {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.store-newsletter p strong {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.store-newsletter p small {
+  color: #aaa;
+}
+
+.store-newsletter form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem;
+}
+
+.store-newsletter input,
+.store-newsletter button {
+  min-height: 2.8rem;
+  border: 1px solid #4a4a4a;
+  border-radius: 0;
+  font: inherit;
+}
+
+.store-newsletter input {
+  padding: 0.65rem 0.9rem;
+  color: #fff;
+  background: #111;
+}
+
+.store-newsletter button {
+  padding: 0.65rem 1.5rem;
+  border-color: #b7ff2a;
+  color: #080808;
+  background: #b7ff2a;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.site-footer--streetwear {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 14rem;
+  grid-template-columns: 1.5fr 0.7fr 0.7fr 1fr;
+  align-items: start;
+  gap: 3rem;
+  margin-top: 0;
+  padding: 2.6rem max(1rem, calc((100% - 88rem) / 2));
+  border: 0;
+  color: #aaa;
+  background: #080808;
+  font-size: 0.78rem;
+}
+
+.site-footer--streetwear::before {
+  display: none;
+}
+
+.site-footer--streetwear > div,
+.site-footer--streetwear > div:last-child {
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.site-footer--streetwear strong,
+.site-footer--streetwear a {
+  color: #fff;
+}
+
+.site-footer--streetwear a {
+  text-decoration: none;
+}
+
+.site-footer--streetwear .footer-brand > strong {
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1.65rem;
+  font-style: italic;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.site-footer--streetwear p {
+  max-width: 19rem;
+  margin: 0.4rem 0;
+  line-height: 1.5;
+}
+
+.footer-platform small {
+  margin-top: 1.5rem;
 }
 
 .site-footer {
@@ -176,5 +455,78 @@ nav {
     flex-direction: column;
     justify-content: center;
     padding: 1.5rem 0;
+  }
+}
+
+@media (max-width: 58rem) {
+  .announcement-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .announcement-bar span:nth-child(2) {
+    text-align: right;
+  }
+
+  .announcement-bar span:last-child,
+  .desktop-nav {
+    display: none;
+  }
+
+  .store-newsletter,
+  .site-footer--streetwear {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .site-footer--streetwear .footer-brand,
+  .site-footer--streetwear .footer-platform {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 40rem) {
+  .announcement-bar {
+    display: block;
+    padding-block: 0.55rem;
+    text-align: center;
+  }
+
+  .announcement-bar span:first-child {
+    display: none;
+  }
+
+  .announcement-bar span:nth-child(2) {
+    display: block;
+    text-align: center;
+  }
+
+  .site-header--streetwear {
+    width: min(100% - 1.25rem, 88rem);
+    min-height: 4.6rem;
+  }
+
+  .site-header--streetwear .brand-copy small,
+  .site-header--streetwear nav > a:not(.icon-link, .cart-link) {
+    display: none;
+  }
+
+  .site-header--streetwear nav {
+    gap: 1rem;
+  }
+
+  .store-newsletter {
+    width: 100%;
+    grid-template-columns: 1fr;
+    padding-inline: 0.625rem;
+  }
+
+  .store-newsletter form {
+    grid-template-columns: 1fr;
+  }
+
+  .site-footer--streetwear {
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem 1rem;
+    padding-inline: 0.625rem;
   }
 }

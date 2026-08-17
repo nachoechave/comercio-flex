@@ -1,10 +1,17 @@
-<article class="product-card" [class.product-card--unavailable]="!product().available">
+<article
+  class="product-card"
+  [class.product-card--unavailable]="!product().available"
+  [class.product-card--streetwear]="storeSlug() === 'tienda-a'"
+>
   <a
     class="visual"
     [routerLink]="['/tiendas', storeSlug(), 'productos', product().slug]"
     tabindex="-1"
     aria-hidden="true"
   >
+    @if (storeSlug() === 'tienda-a') {
+      <span class="favorite-mark" aria-hidden="true">♡</span>
+    }
     @if (product().image; as image) {
       <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" width="640" height="480" />
     } @else {
