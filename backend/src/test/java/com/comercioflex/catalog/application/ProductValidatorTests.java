@@ -2,6 +2,7 @@ package com.comercioflex.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.util.List;
 
@@ -49,6 +50,55 @@ class ProductValidatorTests {
 			new RawVariantValues("sku-1", "10", "M", "Azul"),
 			new RawVariantValues("SKU-1", "20", "L", "Rojo"))))
 			.isInstanceOf(ProductConflictException.class);
+	}
+
+	@Test
+	void validatesGenericOptionsAndMakesCombinationIndependentFromOrder() {
+		VariantValues values = validator.variant(new RawVariantValues(
+			"BOLSA-ALG-M",
+			"2500",
+			null,
+			null,
+			List.of(
+				new RawVariantOptionValue(" Material ", " Algodón "),
+				new RawVariantOptionValue("Talle", " M "))));
+
+		assertThat(values.options())
+			.extracting("name", "value")
+			.containsExactly(
+				tuple("Material", "Algodón"),
+				tuple("Talle", "M"));
+		assertThat(values.size()).isEqualTo("M");
+		assertThat(values.color()).isEmpty();
+
+		assertThatThrownBy(() -> validator.variants(List.of(
+			new RawVariantValues("BOLSA-1", "10", null, null, List.of(
+				new RawVariantOptionValue("Material", "Algodón"),
+				new RawVariantOptionValue("Talle", "M"))),
+			new RawVariantValues("BOLSA-2", "20", null, null, List.of(
+				new RawVariantOptionValue("talle", "m"),
+				new RawVariantOptionValue("material", "algodón"))))))
+			.isInstanceOf(ProductConflictException.class);
+	}
+
+	@Test
+	void rejectsAmbiguousRepeatedAndExcessiveGenericOptions() {
+		assertThatThrownBy(() -> validator.variant(new RawVariantValues(
+			"SKU", "10", "M", null,
+			List.of(new RawVariantOptionValue("Material", "Algodón")))))
+			.isInstanceOf(InvalidProductException.class);
+		assertThatThrownBy(() -> validator.variant(new RawVariantValues(
+			"SKU", "10", null, null,
+			List.of(
+				new RawVariantOptionValue("Material", "Algodón"),
+				new RawVariantOptionValue(" material ", "Lino")))))
+			.isInstanceOf(InvalidProductException.class);
+		assertThatThrownBy(() -> validator.variant(new RawVariantValues(
+			"SKU", "10", null, null,
+			java.util.stream.IntStream.range(0, 6)
+				.mapToObj(index -> new RawVariantOptionValue("Opción " + index, "Valor"))
+				.toList())))
+			.isInstanceOf(InvalidProductException.class);
 	}
 
 	@Test

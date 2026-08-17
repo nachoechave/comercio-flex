@@ -10,6 +10,11 @@ server:
         secure: false
 
 app:
+  local-super-admin:
+    enabled: ${LOCAL_SUPER_ADMIN_ENABLED:false}
+    email: ${LOCAL_SUPER_ADMIN_EMAIL:}
+    password: ${LOCAL_SUPER_ADMIN_PASSWORD:}
+    display-name: ${LOCAL_SUPER_ADMIN_DISPLAY_NAME:}
   local-owner:
     enabled: ${LOCAL_OWNER_ENABLED:false}
     email: ${LOCAL_OWNER_EMAIL:}

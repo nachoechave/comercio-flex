@@ -16,12 +16,18 @@ import {
   authGuard,
   membershipGuard,
   safeReturnUrl,
+  superAdminGuard,
 } from './auth.guards';
 import { AuthService } from './auth.service';
 
 const SESSION: AuthenticatedSession = {
   authenticated: true,
-  user: { id: 'user-1', email: 'owner@example.com', displayName: 'Dueña Demo' },
+  user: {
+    id: 'user-1',
+    email: 'owner@example.com',
+    displayName: 'Dueña Demo',
+    platformRole: 'USER',
+  },
   memberships: [
     { storeSlug: 'tienda-a', storeName: 'Tienda A', role: 'OWNER' },
   ],
@@ -125,5 +131,30 @@ describe('authentication guards', () => {
     ) as Observable<boolean | UrlTree>;
 
     expect(await firstValueFrom(result)).toBe(true);
+  });
+
+  it('keeps tenant administrators outside the SuperAdmin area', async () => {
+    const result = TestBed.runInInjectionContext(() =>
+      superAdminGuard(
+        {} as ActivatedRouteSnapshot,
+        { url: '/superadmin' } as RouterStateSnapshot,
+      ),
+    ) as Observable<boolean | UrlTree>;
+
+    expect(router.serializeUrl((await firstValueFrom(result)) as UrlTree)).toBe(
+      '/admin/comercios?denied=true',
+    );
+
+    session = {
+      ...SESSION,
+      user: { ...SESSION.user, platformRole: 'SUPER_ADMIN' },
+    };
+    const allowed = TestBed.runInInjectionContext(() =>
+      superAdminGuard(
+        {} as ActivatedRouteSnapshot,
+        { url: '/superadmin' } as RouterStateSnapshot,
+      ),
+    ) as Observable<boolean | UrlTree>;
+    expect(await firstValueFrom(allowed)).toBe(true);
   });
 });

@@ -1,0 +1,117 @@
+<a class="back" routerLink="/superadmin/empresas">← Volver a empresas</a>
+
+@if (loading()) {
+  <p class="state" role="status">Cargando empresa…</p>
+} @else if (!company()) {
+  <section class="state error" role="alert">
+    <p>{{ errorMessage() }}</p>
+    <a routerLink="/superadmin/empresas">Ir al listado</a>
+  </section>
+} @else if (company(); as current) {
+  <header class="company-heading">
+    <div>
+      <p class="eyebrow">Empresa</p>
+      <h1>{{ current.name }}</h1>
+      <div class="identity">
+        <code>{{ current.slug }}</code>
+        <span class="status" [class]="'status ' + current.status.toLowerCase()">
+          {{ statusLabel(current.status) }}
+        </span>
+      </div>
+    </div>
+    <div class="actions">
+      <a [routerLink]="['/superadmin/empresas', current.id, 'apariencia']">Apariencia</a>
+      <a [routerLink]="['/tiendas', current.slug]">Ver tienda pública</a>
+      @if (current.status === 'ACTIVE') {
+        <button class="danger" type="button" (click)="ask('suspend')">Suspender</button>
+      } @else if (current.status === 'SUSPENDED' || current.status === 'INACTIVE') {
+        <button class="primary" type="button" (click)="ask('activate')">Activar</button>
+      } @else if (current.status === 'PROVISIONING_FAILED') {
+        <button
+          class="primary"
+          type="button"
+          (click)="retryProvisioning()"
+          [disabled]="changingStatus()"
+        >
+          {{ changingStatus() ? 'Reintentando…' : 'Reintentar provisioning' }}
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (noticeMessage()) {
+    <p class="notice success" role="status">{{ noticeMessage() }}</p>
+  }
+  @if (errorMessage()) {
+    <p class="notice error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  <section class="details" aria-label="Información de la empresa">
+    <article>
+      <h2>Identificación</h2>
+      <dl>
+        <div><dt>Estado</dt><dd>{{ statusLabel(current.status) }}</dd></div>
+        <div><dt>Tenant</dt><dd><code>{{ current.slug }}</code></dd></div>
+        <div><dt>Rubro</dt><dd>{{ current.industry || 'Sin especificar' }}</dd></div>
+        <div><dt>Teléfono</dt><dd>{{ current.phone || 'Sin configurar' }}</dd></div>
+        <div><dt>Fecha de alta</dt><dd>{{ current.createdAt | date: 'dd/MM/yyyy, HH:mm' }}</dd></div>
+      </dl>
+    </article>
+
+    <article>
+      <h2>Administrador principal</h2>
+      @if (current.primaryAdministrator; as administrator) {
+        <dl>
+          <div><dt>Nombre</dt><dd>{{ administrator.name }}</dd></div>
+          <div>
+            <dt>Email</dt>
+            <dd><a [href]="'mailto:' + administrator.email">{{ administrator.email }}</a></dd>
+          </div>
+        </dl>
+      } @else {
+        <p class="muted">No hay un propietario activo asociado.</p>
+      }
+    </article>
+
+    <article>
+      <h2>Presencia y actividad</h2>
+      <dl>
+        <div><dt>Dominio</dt><dd>{{ current.domain || 'Sin configurar' }}</dd></div>
+        <div>
+          <dt>Última actividad</dt>
+          <dd>
+            {{ current.lastActivityAt ? (current.lastActivityAt | date: 'dd/MM/yyyy, HH:mm') : 'Sin datos' }}
+          </dd>
+        </div>
+      </dl>
+    </article>
+  </section>
+
+  @if (pendingAction(); as action) {
+    <div class="dialog-backdrop">
+      <section class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title">
+        <h2 id="dialog-title">
+          {{ action === 'suspend' ? 'Suspender empresa' : 'Activar empresa' }}
+        </h2>
+        <p>
+          @if (action === 'suspend') {
+            La tienda pública y el panel del comercio dejarán de estar disponibles inmediatamente.
+          } @else {
+            La tienda pública y los accesos tenant volverán a estar disponibles.
+          }
+        </p>
+        <div class="dialog-actions">
+          <button type="button" (click)="cancel()" [disabled]="changingStatus()">Cancelar</button>
+          <button
+            type="button"
+            [class]="action === 'suspend' ? 'danger' : 'primary'"
+            (click)="confirm()"
+            [disabled]="changingStatus()"
+          >
+            {{ changingStatus() ? 'Guardando…' : 'Confirmar' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+}

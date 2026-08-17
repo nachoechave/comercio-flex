@@ -1,0 +1,106 @@
+<header class="page-heading">
+  <div>
+    <p class="eyebrow">Gestión global</p>
+    <h1>Empresas</h1>
+    <p>Buscá comercios y consultá su situación operativa.</p>
+  </div>
+  <a class="primary-link" routerLink="/superadmin/empresas/nueva">Nueva empresa</a>
+</header>
+
+<form class="filters" (ngSubmit)="search()">
+  <label>
+    Buscar
+    <input
+      type="search"
+      [formControl]="queryControl"
+      maxlength="100"
+      placeholder="Nombre, tenant o email"
+    />
+  </label>
+  <label>
+    Estado
+    <select [formControl]="statusControl">
+      <option value="ALL">Todos</option>
+      <option value="ACTIVE">Activas</option>
+      <option value="SUSPENDED">Suspendidas</option>
+      <option value="PROVISIONING">En aprovisionamiento</option>
+      <option value="PROVISIONING_FAILED">Aprovisionamiento fallido</option>
+      <option value="INACTIVE">Inactivas</option>
+    </select>
+  </label>
+  <div class="filter-actions">
+    <button class="primary" type="submit">Buscar</button>
+    <button type="button" (click)="clear()">Limpiar</button>
+  </div>
+</form>
+
+@if (loading()) {
+  <p class="state" role="status">Cargando empresas…</p>
+} @else if (errorMessage()) {
+  <section class="state error" role="alert">
+    <p>{{ errorMessage() }}</p>
+    <button type="button" (click)="search()">Reintentar</button>
+  </section>
+} @else if (result(); as page) {
+  @if (page.items.length === 0) {
+    <section class="state empty">
+      <h2>No encontramos empresas</h2>
+      <p>Probá con otro nombre, tenant o estado.</p>
+    </section>
+  } @else {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Tenant</th>
+            <th>Administrador principal</th>
+            <th>Alta</th>
+            <th>Estado</th>
+            <th><span class="visually-hidden">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (company of page.items; track company.id) {
+            <tr>
+              <td><strong>{{ company.name }}</strong></td>
+              <td><code>{{ company.slug }}</code></td>
+              <td>
+                @if (company.primaryAdministrator; as administrator) {
+                  <span>{{ administrator.name }}</span>
+                  <small>{{ administrator.email }}</small>
+                } @else {
+                  <span class="muted">Sin administrador</span>
+                }
+              </td>
+              <td>{{ company.createdAt | date: 'dd/MM/yyyy' }}</td>
+              <td>
+                <span class="status" [class]="'status ' + company.status.toLowerCase()">
+                  {{ statusLabel(company.status) }}
+                </span>
+              </td>
+              <td><a [routerLink]="['/superadmin/empresas', company.id]">Ver detalle</a></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="pagination">
+      <span>{{ page.totalItems }} empresa{{ page.totalItems === 1 ? '' : 's' }}</span>
+      <div>
+        <button type="button" (click)="previous()" [disabled]="page.page === 0">
+          Anterior
+        </button>
+        <span>Página {{ page.page + 1 }} de {{ page.totalPages }}</span>
+        <button
+          type="button"
+          (click)="next()"
+          [disabled]="page.page + 1 >= page.totalPages"
+        >
+          Siguiente
+        </button>
+      </div>
+    </footer>
+  }
+}

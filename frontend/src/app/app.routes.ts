@@ -7,6 +7,7 @@ import {
   authGuard,
   membershipGuard,
   membershipSelectionGuard,
+  superAdminGuard,
 } from './core/auth/auth.guards';
 import { ADMIN_ROLES } from './core/auth/auth.models';
 
@@ -37,6 +38,54 @@ export const routes: Routes = [
       import('./features/admin/store-selector/store-selector').then(
         (module) => module.StoreSelector,
       ),
+  },
+  {
+    path: 'superadmin',
+    canActivate: [authGuard, superAdminGuard],
+    canActivateChild: [authGuard, superAdminGuard],
+    loadComponent: () =>
+      import('./layouts/super-admin-layout/super-admin-layout').then(
+        (module) => module.SuperAdminLayout,
+      ),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./features/superadmin/dashboard/super-admin-dashboard').then(
+            (module) => module.SuperAdminDashboard,
+          ),
+      },
+      {
+        path: 'empresas',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./features/superadmin/companies/company-list').then(
+            (module) => module.CompanyList,
+          ),
+      },
+      {
+        path: 'empresas/nueva',
+        loadComponent: () =>
+          import('./features/superadmin/companies/company-create').then(
+            (module) => module.CompanyCreate,
+          ),
+      },
+      {
+        path: 'empresas/:companyId/apariencia',
+        loadComponent: () =>
+          import('./features/superadmin/companies/company-branding').then(
+            (module) => module.CompanyBrandingPage,
+          ),
+      },
+      {
+        path: 'empresas/:companyId',
+        loadComponent: () =>
+          import('./features/superadmin/companies/company-detail').then(
+            (module) => module.CompanyDetailPage,
+          ),
+      },
+    ],
   },
   {
     path: 'stores/:storeSlug/payment-return/:returnToken',

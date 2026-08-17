@@ -1,0 +1,44 @@
+<header class="page-heading">
+  <div>
+    <p class="eyebrow">Vista global</p>
+    <h1>Resumen de plataforma</h1>
+    <p>Estado operativo de los comercios registrados en Comercio Flex.</p>
+  </div>
+  <a class="primary-link" routerLink="/superadmin/empresas">Ver empresas</a>
+</header>
+
+@if (loading()) {
+  <p class="state" role="status">Cargando resumen…</p>
+} @else if (errorMessage()) {
+  <section class="state error" role="alert">
+    <p>{{ errorMessage() }}</p>
+    <button type="button" (click)="load()">Reintentar</button>
+  </section>
+} @else if (summary(); as data) {
+  <section class="metrics" aria-label="Indicadores globales">
+    <article class="metric primary">
+      <span>Total de empresas</span>
+      <strong>{{ data.totalCompanies }}</strong>
+    </article>
+    <article class="metric success">
+      <span>Activas</span>
+      <strong>{{ data.activeCompanies }}</strong>
+    </article>
+    <article class="metric danger">
+      <span>Suspendidas</span>
+      <strong>{{ data.suspendedCompanies }}</strong>
+    </article>
+    <article class="metric">
+      <span>En aprovisionamiento</span>
+      <strong>{{ data.provisioningCompanies }}</strong>
+    </article>
+    <article class="metric danger">
+      <span>Aprovisionamiento fallido</span>
+      <strong>{{ data.provisioningFailedCompanies }}</strong>
+    </article>
+    <article class="metric">
+      <span>Inactivas</span>
+      <strong>{{ data.inactiveCompanies }}</strong>
+    </article>
+  </section>
+}

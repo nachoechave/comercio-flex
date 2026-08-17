@@ -125,6 +125,9 @@
 | ADR-118 | Configuración de tienda | Contacto, retiro y cuatro temas por tenant | Aceptada |
 | ADR-119 | Despliegue MVP | Angular y Spring Boot bajo un mismo origen Docker | Aceptada |
 | ADR-120 | Operación productiva | MySQL administrado, storage privado y restore probado | Aceptada |
+| ADR-121 | Checkout | Correo obligatorio para confirmaciones de pedidos | Aceptada |
+| ADR-122 | SuperAdmin | Rol global separado de las membresías tenant | Aceptada |
+| ADR-123 | Provisioning | Provisionador MySQL administrado detrás de un puerto reemplazable | Aceptada |
 
 ## Plantilla ADR
 
@@ -1909,3 +1912,78 @@
   opcionalidad del correo definida en ADR-060.
 - **Consecuencias:** todos los pedidos nuevos cuentan con un destino para futuras
   notificaciones, sin crear cuentas de cliente ni cambiar los pedidos históricos.
+
+### ADR-122 — Rol global separado de las membresías tenant
+
+- **Fecha:** 2026-08-17
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** Comercio Flex necesita operadores globales sin confundirlos con
+  propietarios o administradores de un comercio.
+- **Problema:** representar `SUPER_ADMIN` sin conceder membresías ficticias ni
+  acceso implícito a datasources tenant.
+- **Alternativas:** agregar `SUPER_ADMIN` a `memberships`; guardar autoridades en
+  la sesión; usar un rol global consultado en la base de control.
+- **Decisión:** `platform_users.platform_role` contiene `USER` o `SUPER_ADMIN`.
+  La autorización global relee rol y estado por solicitud; `OWNER`, `ADMIN` y
+  `STAFF` continúan exclusivamente en `memberships`.
+- **Consecuencias:** revocar el rol tiene efecto inmediato y SuperAdmin sólo opera
+  la base de control. El acceso directo a datos tenant sigue exigiendo membresía.
+
+### ADR-123 — Provisionador MySQL administrado y reemplazable
+
+- **Fecha:** 2026-08-17
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** un alta comercial no debe exigir variables y reinicios por tenant.
+- **Problema:** crear una base aislada, migrarla y registrarla sin guardar
+  credenciales por comercio ni acoplar el dominio a un proveedor concreto.
+- **Alternativas:** continuar con YAML por tenant; provisioning exclusivamente
+  externo; adaptador MySQL interno detrás de un puerto sustituible.
+- **Decisión:** usar un workflow recuperable y un adaptador MySQL habilitado de
+  forma explícita. Genera nombres con prefijo seguro, concede permisos exactos,
+  ejecuta Flyway y registra Hikari en caliente. Las conexiones comparten plantilla
+  y secretos externos. Un proveedor externo puede reemplazar el adaptador.
+- **Consecuencias:** el alta queda operativa sin reinicio. No existe transacción
+  distribuida: los fallos se conservan y reintentan; nunca se elimina la base como
+  compensación automática.
+
+### ADR-124 — Branding tenant persistido y gobernado por plataforma
+
+- **Fecha:** 2026-08-17
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** cada comercio necesita identidad propia sin duplicar Angular y el
+  cliente todavía no debe controlar su estética.
+- **Problema:** aplicar logo, colores, tipografía, hero y template conservando
+  aislamiento y sin exponer identificadores de infraestructura.
+- **Alternativas:** estilos por slug; configuración en control DB; branding en la
+  base tenant con acceso mediado por SuperAdmin.
+- **Decisión:** extender `store_settings` mediante V014. SuperAdmin resuelve el UUID
+  en control DB y abre internamente el datasource tenant. Los assets reutilizan el
+  almacenamiento de medios y Angular consume variables CSS. Los templates se
+  persisten ahora; su composición visual completa corresponde a Fase 6.
+- **Consecuencias:** no hay estilos por empresa ni escritura visual desde roles
+  tenant. Las mutaciones quedan auditadas; control DB y tenant DB no forman una
+  transacción distribuida.
+
+### ADR-125 — Opciones genéricas normalizadas por producto
+
+- **Fecha:** 2026-08-17
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** talle y color cubrían el primer catálogo de indumentaria, pero no
+  calzado, materiales, presentaciones ni otros rubros sin agregar columnas.
+- **Problema:** representar variantes flexibles, impedir combinaciones duplicadas
+  y conservar exactamente lo comprado sin romper clientes existentes.
+- **Alternativas:** sumar columnas por rubro; guardar un JSON mutable en la
+  variante; normalizar opciones/valores y firmar la combinación canónica.
+- **Decisión:** V015 incorpora `product_options`, `product_option_values` y la
+  relación variante-valor. Cada variante admite hasta cinco pares; una firma
+  SHA-256 de nombres/valores normalizados y ordenados garantiza unicidad por
+  producto. Talle/Color se migran y siguen derivados como compatibilidad. Pedidos
+  guardan un snapshot JSON de los pares.
+- **Consecuencias:** el catálogo deja de depender de un rubro y el orden del
+  request no altera la identidad. La aplicación valida un valor por nombre; las
+  columnas heredadas podrán retirarse sólo mediante una futura versión de API.
+  Esta decisión reemplaza el modelo fijo aprobado en ADR-029 y ADR-030.

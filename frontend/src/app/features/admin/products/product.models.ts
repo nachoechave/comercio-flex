@@ -1,3 +1,5 @@
+import { VariantOptionValue } from '../../../shared/variant-options';
+
 export type ProductStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
 export interface ProductImage {
@@ -22,6 +24,7 @@ export interface ProductVariant {
   price: string;
   size: string | null;
   color: string | null;
+  options?: VariantOptionValue[];
   active: boolean;
   version: number;
   createdAt: string;
@@ -70,6 +73,7 @@ export interface SaveVariant {
   price: string;
   size?: string;
   color?: string;
+  options?: VariantOptionValue[];
 }
 
 export interface CreateProduct {

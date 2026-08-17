@@ -1,0 +1,94 @@
+<a class="back" routerLink="/superadmin/empresas">← Volver a empresas</a>
+
+<header class="page-heading">
+  <p class="eyebrow">Alta automática</p>
+  <h1>Nueva empresa</h1>
+  <p>Comercio Flex creará la base aislada, aplicará migraciones y configurará al propietario.</p>
+</header>
+
+@if (errorMessage()) {
+  <p class="notice error" role="alert">{{ errorMessage() }}</p>
+}
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <fieldset>
+    <legend>Empresa</legend>
+    <div class="form-grid">
+      <label>
+        Nombre comercial
+        <input formControlName="name" autocomplete="organization" maxlength="160" />
+        @if (form.controls.name.touched && form.controls.name.invalid) {
+          <small>Ingresá un nombre comercial.</small>
+        }
+      </label>
+      <label>
+        Slug
+        <input formControlName="slug" maxlength="100" placeholder="urban-clothes" />
+        @if (form.controls.slug.touched && form.controls.slug.invalid) {
+          <small>Usá minúsculas, números y guiones simples.</small>
+        }
+      </label>
+      <label>
+        Rubro
+        <input formControlName="industry" maxlength="100" placeholder="Indumentaria" />
+      </label>
+      <label>
+        Dominio <span>(opcional)</span>
+        <input formControlName="domain" maxlength="253" placeholder="urban.com.ar" />
+        @if (form.controls.domain.touched && form.controls.domain.invalid) {
+          <small>Ingresá solamente el dominio, sin http ni rutas.</small>
+        }
+      </label>
+      <label>
+        Estado al finalizar
+        <select formControlName="status">
+          <option value="ACTIVE">Activa</option>
+          <option value="INACTIVE">Inactiva</option>
+        </select>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Administrador principal</legend>
+    <div class="form-grid">
+      <label>
+        Nombre
+        <input formControlName="administratorName" autocomplete="name" maxlength="160" />
+      </label>
+      <label>
+        Email
+        <input formControlName="administratorEmail" type="email" autocomplete="email" maxlength="254" />
+        @if (form.controls.administratorEmail.touched && form.controls.administratorEmail.invalid) {
+          <small>Ingresá un email válido.</small>
+        }
+      </label>
+      <label>
+        Teléfono <span>(opcional)</span>
+        <input formControlName="administratorPhone" type="tel" autocomplete="tel" maxlength="40" />
+      </label>
+      <label>
+        Contraseña inicial
+        <input
+          formControlName="initialPassword"
+          type="password"
+          autocomplete="new-password"
+          maxlength="128"
+        />
+        <small>Como mínimo 12 caracteres. Una cuenta existente conserva su contraseña actual.</small>
+      </label>
+    </div>
+  </fieldset>
+
+  <section class="provisioning-note">
+    <strong>Proceso automático</strong>
+    <span>Registro → base aislada → Flyway → configuración → propietario → tenant operativo</span>
+  </section>
+
+  <footer class="actions">
+    <a routerLink="/superadmin/empresas">Cancelar</a>
+    <button type="submit" [disabled]="submitting()">
+      {{ submitting() ? 'Creando tenant…' : 'Crear empresa' }}
+    </button>
+  </footer>
+</form>

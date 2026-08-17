@@ -8,6 +8,7 @@ import { finalize } from 'rxjs';
 
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
 import { QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pipe';
+import { VariantOptionValue, variantOptionsLabel } from '../../../../shared/variant-options';
 import { StorefrontMoneyPipe } from '../../../storefront/storefront-money.pipe';
 import { OrderApiService } from '../order-api.service';
 import {
@@ -116,7 +117,11 @@ export class OrderDetail {
       });
   }
 
-  optionLabel(size: string | null, color: string | null): string {
-    return [size, color].filter(Boolean).join(' · ');
+  optionLabel(
+    options: readonly VariantOptionValue[] | undefined,
+    size: string | null,
+    color: string | null,
+  ): string {
+    return variantOptionsLabel(options, size, color);
   }
 }

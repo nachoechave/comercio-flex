@@ -49,6 +49,7 @@ public interface ProductRepository {
 
 	boolean updateVariant(
 		long internalId,
+		long productInternalId,
 		VariantValues values,
 		long expectedVersion);
 

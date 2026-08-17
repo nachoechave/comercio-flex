@@ -665,7 +665,7 @@ class InventoryManagementIntegrationTests {
 	}
 
 	@Test
-	void storeSettingsAreTenantScopedEditableByOwnerAndAdminButNotStaff() throws Exception {
+	void storeSettingsAreTenantScopedEditableByOwnerAndAdminButVisualBrandingStaysPlatformManaged() throws Exception {
 		Auth admin = login("admin@example.com");
 		String body = """
 			{
@@ -673,8 +673,7 @@ class InventoryManagementIntegrationTests {
 			  "contactPhone": "+54 11 4444-5555",
 			  "contactEmail": "ventas@laesquina.test",
 			  "pickupAddress": "Av. Siempre Viva 742",
-			  "pickupInstructions": "Retirar por el mostrador principal.",
-			  "brandTheme": "FOREST"
+			  "pickupInstructions": "Retirar por el mostrador principal."
 			}
 			""";
 
@@ -683,7 +682,8 @@ class InventoryManagementIntegrationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.storeName").value("La Esquina"))
 			.andExpect(jsonPath("$.pickupAddress").value("Av. Siempre Viva 742"))
-			.andExpect(jsonPath("$.brandTheme").value("FOREST"));
+			.andExpect(jsonPath("$.brandTheme").value("VIOLET"))
+			.andExpect(jsonPath("$.branding.primaryColor").value("#6D3CE7"));
 
 		mockMvc.perform(get("/api/v1/stores/tienda-a/settings"))
 			.andExpect(status().isOk())
@@ -707,11 +707,11 @@ class InventoryManagementIntegrationTests {
 	}
 
 	@Test
-	void storeSettingsRequireValidContactAddressAndTheme() throws Exception {
+	void storeSettingsRequireValidContactAndPickupAddress() throws Exception {
 		Auth owner = login("owner@example.com");
 		String invalid = """
 			{"storeName":" A ","contactPhone":"","contactEmail":"",
-			 "pickupAddress":" x ","pickupInstructions":"","brandTheme":"VIOLET"}
+			 "pickupAddress":" x ","pickupInstructions":""}
 			""";
 		mockMvc.perform(auth(put(storeSettings("tienda-a")), owner)
 				.contentType(MediaType.APPLICATION_JSON).content(invalid))
@@ -897,6 +897,9 @@ class InventoryManagementIntegrationTests {
 		execute(database, "DELETE FROM inventory_movements");
 		execute(database, "DELETE FROM orders");
 		execute(database, "DELETE FROM inventory_balances");
+		execute(database, "DELETE FROM product_variant_option_values");
+		execute(database, "DELETE FROM product_option_values");
+		execute(database, "DELETE FROM product_options");
 		execute(database, "DELETE FROM product_variants");
 		execute(database, "DELETE FROM products");
 		execute(database, "DELETE FROM categories");
@@ -966,8 +969,8 @@ class InventoryManagementIntegrationTests {
 			String status) throws SQLException {
 		execute(database, """
 			INSERT INTO product_variants
-				(public_id, product_id, sku, price, size_value, status)
-			SELECT UUID_TO_BIN('%s'), id, '%s', 100.00, '%s', '%s'
+				(public_id, product_id, sku, price, size_value, option_signature, status)
+			SELECT UUID_TO_BIN('%s'), id, '%s', 100.00, '%s', SHA2(UUID(), 256), '%s'
 			FROM products
 			WHERE public_id = UUID_TO_BIN('%s')
 			""".formatted(publicId, sku, size, status, productId));

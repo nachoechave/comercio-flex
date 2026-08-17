@@ -28,7 +28,12 @@ describe('authErrorInterceptor', () => {
     auth.loadSession().subscribe();
     http.expectOne('/api/v1/auth/session').flush({
       authenticated: true,
-      user: { id: 'user-1', email: 'owner@example.com', displayName: 'Dueña Demo' },
+      user: {
+        id: 'user-1',
+        email: 'owner@example.com',
+        displayName: 'Dueña Demo',
+        platformRole: 'USER',
+      },
       memberships: [],
     });
 

@@ -10,7 +10,11 @@ import org.springframework.stereotype.Repository;
 import com.comercioflex.tenant.application.StoreSettingsRepository;
 import com.comercioflex.tenant.application.UpdateStoreSettingsCommand;
 import com.comercioflex.tenant.domain.BrandTheme;
+import com.comercioflex.tenant.domain.BrandAssetReference;
+import com.comercioflex.tenant.domain.BrandFont;
 import com.comercioflex.tenant.domain.StoreSettings;
+import com.comercioflex.tenant.domain.StorefrontTemplate;
+import com.comercioflex.tenant.domain.TenantBranding;
 
 @Repository
 public class JdbcStoreSettingsRepository implements StoreSettingsRepository {
@@ -25,7 +29,12 @@ public class JdbcStoreSettingsRepository implements StoreSettingsRepository {
 	public Optional<StoreSettings> findCurrent() {
 		List<StoreSettings> result = jdbcTemplate.query("""
 				SELECT store_name, currency_code, timezone, contact_phone, contact_email,
-				       pickup_address, pickup_instructions, brand_theme
+				       pickup_address, pickup_instructions, brand_theme,
+				       primary_color, secondary_color, background_color, text_color,
+				       brand_font, hero_title, hero_subtitle, storefront_template,
+				       logo_storage_key, logo_content_type, logo_etag,
+				       favicon_storage_key, favicon_content_type, favicon_etag,
+				       hero_storage_key, hero_content_type, hero_etag
 				FROM store_settings
 				ORDER BY id
 				LIMIT 1
@@ -37,7 +46,19 @@ public class JdbcStoreSettingsRepository implements StoreSettingsRepository {
 			resultSet.getString("contact_email"),
 			resultSet.getString("pickup_address"),
 			resultSet.getString("pickup_instructions"),
-			BrandTheme.valueOf(resultSet.getString("brand_theme"))));
+			BrandTheme.valueOf(resultSet.getString("brand_theme")),
+			new TenantBranding(
+				resultSet.getString("primary_color"),
+				resultSet.getString("secondary_color"),
+				resultSet.getString("background_color"),
+				resultSet.getString("text_color"),
+				BrandFont.valueOf(resultSet.getString("brand_font")),
+				resultSet.getString("hero_title"),
+				resultSet.getString("hero_subtitle"),
+				StorefrontTemplate.valueOf(resultSet.getString("storefront_template")),
+				asset(resultSet, "logo"),
+				asset(resultSet, "favicon"),
+				asset(resultSet, "hero"))));
 		return result.stream().findFirst();
 	}
 
@@ -46,11 +67,20 @@ public class JdbcStoreSettingsRepository implements StoreSettingsRepository {
 		jdbcTemplate.update("""
 				UPDATE store_settings
 				SET store_name = ?, contact_phone = ?, contact_email = ?, pickup_address = ?,
-				    pickup_instructions = ?, brand_theme = ?
+				    pickup_instructions = ?
 				ORDER BY id
 				LIMIT 1
 				""",
 			command.storeName(), command.contactPhone(), command.contactEmail(),
-			command.pickupAddress(), command.pickupInstructions(), command.brandTheme().name());
+			command.pickupAddress(), command.pickupInstructions());
+	}
+
+	private BrandAssetReference asset(java.sql.ResultSet resultSet, String prefix)
+			throws java.sql.SQLException {
+		String key = resultSet.getString(prefix + "_storage_key");
+		return key == null ? null : new BrandAssetReference(
+			key,
+			resultSet.getString(prefix + "_content_type"),
+			resultSet.getString(prefix + "_etag"));
 	}
 }

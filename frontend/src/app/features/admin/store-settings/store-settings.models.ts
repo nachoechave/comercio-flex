@@ -1,6 +1,6 @@
-import { BrandTheme, StoreSettings } from '../../storefront/storefront.models';
+import { StoreSettings } from '../../storefront/storefront.models';
 
-export type { BrandTheme, StoreSettings };
+export type { StoreSettings };
 
 export interface UpdateStoreSettings {
   storeName: string;
@@ -8,5 +8,4 @@ export interface UpdateStoreSettings {
   contactEmail: string;
   pickupAddress: string;
   pickupInstructions: string;
-  brandTheme: BrandTheme;
 }

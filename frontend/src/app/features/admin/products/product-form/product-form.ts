@@ -23,6 +23,7 @@ import { finalize, forkJoin, map, Observable, Subscription, switchMap } from 'rx
 import { routeParam } from '../../../../core/auth/auth.guards';
 import { CsrfService } from '../../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
+import { canonicalVariantOptions, VariantOptionValue } from '../../../../shared/variant-options';
 import { ProductApiService } from '../product-api.service';
 import { productErrorMessage } from '../product-errors';
 import { ProductCategory, ProductDetail, ProductVariant, SaveVariant } from '../product.models';
@@ -41,9 +42,7 @@ function normalizeProductName(value: string): string {
   return value.trim().replace(/\s+/g, ' ');
 }
 
-function normalizedProductNameLength(
-  control: AbstractControl<string>,
-): ValidationErrors | null {
+function normalizedProductNameLength(control: AbstractControl<string>): ValidationErrors | null {
   const length = normalizeProductName(control.value).length;
   if (length < 2) {
     return { minlength: { requiredLength: 2, actualLength: length } };
@@ -151,6 +150,17 @@ export class ProductForm implements OnDestroy {
     if (!row.controls.id.value && this.variants.length > 1) this.variants.removeAt(index);
   }
 
+  addVariantOption(index: number): void {
+    const options = this.variants.at(index).controls.options;
+    if (!this.archived() && options.length < 5) options.push(this.newOptionForm());
+  }
+
+  removeVariantOption(variantIndex: number, optionIndex: number): void {
+    if (!this.archived()) {
+      this.variants.at(variantIndex).controls.options.removeAt(optionIndex);
+    }
+  }
+
   submitProduct(): void {
     if (this.saving() || this.archived()) return;
     this.formError.set(null);
@@ -189,10 +199,9 @@ export class ProductForm implements OnDestroy {
     const subscription = request.pipe(finalize(() => this.saving.set(false))).subscribe({
       next: (product) => {
         if (!this.editing()) {
-          void this.router.navigate(
-            ['/tiendas', slug, 'admin', 'productos', product.id],
-            { queryParams: { created: 'true' } },
-          );
+          void this.router.navigate(['/tiendas', slug, 'admin', 'productos', product.id], {
+            queryParams: { created: 'true' },
+          });
           return;
         }
         this.product.set(product);
@@ -210,6 +219,10 @@ export class ProductForm implements OnDestroy {
     const row = this.variants.at(index);
     row.markAllAsTouched();
     if (row.invalid) return;
+    if (!this.optionNamesAreUnique(row.getRawValue().options)) {
+      this.formError.set('Los nombres de opción no pueden repetirse en una variante.');
+      return;
+    }
     const slug = this.storeSlug();
     const productId = this.productId();
     if (!slug || !productId) return;
@@ -224,16 +237,14 @@ export class ProductForm implements OnDestroy {
           version: row.controls.version.value ?? 0,
         })
       : this.api.createVariant(slug, productId, body);
-    const subscription = request
-      .pipe(finalize(() => this.pendingVariantId.set(null)))
-      .subscribe({
-        next: (variant) => {
-          this.setVariantRow(row, variant);
-          this.successMessage.set(`La variante ${variant.sku} fue guardada.`);
-        },
-        error: (error: unknown) =>
-          this.formError.set(productErrorMessage(error, 'No pudimos guardar la variante.')),
-      });
+    const subscription = request.pipe(finalize(() => this.pendingVariantId.set(null))).subscribe({
+      next: (variant) => {
+        this.setVariantRow(row, variant);
+        this.successMessage.set(`La variante ${variant.sku} fue guardada.`);
+      },
+      error: (error: unknown) =>
+        this.formError.set(productErrorMessage(error, 'No pudimos guardar la variante.')),
+    });
     this.mutations.push(subscription);
   }
 
@@ -367,6 +378,7 @@ export class ProductForm implements OnDestroy {
   }
 
   private newVariantForm(variant?: ProductVariant) {
+    const options = this.variantOptions(variant);
     return this.formBuilder.group({
       id: this.formBuilder.control<string | null>(variant?.id ?? null),
       sku: this.formBuilder.nonNullable.control(variant?.sku ?? '', [
@@ -377,6 +389,7 @@ export class ProductForm implements OnDestroy {
       price: this.formBuilder.nonNullable.control(variant?.price ?? '', [positiveDecimal]),
       size: this.formBuilder.nonNullable.control(variant?.size ?? '', [Validators.maxLength(60)]),
       color: this.formBuilder.nonNullable.control(variant?.color ?? '', [Validators.maxLength(60)]),
+      options: new FormArray(options.map((option) => this.newOptionForm(option))),
       active: this.formBuilder.nonNullable.control(variant?.active ?? true),
       version: this.formBuilder.control<number | null>(variant?.version ?? null),
     });
@@ -384,11 +397,19 @@ export class ProductForm implements OnDestroy {
 
   private variantBody(row: ReturnType<ProductForm['newVariantForm']>): SaveVariant {
     const value = row.getRawValue();
+    const options = value.options.map((option) => ({
+      name: option.name.trim().replace(/\s+/g, ' '),
+      value: option.value.trim().replace(/\s+/g, ' '),
+    }));
     return {
       sku: value.sku.trim(),
       price: value.price.trim(),
-      ...(value.size.trim() ? { size: value.size.trim() } : {}),
-      ...(value.color.trim() ? { color: value.color.trim() } : {}),
+      ...(options.length
+        ? { options }
+        : {
+            ...(value.size.trim() ? { size: value.size.trim() } : {}),
+            ...(value.color.trim() ? { color: value.color.trim() } : {}),
+          }),
     };
   }
 
@@ -415,15 +436,21 @@ export class ProductForm implements OnDestroy {
     for (const row of this.variants.controls) {
       const value = row.getRawValue();
       const sku = value.sku.trim().toUpperCase();
-      const combination = `${value.size.trim().toLocaleLowerCase('es')}\u0000${value.color
-        .trim()
-        .toLocaleLowerCase('es')}`;
+      const combination = canonicalVariantOptions(
+        value.options,
+        value.size.trim() || null,
+        value.color.trim() || null,
+      );
+      if (!this.optionNamesAreUnique(value.options)) {
+        this.formError.set('Los nombres de opción no pueden repetirse en una variante.');
+        return false;
+      }
       if (skus.has(sku)) {
         this.formError.set(`El SKU ${value.sku.trim()} está repetido.`);
         return false;
       }
       if (combinations.has(combination)) {
-        this.formError.set('Hay dos variantes con la misma combinación de talle y color.');
+        this.formError.set('Hay dos variantes con la misma combinación de opciones.');
         return false;
       }
       skus.add(sku);
@@ -436,7 +463,11 @@ export class ProductForm implements OnDestroy {
     row: ReturnType<ProductForm['newVariantForm']>,
     variant: ProductVariant,
   ): void {
-    row.setValue({
+    row.controls.options.clear();
+    for (const option of this.variantOptions(variant)) {
+      row.controls.options.push(this.newOptionForm(option));
+    }
+    row.patchValue({
       id: variant.id,
       sku: variant.sku,
       price: variant.price,
@@ -446,6 +477,26 @@ export class ProductForm implements OnDestroy {
       version: variant.version,
     });
     row.markAsPristine();
+  }
+
+  private newOptionForm(option?: VariantOptionValue) {
+    return this.formBuilder.nonNullable.group({
+      name: [option?.name ?? '', [Validators.required, Validators.maxLength(40)]],
+      value: [option?.value ?? '', [Validators.required, Validators.maxLength(60)]],
+    });
+  }
+
+  private variantOptions(variant?: ProductVariant): VariantOptionValue[] {
+    if (variant?.options?.length) return variant.options;
+    return [
+      ...(variant?.size ? [{ name: 'Talle', value: variant.size }] : []),
+      ...(variant?.color ? [{ name: 'Color', value: variant.color }] : []),
+    ];
+  }
+
+  private optionNamesAreUnique(options: readonly VariantOptionValue[]): boolean {
+    const names = options.map((option) => option.name.trim().toLocaleLowerCase('es'));
+    return new Set(names).size === names.length;
   }
 
   private resetForRoute(): void {

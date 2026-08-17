@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
+import { canonicalVariantOptions, VariantOptionValue } from '../../../shared/variant-options';
 import { PublicProductDetail } from '../storefront.models';
 import { AddCartItem, AddCartResult, CartLine, StoredCart, StoredCartLine } from './cart.models';
 
@@ -103,8 +104,8 @@ export class CartService {
         line.imageThumbnailUrl !== (product.image?.thumbnailUrl ?? null) ||
         line.imageAltText !== (product.image?.altText ?? null) ||
         line.unitPrice !== normalizeMoney(variant.price) ||
-        line.size !== variant.size ||
-        line.color !== variant.color;
+        canonicalVariantOptions(line.options, line.size, line.color) !==
+          canonicalVariantOptions(variant.options, variant.size, variant.color);
       return {
         ...line,
         productId: product.id,
@@ -113,6 +114,7 @@ export class CartService {
         imageAltText: product.image?.altText ?? null,
         size: variant.size,
         color: variant.color,
+        options: variant.options ?? legacyOptions(variant.size, variant.color),
         unitPrice: normalizeMoney(variant.price),
         status: variant.available ? ('AVAILABLE' as const) : ('UNAVAILABLE' as const),
         notice: !variant.available
@@ -181,6 +183,7 @@ export class CartService {
         ...item,
         imageThumbnailUrl: item.imageThumbnailUrl ?? null,
         imageAltText: item.imageAltText ?? null,
+        options: item.options ?? legacyOptions(item.size, item.color),
         unitPrice: normalizeMoney(item.unitPrice),
         status: 'UNKNOWN',
         notice: 'Confirmando precio y disponibilidad.',
@@ -222,6 +225,7 @@ function toCartLine(item: AddCartItem, quantity: number): CartLine {
     variantId: item.variant.id,
     size: item.variant.size,
     color: item.variant.color,
+    options: item.variant.options ?? legacyOptions(item.variant.size, item.variant.color),
     unitPrice: normalizeMoney(item.variant.price),
     quantity,
     status: 'AVAILABLE',
@@ -246,6 +250,7 @@ function isStoredLine(value: unknown): value is StoredCartLine {
     isText(value['variantId'], 100) &&
     isNullableText(value['size'], 60) &&
     isNullableText(value['color'], 60) &&
+    (value['options'] === undefined || isVariantOptions(value['options'])) &&
     typeof value['unitPrice'] === 'string' &&
     MONEY_PATTERN.test(value['unitPrice']) &&
     parseCents(value['unitPrice']) > 0n &&
@@ -260,6 +265,7 @@ function isStoredLine(value: unknown): value is StoredCartLine {
         'variantId',
         'size',
         'color',
+        'options',
         'unitPrice',
         'quantity',
       ].includes(key),
@@ -269,6 +275,27 @@ function isStoredLine(value: unknown): value is StoredCartLine {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isVariantOptions(value: unknown): value is VariantOptionValue[] {
+  return (
+    Array.isArray(value) &&
+    value.length <= 5 &&
+    value.every(
+      (option) =>
+        isRecord(option) &&
+        Object.keys(option).every((key) => ['name', 'value'].includes(key)) &&
+        isText(option['name'], 40) &&
+        isText(option['value'], 60),
+    )
+  );
+}
+
+function legacyOptions(size: string | null, color: string | null): VariantOptionValue[] {
+  return [
+    ...(size ? [{ name: 'Talle', value: size }] : []),
+    ...(color ? [{ name: 'Color', value: color }] : []),
+  ];
 }
 
 function isText(value: unknown, maxLength: number): value is string {

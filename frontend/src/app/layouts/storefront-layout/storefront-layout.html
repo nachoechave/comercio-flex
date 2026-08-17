@@ -19,24 +19,37 @@
     <a routerLink="/">Volver a Comercio Flex</a>
   </main>
 } @else if (context.settings(); as settings) {
-  <div class="store-theme" [attr.data-theme]="theme()" [attr.data-store]="settings.slug">
-    @if (isStreetwear()) {
+  <div
+    class="store-theme"
+    [attr.data-template]="branding().template.toLowerCase()"
+    [style.--store-primary-color]="branding().primaryColor"
+    [style.--store-secondary-color]="branding().secondaryColor"
+    [style.--store-background-color]="branding().backgroundColor"
+    [style.--store-text-color]="branding().textColor"
+    [style.--store-font-family]="fontFamily()"
+    [style.--store-hero-image]="branding().heroImageUrl ? 'url(' + branding().heroImageUrl + ')' : 'none'"
+  >
+    @if (isModern()) {
       <aside class="announcement-bar" aria-label="Beneficios de compra">
         <span>Envíos gratis desde $100.000</span>
         <span>10% off en tu primera compra · Código <strong>PRIMERDROP</strong></span>
         <span>Atención personalizada</span>
       </aside>
     }
-    <header class="site-header" [class.site-header--streetwear]="isStreetwear()">
+    <header class="site-header" [class.site-header--streetwear]="isModern()">
       <a class="brand" [routerLink]="['/tiendas', settings.slug]">
-        <span class="brand-mark" aria-hidden="true">{{ isStreetwear() ? 'A//' : settings.storeName.slice(0, 1) }}</span>
+        @if (branding().logoUrl; as logoUrl) {
+          <img class="brand-logo" [src]="logoUrl" [alt]="'Logo de ' + settings.storeName" />
+        } @else {
+          <span class="brand-mark" aria-hidden="true">{{ isModern() ? settings.storeName.slice(0, 2).toUpperCase() : settings.storeName.slice(0, 1) }}</span>
+        }
         <span class="brand-copy">
           <strong>{{ settings.storeName }}</strong>
-          @if (isStreetwear()) { <small>street essentials</small> }
+          @if (isModern()) { <small>tienda online</small> }
         </span>
       </a>
       <nav aria-label="Navegación principal">
-        @if (isStreetwear()) {
+        @if (isModern()) {
           <a [routerLink]="['/tiendas', settings.slug]">Inicio</a>
           <a [routerLink]="['/tiendas', storeSlug()]" fragment="catalog-products">Tienda</a>
           <a
@@ -67,7 +80,7 @@
           [routerLink]="['/tiendas', settings.slug, 'carrito']"
           [attr.aria-label]="'Carrito, ' + cartUnits() + ' unidades'"
         >
-          @if (isStreetwear()) {
+          @if (isModern()) {
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 8.5h13l-1 11h-11z"></path><path d="M9 9V7a3 3 0 0 1 6 0v2"></path></svg>
             <span class="sr-cart-label">Carrito</span>
           } @else {
@@ -80,7 +93,7 @@
     <main id="main-content">
       <router-outlet />
     </main>
-    @if (isStreetwear()) {
+    @if (isModern()) {
       <section class="store-newsletter" aria-labelledby="newsletter-title">
         <div>
           <span aria-hidden="true">✉</span>

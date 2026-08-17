@@ -36,4 +36,20 @@ describe('application routes', () => {
     expect(returnRoute).toBeTruthy();
     expect(await returnRoute?.loadComponent?.()).toBeTruthy();
   });
+
+  it('lazy-loads the isolated SuperAdmin area', async () => {
+    const route = routes.find((candidate) => candidate.path === 'superadmin');
+
+    expect(route).toBeTruthy();
+    expect(route?.canActivate).toHaveLength(2);
+    expect(route?.canActivateChild).toHaveLength(2);
+    expect(route?.children?.map((child) => child.path)).toEqual([
+      '',
+      'empresas',
+      'empresas/nueva',
+      'empresas/:companyId/apariencia',
+      'empresas/:companyId',
+    ]);
+    expect(await route?.loadComponent?.()).toBeTruthy();
+  });
 });

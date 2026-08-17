@@ -125,7 +125,8 @@ Una sesión válida responde `200` con identidad y membresías:
   "user": {
     "id": "identificador-opaco",
     "email": "persona@ejemplo.com",
-    "displayName": "Ana"
+    "displayName": "Ana",
+    "platformRole": "USER"
   },
   "memberships": [
     {
@@ -137,9 +138,68 @@ Una sesión válida responde `200` con identidad y membresías:
 }
 ```
 
+`user.platformRole` distingue el acceso global `USER` de `SUPER_ADMIN`. Este
+valor orienta la navegación; las APIs globales vuelven a consultar rol y estado
+en la base de control antes de autorizar cada solicitud.
+
 La respuesta no incluye hashes, identificadores internos, `database_key` ni
 credenciales. Una membresía sirve para presentar o seleccionar una tienda; cada
 endpoint administrativo vuelve a autorizarla en el servidor.
+
+## Administración global de plataforma
+
+Todas las rutas bajo `/api/v1/superadmin` requieren sesión activa y rol global
+`SUPER_ADMIN`. Un `OWNER`, `ADMIN` o `STAFF` tenant recibe `403`; las mutaciones
+también requieren CSRF.
+
+```http
+GET /api/v1/superadmin/dashboard
+GET /api/v1/superadmin/companies?page=0&size=20&status=ACTIVE&q=urban
+GET /api/v1/superadmin/companies/{companyPublicId}
+POST /api/v1/superadmin/companies/{companyPublicId}/activate
+POST /api/v1/superadmin/companies/{companyPublicId}/suspend
+POST /api/v1/superadmin/companies/{companyPublicId}/retry-provisioning
+GET /api/v1/superadmin/companies/{companyPublicId}/branding
+PUT /api/v1/superadmin/companies/{companyPublicId}/branding
+PUT /api/v1/superadmin/companies/{companyPublicId}/branding/assets/{logo|favicon|hero}
+DELETE /api/v1/superadmin/companies/{companyPublicId}/branding/assets/{logo|favicon|hero}
+```
+
+El listado permite buscar por nombre, slug o email del `OWNER` activo más antiguo.
+Activar y suspender registra un evento global con actor, tenant, transición y fecha.
+Una empresa suspendida deja de resolver tanto tienda pública como panel tenant.
+El contrato nunca devuelve `database_key`, URL JDBC ni credenciales. El dominio
+es metadato opcional; última actividad permanece nula hasta contar con una fuente
+confiable.
+
+### Alta automática de empresa
+
+```http
+POST /api/v1/superadmin/companies
+Content-Type: application/json
+X-XSRF-TOKEN: <token>
+```
+
+```json
+{
+  "name": "Urban Clothes",
+  "slug": "urban-clothes",
+  "industry": "Indumentaria",
+  "administratorEmail": "juan@example.com",
+  "administratorName": "Juan Pérez",
+  "administratorPhone": "+54 11 5555-5555",
+  "domain": "urban.com.ar",
+  "initialPassword": "credencial-inicial-segura",
+  "status": "ACTIVE"
+}
+```
+
+La operación registra el estado `PROVISIONING`, crea y migra una base aislada,
+inicializa `store_settings`, crea o reutiliza la identidad global y agrega una
+membresía `OWNER`. Al finalizar adopta `ACTIVE` o `INACTIVE`. Un fallo queda como
+`PROVISIONING_FAILED` y puede reintentarse sin eliminar la base. La contraseña no
+se devuelve ni se registra en auditoría. El contrato tampoco expone nombres de
+base, claves de routing ni credenciales.
 
 ### Cerrar sesión
 
@@ -270,8 +330,11 @@ X-XSRF-TOKEN: <token>
     {
       "sku": "REM-CL-M-AZ",
       "price": "15900.00",
-      "size": "M",
-      "color": "Azul"
+      "options": [
+        { "name": "Talle", "value": "M" },
+        { "name": "Color", "value": "Azul" },
+        { "name": "Material", "value": "Algodón" }
+      ]
     }
   ]
 }
@@ -280,6 +343,11 @@ X-XSRF-TOKEN: <token>
 Producto y variantes se confirman en una sola transacción. La respuesta es
 `201 Created`, empieza en `DRAFT` y expone UUID y versión de cada recurso. El
 precio siempre viaja como string decimal canónico, por ejemplo `"15900.00"`.
+Cada variante admite de cero a cinco opciones con nombre (40 caracteres) y valor
+(60 caracteres). Los nombres no se repiten dentro de la variante y la combinación
+es única dentro del producto sin depender del orden ni de mayúsculas. Una lista
+vacía representa la variante estándar. `size` y `color` siguen aceptándose como
+entrada compatible, pero no pueden mezclarse con `options` en el mismo request.
 
 ### Consultar y editar
 
@@ -316,7 +384,9 @@ PATCH /api/v1/stores/{storeSlug}/admin/products/{productId}/variants/{variantId}
 ```
 
 Editar o cambiar estado exige la versión de la variante. No se puede desactivar
-la última variante activa de un producto publicado.
+la última variante activa de un producto publicado. Las respuestas incluyen
+`options: [{"name":"Talle","value":"M"}]`; `size` y `color` permanecen como
+campos derivados de compatibilidad para clientes anteriores.
 
 ### Errores de productos
 
@@ -439,8 +509,9 @@ agotado continúa visible con `available: false`.
 GET /api/v1/stores/{storeSlug}/catalog/products/{productSlug}
 ```
 
-Devuelve descripción, categoría y variantes activas con UUID, precio, talle,
-color y disponibilidad booleana. Un borrador, archivado, producto con categoría
+Devuelve descripción, categoría y variantes activas con UUID, precio,
+`options` genéricas y disponibilidad booleana. `size` y `color` continúan como
+campos derivados de compatibilidad. Un borrador, archivado, producto con categoría
 inactiva o slug inexistente responde `404`.
 
 La API pública nunca entrega SKU, cantidad exacta, ledger, versiones, timestamps,
@@ -497,7 +568,9 @@ La clave debe ser un UUID v4.
 
 La respuesta contiene `order` con UUID, número `ORD-xxxxxx`, estado, retiro,
 contacto enmascarado, moneda, subtotal e items; los decimales se expresan como
-strings. También contiene `lookupToken`, un valor URL-safe de 43 caracteres.
+strings. Cada item contiene el snapshot `options` elegido al comprar, además de
+`size`/`color` compatibles; editar luego el catálogo no modifica el pedido.
+También contiene `lookupToken`, un valor URL-safe de 43 caracteres.
 
 El token se deriva de forma unidireccional desde el UUID v4 idempotente para
 poder devolverlo ante un timeout; MySQL guarda únicamente otro hash SHA-256.
@@ -875,13 +948,26 @@ Ejemplo de actualización:
   "contactPhone": "+54 11 5555-5555",
   "contactEmail": "ventas@example.com",
   "pickupAddress": "Av. Siempre Viva 742",
-  "pickupInstructions": "Retirar de lunes a viernes de 10 a 18.",
-  "brandTheme": "BURGUNDY"
+  "pickupInstructions": "Retirar de lunes a viernes de 10 a 18."
 }
 ```
 
 El nombre tiene 2–160 caracteres, la dirección 5–240 y es obligatoria, las
-instrucciones admiten hasta 500, y debe existir al menos teléfono o correo. Los
-temas admitidos son `VIOLET`, `BURGUNDY`, `FOREST` y `NAVY`. `OWNER` y `ADMIN`
-pueden administrar esta configuración; `STAFF` conserva acceso operativo a
-pedidos, sin permisos de configuración.
+instrucciones admiten hasta 500, y debe existir al menos teléfono o correo.
+`OWNER` y `ADMIN` administran únicamente esta configuración operativa; la
+apariencia queda fuera de este contrato y es exclusiva de `SUPER_ADMIN`.
+
+### Branding por tenant
+
+`PUT /api/v1/superadmin/companies/{companyPublicId}/branding` recibe colores
+hexadecimales, `font` (`SYSTEM`, `SANS`, `SERIF`), textos hero y `template`
+(`CLASSIC`, `MODERN`, `MINIMAL`). Los assets usan `multipart/form-data`, campo
+`file`, JPEG/PNG real y máximo 5 MiB. Todas las mutaciones requieren CSRF y crean
+auditoría global con actor y tenant, sin exponer la clave de base.
+
+La configuración pública incluye `branding` y URLs versionadas. Los bytes se
+sirven con cache pública, `ETag` y resolución tenant:
+
+```http
+GET /api/v1/stores/{slug}/media/branding/{logo|favicon|hero}
+```

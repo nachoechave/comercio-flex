@@ -1,6 +1,7 @@
 package com.comercioflex.catalog.domain;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record PublicVariant(
@@ -8,5 +9,6 @@ public record PublicVariant(
 	BigDecimal price,
 	String size,
 	String color,
+	List<VariantOptionValue> options,
 	boolean available) {
 }

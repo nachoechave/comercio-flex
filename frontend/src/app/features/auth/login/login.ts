@@ -44,6 +44,10 @@ export class Login {
             void this.router.navigateByUrl(returnUrl);
             return;
           }
+          if (session.user.platformRole === 'SUPER_ADMIN') {
+            void this.router.navigate(['/superadmin']);
+            return;
+          }
           if (session.memberships.length === 1) {
             void this.router.navigate([
               '/tiendas',

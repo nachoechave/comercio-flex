@@ -1,10 +1,10 @@
-<section class="catalog" [class.catalog--streetwear]="isStreetwear()" aria-labelledby="catalog-title">
-  @if (isStreetwear()) {
+<section class="catalog" [class.catalog--streetwear]="isModern()" aria-labelledby="catalog-title">
+  @if (isModern()) {
     <header class="streetwear-hero">
       <div class="hero-copy">
         <p class="eyebrow">Nueva colección · 2026</p>
-        <h1 id="catalog-title">Hecho distinto.<br />Diseñado para <em>destacar.</em></h1>
-        <p>Streetwear premium para quienes no necesitan permiso para marcar su propio camino.</p>
+        <h1 id="catalog-title">{{ heroTitle() }}</h1>
+        <p>{{ heroSubtitle() }}</p>
         <div class="hero-actions">
           <a
             class="hero-primary"
@@ -65,7 +65,7 @@
   <form
     id="catalog-search"
     class="filters"
-    [class.filters--streetwear]="isStreetwear()"
+    [class.filters--streetwear]="isModern()"
     [formGroup]="filters"
     (ngSubmit)="search()"
     role="search"
@@ -124,14 +124,14 @@
   } @else {
     <div id="catalog-products" class="results-heading">
       <div>
-        <p class="eyebrow">{{ isStreetwear() ? 'Nueva temporada' : 'Productos' }}</p>
-        @if (isStreetwear()) {
+        <p class="eyebrow">{{ isModern() ? 'Nueva temporada' : 'Productos' }}</p>
+        @if (isModern()) {
           <h2>Nuevos ingresos</h2>
         } @else {
           <h2>{{ page().totalItems }} {{ page().totalItems === 1 ? 'resultado' : 'resultados' }}</h2>
         }
       </div>
-      @if (isStreetwear()) {
+      @if (isModern()) {
         <span class="result-count">{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span>
       }
       @if (query() || selectedCategory()) {
@@ -145,6 +145,7 @@
           [product]="product"
           [storeSlug]="storeSlug() ?? ''"
           [currencyCode]="currencyCode()"
+          [modern]="isModern()"
         />
       }
     </div>
@@ -169,7 +170,7 @@
       </nav>
     }
 
-    @if (isStreetwear()) {
+    @if (isModern()) {
       <section class="campaign-grid" aria-label="Campañas destacadas">
         <article class="campaign campaign--dark">
           <p>Vestí tu identidad</p>

@@ -37,6 +37,11 @@ describe('StorefrontLayout', () => {
       storeName: 'Tienda A',
       currencyCode: 'ARS',
       timezone: 'America/Argentina/Buenos_Aires',
+      branding: {
+        primaryColor: '#B7FF2A', secondaryColor: '#080808', backgroundColor: '#FFFFFF',
+        textColor: '#0B0B0B', font: 'SANS', heroTitle: null, heroSubtitle: null,
+        template: 'MODERN', logoUrl: null, faviconUrl: null, heroImageUrl: null,
+      },
     });
     fixture.detectChanges();
   });

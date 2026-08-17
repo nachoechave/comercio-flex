@@ -50,6 +50,7 @@ describe('Login', () => {
         id: 'user-1',
         email: 'owner@example.com',
         displayName: 'Dueña Demo',
+        platformRole: 'USER',
       },
       memberships: [
         {

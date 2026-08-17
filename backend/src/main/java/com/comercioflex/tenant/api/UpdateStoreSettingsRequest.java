@@ -1,12 +1,9 @@
 package com.comercioflex.tenant.api;
 
 import com.comercioflex.tenant.application.UpdateStoreSettingsCommand;
-import com.comercioflex.tenant.domain.BrandTheme;
-
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -15,8 +12,7 @@ public record UpdateStoreSettingsRequest(
 	@Size(max = 40) @Pattern(regexp = "^$|^[+0-9][0-9 ()\\-]{6,39}$") String contactPhone,
 	@Size(max = 254) @Email String contactEmail,
 	@NotBlank @Size(min = 5, max = 240) String pickupAddress,
-	@Size(max = 500) String pickupInstructions,
-	@NotNull BrandTheme brandTheme
+	@Size(max = 500) String pickupInstructions
 ) {
 	@AssertTrue(message = "Debe indicar al menos un teléfono o correo de contacto.")
 	public boolean isContactProvided() {
@@ -31,7 +27,7 @@ public record UpdateStoreSettingsRequest(
 
 	UpdateStoreSettingsCommand toCommand() {
 		return new UpdateStoreSettingsCommand(storeName, contactPhone, contactEmail,
-			pickupAddress, pickupInstructions, brandTheme);
+			pickupAddress, pickupInstructions);
 	}
 
 	private static boolean hasText(String value) {

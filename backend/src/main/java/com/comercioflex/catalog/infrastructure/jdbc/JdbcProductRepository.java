@@ -5,7 +5,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,6 +34,7 @@ import com.comercioflex.catalog.domain.ProductCategory;
 import com.comercioflex.catalog.domain.ProductStatus;
 import com.comercioflex.catalog.domain.ProductSummary;
 import com.comercioflex.catalog.domain.ProductVariant;
+import com.comercioflex.catalog.domain.VariantOptionValue;
 import com.comercioflex.media.domain.ProductImageReference;
 
 @Repository
@@ -155,12 +160,12 @@ public class JdbcProductRepository implements ProductRepository {
 				""",
 			variantMapper,
 			productId.toString());
-		return Optional.of(header.toProduct(variants));
+		return Optional.of(header.toProduct(withOptions(variants)));
 	}
 
 	@Override
 	public Optional<ProductVariant> findVariant(UUID productId, UUID variantId) {
-		return jdbcTemplate.query(
+		List<ProductVariant> variants = jdbcTemplate.query(
 			VARIANT_COLUMNS + """
 				JOIN products product ON product.id = variant.product_id
 				WHERE product.public_id = UUID_TO_BIN(?)
@@ -168,9 +173,8 @@ public class JdbcProductRepository implements ProductRepository {
 				""",
 			variantMapper,
 			productId.toString(),
-			variantId.toString())
-			.stream()
-			.findFirst();
+			variantId.toString());
+		return withOptions(variants).stream().findFirst();
 	}
 
 	@Override
@@ -279,19 +283,30 @@ public class JdbcProductRepository implements ProductRepository {
 			UUID publicId,
 			long productInternalId,
 			VariantValues values) {
+		KeyHolder keyHolder = new GeneratedKeyHolder();
 		try {
-			jdbcTemplate.update("""
+			jdbcTemplate.update(connection -> {
+				PreparedStatement statement = connection.prepareStatement("""
 				INSERT INTO product_variants (
-					public_id, product_id, sku, price, size_value, color_value, status
+					public_id, product_id, sku, price, size_value, color_value,
+					option_signature, status
 				)
-				VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, ?, 'ACTIVE')
-				""",
-				publicId.toString(),
-				productInternalId,
-				values.sku(),
-				values.price(),
-				values.size(),
-				values.color());
+				VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, ?, ?, 'ACTIVE')
+				""", Statement.RETURN_GENERATED_KEYS);
+				statement.setString(1, publicId.toString());
+				statement.setLong(2, productInternalId);
+				statement.setString(3, values.sku());
+				statement.setBigDecimal(4, values.price());
+				statement.setString(5, values.size());
+				statement.setString(6, values.color());
+				statement.setString(7, values.optionSignature());
+				return statement;
+			}, keyHolder);
+			Number key = keyHolder.getKey();
+			if (key == null) {
+				throw new IllegalStateException("MySQL did not return the variant identifier");
+			}
+			replaceVariantOptions(key.longValue(), productInternalId, values.options());
 		}
 		catch (DuplicateKeyException exception) {
 			throw conflict();
@@ -341,12 +356,13 @@ public class JdbcProductRepository implements ProductRepository {
 	@Override
 	public boolean updateVariant(
 			long internalId,
+			long productInternalId,
 			VariantValues values,
 			long expectedVersion) {
 		try {
-			return jdbcTemplate.update("""
+			boolean updated = jdbcTemplate.update("""
 				UPDATE product_variants
-				SET sku = ?, price = ?, size_value = ?, color_value = ?,
+				SET sku = ?, price = ?, size_value = ?, color_value = ?, option_signature = ?,
 					version = version + 1
 				WHERE id = ? AND version = ?
 				""",
@@ -354,8 +370,13 @@ public class JdbcProductRepository implements ProductRepository {
 				values.price(),
 				values.size(),
 				values.color(),
+				values.optionSignature(),
 				internalId,
 				expectedVersion) > 0;
+			if (updated) {
+				replaceVariantOptions(internalId, productInternalId, values.options());
+			}
+			return updated;
 		}
 		catch (DuplicateKeyException exception) {
 			throw conflict();
@@ -458,10 +479,166 @@ public class JdbcProductRepository implements ProductRepository {
 			resultSet.getBigDecimal("price"),
 			nullableOption(resultSet.getString("size_value")),
 			nullableOption(resultSet.getString("color_value")),
+			List.of(),
 			"ACTIVE".equals(resultSet.getString("status")),
 			resultSet.getLong("version"),
 			resultSet.getTimestamp("created_at").toInstant(),
 			resultSet.getTimestamp("updated_at").toInstant());
+	}
+
+	private List<ProductVariant> withOptions(List<ProductVariant> variants) {
+		if (variants.isEmpty()) {
+			return variants;
+		}
+		String placeholders = String.join(", ",
+			Collections.nCopies(variants.size(), "UUID_TO_BIN(?)"));
+		Map<UUID, List<VariantOptionValue>> optionsByVariant = new HashMap<>();
+		jdbcTemplate.query("""
+			SELECT BIN_TO_UUID(variant.public_id) variant_public_id,
+				product_option.name, option_value.value
+			FROM product_variants variant
+			JOIN product_variant_option_values relation ON relation.variant_id = variant.id
+			JOIN product_option_values option_value ON option_value.id = relation.option_value_id
+			JOIN product_options product_option ON product_option.id = option_value.option_id
+			WHERE variant.public_id IN (
+			""" + placeholders + ") ORDER BY product_option.position, option_value.position",
+			(org.springframework.jdbc.core.RowCallbackHandler) resultSet -> optionsByVariant
+				.computeIfAbsent(
+					UUID.fromString(resultSet.getString("variant_public_id")),
+					ignored -> new ArrayList<>())
+				.add(new VariantOptionValue(
+					resultSet.getString("name"), resultSet.getString("value"))),
+			variants.stream().map(variant -> variant.id().toString()).toArray());
+		return variants.stream().map(variant -> new ProductVariant(
+			variant.id(),
+			variant.sku(),
+			variant.price(),
+			variant.size(),
+			variant.color(),
+			List.copyOf(optionsByVariant.getOrDefault(variant.id(), List.of())),
+			variant.active(),
+			variant.version(),
+			variant.createdAt(),
+			variant.updatedAt())).toList();
+	}
+
+	private void replaceVariantOptions(
+			long variantInternalId,
+			long productInternalId,
+			List<VariantOptionValue> options) {
+		jdbcTemplate.update(
+			"DELETE FROM product_variant_option_values WHERE variant_id = ?",
+			variantInternalId);
+		jdbcTemplate.update("""
+			DELETE option_value
+			FROM product_option_values option_value
+			JOIN product_options product_option ON product_option.id = option_value.option_id
+			LEFT JOIN product_variant_option_values relation
+				ON relation.option_value_id = option_value.id
+			WHERE product_option.product_id = ? AND relation.variant_id IS NULL
+			""", productInternalId);
+		jdbcTemplate.update("""
+			DELETE product_option
+			FROM product_options product_option
+			LEFT JOIN product_option_values option_value
+				ON option_value.option_id = product_option.id
+			WHERE product_option.product_id = ? AND option_value.id IS NULL
+			""", productInternalId);
+		for (VariantOptionValue option : options) {
+			long optionId = findOrCreateOption(productInternalId, option.name());
+			long valueId = findOrCreateOptionValue(optionId, option.value());
+			jdbcTemplate.update("""
+				INSERT INTO product_variant_option_values (variant_id, option_value_id)
+				VALUES (?, ?)
+				""", variantInternalId, valueId);
+		}
+	}
+
+	private long findOrCreateOption(long productInternalId, String name) {
+		String normalized = name.toLowerCase(Locale.ROOT);
+		List<Long> existing = jdbcTemplate.query("""
+			SELECT id FROM product_options
+			WHERE product_id = ? AND normalized_name = ?
+			""", (resultSet, rowNumber) -> resultSet.getLong("id"),
+			productInternalId, normalized);
+		if (!existing.isEmpty()) {
+			return existing.getFirst();
+		}
+		int position = nextOptionPosition(productInternalId);
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+		jdbcTemplate.update(connection -> {
+			PreparedStatement statement = connection.prepareStatement("""
+				INSERT INTO product_options (
+					public_id, product_id, name, normalized_name, position
+				) VALUES (UUID_TO_BIN(?), ?, ?, ?, ?)
+				""", Statement.RETURN_GENERATED_KEYS);
+			statement.setString(1, UUID.randomUUID().toString());
+			statement.setLong(2, productInternalId);
+			statement.setString(3, name);
+			statement.setString(4, normalized);
+			statement.setInt(5, position);
+			return statement;
+		}, keyHolder);
+		Number key = keyHolder.getKey();
+		if (key == null) {
+			throw new IllegalStateException("MySQL did not return the option identifier");
+		}
+		return key.longValue();
+	}
+
+	private long findOrCreateOptionValue(long optionId, String value) {
+		String normalized = value.toLowerCase(Locale.ROOT);
+		List<Long> existing = jdbcTemplate.query("""
+			SELECT id FROM product_option_values
+			WHERE option_id = ? AND normalized_value = ?
+			""", (resultSet, rowNumber) -> resultSet.getLong("id"), optionId, normalized);
+		if (!existing.isEmpty()) {
+			return existing.getFirst();
+		}
+		int position = nextOptionValuePosition(optionId);
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+		jdbcTemplate.update(connection -> {
+			PreparedStatement statement = connection.prepareStatement("""
+				INSERT INTO product_option_values (
+					public_id, option_id, value, normalized_value, position
+				) VALUES (UUID_TO_BIN(?), ?, ?, ?, ?)
+				""", Statement.RETURN_GENERATED_KEYS);
+			statement.setString(1, UUID.randomUUID().toString());
+			statement.setLong(2, optionId);
+			statement.setString(3, value);
+			statement.setString(4, normalized);
+			statement.setInt(5, position);
+			return statement;
+		}, keyHolder);
+		Number key = keyHolder.getKey();
+		if (key == null) {
+			throw new IllegalStateException("MySQL did not return the option value identifier");
+		}
+		return key.longValue();
+	}
+
+	private int nextOptionPosition(long productInternalId) {
+		List<Integer> used = jdbcTemplate.queryForList(
+			"SELECT position FROM product_options WHERE product_id = ?",
+			Integer.class,
+			productInternalId);
+		for (int position = 1; position <= 5; position++) {
+			if (!used.contains(position)) return position;
+		}
+		throw new ProductConflictException(
+			"El producto admite hasta 5 nombres de opción diferentes.");
+	}
+
+	private int nextOptionValuePosition(long optionId) {
+		List<Integer> used = jdbcTemplate.queryForList(
+			"SELECT position FROM product_option_values WHERE option_id = ?",
+			Integer.class,
+			optionId);
+		for (int position = 1; position <= 100; position++) {
+			if (!used.contains(position)) return position;
+		}
+		throw new ProductConflictException(
+			"Una opción del producto admite hasta 100 valores diferentes.");
 	}
 
 	private String nullableOption(String value) {
@@ -470,7 +647,7 @@ public class JdbcProductRepository implements ProductRepository {
 
 	private ProductConflictException conflict() {
 		return new ProductConflictException(
-			"El slug, SKU o combinación de talle y color ya existe.");
+			"El slug, SKU o combinación de opciones ya existe.");
 	}
 
 	private record ProductHeader(

@@ -27,6 +27,9 @@ export class AuthService {
     const session = this.sessionState();
     return session?.authenticated ? session.user : null;
   });
+  readonly isSuperAdmin = computed(
+    () => this.user()?.platformRole === 'SUPER_ADMIN',
+  );
   readonly memberships = computed<MembershipSummary[]>(() => {
     const session = this.sessionState();
     return session?.authenticated ? session.memberships : [];

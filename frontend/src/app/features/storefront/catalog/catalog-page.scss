@@ -228,7 +228,7 @@ button:disabled {
   color: #fff;
   background:
     linear-gradient(90deg, rgb(0 0 0 / 92%) 0%, rgb(0 0 0 / 62%) 37%, transparent 70%),
-    url('/assets/storefront/tienda-a/hero-streetwear.png') center / cover no-repeat;
+    var(--store-hero-image) center / cover no-repeat;
 }
 
 .hero-copy {
@@ -236,7 +236,7 @@ button:disabled {
 }
 
 .hero-copy .eyebrow {
-  color: #b7ff2a;
+  color: var(--store-primary-color);
 }
 
 .hero-copy h1 {
@@ -251,7 +251,7 @@ button:disabled {
 }
 
 .hero-copy h1 em {
-  color: #b7ff2a;
+  color: var(--store-primary-color);
   font-style: normal;
 }
 
@@ -285,7 +285,7 @@ button:disabled {
 
 .hero-primary {
   color: #080808;
-  background: #b7ff2a;
+  background: var(--store-primary-color);
 }
 
 .hero-secondary {
@@ -437,7 +437,7 @@ button:disabled {
 }
 
 .category-copy small {
-  color: #b7ff2a;
+  color: var(--store-primary-color);
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -539,19 +539,19 @@ button:disabled {
   width: fit-content;
   margin-top: 1.5rem;
   color: #080808;
-  background: #b7ff2a;
+  background: var(--store-primary-color);
 }
 
 .campaign--dark {
   background:
-    radial-gradient(circle at 85% 30%, rgb(183 255 42 / 22%), transparent 11rem),
+    radial-gradient(circle at 85% 30%, color-mix(in srgb, var(--store-primary-color) 22%, transparent), transparent 11rem),
     #080808;
 }
 
 .campaign--photo {
   background:
     linear-gradient(90deg, rgb(238 238 238 / 98%) 0%, rgb(238 238 238 / 86%) 48%, transparent 78%),
-    url('/assets/storefront/tienda-a/hero-streetwear.png') 72% center / cover no-repeat;
+    var(--store-hero-image) 72% center / cover no-repeat;
   color: #080808;
 }
 
@@ -603,7 +603,7 @@ button:disabled {
     padding-bottom: 3.5rem;
     background:
       linear-gradient(0deg, rgb(0 0 0 / 94%) 0%, rgb(0 0 0 / 34%) 66%, transparent),
-      url('/assets/storefront/tienda-a/hero-streetwear.png') 63% center / cover no-repeat;
+      var(--store-hero-image) 63% center / cover no-repeat;
   }
 
   .hero-copy {

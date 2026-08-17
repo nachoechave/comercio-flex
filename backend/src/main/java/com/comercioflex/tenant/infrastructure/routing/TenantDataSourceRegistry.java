@@ -1,7 +1,9 @@
 package com.comercioflex.tenant.infrastructure.routing;
 
-import java.util.LinkedHashMap;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
@@ -17,7 +19,7 @@ public final class TenantDataSourceRegistry implements TenantConnectionCatalog, 
 
 	private static final Pattern SAFE_DATABASE_KEY = Pattern.compile("[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?");
 
-	private final Map<String, HikariDataSource> dataSources;
+	private final Map<String, HikariDataSource> dataSources = new ConcurrentHashMap<>();
 	private final TenantRoutingDataSource routingDataSource;
 
 	public TenantDataSourceRegistry(
@@ -25,22 +27,14 @@ public final class TenantDataSourceRegistry implements TenantConnectionCatalog, 
 			TenantDatabaseProperties properties) {
 		properties.getTenantConnections().forEach(this::validate);
 
-		Map<String, HikariDataSource> configuredDataSources = new LinkedHashMap<>();
 		try {
-			properties.getTenantConnections().forEach((databaseKey, details) ->
-				configuredDataSources.put(databaseKey, createDataSource(databaseKey, details)));
+			properties.getTenantConnections().forEach(this::register);
 		}
 		catch (RuntimeException exception) {
-			configuredDataSources.values().forEach(HikariDataSource::close);
+			dataSources.values().forEach(HikariDataSource::close);
 			throw exception;
 		}
-		dataSources = Map.copyOf(configuredDataSources);
-
-		Map<Object, Object> routingTargets = new LinkedHashMap<>();
-		routingTargets.putAll(dataSources);
-		routingDataSource = new TenantRoutingDataSource(tenantContext);
-		routingDataSource.setTargetDataSources(routingTargets);
-		routingDataSource.afterPropertiesSet();
+		routingDataSource = new TenantRoutingDataSource(tenantContext, dataSources::get);
 	}
 
 	@Override
@@ -50,6 +44,26 @@ public final class TenantDataSourceRegistry implements TenantConnectionCatalog, 
 
 	public DataSource routingDataSource() {
 		return routingDataSource;
+	}
+
+	public void register(
+			String databaseKey,
+			TenantDatabaseProperties.ConnectionDetails details) {
+		validate(databaseKey, details);
+		if (dataSources.containsKey(databaseKey)) {
+			return;
+		}
+		HikariDataSource candidate = createDataSource(databaseKey, details);
+		try (Connection ignored = candidate.getConnection()) {
+			HikariDataSource existing = dataSources.putIfAbsent(databaseKey, candidate);
+			if (existing != null) {
+				candidate.close();
+			}
+		}
+		catch (SQLException exception) {
+			candidate.close();
+			throw new IllegalStateException("Tenant datasource validation failed", exception);
+		}
 	}
 
 	@Override

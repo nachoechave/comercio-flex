@@ -12,6 +12,20 @@ import { StoreSettings } from '../storefront.models';
 import { CartService } from '../cart/cart.service';
 import { PublicProductDetail } from './public-product-detail';
 
+const MODERN_BRANDING = {
+  primaryColor: '#B7FF2A',
+  secondaryColor: '#080808',
+  backgroundColor: '#FFFFFF',
+  textColor: '#0B0B0B',
+  font: 'SANS' as const,
+  heroTitle: null,
+  heroSubtitle: null,
+  template: 'MODERN' as const,
+  logoUrl: null,
+  faviconUrl: null,
+  heroImageUrl: null,
+};
+
 describe('PublicProductDetail', () => {
   let fixture: ComponentFixture<PublicProductDetail>;
   let http: HttpTestingController;
@@ -23,6 +37,7 @@ describe('PublicProductDetail', () => {
     storeName: 'Tienda A',
     currencyCode: 'ARS',
     timezone: 'America/Argentina/Buenos_Aires',
+    branding: MODERN_BRANDING,
   });
 
   beforeEach(async () => {
@@ -33,6 +48,7 @@ describe('PublicProductDetail', () => {
       storeName: 'Tienda A',
       currencyCode: 'ARS',
       timezone: 'America/Argentina/Buenos_Aires',
+      branding: MODERN_BRANDING,
     });
     await TestBed.configureTestingModule({
       imports: [PublicProductDetail],
@@ -96,8 +112,8 @@ describe('PublicProductDetail', () => {
 
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Remera azul');
-    expect(text).toContain('Talle M · Azul');
-    expect(text).toContain('Talle L · Azul');
+    expect(text).toContain('Talle: M · Color: Azul');
+    expect(text).toContain('Talle: L · Color: Azul');
     expect(text).toContain('Sin stock');
     expect(TestBed.inject(Title).getTitle()).toBe('Remera azul | Tienda A');
     expect(fixture.nativeElement.querySelector('.product-page--streetwear')).not.toBeNull();

@@ -22,11 +22,11 @@ describe('StoreSettingsApiService', () => {
 
     api.update('tienda/a', {
       storeName: 'Tienda', contactPhone: '1111111', contactEmail: '',
-      pickupAddress: 'Calle 123', pickupInstructions: '', brandTheme: 'NAVY',
+      pickupAddress: 'Calle 123', pickupInstructions: '',
     }).subscribe();
     const request = http.expectOne('/api/v1/stores/tienda%2Fa/admin/settings');
     expect(request.request.method).toBe('PUT');
-    expect(request.request.body.brandTheme).toBe('NAVY');
+    expect(request.request.body).not.toHaveProperty('brandTheme');
     request.flush({});
   });
 });

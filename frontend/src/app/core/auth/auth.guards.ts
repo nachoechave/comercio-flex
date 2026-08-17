@@ -43,6 +43,24 @@ export const authGuard: CanActivateFn = (_route, state) => {
     );
 };
 
+export const superAdminGuard: CanActivateFn = (_route, state) => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  return auth.loadSession().pipe(
+    map((session) => {
+      if (!session.authenticated) {
+        return loginRedirect(router, state.url);
+      }
+      return session.user.platformRole === 'SUPER_ADMIN'
+        ? true
+        : router.createUrlTree(['/admin/comercios'], {
+            queryParams: { denied: 'true' },
+          });
+    }),
+  );
+};
+
 export const adminEntryGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthService);
   const router = inject(Router);
@@ -51,6 +69,9 @@ export const adminEntryGuard: CanActivateFn = (_route, state) => {
     map((session) => {
       if (!session.authenticated) {
         return loginRedirect(router, state.url);
+      }
+      if (session.user.platformRole === 'SUPER_ADMIN') {
+        return router.createUrlTree(['/superadmin']);
       }
       if (session.memberships.length === 1) {
 		const membership = session.memberships[0];
@@ -74,6 +95,9 @@ export const membershipSelectionGuard: CanActivateFn = (_route, state) => {
     map((session) => {
       if (!session.authenticated) {
         return loginRedirect(router, state.url);
+      }
+      if (session.user.platformRole === 'SUPER_ADMIN') {
+        return router.createUrlTree(['/superadmin']);
       }
       if (session.memberships.length === 1) {
 		const membership = session.memberships[0];

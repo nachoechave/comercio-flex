@@ -15,27 +15,48 @@
         Este producto está archivado. Restauralo a borrador desde el detalle para editarlo.
       </p>
     }
-    @if (successMessage()) { <p class="success" role="status">{{ successMessage() }}</p> }
-    @if (formError()) { <p class="error" role="alert">{{ formError() }}</p> }
+    @if (successMessage()) {
+      <p class="success" role="status">{{ successMessage() }}</p>
+    }
+    @if (formError()) {
+      <p class="error" role="alert">{{ formError() }}</p>
+    }
 
     <form [formGroup]="form" (ngSubmit)="submitProduct()" novalidate>
       <fieldset [disabled]="archived()">
         <legend>Datos del producto</legend>
         <label for="product-name">Nombre</label>
-        <input id="product-name" formControlName="name" maxlength="160" [attr.aria-invalid]="form.controls.name.touched && form.controls.name.invalid" aria-describedby="product-name-error" />
+        <input
+          id="product-name"
+          formControlName="name"
+          maxlength="160"
+          [attr.aria-invalid]="form.controls.name.touched && form.controls.name.invalid"
+          aria-describedby="product-name-error"
+        />
         @if (form.controls.name.touched && form.controls.name.invalid) {
           <p id="product-name-error" class="field-error">Ingresá entre 2 y 160 caracteres.</p>
         }
 
         <label for="product-description">Descripción <small>(opcional)</small></label>
-        <textarea id="product-description" formControlName="description" maxlength="2000"></textarea>
+        <textarea
+          id="product-description"
+          formControlName="description"
+          maxlength="2000"
+        ></textarea>
 
         <label for="product-category">Categoría</label>
-        <select id="product-category" formControlName="categoryId" [attr.aria-invalid]="form.controls.categoryId.touched && form.controls.categoryId.invalid" aria-describedby="product-category-error">
+        <select
+          id="product-category"
+          formControlName="categoryId"
+          [attr.aria-invalid]="form.controls.categoryId.touched && form.controls.categoryId.invalid"
+          aria-describedby="product-category-error"
+        >
           <option value="">Elegí una categoría</option>
           @for (category of categories(); track category.id) {
             @if (category.active || category.id === product()?.category?.id) {
-              <option [value]="category.id">{{ category.name }}{{ category.active ? '' : ' (inactiva)' }}</option>
+              <option [value]="category.id">
+                {{ category.name }}{{ category.active ? '' : ' (inactiva)' }}
+              </option>
             }
           }
         </select>
@@ -60,12 +81,17 @@
           </div>
         </div>
 
-        @if (imageError()) { <p class="error" role="alert">{{ imageError() }}</p> }
+        @if (imageError()) {
+          <p class="error" role="alert">{{ imageError() }}</p>
+        }
 
         <div class="image-editor-grid">
           <div class="image-preview">
             @if (imagePreviewUrl(); as previewUrl) {
-              <img [src]="previewUrl" [alt]="imageAltText.value || 'Vista previa de la imagen seleccionada'" />
+              <img
+                [src]="previewUrl"
+                [alt]="imageAltText.value || 'Vista previa de la imagen seleccionada'"
+              />
             } @else {
               <span aria-hidden="true">Sin imagen</span>
             }
@@ -94,9 +120,13 @@
               [attr.aria-invalid]="imageAltText.touched && imageAltText.invalid"
               aria-describedby="product-image-alt-help product-image-alt-error"
             />
-            <p id="product-image-alt-help" class="field-help">Describí brevemente lo que aparece en la imagen.</p>
+            <p id="product-image-alt-help" class="field-help">
+              Describí brevemente lo que aparece en la imagen.
+            </p>
             @if (imageAltText.touched && imageAltText.invalid) {
-              <p id="product-image-alt-error" class="field-error">Ingresá entre 1 y 180 caracteres.</p>
+              <p id="product-image-alt-error" class="field-error">
+                Ingresá entre 1 y 180 caracteres.
+              </p>
             }
 
             <div class="image-actions">
@@ -113,7 +143,9 @@
                   type="button"
                   [disabled]="imageBusy() || archived()"
                   (click)="requestImageRemoval($event)"
-                >Eliminar imagen</button>
+                >
+                  Eliminar imagen
+                </button>
               }
             </div>
           </div>
@@ -129,10 +161,14 @@
             (keydown.escape)="cancelImageRemoval($event)"
           >
             <h3 id="remove-image-title">¿Eliminar la imagen principal?</h3>
-            <p id="remove-image-description">El producto volverá a mostrar el identificador visual predeterminado.</p>
+            <p id="remove-image-description">
+              El producto volverá a mostrar el identificador visual predeterminado.
+            </p>
             <div class="image-actions">
               <button type="button" (click)="cancelImageRemoval()">Cancelar</button>
-              <button #imageRemovalConfirm type="button" class="danger" (click)="deleteImage()">Confirmar eliminación</button>
+              <button #imageRemovalConfirm type="button" class="danger" (click)="deleteImage()">
+                Confirmar eliminación
+              </button>
             </div>
           </div>
         }
@@ -141,8 +177,16 @@
 
     <section aria-labelledby="variants-title">
       <header class="section-heading">
-        <div><h2 id="variants-title">Variantes</h2><p>Talle y color son opcionales. SKU y precio son obligatorios.</p></div>
-        @if (!archived()) { <button type="button" (click)="addVariant()">Agregar variante</button> }
+        <div>
+          <h2 id="variants-title">Variantes</h2>
+          <p>
+            Definí cualquier combinación, por ejemplo Talle, Color, Material o Presentación. SKU y
+            precio son obligatorios.
+          </p>
+        </div>
+        @if (!archived()) {
+          <button type="button" (click)="addVariant()">Agregar variante</button>
+        }
       </header>
 
       <div class="variants">
@@ -152,23 +196,103 @@
             <div class="variant-grid">
               <div>
                 <label [for]="'sku-' + index">SKU</label>
-                <input [id]="'sku-' + index" formControlName="sku" maxlength="64" [attr.aria-invalid]="row.controls.sku.touched && row.controls.sku.invalid" [attr.aria-describedby]="'sku-error-' + index" />
-                @if (row.controls.sku.touched && row.controls.sku.invalid) { <p [id]="'sku-error-' + index" class="field-error">Usá hasta 64 caracteres: letras, números, punto, guion o guion bajo; comenzá con letra o número.</p> }
+                <input
+                  [id]="'sku-' + index"
+                  formControlName="sku"
+                  maxlength="64"
+                  [attr.aria-invalid]="row.controls.sku.touched && row.controls.sku.invalid"
+                  [attr.aria-describedby]="'sku-error-' + index"
+                />
+                @if (row.controls.sku.touched && row.controls.sku.invalid) {
+                  <p [id]="'sku-error-' + index" class="field-error">
+                    Usá hasta 64 caracteres: letras, números, punto, guion o guion bajo; comenzá con
+                    letra o número.
+                  </p>
+                }
               </div>
               <div>
                 <label [for]="'price-' + index">Precio</label>
-                <input [id]="'price-' + index" formControlName="price" inputmode="decimal" placeholder="19999.90" [attr.aria-invalid]="row.controls.price.touched && row.controls.price.invalid" [attr.aria-describedby]="'price-error-' + index" />
-                @if (row.controls.price.touched && row.controls.price.invalid) { <p [id]="'price-error-' + index" class="field-error">Ingresá un precio mayor que cero, con punto y hasta 2 decimales.</p> }
+                <input
+                  [id]="'price-' + index"
+                  formControlName="price"
+                  inputmode="decimal"
+                  placeholder="19999.90"
+                  [attr.aria-invalid]="row.controls.price.touched && row.controls.price.invalid"
+                  [attr.aria-describedby]="'price-error-' + index"
+                />
+                @if (row.controls.price.touched && row.controls.price.invalid) {
+                  <p [id]="'price-error-' + index" class="field-error">
+                    Ingresá un precio mayor que cero, con punto y hasta 2 decimales.
+                  </p>
+                }
               </div>
-              <div><label [for]="'size-' + index">Talle <small>(opcional)</small></label><input [id]="'size-' + index" formControlName="size" maxlength="60" /></div>
-              <div><label [for]="'color-' + index">Color <small>(opcional)</small></label><input [id]="'color-' + index" formControlName="color" maxlength="60" /></div>
+            </div>
+            <div class="options-editor">
+              <div class="options-heading">
+                <div>
+                  <strong>Opciones <small>(opcional)</small></strong>
+                  <p>Una variante simple puede quedar sin opciones. Máximo: 5.</p>
+                </div>
+                <button
+                  type="button"
+                  (click)="addVariantOption(index)"
+                  [disabled]="row.controls.options.length >= 5"
+                >
+                  Agregar opción
+                </button>
+              </div>
+              <div formArrayName="options" class="option-list">
+                @for (
+                  option of row.controls.options.controls;
+                  track option;
+                  let optionIndex = $index
+                ) {
+                  <div class="option-row" [formGroupName]="optionIndex">
+                    <div>
+                      <label [for]="'option-name-' + index + '-' + optionIndex">Nombre</label>
+                      <input
+                        [id]="'option-name-' + index + '-' + optionIndex"
+                        formControlName="name"
+                        maxlength="40"
+                        placeholder="Ej.: Material"
+                      />
+                    </div>
+                    <div>
+                      <label [for]="'option-value-' + index + '-' + optionIndex">Valor</label>
+                      <input
+                        [id]="'option-value-' + index + '-' + optionIndex"
+                        formControlName="value"
+                        maxlength="60"
+                        placeholder="Ej.: Algodón"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      (click)="removeVariantOption(index, optionIndex)"
+                      aria-label="Quitar opción"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                }
+              </div>
             </div>
             <div class="variant-actions">
               @if (editing()) {
                 <span>{{ row.controls.active.value ? 'Activa' : 'Inactiva' }}</span>
-                <button type="button" (click)="saveVariant(index)" [disabled]="pendingVariantId() !== null">Guardar variante</button>
+                <button
+                  type="button"
+                  (click)="saveVariant(index)"
+                  [disabled]="pendingVariantId() !== null"
+                >
+                  Guardar variante
+                </button>
                 @if (row.controls.id.value) {
-                  <button type="button" (click)="toggleVariant(index)" [disabled]="pendingVariantId() !== null">
+                  <button
+                    type="button"
+                    (click)="toggleVariant(index)"
+                    [disabled]="pendingVariantId() !== null"
+                  >
                     {{ row.controls.active.value ? 'Desactivar' : 'Activar' }}
                   </button>
                 } @else if (variants.length > 1) {

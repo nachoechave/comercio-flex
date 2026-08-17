@@ -23,8 +23,12 @@
     @if (!canManage()) {
       <p class="notice" role="status">Vista de lectura: no podés modificar productos ni precios.</p>
     }
-    @if (successMessage()) { <p class="success" role="status">{{ successMessage() }}</p> }
-    @if (errorMessage()) { <p class="error" role="alert">{{ errorMessage() }}</p> }
+    @if (successMessage()) {
+      <p class="success" role="status">{{ successMessage() }}</p>
+    }
+    @if (errorMessage()) {
+      <p class="error" role="alert">{{ errorMessage() }}</p>
+    }
 
     <section class="card" aria-labelledby="description-title">
       <h2 id="description-title">Descripción</h2>
@@ -35,13 +39,21 @@
       <h2 id="variant-list-title">Variantes</h2>
       <div class="table-wrapper">
         <table>
-          <thead><tr><th>SKU</th><th>Talle</th><th>Color</th><th>Precio</th><th>Estado</th></tr></thead>
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Opciones</th>
+              <th>Precio</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
           <tbody>
             @for (variant of current.variants; track variant.id) {
               <tr>
-                <td><strong>{{ variant.sku }}</strong></td>
-                <td>{{ variant.size || '—' }}</td>
-                <td>{{ variant.color || '—' }}</td>
+                <td>
+                  <strong>{{ variant.sku }}</strong>
+                </td>
+                <td>{{ optionLabel(variant.options, variant.size, variant.color) }}</td>
                 <td>{{ variant.price }}</td>
                 <td>{{ variant.active ? 'Activa' : 'Inactiva' }}</td>
               </tr>
@@ -63,7 +75,9 @@
             <button type="button" (click)="requestStatus('DRAFT', $event)">Despublicar</button>
             <button type="button" (click)="requestStatus('ARCHIVED', $event)">Archivar</button>
           } @else {
-            <button type="button" (click)="requestStatus('DRAFT', $event)">Restaurar como borrador</button>
+            <button type="button" (click)="requestStatus('DRAFT', $event)">
+              Restaurar como borrador
+            </button>
           }
         </div>
       </section>
@@ -75,7 +89,9 @@
         <p>El producto pasará a estado {{ statusLabel(nextStatus).toLowerCase() }}.</p>
         <div class="actions">
           <button type="button" (click)="cancelStatus()">Cancelar</button>
-          <button #statusConfirm type="button" class="primary" (click)="confirmStatus()">Confirmar</button>
+          <button #statusConfirm type="button" class="primary" (click)="confirmStatus()">
+            Confirmar
+          </button>
         </div>
       </section>
     }

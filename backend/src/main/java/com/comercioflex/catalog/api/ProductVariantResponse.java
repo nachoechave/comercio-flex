@@ -1,6 +1,7 @@
 package com.comercioflex.catalog.api;
 
 import java.time.Instant;
+import java.util.List;
 
 import com.comercioflex.catalog.domain.ProductVariant;
 
@@ -10,6 +11,7 @@ public record ProductVariantResponse(
 	String price,
 	String size,
 	String color,
+	List<VariantOptionValueResponse> options,
 	boolean active,
 	long version,
 	Instant createdAt,
@@ -22,6 +24,7 @@ public record ProductVariantResponse(
 			variant.price().setScale(2).toPlainString(),
 			variant.size(),
 			variant.color(),
+			variant.options().stream().map(VariantOptionValueResponse::from).toList(),
 			variant.active(),
 			variant.version(),
 			variant.createdAt(),

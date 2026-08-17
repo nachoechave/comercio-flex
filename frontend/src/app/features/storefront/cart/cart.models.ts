@@ -1,4 +1,5 @@
 import { PublicProductDetail, PublicProductVariant } from '../storefront.models';
+import { VariantOptionValue } from '../../../shared/variant-options';
 
 export type CartLineStatus = 'AVAILABLE' | 'UNAVAILABLE' | 'UNKNOWN';
 
@@ -11,6 +12,7 @@ export interface CartLine {
   variantId: string;
   size: string | null;
   color: string | null;
+  options: VariantOptionValue[];
   unitPrice: string;
   quantity: number;
   status: CartLineStatus;
@@ -33,8 +35,11 @@ export interface StoredCart {
   items: StoredCartLine[];
 }
 
-export interface StoredCartLine
-  extends Omit<CartLine, 'status' | 'notice' | 'imageThumbnailUrl' | 'imageAltText'> {
+export interface StoredCartLine extends Omit<
+  CartLine,
+  'status' | 'notice' | 'imageThumbnailUrl' | 'imageAltText' | 'options'
+> {
   imageThumbnailUrl?: string | null;
   imageAltText?: string | null;
+  options?: VariantOptionValue[];
 }

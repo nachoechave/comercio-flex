@@ -6,6 +6,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
 
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { variantOptionsLabel } from '../../../shared/variant-options';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
@@ -30,7 +31,9 @@ export class CartPage {
   protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
     initialValue: '',
   });
-  protected readonly isStreetwear = computed(() => this.storeSlug() === 'tienda-a');
+  protected readonly isStreetwear = computed(
+    () => this.context.settings()?.branding?.template === 'MODERN',
+  );
   protected readonly items = computed(() => this.cart.items(this.storeSlug() ?? ''));
   protected readonly subtotal = computed(() => this.cart.availableSubtotal(this.storeSlug() ?? ''));
   protected readonly canCheckout = computed(
@@ -118,8 +121,7 @@ export class CartPage {
   }
 
   protected optionLabel(line: CartLine): string {
-    const attributes = [line.size && `Talle ${line.size}`, line.color].filter(Boolean);
-    return attributes.length ? attributes.join(' · ') : 'Opción estándar';
+    return variantOptionsLabel(line.options, line.size, line.color) || 'Opción estándar';
   }
 
   protected lineTotal(line: CartLine): string {

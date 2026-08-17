@@ -7,6 +7,7 @@ import { finalize, map, Subscription, switchMap } from 'rxjs';
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
+import { variantOptionsLabel } from '../../../shared/variant-options';
 import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
 import { PaymentApiService } from '../payment/payment-api.service';
 import { paymentErrorMessage } from '../payment/payment-errors';
@@ -180,6 +181,6 @@ export class OrderConfirmationPage {
   }
 
   protected optionLabel(item: GuestOrderItem): string {
-    return [item.size && `Talle ${item.size}`, item.color].filter(Boolean).join(' · ');
+    return variantOptionsLabel(item.options, item.size, item.color);
   }
 }

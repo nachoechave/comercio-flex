@@ -30,10 +30,13 @@ import com.comercioflex.order.domain.OrderStatus;
 public class JdbcAdminOrderRepository implements AdminOrderRepository {
 
 	private final JdbcTemplate jdbcTemplate;
+	private final OrderOptionsJsonCodec optionsJsonCodec;
 
 	public JdbcAdminOrderRepository(
-			@Qualifier("tenantJdbcTemplate") JdbcTemplate jdbcTemplate) {
+			@Qualifier("tenantJdbcTemplate") JdbcTemplate jdbcTemplate,
+			OrderOptionsJsonCodec optionsJsonCodec) {
 		this.jdbcTemplate = jdbcTemplate;
+		this.optionsJsonCodec = optionsJsonCodec;
 	}
 
 	@Override
@@ -365,7 +368,7 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 		return jdbcTemplate.query("""
 			SELECT BIN_TO_UUID(product_public_id) product_public_id,
 				BIN_TO_UUID(variant_public_id) variant_public_id, product_name,
-				size_snapshot, color_snapshot, unit_code, unit_price, quantity,
+				size_snapshot, color_snapshot, options_snapshot, unit_code, unit_price, quantity,
 				line_total
 			FROM order_items
 			WHERE order_id = ?
@@ -377,6 +380,7 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 				resultSet.getString("product_name"),
 				nullable(resultSet.getString("size_snapshot")),
 				nullable(resultSet.getString("color_snapshot")),
+				optionsJsonCodec.read(resultSet.getString("options_snapshot")),
 				resultSet.getString("unit_code"),
 				resultSet.getBigDecimal("unit_price"),
 				resultSet.getBigDecimal("quantity"),

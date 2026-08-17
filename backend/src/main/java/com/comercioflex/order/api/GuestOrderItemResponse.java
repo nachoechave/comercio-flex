@@ -1,7 +1,9 @@
 package com.comercioflex.order.api;
 
 import java.util.UUID;
+import java.util.List;
 
+import com.comercioflex.catalog.api.VariantOptionValueResponse;
 import com.comercioflex.order.domain.GuestOrderItem;
 
 public record GuestOrderItemResponse(
@@ -10,6 +12,7 @@ public record GuestOrderItemResponse(
 	String productName,
 	String size,
 	String color,
+	List<VariantOptionValueResponse> options,
 	String unitCode,
 	String unitPrice,
 	String quantity,
@@ -22,6 +25,7 @@ public record GuestOrderItemResponse(
 			item.productName(),
 			item.size(),
 			item.color(),
+			item.options().stream().map(VariantOptionValueResponse::from).toList(),
 			item.unitCode(),
 			item.unitPrice().toPlainString(),
 			item.quantity().toPlainString(),

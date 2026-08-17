@@ -8,6 +8,7 @@ public record StoreSettings(
 	String contactEmail,
 	String pickupAddress,
 	String pickupInstructions,
-	BrandTheme brandTheme
+	BrandTheme brandTheme,
+	TenantBranding branding
 ) {
 }

@@ -1,7 +1,7 @@
 <article
   class="product-card"
   [class.product-card--unavailable]="!product().available"
-  [class.product-card--streetwear]="storeSlug() === 'tienda-a'"
+  [class.product-card--streetwear]="modern()"
 >
   <a
     class="visual"
@@ -9,7 +9,7 @@
     tabindex="-1"
     aria-hidden="true"
   >
-    @if (storeSlug() === 'tienda-a') {
+    @if (modern()) {
       <span class="favorite-mark" aria-hidden="true">♡</span>
     }
     @if (product().image; as image) {

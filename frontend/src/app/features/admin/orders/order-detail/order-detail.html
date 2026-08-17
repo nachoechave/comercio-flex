@@ -49,8 +49,8 @@
               <li>
                 <div>
                   <strong>{{ item.productName }}</strong>
-                  @if (optionLabel(item.size, item.color)) {
-                    <span>{{ optionLabel(item.size, item.color) }}</span>
+                  @if (optionLabel(item.options, item.size, item.color)) {
+                    <span>{{ optionLabel(item.options, item.size, item.color) }}</span>
                   }
                   <span>{{ item.quantity | quantityFormat }} unidad(es)</span>
                 </div>

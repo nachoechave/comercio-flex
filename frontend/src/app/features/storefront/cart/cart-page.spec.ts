@@ -12,6 +12,12 @@ import { PublicProductDetail, StoreSettings } from '../storefront.models';
 import { CartPage } from './cart-page';
 import { CartService } from './cart.service';
 
+const MODERN_BRANDING = {
+  primaryColor: '#B7FF2A', secondaryColor: '#080808', backgroundColor: '#FFFFFF',
+  textColor: '#0B0B0B', font: 'SANS' as const, heroTitle: null, heroSubtitle: null,
+  template: 'MODERN' as const, logoUrl: null, faviconUrl: null, heroImageUrl: null,
+};
+
 describe('CartPage', () => {
   let fixture: ComponentFixture<CartPage>;
   let http: HttpTestingController;
@@ -22,6 +28,7 @@ describe('CartPage', () => {
     storeName: 'Tienda A',
     currencyCode: 'ARS',
     timezone: 'America/Argentina/Buenos_Aires',
+    branding: MODERN_BRANDING,
   });
   const product: PublicProductDetail = {
     image: {
@@ -54,6 +61,7 @@ describe('CartPage', () => {
       storeName: 'Tienda A',
       currencyCode: 'ARS',
       timezone: 'America/Argentina/Buenos_Aires',
+      branding: MODERN_BRANDING,
     });
     await TestBed.configureTestingModule({
       imports: [CartPage],

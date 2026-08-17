@@ -34,6 +34,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.comercioflex.identity.application.LoginRateLimitProperties;
 import com.comercioflex.identity.application.PlatformUserDetailsService;
+import com.comercioflex.identity.application.PlatformRoleAuthorizationManager;
 import com.comercioflex.identity.application.TenantPermissionAuthorizationManager;
 import com.comercioflex.identity.domain.TenantPermission;
 import com.comercioflex.tenant.api.TenantResolutionFilter;
@@ -46,6 +47,7 @@ public class SecurityConfig {
 	SecurityFilterChain securityFilterChain(
 			HttpSecurity http,
 			TenantResolutionFilter tenantResolutionFilter,
+			PlatformRoleAuthorizationManager platformRoleAuthorizationManager,
 			SecurityContextRepository securityContextRepository,
 			CsrfTokenRepository csrfTokenRepository) throws Exception {
 		return http
@@ -67,14 +69,15 @@ public class SecurityConfig {
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(
 					"/", "/index.html", "/*.js", "/*.css", "/*.ico", "/assets/**",
-					"/admin", "/admin/**", "/tiendas/**",
+					"/admin", "/admin/**", "/superadmin", "/superadmin/**", "/tiendas/**",
 					"/stores/*/payment-return/*")
 				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers("/api/v1/stores/*/settings").permitAll()
 				.requestMatchers(
 					HttpMethod.GET,
-					"/api/v1/stores/*/media/product-images/*/*")
+					"/api/v1/stores/*/media/product-images/*/*",
+					"/api/v1/stores/*/media/branding/*")
 				.permitAll()
 				.requestMatchers(
 					HttpMethod.GET,
@@ -111,6 +114,8 @@ public class SecurityConfig {
 					"/api/v1/auth/csrf",
 					"/api/v1/auth/login",
 					"/api/v1/auth/session").permitAll()
+				.requestMatchers("/api/v1/superadmin", "/api/v1/superadmin/**")
+				.access(platformRoleAuthorizationManager)
 				.requestMatchers(
 					HttpMethod.GET,
 					"/api/v1/stores/*/admin/categories",

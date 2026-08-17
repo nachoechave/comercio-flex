@@ -25,6 +25,7 @@ import com.comercioflex.order.domain.FulfillmentType;
 import com.comercioflex.order.domain.GuestOrder;
 import com.comercioflex.order.domain.GuestOrderItem;
 import com.comercioflex.order.domain.OrderStatus;
+import com.comercioflex.catalog.domain.VariantOptionValue;
 
 @Repository
 public class JdbcGuestOrderRepository implements GuestOrderRepository {
@@ -47,10 +48,13 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 		""";
 
 	private final JdbcTemplate jdbcTemplate;
+	private final OrderOptionsJsonCodec optionsJsonCodec;
 
 	public JdbcGuestOrderRepository(
-			@Qualifier("tenantJdbcTemplate") JdbcTemplate jdbcTemplate) {
+			@Qualifier("tenantJdbcTemplate") JdbcTemplate jdbcTemplate,
+			OrderOptionsJsonCodec optionsJsonCodec) {
 		this.jdbcTemplate = jdbcTemplate;
+		this.optionsJsonCodec = optionsJsonCodec;
 	}
 
 	@Override
@@ -101,6 +105,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				resultSet.getString("sku"),
 				nullableOption(resultSet.getString("size_value")),
 				nullableOption(resultSet.getString("color_value")),
+				List.of(),
 				resultSet.getBigDecimal("price"),
 				resultSet.getBigDecimal("physical_quantity"),
 				BigDecimal.ZERO.setScale(3),
@@ -113,6 +118,17 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 		}
 
 		LockedOrderVariant variant = lockedVariant.get();
+		List<VariantOptionValue> options = jdbcTemplate.query("""
+			SELECT product_option.name, option_value.value
+			FROM product_variant_option_values relation
+			JOIN product_option_values option_value ON option_value.id = relation.option_value_id
+			JOIN product_options product_option ON product_option.id = option_value.option_id
+			WHERE relation.variant_id = ?
+			ORDER BY product_option.position, option_value.position
+			""",
+			(resultSet, rowNumber) -> new VariantOptionValue(
+				resultSet.getString("name"), resultSet.getString("value")),
+			variant.internalId());
 		BigDecimal reservedQuantity = jdbcTemplate.query("""
 			SELECT quantity
 			FROM inventory_reservations
@@ -133,6 +149,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 			variant.sku(),
 			variant.size(),
 			variant.color(),
+			List.copyOf(options),
 			variant.unitPrice(),
 			variant.physicalQuantity(),
 			reservedQuantity,
@@ -243,13 +260,14 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 					sku_snapshot,
 					size_snapshot,
 					color_snapshot,
+					options_snapshot,
 					unit_code,
 					unit_price,
 					quantity,
 					line_total
 				)
 				VALUES (
-					?, UUID_TO_BIN(?), ?, UUID_TO_BIN(?), ?, ?, ?, ?,
+					?, UUID_TO_BIN(?), ?, UUID_TO_BIN(?), ?, ?, ?, ?, ?,
 					'UNIT', ?, ?, ?
 				)
 				""",
@@ -261,6 +279,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				variant.sku(),
 				emptyOption(variant.size()),
 				emptyOption(variant.color()),
+				optionsJsonCodec.write(variant.options()),
 				variant.unitPrice(),
 				item.quantity(),
 				item.lineTotal());
@@ -347,6 +366,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				product_name,
 				size_snapshot,
 				color_snapshot,
+				options_snapshot,
 				unit_code,
 				unit_price,
 				quantity,
@@ -381,6 +401,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 			resultSet.getString("product_name"),
 			nullableOption(resultSet.getString("size_snapshot")),
 			nullableOption(resultSet.getString("color_snapshot")),
+			optionsJsonCodec.read(resultSet.getString("options_snapshot")),
 			resultSet.getString("unit_code"),
 			resultSet.getBigDecimal("unit_price"),
 			resultSet.getBigDecimal("quantity"),

@@ -3,7 +3,9 @@ package com.comercioflex.catalog.infrastructure.jdbc;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,6 +20,7 @@ import com.comercioflex.catalog.domain.PublicCategory;
 import com.comercioflex.catalog.domain.PublicProductDetail;
 import com.comercioflex.catalog.domain.PublicProductSummary;
 import com.comercioflex.catalog.domain.PublicVariant;
+import com.comercioflex.catalog.domain.VariantOptionValue;
 import com.comercioflex.media.domain.ProductImageReference;
 
 @Repository
@@ -213,9 +216,40 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				resultSet.getBigDecimal("price"),
 				nullableOption(resultSet.getString("size_value")),
 				nullableOption(resultSet.getString("color_value")),
+				List.of(),
 				resultSet.getBoolean("available")),
 			product.internalId());
-		return Optional.of(product.toDetail(variants));
+		return Optional.of(product.toDetail(withOptions(product.internalId(), variants)));
+	}
+
+	private List<PublicVariant> withOptions(
+			long productInternalId,
+			List<PublicVariant> variants) {
+		Map<UUID, List<VariantOptionValue>> optionsByVariant = new HashMap<>();
+		jdbcTemplate.query("""
+			SELECT BIN_TO_UUID(variant.public_id) variant_public_id,
+				product_option.name, option_value.value
+			FROM product_variants variant
+			JOIN product_variant_option_values relation ON relation.variant_id = variant.id
+			JOIN product_option_values option_value ON option_value.id = relation.option_value_id
+			JOIN product_options product_option ON product_option.id = option_value.option_id
+			WHERE variant.product_id = ?
+			ORDER BY variant.id, product_option.position, option_value.position
+			""",
+			(org.springframework.jdbc.core.RowCallbackHandler) resultSet -> optionsByVariant
+				.computeIfAbsent(
+					UUID.fromString(resultSet.getString("variant_public_id")),
+					ignored -> new ArrayList<>())
+				.add(new VariantOptionValue(
+					resultSet.getString("name"), resultSet.getString("value"))),
+			productInternalId);
+		return variants.stream().map(variant -> new PublicVariant(
+			variant.id(),
+			variant.price(),
+			variant.size(),
+			variant.color(),
+			List.copyOf(optionsByVariant.getOrDefault(variant.id(), List.of())),
+			variant.available())).toList();
 	}
 
 	private void appendFilters(

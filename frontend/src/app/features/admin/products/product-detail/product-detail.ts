@@ -1,12 +1,4 @@
-import {
-  Component,
-  computed,
-  effect,
-  ElementRef,
-  inject,
-  signal,
-  ViewChild,
-} from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, signal, ViewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
@@ -14,6 +6,7 @@ import { finalize, Subscription } from 'rxjs';
 import { routeParam } from '../../../../core/auth/auth.guards';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
+import { VariantOptionValue, variantOptionsLabel } from '../../../../shared/variant-options';
 import { ProductApiService } from '../product-api.service';
 import { productErrorMessage } from '../product-errors';
 import { ProductDetail as ProductDetailModel, ProductStatus } from '../product.models';
@@ -107,7 +100,9 @@ export class ProductDetail {
       .subscribe({
         next: (updated) => {
           this.product.set(updated);
-          this.successMessage.set(`El producto ahora está ${this.statusLabel(updated.status).toLowerCase()}.`);
+          this.successMessage.set(
+            `El producto ahora está ${this.statusLabel(updated.status).toLowerCase()}.`,
+          );
         },
         error: (error: unknown) =>
           this.errorMessage.set(productErrorMessage(error, 'No pudimos cambiar el estado.')),
@@ -116,5 +111,13 @@ export class ProductDetail {
 
   statusLabel(status: ProductStatus): string {
     return { DRAFT: 'Borrador', PUBLISHED: 'Publicado', ARCHIVED: 'Archivado' }[status];
+  }
+
+  optionLabel(
+    options: readonly VariantOptionValue[] | undefined,
+    size: string | null,
+    color: string | null,
+  ): string {
+    return variantOptionsLabel(options, size, color) || 'Estándar';
   }
 }

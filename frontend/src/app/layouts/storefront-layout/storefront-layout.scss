@@ -7,9 +7,14 @@
 }
 
 .store-theme {
-  --store-accent: #6b3fd6;
+  --store-accent: var(--store-primary-color, #6d3ce7);
   --color-accent: var(--store-accent);
+  --color-background: var(--store-background-color, #f7f5fb);
+  --color-text: var(--store-text-color, #211a2d);
   min-height: 100vh;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  font-family: var(--store-font-family, system-ui, sans-serif);
   background: radial-gradient(
     circle at 92% 0,
     color-mix(in srgb, var(--store-accent) 10%, transparent),
@@ -17,19 +22,12 @@
   );
 }
 
-.store-theme[data-theme='burgundy'] { --store-accent: #8b2f45; }
-.store-theme[data-theme='forest'] { --store-accent: #276749; }
-.store-theme[data-theme='navy'] { --store-accent: #244a7c; }
-
-.store-theme[data-store='tienda-a'] {
-  --store-accent: #b7ff2a;
-  --color-accent: #111;
-  --color-background: #fff;
+.store-theme[data-template='modern'] {
+  --color-accent: var(--store-primary-color);
   --color-border: #e5e5e5;
   --color-muted: #656565;
-  --color-text: #0b0b0b;
   overflow-x: clip;
-  background: #fff;
+  background: var(--store-background-color);
 }
 
 .site-header,
@@ -112,6 +110,13 @@ nav {
   font-size: 0.75rem;
 }
 
+.brand-logo {
+  width: auto;
+  max-width: 10rem;
+  height: 2.75rem;
+  object-fit: contain;
+}
+
 .announcement-bar {
   display: grid;
   min-height: 2rem;
@@ -135,7 +140,7 @@ nav {
 }
 
 .announcement-bar strong {
-  color: #b7ff2a;
+  color: var(--store-primary-color);
 }
 
 .site-header--streetwear {
@@ -183,7 +188,7 @@ nav {
   bottom: -0.55rem;
   left: 0;
   height: 2px;
-  background: #b7ff2a;
+  background: var(--store-primary-color);
   content: '';
   opacity: 0;
   transform: scaleX(0.5);
@@ -220,7 +225,7 @@ nav {
   height: 1.15rem;
   padding: 0 0.2rem;
   color: #080808;
-  background: #b7ff2a;
+  background: var(--store-primary-color);
   font-size: 0.58rem;
 }
 
@@ -303,9 +308,9 @@ nav {
 
 .store-newsletter button {
   padding: 0.65rem 1.5rem;
-  border-color: #b7ff2a;
+  border-color: var(--store-primary-color);
   color: #080808;
-  background: #b7ff2a;
+  background: var(--store-primary-color);
   font-size: 0.72rem;
   font-weight: 850;
   letter-spacing: 0.04em;

@@ -1,0 +1,86 @@
+.page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-accent);
+  font-weight: 750;
+}
+
+h1 {
+  margin: 0.35rem 0;
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: -0.035em;
+}
+
+.page-heading p:last-child {
+  margin-bottom: 0;
+  color: var(--color-muted);
+}
+
+.primary-link,
+button {
+  display: inline-flex;
+  min-height: 2.7rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--color-accent);
+  border-radius: 0.6rem;
+  color: white;
+  background: var(--color-accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+}
+
+.metric,
+.state {
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.85rem;
+  background: var(--color-surface);
+}
+
+.metric span {
+  display: block;
+  color: var(--color-muted);
+}
+
+.metric strong {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 2rem;
+}
+
+.metric.primary {
+  border-color: #b8a4ec;
+}
+
+.metric.success strong {
+  color: #16724a;
+}
+
+.metric.danger strong,
+.error {
+  color: #a22323;
+}
+
+@media (max-width: 42rem) {
+  .page-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

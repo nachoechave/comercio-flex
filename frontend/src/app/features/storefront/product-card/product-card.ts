@@ -14,5 +14,6 @@ export class ProductCard {
   readonly product = input.required<PublicProductSummary>();
   readonly storeSlug = input.required<string>();
   readonly currencyCode = input.required<string>();
+  readonly modern = input(false);
   protected readonly initial = computed(() => this.product().name.trim().slice(0, 1).toUpperCase());
 }

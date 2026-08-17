@@ -5,6 +5,7 @@ import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { variantOptionsLabel } from '../../../shared/variant-options';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { storefrontErrorMessage } from '../storefront-errors';
@@ -46,7 +47,9 @@ export class PublicProductDetail {
   protected readonly available = computed(
     () => this.product()?.variants.some((variant) => variant.available) ?? false,
   );
-  protected readonly isStreetwear = computed(() => this.storeSlug() === 'tienda-a');
+  protected readonly isStreetwear = computed(
+    () => this.context.settings()?.branding?.template === 'MODERN',
+  );
   protected readonly featuredPrice = computed(
     () =>
       this.selectedVariant()?.price ??
@@ -116,8 +119,7 @@ export class PublicProductDetail {
   }
 
   protected variantLabel(variant: PublicProductVariant): string {
-    const attributes = [variant.size && `Talle ${variant.size}`, variant.color].filter(Boolean);
-    return attributes.length ? attributes.join(' · ') : 'Opción estándar';
+    return variantOptionsLabel(variant.options, variant.size, variant.color) || 'Opción estándar';
   }
 
   protected selectVariant(variant: PublicProductVariant): void {

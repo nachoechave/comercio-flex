@@ -11,6 +11,13 @@ import { StorefrontContextService } from '../storefront-context.service';
 import { StoreSettings } from '../storefront.models';
 import { CatalogPage } from './catalog-page';
 
+const MODERN_BRANDING = {
+  primaryColor: '#B7FF2A', secondaryColor: '#080808', backgroundColor: '#FFFFFF',
+  textColor: '#0B0B0B', font: 'SANS' as const, heroTitle: 'Colección dinámica',
+  heroSubtitle: 'Identidad configurada por plataforma.', template: 'MODERN' as const,
+  logoUrl: null, faviconUrl: null, heroImageUrl: null,
+};
+
 describe('CatalogPage', () => {
   let fixture: ComponentFixture<CatalogPage>;
   let http: HttpTestingController;
@@ -21,6 +28,7 @@ describe('CatalogPage', () => {
     storeName: 'Tienda A',
     currencyCode: 'ARS',
     timezone: 'America/Argentina/Buenos_Aires',
+    branding: MODERN_BRANDING,
   });
   const context = {
     settings,
@@ -33,6 +41,7 @@ describe('CatalogPage', () => {
       storeName: 'Tienda A',
       currencyCode: 'ARS',
       timezone: 'America/Argentina/Buenos_Aires',
+      branding: MODERN_BRANDING,
     });
     storeParams = new BehaviorSubject(convertToParamMap({ storeSlug: 'tienda-a' }));
     queryParams = new BehaviorSubject(
@@ -175,7 +184,7 @@ describe('CatalogPage', () => {
     expect(image.alt).toBe('Remera blanca doblada');
   });
 
-  it('renders the streetwear campaign only for tienda-a', () => {
+  it('renders the modern campaign from tenant branding instead of the store slug', () => {
     queryParams.next(convertToParamMap({}));
     create();
     flushCategories();
@@ -201,7 +210,7 @@ describe('CatalogPage', () => {
 
     expect(fixture.nativeElement.querySelector('.catalog--streetwear')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.streetwear-hero')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Hecho distinto');
+    expect(fixture.nativeElement.textContent).toContain('Colección dinámica');
     expect(fixture.nativeElement.textContent).toContain('Comprá por categoría');
     expect(fixture.nativeElement.textContent).toContain('Nuevos ingresos');
     expect(fixture.nativeElement.querySelector('.product-card--streetwear')).not.toBeNull();

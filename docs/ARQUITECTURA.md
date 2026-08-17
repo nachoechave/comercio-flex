@@ -78,8 +78,9 @@ más conexiones, provisión, migraciones, monitoreo, backups y costo operativo.
 
 - La base de control usa JPA y permanece separada del acceso a datos de negocio.
 - Un slug `ACTIVE` se traduce a una `database_key` lógica.
-- Esa clave sólo puede resolverse contra la allowlist cargada desde configuración
-  externa del backend.
+- Esa clave sólo puede resolverse contra la allowlist interna de pools. Los
+  tenants heredados pueden cargarse desde configuración; los aprovisionados se
+  reconstruyen desde metadatos de control y una plantilla JDBC global.
 - Cada conexión tenant tiene un pool Hikari independiente y acotado.
 - `AbstractRoutingDataSource` no tiene datasource por defecto y usa
   `lenientFallback=false`.
@@ -92,7 +93,7 @@ más conexiones, provisión, migraciones, monitoreo, backups y costo operativo.
 slug público
   → SELECT en control.tenants con estado ACTIVE
   → database_key lógica
-  → allowlist externa de conexiones
+  → pool registrado desde configuración o tenant_infrastructure
   → contexto de la solicitud
   → datasource tenant
   → transacción de negocio
@@ -107,6 +108,20 @@ tenant quedan prohibidos hasta definir propagación y limpieza explícitas.
 En desarrollo todavía se comparte un usuario runtime con permisos sobre control,
 A y B. Antes de un cliente real se crearán usuarios de mínimo privilegio separados
 por base para agregar una segunda barrera ante un error de routing.
+
+### Provisioning administrado
+
+El alta SuperAdmin usa un puerto de provisioning con un adaptador MySQL inicial.
+El adaptador acepta solamente nombres generados con prefijo permitido, crea una
+base, concede permisos exactos a los usuarios runtime/migración, ejecuta Flyway,
+inicializa la tienda y registra un pool Hikari concurrente. Las credenciales son
+globales y externas; nunca se guardan por tenant ni en la base de control.
+
+Control DB y base tenant no comparten una transacción distribuida. Por eso el
+workflow conserva `PROVISIONING`, `READY` o `FAILED`, no elimina bases como
+compensación y permite reintentos idempotentes. En un proveedor que no permita
+`CREATE DATABASE`/`GRANT`, se reemplaza el adaptador por provisioning externo sin
+cambiar la aplicación ni el contrato SuperAdmin.
 
 ## Identidad y autorización
 
@@ -164,6 +179,12 @@ tenant sólo se abre después de comprobar la membresía.
 
 ### Matriz fija de roles del MVP
 
+El rol global `SUPER_ADMIN` vive en `platform_users.platform_role` y no forma
+parte de `memberships`. Autoriza exclusivamente las APIs de plataforma sobre la
+base de control. No concede por sí mismo acceso a ningún datasource tenant.
+Su estado se consulta en cada solicitud global, de modo que una revocación no
+queda retenida en la sesión serializada.
+
 | Capacidad | `OWNER` | `ADMIN` | `STAFF` |
 |---|---:|---:|---:|
 | Ver dashboard operativo | Sí | Sí | No |
@@ -180,6 +201,14 @@ transacción tenant. Producto y variante tienen versiones optimistas
 independientes. Las operaciones concurrentes que podrían dejar un publicado sin
 variantes activas bloquean primero la fila del producto y validan la invariante
 dentro de la transacción.
+
+CAT-03 generaliza la variante: `ProductVariant` contiene una lista ordenada de
+pares nombre/valor y catálogo la normaliza a una firma independiente del orden.
+El adaptador JDBC mantiene definiciones y valores reutilizables por producto en
+tablas normalizadas; la API conserva `size`/`color` sólo como compatibilidad. La
+tienda, el carrito y los pedidos consumen el mismo contrato `options`. Al crear un
+pedido, ORD copia la lista a `order_items.options_snapshot`, por lo que una edición
+posterior del producto no reescribe la historia de la compra.
 
 INV-01 agrega un módulo `inventory` separado de `catalog`. Catálogo define qué
 variante existe; inventario mantiene su balance físico y ledger. El estado
@@ -452,7 +481,11 @@ periódica de objetos huérfanos cuando el volumen operativo lo justifique.
 
 ### Configuración y operación
 
-`tenant` administra nombre, contacto, retiro y tema. El checkout sólo ofrece
+`tenant` administra nombre, contacto y retiro. El branding vive en la misma base
+tenant, pero sólo SuperAdmin puede mutarlo: el servidor resuelve el UUID público
+contra control DB, abre el `TenantContext` interno y nunca recibe `database_key`
+desde Angular. Logo, favicon y hero reutilizan el almacenamiento de medios; la
+tienda aplica colores y tipografía mediante variables CSS. El checkout sólo ofrece
 `PICKUP`. `OWNER`/`ADMIN` tienen `MANAGE_BASIC_SETTINGS`; `STAFF` ingresa a
 pedidos y no ve navegación de dashboard, comercio o pagos que no pueda usar.
 

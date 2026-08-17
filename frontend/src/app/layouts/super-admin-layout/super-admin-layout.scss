@@ -1,0 +1,113 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.platform-header,
+.platform-nav,
+.platform-main,
+.logout-error {
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+}
+
+.platform-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.brand,
+.session {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 0.75rem;
+  color: white;
+  background: var(--color-accent);
+  font-weight: 800;
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand small,
+.session > span {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.session .role {
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  color: #4e2ba8;
+  background: #eee8ff;
+  font-weight: 700;
+}
+
+button {
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.55rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.platform-nav {
+  display: flex;
+  gap: 1.5rem;
+  padding-block: 0.75rem;
+}
+
+.platform-nav a {
+  padding: 0.4rem 0;
+  color: var(--color-muted);
+  text-decoration: none;
+}
+
+.platform-nav a.active {
+  color: var(--color-accent);
+  font-weight: 750;
+  box-shadow: inset 0 -2px var(--color-accent);
+}
+
+.platform-main {
+  padding-block: 2rem 4rem;
+}
+
+.logout-error {
+  color: #a22323;
+}
+
+@media (max-width: 42rem) {
+  .platform-header,
+  .session {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

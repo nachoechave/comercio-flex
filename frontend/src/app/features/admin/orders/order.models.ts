@@ -1,3 +1,5 @@
+import { VariantOptionValue } from '../../../shared/variant-options';
+
 export type OrderStatus =
   | 'PENDING_CONFIRMATION'
   | 'CONFIRMED'
@@ -33,6 +35,7 @@ export interface AdminOrderItem {
   productName: string;
   size: string | null;
   color: string | null;
+  options?: VariantOptionValue[];
   unitCode: string;
   unitPrice: string;
   quantity: string;

@@ -1,0 +1,67 @@
+<a class="back" [routerLink]="['/superadmin/empresas', companyId()]">← Volver a la empresa</a>
+
+<header class="page-heading">
+  <p class="eyebrow">Configuración visual</p>
+  <h1>Apariencia</h1>
+  <p>Estos cambios se aplican únicamente a la tienda seleccionada.</p>
+</header>
+
+@if (loading()) {
+  <p class="state" role="status">Cargando apariencia…</p>
+} @else {
+  @if (errorMessage()) { <p class="notice error" role="alert">{{ errorMessage() }}</p> }
+  @if (noticeMessage()) { <p class="notice success" role="status">{{ noticeMessage() }}</p> }
+
+  <div class="workspace">
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <fieldset>
+        <legend>Paleta</legend>
+        <div class="color-grid">
+          <label>Principal <span><input type="color" formControlName="primaryColor" /><input formControlName="primaryColor" maxlength="7" /></span></label>
+          <label>Secundario <span><input type="color" formControlName="secondaryColor" /><input formControlName="secondaryColor" maxlength="7" /></span></label>
+          <label>Fondo <span><input type="color" formControlName="backgroundColor" /><input formControlName="backgroundColor" maxlength="7" /></span></label>
+          <label>Texto <span><input type="color" formControlName="textColor" /><input formControlName="textColor" maxlength="7" /></span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Tipografía y presentación</legend>
+        <label>Tipografía<select formControlName="font">@for (font of fonts; track font.value) { <option [value]="font.value">{{ font.label }}</option> }</select></label>
+        <label>Template<select formControlName="template">@for (template of templates; track template.value) { <option [value]="template.value">{{ template.label }}</option> }</select></label>
+        <label>Título hero<input formControlName="heroTitle" maxlength="160" /></label>
+        <label>Subtítulo hero<textarea formControlName="heroSubtitle" rows="3" maxlength="300"></textarea></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Imágenes</legend>
+        @for (asset of [{ type: 'logo', label: 'Logo' }, { type: 'favicon', label: 'Favicon' }, { type: 'hero', label: 'Hero / banner' }]; track asset.type) {
+          <div class="asset-row">
+            <div><strong>{{ asset.label }}</strong><small>JPEG o PNG · máximo 5 MB</small></div>
+            <label class="upload">{{ assetBusy() === asset.type ? 'Procesando…' : 'Seleccionar' }}<input type="file" accept="image/jpeg,image/png" [disabled]="assetBusy() !== null" (change)="upload($any(asset.type), $event)" /></label>
+            @if ((asset.type === 'logo' && branding()?.logoUrl) || (asset.type === 'favicon' && branding()?.faviconUrl) || (asset.type === 'hero' && branding()?.heroImageUrl)) {
+              <button class="text-button" type="button" [disabled]="assetBusy() !== null" (click)="remove($any(asset.type))">Eliminar</button>
+            }
+          </div>
+        }
+      </fieldset>
+
+      <button class="primary" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar apariencia' }}</button>
+    </form>
+
+    <aside class="preview" aria-label="Vista previa" [style.background]="form.controls.backgroundColor.value" [style.color]="form.controls.textColor.value" [style.font-family]="fontStack(form.controls.font.value)">
+      <span class="preview-label">Vista previa · {{ form.controls.template.value }}</span>
+      <header>
+        @if (branding()?.logoUrl; as logo) { <img [src]="logo" alt="Logo actual" /> } @else { <i [style.background]="form.controls.primaryColor.value">CF</i> }
+        <strong>Tu tienda</strong>
+      </header>
+      <section [style.background-color]="form.controls.secondaryColor.value" [style.background-image]="branding()?.heroImageUrl ? 'url(' + branding()?.heroImageUrl + ')' : null">
+        <div>
+          <h2>{{ form.controls.heroTitle.value || 'Una experiencia con identidad propia' }}</h2>
+          <p>{{ form.controls.heroSubtitle.value || 'Presentá tus productos con una estética consistente.' }}</p>
+          <button type="button" [style.background]="form.controls.primaryColor.value">Ver productos</button>
+        </div>
+      </section>
+      <div class="preview-cards"><span></span><span></span><span></span></div>
+    </aside>
+  </div>
+}

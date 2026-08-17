@@ -2,11 +2,19 @@ package com.comercioflex.catalog.application;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import com.comercioflex.catalog.domain.VariantOptionValue;
 
 import org.springframework.stereotype.Component;
 
@@ -60,11 +68,14 @@ public class ProductValidator {
 			throw new InvalidProductException(
 				"El precio debe ser mayor que cero y caber en DECIMAL(15,2).");
 		}
+		List<VariantOptionValue> options = options(raw);
 		return new VariantValues(
 			sku,
 			price,
-			option(raw.size(), "El talle"),
-			option(raw.color(), "El color"));
+			legacyValue(options, "talle"),
+			legacyValue(options, "color"),
+			options,
+			optionSignature(options));
 	}
 
 	public List<VariantValues> variants(List<RawVariantValues> rawVariants) {
@@ -79,15 +90,83 @@ public class ProductValidator {
 			if (!skus.add(variant.sku())) {
 				throw new ProductConflictException("El SKU está repetido en el producto.");
 			}
-			String combination = variant.size().toLowerCase(Locale.ROOT)
-				+ '\u0000'
-				+ variant.color().toLowerCase(Locale.ROOT);
-			if (!combinations.add(combination)) {
+			if (!combinations.add(variant.optionSignature())) {
 				throw new ProductConflictException(
-					"La combinación de talle y color está repetida.");
+					"La combinación de opciones está repetida.");
 			}
 		}
 		return values;
+	}
+
+	private List<VariantOptionValue> options(RawVariantValues raw) {
+		boolean hasGenericOptions = raw.options() != null && !raw.options().isEmpty();
+		boolean hasLegacyOptions = hasText(raw.size()) || hasText(raw.color());
+		if (hasGenericOptions && hasLegacyOptions) {
+			throw new InvalidProductException(
+				"Usá options o los campos compatibles size/color, pero no ambos.");
+		}
+		if (!hasGenericOptions) {
+			List<VariantOptionValue> legacy = new ArrayList<>(2);
+			if (hasText(raw.size())) {
+				legacy.add(new VariantOptionValue("Talle", option(raw.size(), "El talle")));
+			}
+			if (hasText(raw.color())) {
+				legacy.add(new VariantOptionValue("Color", option(raw.color(), "El color")));
+			}
+			return List.copyOf(legacy);
+		}
+		if (raw.options().size() > 5) {
+			throw new InvalidProductException("Cada variante admite hasta 5 opciones.");
+		}
+		Set<String> names = new HashSet<>();
+		List<VariantOptionValue> values = new ArrayList<>(raw.options().size());
+		for (RawVariantOptionValue rawOption : raw.options()) {
+			if (rawOption == null) {
+				throw new InvalidProductException("La opción de variante es obligatoria.");
+			}
+			String name = text(rawOption.name(), 1, 40, "El nombre de la opción");
+			String normalizedName = normalize(name);
+			if (!names.add(normalizedName)) {
+				throw new InvalidProductException(
+					"Los nombres de opción no pueden repetirse en una variante.");
+			}
+			values.add(new VariantOptionValue(
+				name,
+				text(rawOption.value(), 1, 60, "El valor de la opción")));
+		}
+		return List.copyOf(values);
+	}
+
+	private String legacyValue(List<VariantOptionValue> options, String name) {
+		return options.stream()
+			.filter(option -> normalize(option.name()).equals(name))
+			.map(VariantOptionValue::value)
+			.findFirst()
+			.orElse("");
+	}
+
+	private String optionSignature(List<VariantOptionValue> options) {
+		String canonical = options.stream()
+			.sorted(Comparator.comparing(option -> normalize(option.name())))
+			.map(option -> normalize(option.name()) + "=" + normalize(option.value()))
+			.reduce((left, right) -> left + '\u001f' + right)
+			.orElse("");
+		try {
+			byte[] digest = MessageDigest.getInstance("SHA-256")
+				.digest(canonical.getBytes(StandardCharsets.UTF_8));
+			return HexFormat.of().formatHex(digest);
+		}
+		catch (NoSuchAlgorithmException exception) {
+			throw new IllegalStateException("SHA-256 no está disponible.", exception);
+		}
+	}
+
+	private boolean hasText(String value) {
+		return value != null && !value.isBlank();
+	}
+
+	private String normalize(String value) {
+		return value.toLowerCase(Locale.ROOT);
 	}
 
 	public String query(String raw) {

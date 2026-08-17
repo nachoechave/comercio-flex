@@ -105,6 +105,16 @@ app:
     tenant-migration-enabled: ${TENANT_MIGRATION_ENABLED:false}
     migration-username: ${MIGRATION_DB_USER:}
     migration-password: ${MIGRATION_DB_PASSWORD:}
+    managed:
+      provisioning-enabled: ${TENANT_PROVISIONING_ENABLED:false}
+      url-template: '${TENANT_DB_URL_TEMPLATE:jdbc:mysql://localhost:3306/{database}}'
+      application-username: ${TENANT_SHARED_DB_USER:${CONTROL_DB_USER:comercio_flex_app}}
+      application-password: ${TENANT_SHARED_DB_PASSWORD:${CONTROL_DB_PASSWORD:}}
+      provisioning-url: ${TENANT_PROVISIONING_DB_URL:jdbc:mysql://localhost:3306/}
+      provisioning-username: ${TENANT_PROVISIONING_DB_USER:}
+      provisioning-password: ${TENANT_PROVISIONING_DB_PASSWORD:}
+      database-prefix: ${TENANT_DATABASE_PREFIX:comercio_flex_tenant_}
+      database-user-host: ${TENANT_DATABASE_USER_HOST:%}
     tenant-connections: {}
   security:
     login-rate-limit:

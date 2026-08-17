@@ -7,7 +7,6 @@ import { exhaustMap, finalize } from 'rxjs';
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { StoreSettingsApiService } from './store-settings-api.service';
-import { BrandTheme } from './store-settings.models';
 
 @Component({ selector: 'app-store-settings-page', imports: [ReactiveFormsModule],
   templateUrl: './store-settings-page.html', styleUrl: './store-settings-page.scss' })
@@ -21,17 +20,12 @@ export class StoreSettingsPage {
   readonly saving = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly noticeMessage = signal<string | null>(null);
-  readonly themes: { value: BrandTheme; label: string }[] = [
-    { value: 'VIOLET', label: 'Violeta' }, { value: 'BURGUNDY', label: 'Bordó' },
-    { value: 'FOREST', label: 'Bosque' }, { value: 'NAVY', label: 'Azul marino' },
-  ];
   readonly form = this.formBuilder.nonNullable.group({
     storeName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(160)]],
     contactPhone: ['', [Validators.maxLength(40), Validators.pattern(/^$|^[+0-9][0-9 ()\-]{6,39}$/)]],
     contactEmail: ['', [Validators.email, Validators.maxLength(254)]],
     pickupAddress: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(240)]],
     pickupInstructions: ['', Validators.maxLength(500)],
-    brandTheme: ['VIOLET' as BrandTheme, Validators.required],
   });
 
   constructor() {
@@ -42,7 +36,7 @@ export class StoreSettingsPage {
         next: (settings) => {
           this.form.setValue({ storeName: settings.storeName, contactPhone: settings.contactPhone ?? '',
             contactEmail: settings.contactEmail ?? '', pickupAddress: settings.pickupAddress ?? '',
-            pickupInstructions: settings.pickupInstructions ?? '', brandTheme: settings.brandTheme ?? 'VIOLET' });
+            pickupInstructions: settings.pickupInstructions ?? '' });
           this.loading.set(false);
         },
         error: () => { this.errorMessage.set('No pudimos cargar la configuración.'); this.loading.set(false); },

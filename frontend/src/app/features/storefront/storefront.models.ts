@@ -1,3 +1,5 @@
+import { VariantOptionValue } from '../../shared/variant-options';
+
 export interface StoreSettings {
   slug: string;
   storeName: string;
@@ -8,9 +10,27 @@ export interface StoreSettings {
   pickupAddress?: string | null;
   pickupInstructions?: string | null;
   brandTheme?: BrandTheme;
+  branding?: TenantBranding;
 }
 
 export type BrandTheme = 'VIOLET' | 'BURGUNDY' | 'FOREST' | 'NAVY';
+
+export type BrandFont = 'SYSTEM' | 'SANS' | 'SERIF';
+export type StorefrontTemplate = 'CLASSIC' | 'MODERN' | 'MINIMAL';
+
+export interface TenantBranding {
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  textColor: string;
+  font: BrandFont;
+  heroTitle: string | null;
+  heroSubtitle: string | null;
+  template: StorefrontTemplate;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  heroImageUrl: string | null;
+}
 
 export interface PublicCategory {
   id: string;
@@ -58,6 +78,7 @@ export interface PublicProductVariant {
   price: string;
   size: string | null;
   color: string | null;
+  options?: VariantOptionValue[];
   available: boolean;
 }
 
@@ -95,6 +116,7 @@ export interface GuestOrderItem {
   productName: string;
   size: string | null;
   color: string | null;
+  options?: VariantOptionValue[];
   unitCode: 'UNIT';
   unitPrice: string;
   quantity: string;

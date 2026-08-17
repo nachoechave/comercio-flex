@@ -145,7 +145,8 @@ public class ProductService {
 			requireEditable(product);
 			LockedVariant variant = lockVariant(product.internalId(), variantId);
 			requireVersion(variant.version(), version);
-			if (!repository.updateVariant(variant.internalId(), values, version)) {
+			if (!repository.updateVariant(
+					variant.internalId(), product.internalId(), values, version)) {
 				throw new StaleProductVersionException();
 			}
 			return requireVariant(productId, variantId);

@@ -1,7 +1,13 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter, Router } from '@angular/router';
+import {
+  ActivatedRoute,
+  convertToParamMap,
+  ParamMap,
+  provideRouter,
+  Router,
+} from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
 import { ProductForm } from './product-form';
@@ -31,9 +37,9 @@ describe('ProductForm creation', () => {
     router = TestBed.inject(Router);
     fixture = TestBed.createComponent(ProductForm);
     fixture.detectChanges();
-    http.expectOne('/api/v1/stores/tienda-a/admin/categories').flush([
-      { id: 'category-1', name: 'Remeras', active: true },
-    ]);
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/categories')
+      .flush([{ id: 'category-1', name: 'Remeras', active: true }]);
     fixture.detectChanges();
   });
 
@@ -59,13 +65,39 @@ describe('ProductForm creation', () => {
     expect(request.request.body).toEqual({
       name: 'Remera clásica',
       categoryId: 'category-1',
-      variants: [
-        { sku: 'REM-M-NEG', price: '19999.90', size: 'M', color: 'Negro' },
-      ],
+      variants: [{ sku: 'REM-M-NEG', price: '19999.90', size: 'M', color: 'Negro' }],
     });
     request.flush({ id: 'product-1' });
     await fixture.whenStable();
     expect(router.navigate).toHaveBeenCalled();
+  });
+
+  it('creates a variant with arbitrary named options', () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fixture.componentInstance.form.setValue({
+      name: 'Bolsa configurable',
+      description: '',
+      categoryId: 'category-1',
+    });
+    const row = fixture.componentInstance.variants.at(0);
+    row.patchValue({ sku: 'BOLSA-ALG-M', price: '2500.00' });
+    fixture.componentInstance.addVariantOption(0);
+    fixture.componentInstance.addVariantOption(0);
+    row.controls.options.at(0).setValue({ name: 'Material', value: 'Algodón' });
+    row.controls.options.at(1).setValue({ name: 'Talle', value: 'M' });
+
+    fixture.componentInstance.submitProduct();
+
+    const request = http.expectOne('/api/v1/stores/tienda-a/admin/products');
+    expect(request.request.body.variants[0]).toEqual({
+      sku: 'BOLSA-ALG-M',
+      price: '2500.00',
+      options: [
+        { name: 'Material', value: 'Algodón' },
+        { name: 'Talle', value: 'M' },
+      ],
+    });
+    request.flush({ id: 'product-1' });
   });
 
   it('validates product name after trimming and normalizing spaces', () => {
@@ -126,10 +158,9 @@ describe('ProductForm creation', () => {
     });
     fixture.componentInstance.variants.at(0).patchValue({ sku: 'DUP', price: '10.00' });
     fixture.componentInstance.submitProduct();
-    http.expectOne('/api/v1/stores/tienda-a/admin/products').flush(
-      { detail: 'El SKU ya está utilizado.' },
-      { status: 409, statusText: 'Conflict' },
-    );
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/products')
+      .flush({ detail: 'El SKU ya está utilizado.' }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('El SKU ya está utilizado.');
     expect(fixture.componentInstance.variants.at(0).controls.sku.value).toBe('DUP');
@@ -224,9 +255,9 @@ describe('ProductForm image management', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(ProductForm);
     fixture.detectChanges();
-    http.expectOne('/api/v1/stores/tienda-a/admin/categories').flush([
-      { id: 'category-1', name: 'Remeras', active: true },
-    ]);
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/categories')
+      .flush([{ id: 'category-1', name: 'Remeras', active: true }]);
     http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1').flush({
       id: 'product-1',
       name: 'Remera',
@@ -349,10 +380,12 @@ describe('ProductForm image management', () => {
     fixture.componentInstance.uploadImage();
     expect(fixture.componentInstance.successMessage()).toBeNull();
     http.expectOne('/api/v1/auth/csrf').flush({});
-    http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image').flush(
-      { detail: 'No se pudo almacenar la imagen.' },
-      { status: 503, statusText: 'Unavailable' },
-    );
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image')
+      .flush(
+        { detail: 'No se pudo almacenar la imagen.' },
+        { status: 503, statusText: 'Unavailable' },
+      );
     fixture.detectChanges();
 
     expect(fixture.componentInstance.selectedImageFile()).toBe(file);

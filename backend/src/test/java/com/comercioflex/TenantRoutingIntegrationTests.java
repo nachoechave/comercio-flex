@@ -3,9 +3,14 @@ package com.comercioflex;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -18,6 +23,8 @@ import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import javax.imageio.ImageIO;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +33,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,12 +48,17 @@ import org.testcontainers.utility.DockerImageName;
 
 import com.comercioflex.tenant.application.TenantContext;
 
+import jakarta.servlet.http.Cookie;
+
 @Testcontainers
 @SpringBootTest
 @AutoConfigureMockMvc
 class TenantRoutingIntegrationTests {
 
 	private static final DockerImageName MYSQL_IMAGE = DockerImageName.parse("mysql:8.4.10");
+	private static final String PASSWORD = "correct-horse-battery-staple";
+	private static final String PASSWORD_HASH =
+		"{bcrypt}" + new BCryptPasswordEncoder(4).encode(PASSWORD);
 
 	@Container
 	static final MySQLContainer<?> CONTROL_DATABASE = new MySQLContainer<>(MYSQL_IMAGE);
@@ -81,17 +97,30 @@ class TenantRoutingIntegrationTests {
 		registry.add("app.database.tenant-migration-enabled", () -> "true");
 		registry.add("app.database.migration-username", TENANT_A_DATABASE::getUsername);
 		registry.add("app.database.migration-password", TENANT_A_DATABASE::getPassword);
+		registry.add("app.media.local-root", () -> "target/test-media-tenant-routing");
 		registerTenantConnection(registry, "tenant-a", TENANT_A_DATABASE);
 		registerTenantConnection(registry, "tenant-b", TENANT_B_DATABASE);
 	}
 
 	@BeforeEach
 	void seedDatabases() throws SQLException {
+		execute(CONTROL_DATABASE, "DELETE FROM SPRING_SESSION_ATTRIBUTES");
+		execute(CONTROL_DATABASE, "DELETE FROM SPRING_SESSION");
+		execute(CONTROL_DATABASE, "DELETE FROM platform_audit_events");
+		execute(CONTROL_DATABASE, "DELETE FROM memberships");
+		execute(CONTROL_DATABASE, "DELETE FROM platform_users");
 		execute(CONTROL_DATABASE, "DELETE FROM tenants");
 		execute(CONTROL_DATABASE, tenantInsert("tienda-a", "ACTIVE", "tenant-a"));
 		execute(CONTROL_DATABASE, tenantInsert("tienda-b", "ACTIVE", "tenant-b"));
 		execute(CONTROL_DATABASE, tenantInsert("tienda-inactiva", "INACTIVE", "tenant-inactive"));
 		execute(CONTROL_DATABASE, tenantInsert("tienda-sin-conexion", "ACTIVE", "tenant-c"));
+		execute(CONTROL_DATABASE, """
+			INSERT INTO platform_users (
+				public_id, email_normalized, display_name, password_hash, status, platform_role
+			)
+			VALUES (UUID_TO_BIN(UUID()), 'superadmin@example.com', 'Super Admin', '%s',
+				'ACTIVE', 'SUPER_ADMIN')
+			""".formatted(PASSWORD_HASH));
 
 		execute(TENANT_A_DATABASE, "DELETE FROM store_settings");
 		execute(TENANT_A_DATABASE, """
@@ -103,6 +132,69 @@ class TenantRoutingIntegrationTests {
 			INSERT INTO store_settings (store_name, currency_code, timezone)
 			VALUES ('Tienda B', 'USD', 'America/Montevideo')
 			""");
+	}
+
+	@Test
+	void superAdminBrandingIsAuditedPublicAndStrictlyTenantScoped() throws Exception {
+		AuthenticatedCookies superAdmin = login("superadmin@example.com");
+		String companyId = queryString(CONTROL_DATABASE, """
+			SELECT BIN_TO_UUID(public_id) FROM tenants WHERE slug = 'tienda-a'
+			""");
+		String update = """
+			{
+			  "primaryColor":"#123456",
+			  "secondaryColor":"#654321",
+			  "backgroundColor":"#FAFAFA",
+			  "textColor":"#101010",
+			  "font":"SERIF",
+			  "heroTitle":"Colección A",
+			  "heroSubtitle":"Solo para el tenant A",
+			  "template":"MODERN"
+			}
+			""";
+
+		mockMvc.perform(put("/api/v1/superadmin/companies/{id}/branding", companyId)
+				.cookie(superAdmin.sessionCookie(), superAdmin.csrfCookie())
+				.header("X-XSRF-TOKEN", superAdmin.csrfCookie().getValue())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(update))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.primaryColor").value("#123456"))
+			.andExpect(jsonPath("$.template").value("MODERN"));
+
+		MockMultipartFile logo = new MockMultipartFile(
+			"file", "logo.png", "image/png", png());
+		mockMvc.perform(multipart(
+				"/api/v1/superadmin/companies/{id}/branding/assets/logo", companyId)
+				.file(logo)
+				.with(request -> { request.setMethod("PUT"); return request; })
+				.cookie(superAdmin.sessionCookie(), superAdmin.csrfCookie())
+				.header("X-XSRF-TOKEN", superAdmin.csrfCookie().getValue()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.logoUrl").value(org.hamcrest.Matchers.containsString(
+				"/api/v1/stores/tienda-a/media/branding/logo?v=")));
+
+		mockMvc.perform(get("/api/v1/stores/tienda-a/settings"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.branding.primaryColor").value("#123456"))
+			.andExpect(jsonPath("$.branding.heroTitle").value("Colección A"))
+			.andExpect(jsonPath("$.branding.logoUrl").isNotEmpty());
+		mockMvc.perform(get("/api/v1/stores/tienda-a/media/branding/logo"))
+			.andExpect(status().isOk())
+			.andExpect(result -> assertThat(result.getResponse().getContentType())
+				.isEqualTo("image/png"));
+
+		mockMvc.perform(get("/api/v1/stores/tienda-b/settings"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.branding.primaryColor").value("#6D3CE7"))
+			.andExpect(jsonPath("$.branding.logoUrl").isEmpty());
+		mockMvc.perform(get("/api/v1/stores/tienda-b/media/branding/logo"))
+			.andExpect(status().isNotFound());
+
+		assertThat(queryInt(CONTROL_DATABASE, """
+			SELECT COUNT(*) FROM platform_audit_events
+			WHERE action_name IN ('COMPANY_BRANDING_UPDATED', 'COMPANY_BRANDING_ASSET_UPDATED')
+			""")).isEqualTo(2);
 	}
 
 	@Test
@@ -226,6 +318,66 @@ class TenantRoutingIntegrationTests {
 			""".formatted(slug, slug, status, databaseKey);
 	}
 
+	private AuthenticatedCookies login(String email) throws Exception {
+		Cookie csrf = requiredCookie(mockMvc.perform(get("/api/v1/auth/csrf"))
+			.andExpect(status().isOk()).andReturn().getResponse(), "XSRF-TOKEN");
+		MockHttpServletResponse response = mockMvc.perform(
+				org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+					.post("/api/v1/auth/login")
+				.cookie(csrf)
+				.header("X-XSRF-TOKEN", csrf.getValue())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"%s","password":"%s"}
+					""".formatted(email, PASSWORD)))
+			.andExpect(status().isOk())
+			.andReturn().getResponse();
+		return new AuthenticatedCookies(
+			requiredCookie(response, "CFSESSION"),
+			requiredCookie(response, "XSRF-TOKEN"));
+	}
+
+	private static Cookie requiredCookie(MockHttpServletResponse response, String name) {
+		Cookie cookie = response.getCookie(name);
+		if (cookie == null) throw new AssertionError("Missing response cookie " + name);
+		return cookie;
+	}
+
+	private static byte[] png() throws Exception {
+		BufferedImage image = new BufferedImage(4, 4, BufferedImage.TYPE_INT_RGB);
+		var graphics = image.createGraphics();
+		try {
+			graphics.setColor(new Color(18, 52, 86));
+			graphics.fillRect(0, 0, 4, 4);
+		}
+		finally {
+			graphics.dispose();
+		}
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+		ImageIO.write(image, "png", output);
+		return output.toByteArray();
+	}
+
+	private static String queryString(MySQLContainer<?> database, String sql) throws SQLException {
+		try (Connection connection = DriverManager.getConnection(
+				database.getJdbcUrl(), database.getUsername(), database.getPassword());
+				Statement statement = connection.createStatement();
+				var result = statement.executeQuery(sql)) {
+			if (!result.next()) throw new AssertionError("Query returned no rows");
+			return result.getString(1);
+		}
+	}
+
+	private static int queryInt(MySQLContainer<?> database, String sql) throws SQLException {
+		try (Connection connection = DriverManager.getConnection(
+				database.getJdbcUrl(), database.getUsername(), database.getPassword());
+				Statement statement = connection.createStatement();
+				var result = statement.executeQuery(sql)) {
+			if (!result.next()) throw new AssertionError("Query returned no rows");
+			return result.getInt(1);
+		}
+	}
+
 	private static void execute(MySQLContainer<?> database, String sql) throws SQLException {
 		try (Connection connection = DriverManager.getConnection(
 				database.getJdbcUrl(),
@@ -234,5 +386,8 @@ class TenantRoutingIntegrationTests {
 				Statement statement = connection.createStatement()) {
 			statement.execute(sql);
 		}
+	}
+
+	private record AuthenticatedCookies(Cookie sessionCookie, Cookie csrfCookie) {
 	}
 }

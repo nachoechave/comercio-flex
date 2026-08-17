@@ -438,6 +438,9 @@ class PublicCatalogIntegrationTests {
 	private static void resetTenant(MySQLContainer<?> database) throws SQLException {
 		execute(database, "DELETE FROM inventory_movements");
 		execute(database, "DELETE FROM inventory_balances");
+		execute(database, "DELETE FROM product_variant_option_values");
+		execute(database, "DELETE FROM product_option_values");
+		execute(database, "DELETE FROM product_options");
 		execute(database, "DELETE FROM product_variants");
 		execute(database, "DELETE FROM products");
 		execute(database, "DELETE FROM categories");
@@ -494,10 +497,11 @@ class PublicCatalogIntegrationTests {
 			String status) throws SQLException {
 		execute(database, """
 			INSERT INTO product_variants (
-				public_id, product_id, sku, price, size_value, color_value, status
+				public_id, product_id, sku, price, size_value, color_value,
+				option_signature, status
 			)
 			SELECT
-				UUID_TO_BIN('%s'), product.id, '%s', %s, '%s', '%s', '%s'
+				UUID_TO_BIN('%s'), product.id, '%s', %s, '%s', '%s', SHA2(UUID(), 256), '%s'
 			FROM products product
 			WHERE product.public_id = UUID_TO_BIN('%s')
 			""".formatted(id, sku, price, size, color, status, productId));

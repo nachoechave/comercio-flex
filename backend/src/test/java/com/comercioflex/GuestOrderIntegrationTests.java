@@ -171,11 +171,35 @@ class GuestOrderIntegrationTests {
 			""".formatted(PRODUCT_A, CATEGORY_A));
 		execute(TENANT_A_DATABASE, """
 			INSERT INTO product_variants (
-				public_id, product_id, sku, price, size_value, color_value, status
+				public_id, product_id, sku, price, size_value, color_value,
+				option_signature, status
 			)
-			SELECT UUID_TO_BIN('%s'), id, 'ASA-001', 2500.00, '', '', 'ACTIVE'
+			SELECT UUID_TO_BIN('%s'), id, 'ASA-001', 2500.00, '', '',
+				SHA2('corte=tradicional', 256), 'ACTIVE'
 			FROM products WHERE public_id = UUID_TO_BIN('%s')
 			""".formatted(VARIANT_A, PRODUCT_A));
+		execute(TENANT_A_DATABASE, """
+			INSERT INTO product_options (public_id, product_id, name, normalized_name, position)
+			SELECT UUID_TO_BIN(UUID()), id, 'Corte', 'corte', 1
+			FROM products WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(PRODUCT_A));
+		execute(TENANT_A_DATABASE, """
+			INSERT INTO product_option_values (
+				public_id, option_id, value, normalized_value, position
+			)
+			SELECT UUID_TO_BIN(UUID()), id, 'Tradicional', 'tradicional', 1
+			FROM product_options WHERE product_id = (
+				SELECT id FROM products WHERE public_id = UUID_TO_BIN('%s')
+			)
+			""".formatted(PRODUCT_A));
+		execute(TENANT_A_DATABASE, """
+			INSERT INTO product_variant_option_values (variant_id, option_value_id)
+			SELECT variant.id, option_value.id
+			FROM product_variants variant
+			JOIN product_options product_option ON product_option.product_id = variant.product_id
+			JOIN product_option_values option_value ON option_value.option_id = product_option.id
+			WHERE variant.public_id = UUID_TO_BIN('%s')
+			""".formatted(VARIANT_A));
 		execute(TENANT_A_DATABASE, """
 			INSERT INTO inventory_balances (variant_id, quantity)
 			SELECT id, 5.000 FROM product_variants
@@ -193,6 +217,12 @@ class GuestOrderIntegrationTests {
 		assertThat(created.at("/order/subtotal").asText()).isEqualTo("5000.00");
 		assertThat(created.at("/order/items/0/unitPrice").asText()).isEqualTo("2500.00");
 		assertThat(created.at("/order/items/0/quantity").asText()).isEqualTo("2.000");
+		assertThat(created.at("/order/items/0/options/0/name").asText()).isEqualTo("Corte");
+		assertThat(created.at("/order/items/0/options/0/value").asText())
+			.isEqualTo("Tradicional");
+		assertThat(text(TENANT_A_DATABASE,
+			"SELECT JSON_UNQUOTE(JSON_EXTRACT(options_snapshot, '$[0].value')) FROM order_items"))
+			.isEqualTo("Tradicional");
 		assertThat(created.at("/lookupToken").asText()).hasSize(43);
 		assertThat(created.at("/order/customerPhone").isMissingNode()).isTrue();
 		assertThat(created.at("/order/customerEmail").isMissingNode()).isTrue();
@@ -268,7 +298,9 @@ class GuestOrderIntegrationTests {
 			"SELECT status FROM inventory_reservations")).isEqualTo("EXPIRED");
 		mockMvc.perform(get("/api/v1/stores/tienda-a/catalog/products/asado"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.variants[0].available").value(true));
+			.andExpect(jsonPath("$.variants[0].available").value(true))
+			.andExpect(jsonPath("$.variants[0].options[0].name").value("Corte"))
+			.andExpect(jsonPath("$.variants[0].options[0].value").value("Tradicional"));
 	}
 
 	@Test
@@ -927,6 +959,9 @@ class GuestOrderIntegrationTests {
 		execute(database, "DELETE FROM order_items");
 		execute(database, "DELETE FROM orders");
 		execute(database, "DELETE FROM inventory_balances");
+		execute(database, "DELETE FROM product_variant_option_values");
+		execute(database, "DELETE FROM product_option_values");
+		execute(database, "DELETE FROM product_options");
 		execute(database, "DELETE FROM product_variants");
 		execute(database, "DELETE FROM products");
 		execute(database, "DELETE FROM categories");

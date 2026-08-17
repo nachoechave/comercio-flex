@@ -92,6 +92,42 @@ $env:LOCAL_OWNER_STORE_SLUG = "tienda-a"
 La contraseña no debe escribirse en un archivo versionado. Si el correo ya
 existe, el proceso no reemplaza silenciosamente su contraseña.
 
+### Crear un `SUPER_ADMIN` sólo para desarrollo local
+
+El operador global también se crea mediante un fixture explícito, idempotente y
+desactivado por defecto:
+
+```powershell
+$env:LOCAL_SUPER_ADMIN_ENABLED = "true"
+$env:LOCAL_SUPER_ADMIN_EMAIL = "superadmin.local@example.test"
+$env:LOCAL_SUPER_ADMIN_PASSWORD = "<contraseña local de al menos 12 caracteres>"
+$env:LOCAL_SUPER_ADMIN_DISPLAY_NAME = "Operador local"
+```
+
+Después del login, esta cuenta ingresa a `/superadmin`. Si el correo ya pertenece
+a un usuario normal, el arranque falla en lugar de elevarlo silenciosamente.
+
+### Alta automática local de tenants
+
+Para habilitar `SuperAdmin → Empresas → Nueva empresa`, configurar además:
+
+```powershell
+$env:TENANT_PROVISIONING_ENABLED = "true"
+$env:TENANT_DB_URL_TEMPLATE = "jdbc:mysql://localhost:3306/{database}"
+$env:TENANT_SHARED_DB_USER = $env:CONTROL_DB_USER
+$env:TENANT_SHARED_DB_PASSWORD = $env:CONTROL_DB_PASSWORD
+$env:TENANT_PROVISIONING_DB_URL = "jdbc:mysql://localhost:3306/"
+$env:TENANT_PROVISIONING_DB_USER = "root"
+$env:TENANT_PROVISIONING_DB_PASSWORD = $env:MYSQL_ROOT_PASSWORD
+$env:TENANT_DATABASE_USER_HOST = "%"
+```
+
+El usuario de provisioning necesita `CREATE DATABASE` y capacidad de conceder
+permisos sobre la base recién creada. El backend otorga privilegios únicamente
+sobre ese nombre generado. Los usuarios de aplicación y migración deben existir;
+sus contraseñas siguen siendo secretos externos. No se requiere agregar variables
+`TENANT_X_DB_*` ni reiniciar el backend después del alta.
+
 ## 3. Ejecutar el frontend
 
 En otra terminal, desde `frontend/`:
@@ -127,13 +163,17 @@ deben probarse copiando credenciales o identificadores de base en la URL.
 1. Iniciar sesión como `OWNER` o `ADMIN` y asegurar que exista una categoría activa.
 2. Abrir `/tiendas/tienda-a/admin/productos`.
 3. Crear un producto con nombre, categoría y al menos una variante con SKU y precio.
+   Agregar opciones `Talle`, `Color` y una opción arbitraria como `Material`.
 4. Confirmar que el producto comience en borrador y que el precio conserve dos decimales.
-5. Editar nombre, descripción, SKU o precio y comprobar que los cambios persistan.
+5. Editar nombre, descripción, SKU, precio u opciones y comprobar que los cambios
+   persistan en administración y tienda pública.
 6. Publicar, intentar desactivar la última variante activa y comprobar el rechazo.
 7. Volver a borrador, desactivar/restaurar una variante y archivar/restaurar el producto.
 8. Buscar por nombre o SKU y probar filtros y paginación.
 9. Cambiar de tienda y verificar que no aparezcan datos del comercio anterior.
 10. Con `STAFF`, verificar lectura sin botones de modificación.
+11. Intentar guardar dos variantes con los mismos pares en distinto orden y
+    comprobar el conflicto; crear también una variante estándar sin opciones.
 
 ### Probar inventario manualmente
 
@@ -494,10 +534,11 @@ reutilizar credenciales productivas. El perfil `prod` cambia el adaptador a S3.
 
 ### Configuración del comercio y roles
 
-`OWNER` y `ADMIN` pueden editar nombre, al menos un contacto, dirección de retiro,
-instrucciones y tema. `STAFF` debe ingresar a pedidos y no a dashboard/comercio/
-pagos. Probar siempre dos tenants para verificar que el tema y los datos no se
-mezclen. El checkout sólo debe mostrar retiro (`PICKUP`).
+`OWNER` y `ADMIN` pueden editar nombre, al menos un contacto, dirección de retiro
+e instrucciones. Sólo `SUPER_ADMIN` modifica paleta, tipografía, hero, assets y
+template desde `Empresas → Apariencia`. Probar siempre dos tenants y solicitar
+también los assets públicos para verificar que branding y bytes no se mezclen.
+El checkout sólo debe mostrar retiro (`PICKUP`).
 
 ### Verificación antes de un commit
 

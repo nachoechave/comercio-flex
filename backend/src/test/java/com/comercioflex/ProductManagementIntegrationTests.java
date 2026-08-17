@@ -150,6 +150,45 @@ class ProductManagementIntegrationTests {
 	}
 
 	@Test
+	void persistsGenericOptionsAndRejectsTheSameCombinationInAnyOrder() throws Exception {
+		Auth owner = login("owner@example.com");
+		String body = """
+			{"name":"Bolsa configurable","categoryId":"%s","variants":[
+				{"sku":"BOLSA-ALG-M","price":"2500","options":[
+					{"name":"Material","value":"Algodón"},
+					{"name":"Talle","value":"M"}
+				]}
+			]}
+			""".formatted(CATEGORY_A);
+
+		JsonNode product = json(mockMvc.perform(auth(post(products("tienda-a")), owner)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body))
+			.andExpect(status().isCreated())
+			.andReturn().getResponse());
+
+		assertThat(product.at("/variants/0/options/0/name").asText()).isEqualTo("Material");
+		assertThat(product.at("/variants/0/options/0/value").asText()).isEqualTo("Algodón");
+		assertThat(product.at("/variants/0/options/1/name").asText()).isEqualTo("Talle");
+		assertThat(product.at("/variants/0/size").asText()).isEqualTo("M");
+		assertThat(count(TENANT_A_DATABASE, "SELECT COUNT(*) FROM product_options"))
+			.isEqualTo(2);
+		assertThat(count(TENANT_A_DATABASE, "SELECT COUNT(*) FROM product_option_values"))
+			.isEqualTo(2);
+
+		mockMvc.perform(auth(post(products("tienda-a") + "/" + product.get("id").asText()
+				+ "/variants"), owner)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"sku":"BOLSA-DUP","price":"2600","options":[
+						{"name":"talle","value":"m"},
+						{"name":"material","value":"algodón"}
+					]}
+					"""))
+			.andExpect(status().isConflict());
+	}
+
+	@Test
 	void securesProductImagesByTenantRoleCsrfAndPublicationState() throws Exception {
 		Auth owner = login("owner@example.com");
 		Auth admin = login("admin@example.com");
@@ -614,6 +653,9 @@ class ProductManagementIntegrationTests {
 
 	private static void resetTenant(MySQLContainer<?> database) throws SQLException {
 		execute(database, "DELETE FROM product_images");
+		execute(database, "DELETE FROM product_variant_option_values");
+		execute(database, "DELETE FROM product_option_values");
+		execute(database, "DELETE FROM product_options");
 		execute(database, "DELETE FROM product_variants");
 		execute(database, "DELETE FROM products");
 		execute(database, "DELETE FROM categories");

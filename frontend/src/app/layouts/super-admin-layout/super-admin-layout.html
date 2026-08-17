@@ -1,0 +1,31 @@
+<header class="platform-header">
+  <a class="brand" routerLink="/superadmin" aria-label="Comercio Flex SuperAdmin">
+    <span class="brand-mark">CF</span>
+    <span>
+      <strong>Comercio Flex</strong>
+      <small>Operación de plataforma</small>
+    </span>
+  </a>
+  <div class="session">
+    <span>{{ user()?.displayName }}</span>
+    <span class="role">SuperAdmin</span>
+    <button type="button" (click)="logout()" [disabled]="loggingOut()">
+      {{ loggingOut() ? 'Saliendo…' : 'Cerrar sesión' }}
+    </button>
+  </div>
+</header>
+
+<nav class="platform-nav" aria-label="SuperAdmin">
+  <a routerLink="/superadmin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+    Resumen
+  </a>
+  <a routerLink="/superadmin/empresas" routerLinkActive="active">Empresas</a>
+</nav>
+
+@if (logoutError()) {
+  <p class="logout-error" role="alert">{{ logoutError() }}</p>
+}
+
+<main id="main-content" class="platform-main">
+  <router-outlet />
+</main>

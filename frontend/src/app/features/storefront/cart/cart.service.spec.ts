@@ -24,6 +24,10 @@ describe('CartService', () => {
     price: '2500.00',
     size: 'M',
     color: 'Azul',
+    options: [
+      { name: 'Talle', value: 'M' },
+      { name: 'Color', value: 'Azul' },
+    ],
     available: true,
   };
 
@@ -55,6 +59,10 @@ describe('CartService', () => {
           quantity: 99,
           imageThumbnailUrl: '/media/image-1/thumbnail',
           imageAltText: 'Remera azul de frente',
+          options: [
+            { name: 'Talle', value: 'M' },
+            { name: 'Color', value: 'Azul' },
+          ],
         }),
       ],
     });

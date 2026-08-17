@@ -2,10 +2,13 @@ export const ADMIN_ROLES = ['OWNER', 'ADMIN', 'STAFF'] as const;
 
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
+export type PlatformRole = 'USER' | 'SUPER_ADMIN';
+
 export interface PlatformUser {
   id: string;
   email: string;
   displayName: string;
+  platformRole: PlatformRole;
 }
 
 export interface MembershipSummary {

@@ -49,7 +49,17 @@ export class CatalogPage {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly query = signal('');
   protected readonly selectedCategory = signal('');
-  protected readonly isStreetwear = computed(() => this.storeSlug() === 'tienda-a');
+  protected readonly isModern = computed(
+    () => this.context.settings()?.branding?.template === 'MODERN',
+  );
+  protected readonly heroTitle = computed(
+    () => this.context.settings()?.branding?.heroTitle || 'Una tienda con identidad propia.',
+  );
+  protected readonly heroSubtitle = computed(
+    () =>
+      this.context.settings()?.branding?.heroSubtitle ||
+      'Descubrí productos seleccionados y encontrá tu próxima elección.',
+  );
   protected readonly filters = this.formBuilder.nonNullable.group({
     q: [''],
     category: [''],

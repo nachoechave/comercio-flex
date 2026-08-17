@@ -120,7 +120,8 @@ public class IdentityController {
 	private SessionResponse authenticatedResponse(PlatformPrincipal principal) {
 		return SessionResponse.authenticated(
 			principal,
-			sessionViewService.membershipsFor(principal));
+			sessionViewService.membershipsFor(principal),
+			sessionViewService.platformRoleFor(principal));
 	}
 
 	private PlatformPrincipal principal(Authentication authentication) {

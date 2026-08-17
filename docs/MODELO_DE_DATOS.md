@@ -10,10 +10,10 @@
 | Entidad | Responsabilidad |
 |---|---|
 | `tenants` | Comercio, slug, estado y referencia de conexión |
-| `tenant_domains` | Paths/dominios habilitados y resolución |
-| `tenant_database_registry` | Identificador lógico de la base y estado de migración, sin contraseñas |
-| `platform_users` | Identidad global, credenciales y estado de la cuenta |
+| `tenant_infrastructure` | Nombre físico permitido y estado del provisioning, sin credenciales |
+| `platform_users` | Identidad global, credenciales, estado y rol de plataforma |
 | `memberships` | Relación usuario-comercio, rol y estado de acceso |
+| `platform_audit_events` | Activaciones y suspensiones globales con actor y tenant |
 | `SPRING_SESSION` | Metadatos y vencimiento de sesiones web persistentes |
 | `SPRING_SESSION_ATTRIBUTES` | Atributos mínimos asociados a cada sesión |
 | `payment_oauth_attempts`, `merchant_payment_connections`, `merchant_payment_connection_events` | Conexión OAuth y auditoría global implementadas en PAY-01B |
@@ -22,10 +22,11 @@
 Las credenciales de conexión no se guardarán en texto plano en esta base. Serán
 secretos externos o valores cifrados con una clave externa.
 
-En CORE-01, `tenants.database_key` es la referencia lógica implementada. No es una
-URL ni un nombre de base proporcionado al navegador. La URL, usuario y contraseña
-se resuelven contra configuración externa del backend. `tenant_database_registry`
-permanece como evolución para metadatos operativos, no como almacén de secretos.
+`tenants.database_key` es una referencia lógica interna, nunca una URL ni un valor
+aceptado desde el navegador. `tenant_infrastructure` relaciona el tenant con un
+nombre físico generado, el estado `PENDING`/`READY`/`FAILED`, el estado final
+solicitado y timestamps. La URL se deriva de una plantilla global; usuarios y
+contraseñas permanecen en secretos externos.
 
 ### Identidad global
 
@@ -43,6 +44,12 @@ Estados iniciales:
 - usuario: `ACTIVE`, `LOCKED`, `DISABLED`;
 - membresía: `ACTIVE`, `INACTIVE`;
 - rol: `OWNER`, `ADMIN`, `STAFF`.
+
+`platform_users.platform_role` usa `USER` o `SUPER_ADMIN`. Es independiente del
+rol de membresía. `tenants.status` agrega `SUSPENDED` y
+`PROVISIONING_FAILED`; sólo `ACTIVE` puede resolverse hacia una base tenant.
+`platform_audit_events` conserva la transición
+de estado como JSON sin almacenar información de conexión.
 
 El correo normalizado se usa para evitar dos cuentas equivalentes por diferencias
 de mayúsculas o espacios. El hash de contraseña utiliza un algoritmo adaptativo
@@ -107,12 +114,18 @@ La migración tenant `V003__create_products_and_variants.sql` crea:
 | Tabla | Campos y reglas principales |
 |---|---|
 | `products` | `BIGINT` interno, UUID público, FK de categoría, nombre, slug único, descripción, estado, versión y timestamps |
-| `product_variants` | `BIGINT` interno, UUID público, FK de producto, SKU único, `DECIMAL(15,2)`, talle, color, estado, versión y timestamps |
+| `product_variants` | `BIGINT` interno, UUID público, FK de producto, SKU único, `DECIMAL(15,2)`, firma canónica de opciones, talle/color compatibles, estado, versión y timestamps |
+| `product_options` | Definición de hasta cinco ejes por producto, nombre normalizado y posición estable |
+| `product_option_values` | Valores reutilizables y ordenados para cada opción del producto |
+| `product_variant_option_values` | Selección de valores que compone cada variante vendible |
 
 Estados de producto: `DRAFT`, `PUBLISHED`, `ARCHIVED`. Estados de variante:
-`ACTIVE`, `INACTIVE`. Una restricción única evita repetir la combinación
-normalizada de talle y color dentro del mismo producto. Las cadenas vacías de
-talle y color representan la variante base.
+`ACTIVE`, `INACTIVE`. V015 reemplaza la unicidad fija talle/color por
+`product_id + option_signature`, SHA-256 de los pares normalizados y ordenados por
+nombre. Así Material/Talle y Talle/Material representan la misma combinación.
+Una firma del texto vacío representa la única variante estándar del producto.
+V015 migra Talle/Color existentes a las tablas genéricas sin quitar sus columnas,
+que se mantienen derivadas durante la transición de contratos.
 
 Producto y variante tienen versiones independientes. La aplicación actualiza una
 fila sólo cuando la versión enviada coincide y luego la incrementa. Las
@@ -165,7 +178,8 @@ la API; las claves `BIGINT`, SKU, versiones y cantidades permanecen internas.
 - Dinero usa `DECIMAL`, nunca punto flotante.
 - Cantidad usa `DECIMAL(15,3)` para soportar peso sin migrar el ledger.
 - Fechas se guardan en UTC.
-- `order_items` conserva nombre, SKU, unidad y precio del momento de compra.
+- `order_items` conserva nombre, SKU, unidad, precio y `options_snapshot` JSON del
+  momento de compra.
 - Pedidos y pagos no se eliminan físicamente desde la aplicación.
 - Imágenes se guardan fuera de MySQL; la base conserva URL y metadatos.
 - Estados de pedido y pago son máquinas de estado separadas.
@@ -451,6 +465,15 @@ Se agregan columnas tenant:
 Las columnas inicialmente nullable permiten migrar tenants existentes sin inventar
 datos. La pantalla administrativa obliga a completarlos antes de guardar. El MVP
 no agrega tablas de envío porque el único método es `PICKUP`.
+
+### Branding del tenant (`store_settings`, V014)
+
+La identidad visual permanece dentro de la base aislada del comercio. V014 agrega
+cuatro colores hexadecimales, tipografía acotada, título/subtítulo hero, template y
+referencias privadas para logo, favicon y hero (`storage_key`, MIME y SHA-256/ETag).
+Los bytes continúan fuera de MySQL mediante el mismo puerto local/S3 usado por
+imágenes de producto. El antiguo `brand_theme` se conserva sólo por compatibilidad
+y deja de formar parte de las escrituras `OWNER`/`ADMIN`.
 
 ### Credenciales y recuperación
 

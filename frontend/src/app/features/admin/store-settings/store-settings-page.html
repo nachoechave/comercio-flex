@@ -7,7 +7,6 @@
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <fieldset><legend>Comercio</legend>
         <label>Nombre visible<input formControlName="storeName" maxlength="160" /></label>
-        <label>Tema visual<select formControlName="brandTheme">@for (theme of themes; track theme.value) { <option [value]="theme.value">{{ theme.label }}</option> }</select></label>
       </fieldset>
       <fieldset><legend>Contacto</legend><p>Completá al menos una opción.</p>
         <label>Teléfono<input formControlName="contactPhone" autocomplete="tel" maxlength="40" /></label>

@@ -1,0 +1,135 @@
+.back {
+  color: var(--color-muted);
+  text-decoration: none;
+}
+
+.page-heading {
+  margin: 1rem 0 1.5rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-accent);
+  font-weight: 750;
+}
+
+h1 {
+  margin: 0.3rem 0;
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: -0.035em;
+}
+
+.page-heading p:last-child,
+label span,
+label > small {
+  color: var(--color-muted);
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+}
+
+fieldset {
+  margin: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.8rem;
+  background: var(--color-surface);
+}
+
+legend {
+  padding-inline: 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  align-content: start;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+input,
+select,
+button {
+  min-height: 2.8rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.55rem;
+  color: var(--color-text);
+  background: white;
+  font: inherit;
+}
+
+input.ng-invalid.ng-touched {
+  border-color: #b62f2f;
+}
+
+label small {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.notice,
+.provisioning-note {
+  padding: 0.9rem 1rem;
+  border-radius: 0.65rem;
+}
+
+.notice.error {
+  color: #8b2727;
+  background: #fde8e8;
+}
+
+.provisioning-note {
+  display: grid;
+  gap: 0.3rem;
+  border: 1px solid #d8ccf5;
+  color: #4e2ba8;
+  background: #f5f1ff;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.actions a {
+  color: var(--color-muted);
+}
+
+button {
+  border-color: var(--color-accent);
+  color: white;
+  background: var(--color-accent);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+@media (max-width: 44rem) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    text-align: center;
+  }
+}
