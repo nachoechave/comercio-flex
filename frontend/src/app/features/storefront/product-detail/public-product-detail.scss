@@ -73,6 +73,12 @@
   line-height: 1.02;
 }
 
+.featured-price {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  font-weight: 850;
+}
+
 .availability {
   display: inline-block;
   margin: 0.5rem 0 1rem;
@@ -193,6 +199,261 @@
   grid-column: 1 / -1;
 }
 
+.purchase-benefits {
+  display: none;
+}
+
+.product-page--streetwear {
+  width: min(100% - 3rem, 86rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(21rem, 0.92fr);
+  column-gap: clamp(2.5rem, 6vw, 6rem);
+  padding: 1.25rem 0 4.5rem;
+}
+
+.product-page--streetwear .breadcrumbs {
+  grid-column: 1 / -1;
+  margin-bottom: clamp(2rem, 4vw, 3.75rem);
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e5e5;
+  color: #686868;
+  font-size: 0.78rem;
+}
+
+.product-page--streetwear .breadcrumbs a {
+  color: #0a0a0a;
+}
+
+.product-page--streetwear .product-hero {
+  display: contents;
+}
+
+.product-page--streetwear .visual {
+  min-height: clamp(32rem, 56vw, 46rem);
+  grid-column: 1;
+  grid-row: 2 / span 2;
+  align-self: start;
+  overflow: hidden;
+  border: 1px solid #ededed;
+  border-radius: 0.6rem;
+  color: #0a0a0a;
+  background: #f3f3f3;
+  box-shadow: none;
+}
+
+.product-page--streetwear .visual span {
+  border-color: #d8d8d8;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.product-page--streetwear .visual img {
+  height: 100%;
+  aspect-ratio: auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  border-radius: 0;
+  object-fit: contain;
+}
+
+.product-page--streetwear .summary {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: end;
+  padding-top: 1rem;
+}
+
+.product-page--streetwear .eyebrow {
+  color: #0a0a0a;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+}
+
+.product-page--streetwear .summary h1 {
+  max-width: 12ch;
+  margin: 0.65rem 0 1rem;
+  color: #080808;
+  font-size: clamp(2.7rem, 5vw, 4.4rem);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+}
+
+.product-page--streetwear .featured-price {
+  margin: 0 0 1rem;
+  color: #080808;
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+  letter-spacing: -0.025em;
+}
+
+.product-page--streetwear .availability {
+  margin: 0 0 1rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.3rem;
+  color: #0f5733;
+  background: #dff6e9;
+  font-size: 0.74rem;
+}
+
+.product-page--streetwear .availability--out {
+  color: #7c411a;
+  background: #fff0df;
+}
+
+.product-page--streetwear .description {
+  max-width: 38rem;
+  margin: 0;
+  color: #555;
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.product-page--streetwear .variants {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: start;
+  margin-top: 1.75rem;
+  padding: 1.75rem 0 0;
+  border-top-color: #dedede;
+}
+
+.product-page--streetwear .variants h2 {
+  margin: 0.45rem 0 0.35rem;
+  color: #080808;
+  font-size: clamp(1.6rem, 3vw, 2.15rem);
+  letter-spacing: -0.035em;
+}
+
+.product-page--streetwear .variants header > p:last-child {
+  margin: 0;
+  color: #686868;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.product-page--streetwear .variant-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 1.2rem;
+}
+
+.product-page--streetwear .variant-card {
+  min-height: 4.5rem;
+  padding: 0.85rem;
+  border-color: #d7d7d7;
+  border-radius: 0.45rem;
+  background: #fff;
+}
+
+.product-page--streetwear .variant-card:hover:not(.variant-card--out) {
+  border-color: #080808;
+}
+
+.product-page--streetwear .variant-card--selected {
+  border-color: #080808;
+  box-shadow: inset 0 0 0 1px #080808;
+}
+
+.product-page--streetwear .variant-card h3 {
+  color: #111;
+  font-size: 0.84rem;
+}
+
+.product-page--streetwear .variant-card p {
+  color: #27734c;
+  font-size: 0.7rem;
+}
+
+.product-page--streetwear .variant-card strong {
+  color: #080808;
+  font-size: 0.82rem;
+}
+
+.product-page--streetwear .purchase-panel {
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.product-page--streetwear .purchase-panel label {
+  color: #333;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.product-page--streetwear .purchase-panel input {
+  width: 100%;
+  min-height: 3.25rem;
+  border: 1px solid #bcbcbc;
+  border-radius: 0.35rem;
+  background: #fff;
+}
+
+.product-page--streetwear .purchase-panel button {
+  min-height: 3.25rem;
+  border-radius: 0.35rem;
+  color: #fff;
+  background: #080808;
+  cursor: pointer;
+}
+
+.product-page--streetwear .purchase-panel button:hover:not(:disabled) {
+  background: #252525;
+}
+
+.product-page--streetwear .purchase-panel button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.product-page--streetwear .cart-feedback,
+.product-page--streetwear .purchase-panel small {
+  grid-column: 1 / -1;
+  color: #666;
+  font-size: 0.72rem;
+}
+
+.product-page--streetwear .cart-feedback:empty {
+  display: none;
+}
+
+.product-page--streetwear .purchase-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.4rem 0 0;
+  padding: 1.2rem 0 0;
+  border-top: 1px solid #e2e2e2;
+  list-style: none;
+}
+
+.product-page--streetwear .purchase-benefits li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.45rem;
+  color: #333;
+  font-size: 0.65rem;
+  line-height: 1.25;
+}
+
+.product-page--streetwear .purchase-benefits span {
+  display: grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+  border: 1px solid #d2d2d2;
+  border-radius: 50%;
+  color: #080808;
+  font-size: 0.8rem;
+}
+
+.product-page--streetwear .state {
+  grid-column: 1 / -1;
+}
+
 .state {
   min-height: 60vh;
   padding: 3rem 0;
@@ -262,6 +523,28 @@
   .cart-feedback {
     grid-column: 1 / -1;
   }
+
+  .product-page--streetwear {
+    width: min(100% - 2rem, 46rem);
+    display: block;
+    padding-bottom: 3rem;
+  }
+
+  .product-page--streetwear .product-hero {
+    display: grid;
+  }
+
+  .product-page--streetwear .visual {
+    min-height: min(112vw, 38rem);
+  }
+
+  .product-page--streetwear .summary {
+    padding-top: 0;
+  }
+
+  .product-page--streetwear .variants {
+    margin-top: 0;
+  }
 }
 
 @media (max-width: 34rem) {
@@ -286,6 +569,21 @@
 
   .purchase-panel button {
     width: 100%;
+  }
+
+  .product-page--streetwear {
+    width: min(100% - 1.25rem, 46rem);
+  }
+
+  .product-page--streetwear .variant-grid,
+  .product-page--streetwear .purchase-panel,
+  .product-page--streetwear .purchase-benefits {
+    grid-template-columns: 1fr;
+  }
+
+  .product-page--streetwear .variant-card {
+    align-items: center;
+    flex-direction: row;
   }
 
   .state-actions {

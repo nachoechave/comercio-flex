@@ -100,6 +100,9 @@ describe('PublicProductDetail', () => {
     expect(text).toContain('Talle L · Azul');
     expect(text).toContain('Sin stock');
     expect(TestBed.inject(Title).getTitle()).toBe('Remera azul | Tienda A');
+    expect(fixture.nativeElement.querySelector('.product-page--streetwear')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.featured-price').textContent).toContain('$');
+    expect(fixture.nativeElement.querySelectorAll('.purchase-benefits li')).toHaveLength(3);
     const image: HTMLImageElement = fixture.nativeElement.querySelector('.product-hero img');
     expect(image.getAttribute('src')).toBe('/media/image-1');
     expect(image.alt).toBe('Remera azul sobre fondo claro');

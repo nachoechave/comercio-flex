@@ -46,6 +46,14 @@ export class PublicProductDetail {
   protected readonly available = computed(
     () => this.product()?.variants.some((variant) => variant.available) ?? false,
   );
+  protected readonly isStreetwear = computed(() => this.storeSlug() === 'tienda-a');
+  protected readonly featuredPrice = computed(
+    () =>
+      this.selectedVariant()?.price ??
+      this.product()?.variants.find((variant) => variant.available)?.price ??
+      this.product()?.variants[0]?.price ??
+      null,
+  );
   protected readonly initial = computed(
     () => this.product()?.name.trim().slice(0, 1).toUpperCase() ?? '',
   );

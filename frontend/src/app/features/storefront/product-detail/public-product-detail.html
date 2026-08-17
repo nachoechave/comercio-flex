@@ -1,4 +1,8 @@
-<section class="product-page" aria-labelledby="product-title">
+<section
+  class="product-page"
+  [class.product-page--streetwear]="isStreetwear()"
+  aria-labelledby="product-title"
+>
   <nav class="breadcrumbs" aria-label="Migas de pan">
     <a [routerLink]="['/tiendas', storeSlug()]">Productos</a>
     @if (product(); as currentProduct) {
@@ -38,6 +42,9 @@
       <div class="summary">
         <p class="eyebrow">{{ currentProduct.category.name }}</p>
         <h1 id="product-title">{{ currentProduct.name }}</h1>
+        @if (featuredPrice(); as price) {
+          <p class="featured-price">{{ price | storefrontMoney: context.currencyCode() }}</p>
+        }
         <p class="availability" [class.availability--out]="!available()">
           {{ available() ? 'Disponible' : 'Sin stock' }}
         </p>
@@ -54,10 +61,20 @@
         <p class="eyebrow">Opciones</p>
         <h2 id="variants-title">
           {{
-            currentProduct.variants.length === 1 ? 'Precio y disponibilidad' : 'Elegí tu variante'
+            isStreetwear()
+              ? 'Elegí tu opción'
+              : currentProduct.variants.length === 1
+                ? 'Precio y disponibilidad'
+                : 'Elegí tu variante'
           }}
         </h2>
-        <p>El precio y la disponibilidad corresponden a cada combinación.</p>
+        <p>
+          {{
+            isStreetwear()
+              ? 'Seleccioná la combinación que mejor va con vos.'
+              : 'El precio y la disponibilidad corresponden a cada combinación.'
+          }}
+        </p>
       </header>
       <div class="variant-grid">
         @for (variant of currentProduct.variants; track variant.id) {
@@ -107,6 +124,13 @@
           </p>
           <small>La disponibilidad final se verificará al confirmar el pedido.</small>
         </div>
+      }
+      @if (isStreetwear()) {
+        <ul class="purchase-benefits" aria-label="Beneficios de compra">
+          <li><span aria-hidden="true">↗</span><strong>Envíos a todo el país</strong></li>
+          <li><span aria-hidden="true">↻</span><strong>Cambios simples</strong></li>
+          <li><span aria-hidden="true">◇</span><strong>Compra segura</strong></li>
+        </ul>
       }
     </section>
   }
