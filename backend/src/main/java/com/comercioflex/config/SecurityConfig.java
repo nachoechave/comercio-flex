@@ -67,7 +67,8 @@ public class SecurityConfig {
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(
 					"/", "/index.html", "/*.js", "/*.css", "/*.ico", "/assets/**",
-					"/admin", "/admin/**", "/tiendas/**")
+					"/admin", "/admin/**", "/tiendas/**",
+					"/stores/*/payment-return/*")
 				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers("/api/v1/stores/*/settings").permitAll()
