@@ -42,11 +42,11 @@
         <div class="notice error-notice" role="alert">{{ errorMessage() }}</div>
       }
 
-      @if (current.canRetry && privateOrderToken(current)) {
+      @if (canRetryPayment(current) && privateOrderToken(current)) {
         <button type="button" (click)="retryPayment()" [disabled]="retrying()">
           {{ retrying() ? 'Abriendo Mercado Pago…' : 'Intentar el pago nuevamente' }}
         </button>
-      } @else if (current.canRetry) {
+      } @else if (canRetryPayment(current)) {
         <p class="notice" role="status">
           Abrí el enlace privado del pedido para volver a intentar el pago.
         </p>

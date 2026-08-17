@@ -61,7 +61,7 @@ describe('PaymentReturnPage', () => {
 
   it('checks immediately, renders an approved result and stops polling', async () => {
     vi.advanceTimersByTime(0);
-    statusRequest().flush(approved);
+    reconciliationRequest().flush(approved);
     fixture.detectChanges();
     await Promise.resolve();
 
@@ -74,7 +74,7 @@ describe('PaymentReturnPage', () => {
 
   it('polls pending payments every three seconds until a final state', () => {
     vi.advanceTimersByTime(0);
-    statusRequest().flush({
+    reconciliationRequest().flush({
       ...approved,
       orderStatus: 'PENDING_CONFIRMATION',
       paymentStatus: 'PENDING',
@@ -91,7 +91,7 @@ describe('PaymentReturnPage', () => {
 
   it('reconciles the verified provider payment when the customer refreshes', () => {
     vi.advanceTimersByTime(0);
-    statusRequest().flush({
+    reconciliationRequest().flush({
       ...approved,
       orderStatus: 'PENDING_CONFIRMATION',
       paymentStatus: 'PENDING',
@@ -103,7 +103,6 @@ describe('PaymentReturnPage', () => {
         refresh(): void;
       }
     ).refresh();
-    http.expectOne('/api/v1/auth/csrf').flush({});
     const reconciliation = http.expectOne(
       (request) =>
         request.url === `${statusUrl}/reconcile` &&
@@ -124,13 +123,12 @@ describe('PaymentReturnPage', () => {
       'idem-1',
     );
     vi.advanceTimersByTime(0);
-    statusRequest().flush({ ...approved, paymentStatus: 'REJECTED', canRetry: true });
+    reconciliationRequest().flush({ ...approved, paymentStatus: 'REJECTED', canRetry: true });
     fixture.detectChanges();
 
     const button: HTMLButtonElement = fixture.nativeElement.querySelector('button');
     expect(button.textContent).toContain('Intentar el pago nuevamente');
     button.click();
-    http.expectOne('/api/v1/auth/csrf').flush({});
     const payment = http.expectOne(
       (request) =>
         request.url.endsWith('/orders/order-1/payments/checkout-pro') &&
@@ -146,9 +144,40 @@ describe('PaymentReturnPage', () => {
     expect(navigation.navigate).toHaveBeenCalled();
   });
 
+  it('does not offer another payment while provider confirmation is pending', () => {
+    TestBed.inject(PaymentRecoveryService).remember(
+      'tienda-a',
+      'order-1',
+      'private-token',
+      'idem-1',
+    );
+    vi.advanceTimersByTime(0);
+    reconciliationRequest().flush({
+      ...approved,
+      orderStatus: 'PENDING_CONFIRMATION',
+      paymentStatus: 'PENDING',
+      canRetry: true,
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('No vuelvas a pagar');
+    expect(fixture.nativeElement.textContent).not.toContain('Intentar el pago nuevamente');
+  });
+
   const statusUrl = '/api/v1/stores/tienda-a/payment-returns/opaque-token';
 
   function statusRequest() {
     return http.expectOne(statusUrl);
+  }
+
+  function reconciliationRequest() {
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === `${statusUrl}/reconcile` &&
+        candidate.params.get('paymentId') === '171652320068',
+    );
+    expect(request.request.method).toBe('POST');
+    return request;
   }
 });

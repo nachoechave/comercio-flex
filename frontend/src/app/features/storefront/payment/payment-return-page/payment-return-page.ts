@@ -139,6 +139,10 @@ export class PaymentReturnPage implements OnDestroy {
     return PENDING_STATUSES.has(status);
   }
 
+  protected canRetryPayment(result: PaymentReturnStatus): boolean {
+    return result.canRetry && !this.isAwaitingConfirmation(result);
+  }
+
   protected statusLabel(result: PaymentReturnStatus): string {
     if (result.returnOutcome === 'PAYMENT_NOT_RECORDED') return 'Pago no completado';
     const status = result.paymentStatus;
@@ -230,6 +234,19 @@ export class PaymentReturnPage implements OnDestroy {
   }
 
   private pollRequest(iteration: number) {
+    if (iteration === 0 && this.providerPaymentId) {
+      return this.csrf
+        .ensureToken()
+        .pipe(
+          exhaustMap(() =>
+            this.api.reconcileReturn(
+              this.storeSlug,
+              this.returnToken,
+              this.providerPaymentId!,
+            ),
+          ),
+        );
+    }
     if (iteration === 0 && this.shouldInspectReturn) {
       return this.csrf
         .ensureToken()
