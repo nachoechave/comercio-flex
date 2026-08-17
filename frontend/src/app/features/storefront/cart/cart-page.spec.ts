@@ -24,7 +24,12 @@ describe('CartPage', () => {
     timezone: 'America/Argentina/Buenos_Aires',
   });
   const product: PublicProductDetail = {
-    image: null,
+    image: {
+      id: 'image-1',
+      url: '/media/image-1/original',
+      thumbnailUrl: '/media/image-1/thumbnail',
+      altText: 'Remera azul de frente',
+    },
     id: 'product-1',
     name: 'Remera',
     slug: 'remera',
@@ -107,6 +112,11 @@ describe('CartPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Remera nueva');
     expect(fixture.nativeElement.textContent).toContain('$ 5.501,00');
     expect(fixture.nativeElement.textContent).toContain('Actualizamos los datos de este producto.');
+    const page: HTMLElement = fixture.nativeElement.querySelector('.cart-page');
+    const image: HTMLImageElement = fixture.nativeElement.querySelector('.line-visual img');
+    expect(page.classList).toContain('cart-page--streetwear');
+    expect(image.getAttribute('src')).toBe('/media/image-1/thumbnail');
+    expect(image.alt).toBe('Remera azul de frente');
     expect(TestBed.inject(Title).getTitle()).toBe('Carrito | Tienda A');
     expect(TestBed.inject(Meta).getTag('name="description"')?.content).toContain('Tienda A');
   });

@@ -100,6 +100,8 @@ export class CartService {
 
       const changed =
         line.productName !== product.name ||
+        line.imageThumbnailUrl !== (product.image?.thumbnailUrl ?? null) ||
+        line.imageAltText !== (product.image?.altText ?? null) ||
         line.unitPrice !== normalizeMoney(variant.price) ||
         line.size !== variant.size ||
         line.color !== variant.color;
@@ -107,6 +109,8 @@ export class CartService {
         ...line,
         productId: product.id,
         productName: product.name,
+        imageThumbnailUrl: product.image?.thumbnailUrl ?? null,
+        imageAltText: product.image?.altText ?? null,
         size: variant.size,
         color: variant.color,
         unitPrice: normalizeMoney(variant.price),
@@ -175,6 +179,8 @@ export class CartService {
       }
       return parsed.items.map((item) => ({
         ...item,
+        imageThumbnailUrl: item.imageThumbnailUrl ?? null,
+        imageAltText: item.imageAltText ?? null,
         unitPrice: normalizeMoney(item.unitPrice),
         status: 'UNKNOWN',
         notice: 'Confirmando precio y disponibilidad.',
@@ -211,6 +217,8 @@ function toCartLine(item: AddCartItem, quantity: number): CartLine {
     productId: item.product.id,
     productSlug: item.product.slug,
     productName: item.product.name,
+    imageThumbnailUrl: item.product.image?.thumbnailUrl ?? null,
+    imageAltText: item.product.image?.altText ?? null,
     variantId: item.variant.id,
     size: item.variant.size,
     color: item.variant.color,
@@ -232,6 +240,9 @@ function isStoredLine(value: unknown): value is StoredCartLine {
     isText(value['productId'], 100) &&
     isText(value['productSlug'], 180) &&
     isText(value['productName'], 160) &&
+    (value['imageThumbnailUrl'] === undefined ||
+      isNullableText(value['imageThumbnailUrl'], 2048)) &&
+    (value['imageAltText'] === undefined || isNullableText(value['imageAltText'], 300)) &&
     isText(value['variantId'], 100) &&
     isNullableText(value['size'], 60) &&
     isNullableText(value['color'], 60) &&
@@ -244,6 +255,8 @@ function isStoredLine(value: unknown): value is StoredCartLine {
         'productId',
         'productSlug',
         'productName',
+        'imageThumbnailUrl',
+        'imageAltText',
         'variantId',
         'size',
         'color',

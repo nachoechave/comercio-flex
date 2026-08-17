@@ -6,7 +6,12 @@ import { CartService } from './cart.service';
 describe('CartService', () => {
   let service: CartService;
   const product: PublicProductDetail = {
-    image: null,
+    image: {
+      id: 'image-1',
+      url: '/media/image-1/original',
+      thumbnailUrl: '/media/image-1/thumbnail',
+      altText: 'Remera azul de frente',
+    },
     id: 'product-1',
     slug: 'remera',
     name: 'Remera',
@@ -48,6 +53,8 @@ describe('CartService', () => {
           productSlug: 'remera',
           variantId: 'variant-1',
           quantity: 99,
+          imageThumbnailUrl: '/media/image-1/thumbnail',
+          imageAltText: 'Remera azul de frente',
         }),
       ],
     });
@@ -93,6 +100,37 @@ describe('CartService', () => {
     expect(localStorage.getItem('comercio-flex:cart:v1:tienda-a')).toBeNull();
   });
 
+  it('loads carts stored before product thumbnails were introduced', () => {
+    localStorage.setItem(
+      'comercio-flex:cart:v1:tienda-a',
+      JSON.stringify({
+        version: 1,
+        items: [
+          {
+            productId: 'product-1',
+            productSlug: 'remera',
+            productName: 'Remera',
+            variantId: 'variant-1',
+            size: 'M',
+            color: 'Azul',
+            unitPrice: '2500.00',
+            quantity: 1,
+          },
+        ],
+      }),
+    );
+
+    service.activate('tienda-a');
+
+    expect(service.items('tienda-a')[0]).toEqual(
+      expect.objectContaining({
+        imageThumbnailUrl: null,
+        imageAltText: null,
+        status: 'UNKNOWN',
+      }),
+    );
+  });
+
   it('revalidates price and availability and excludes invalid lines from subtotal', () => {
     service.add('tienda-a', { product, variant, quantity: 2 });
     service.reconcileProduct('tienda-a', {
@@ -104,6 +142,8 @@ describe('CartService', () => {
     expect(service.items('tienda-a')[0]).toEqual(
       expect.objectContaining({
         productName: 'Remera actualizada',
+        imageThumbnailUrl: '/media/image-1/thumbnail',
+        imageAltText: 'Remera azul de frente',
         unitPrice: '2750.50',
         notice: 'Actualizamos los datos de este producto.',
       }),

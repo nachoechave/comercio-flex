@@ -6,6 +6,8 @@ export interface CartLine {
   productId: string;
   productSlug: string;
   productName: string;
+  imageThumbnailUrl: string | null;
+  imageAltText: string | null;
   variantId: string;
   size: string | null;
   color: string | null;
@@ -31,4 +33,8 @@ export interface StoredCart {
   items: StoredCartLine[];
 }
 
-export type StoredCartLine = Omit<CartLine, 'status' | 'notice'>;
+export interface StoredCartLine
+  extends Omit<CartLine, 'status' | 'notice' | 'imageThumbnailUrl' | 'imageAltText'> {
+  imageThumbnailUrl?: string | null;
+  imageAltText?: string | null;
+}

@@ -30,6 +30,7 @@ export class CartPage {
   protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
     initialValue: '',
   });
+  protected readonly isStreetwear = computed(() => this.storeSlug() === 'tienda-a');
   protected readonly items = computed(() => this.cart.items(this.storeSlug() ?? ''));
   protected readonly subtotal = computed(() => this.cart.availableSubtotal(this.storeSlug() ?? ''));
   protected readonly canCheckout = computed(

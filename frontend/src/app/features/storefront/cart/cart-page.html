@@ -1,4 +1,8 @@
-<section class="cart-page" aria-labelledby="cart-title">
+<section
+  class="cart-page"
+  [class.cart-page--streetwear]="isStreetwear()"
+  aria-labelledby="cart-title"
+>
   <nav class="breadcrumbs" aria-label="Migas de pan">
     <a [routerLink]="['/tiendas', storeSlug()]">Productos</a>
     <span aria-hidden="true">/</span>
@@ -54,8 +58,16 @@
       <section class="cart-lines" aria-label="Productos en el carrito">
         @for (line of items(); track line.variantId) {
           <article class="cart-line" [class.cart-line--blocked]="line.status !== 'AVAILABLE'">
-            <div class="line-visual" aria-hidden="true">
-              {{ line.productName.slice(0, 1).toUpperCase() }}
+            <div class="line-visual" [attr.aria-hidden]="line.imageThumbnailUrl ? null : 'true'">
+              @if (line.imageThumbnailUrl; as imageUrl) {
+                <img
+                  [src]="imageUrl"
+                  [alt]="line.imageAltText || line.productName"
+                  loading="lazy"
+                />
+              } @else {
+                <span>{{ line.productName.slice(0, 1).toUpperCase() }}</span>
+              }
             </div>
             <div class="line-content">
               <div class="line-heading">
