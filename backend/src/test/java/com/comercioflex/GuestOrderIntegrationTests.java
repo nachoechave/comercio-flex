@@ -196,6 +196,8 @@ class GuestOrderIntegrationTests {
 		assertThat(created.at("/lookupToken").asText()).hasSize(43);
 		assertThat(created.at("/order/customerPhone").isMissingNode()).isTrue();
 		assertThat(created.at("/order/customerEmail").isMissingNode()).isTrue();
+		assertThat(text(TENANT_A_DATABASE,
+			"SELECT customer_email FROM orders")).isEqualTo("ana@example.com");
 		assertThat(created.at("/order/items/0/sku").isMissingNode()).isTrue();
 		assertThat(count(TENANT_A_DATABASE, "SELECT COUNT(*) FROM orders")).isEqualTo(1);
 		assertThat(decimal(TENANT_A_DATABASE,
@@ -712,6 +714,38 @@ class GuestOrderIntegrationTests {
 				.content(body("1")))
 			.andExpect(status().isConflict());
 		assertThat(count(TENANT_B_DATABASE, "SELECT COUNT(*) FROM orders")).isZero();
+	}
+
+	@Test
+	void requiresCustomerNameAndEmail() throws Exception {
+		mockMvc.perform(post(orders("tienda-a"))
+				.with(csrf())
+				.header("Idempotency-Key", UUID.randomUUID())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"customerPhone": "11 5555 1234",
+						"customerEmail": "ana@example.com",
+						"items": [{"variantId": "%s", "quantity": "1"}]
+					}
+					""".formatted(VARIANT_A)))
+			.andExpect(status().isBadRequest());
+
+		mockMvc.perform(post(orders("tienda-a"))
+				.with(csrf())
+				.header("Idempotency-Key", UUID.randomUUID())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"customerName": "Ana Pérez",
+						"customerPhone": "11 5555 1234",
+						"customerEmail": "   ",
+						"items": [{"variantId": "%s", "quantity": "1"}]
+					}
+					""".formatted(VARIANT_A)))
+			.andExpect(status().isBadRequest());
+
+		assertThat(count(TENANT_A_DATABASE, "SELECT COUNT(*) FROM orders")).isZero();
 	}
 
 	@RepeatedTest(3)

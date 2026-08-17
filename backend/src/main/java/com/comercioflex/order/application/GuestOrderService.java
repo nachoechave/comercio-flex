@@ -178,10 +178,8 @@ public class GuestOrderService {
 		}
 		String name = requiredText(command.customerName(), 160, "El nombre");
 		String phone = requiredText(command.customerPhone(), 40, "El teléfono");
-		String email = optionalText(command.customerEmail(), 254, "El correo");
-		if (email != null) {
-			email = email.toLowerCase(Locale.ROOT);
-		}
+		String email = requiredText(command.customerEmail(), 254, "El correo")
+			.toLowerCase(Locale.ROOT);
 		String notes = optionalText(command.notes(), 1000, "Las observaciones");
 		if (command.items() == null || command.items().isEmpty()) {
 			throw new InvalidGuestOrderException(

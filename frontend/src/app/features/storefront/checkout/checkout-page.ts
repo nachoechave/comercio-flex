@@ -51,9 +51,9 @@ export class CheckoutPage {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly uncertainResult = signal(false);
   protected readonly form = this.formBuilder.nonNullable.group({
-    customerName: ['', [Validators.required, Validators.maxLength(160)]],
+    customerName: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(160)]],
     customerPhone: ['', [Validators.required, Validators.maxLength(40)]],
-    customerEmail: ['', [Validators.email, Validators.maxLength(254)]],
+    customerEmail: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
     notes: ['', [Validators.maxLength(1000)]],
   });
 
@@ -75,7 +75,7 @@ export class CheckoutPage {
     const body: CreateGuestOrder = {
       customerName: value.customerName.trim(),
       customerPhone: value.customerPhone.trim(),
-      ...(value.customerEmail.trim() ? { customerEmail: value.customerEmail.trim() } : {}),
+      customerEmail: value.customerEmail.trim(),
       ...(value.notes.trim() ? { notes: value.notes.trim() } : {}),
       items: this.items().map((item) => ({
         variantId: item.variantId,

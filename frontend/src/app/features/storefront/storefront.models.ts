@@ -81,7 +81,7 @@ export interface PublicProductQuery {
 export interface CreateGuestOrder {
   customerName: string;
   customerPhone: string;
-  customerEmail?: string;
+  customerEmail: string;
   notes?: string;
   items: {
     variantId: string;

@@ -1892,3 +1892,20 @@
 - **Consecuencias:** aumenta preparación operativa y costo externo, pero reduce
   pérdida de datos y movimiento lateral. Hosting, dominio, credenciales y prueba
   real permanecen pendientes del Product Owner/proveedor.
+
+### ADR-121 — Correo obligatorio para confirmaciones de pedidos
+
+- **Fecha:** 2026-08-17
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** el comprobante transaccional del pedido debe poder enviarse al
+  comprador cuando el pago quede confirmado.
+- **Problema:** un pedido sin correo impide entregar esa confirmación y obliga a
+  depender exclusivamente del enlace mostrado en el navegador.
+- **Alternativas:** conservar el correo opcional; exigir nombre y correo; crear una
+  cuenta de cliente antes de comprar.
+- **Decisión:** nombre, teléfono y correo válido son obligatorios en el checkout
+  invitado. Las observaciones continúan opcionales. Esta decisión reemplaza la
+  opcionalidad del correo definida en ADR-060.
+- **Consecuencias:** todos los pedidos nuevos cuentan con un destino para futuras
+  notificaciones, sin crear cuentas de cliente ni cambiar los pedidos históricos.

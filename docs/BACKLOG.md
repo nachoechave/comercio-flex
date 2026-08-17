@@ -509,7 +509,8 @@ recibir una referencia segura que me permita consultar la confirmación.
 
 - El checkout se abre desde un carrito no vacío y sólo ofrece retiro en el MVP
   inicial; envío, zonas, tarifas y franjas quedan fuera.
-- Nombre y teléfono son obligatorios; correo y observaciones son opcionales.
+- Nombre, teléfono y correo válido son obligatorios; las observaciones son
+  opcionales.
 - Los datos de contacto se guardan como snapshot del pedido, sin crear una cuenta
   ni deduplicar clientes.
 - El frontend envía UUID de variante y cantidad; nunca precio, subtotal, stock,

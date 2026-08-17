@@ -24,7 +24,12 @@
           <legend>Datos de contacto</legend>
           <label>
             Nombre y apellido
-            <input formControlName="customerName" autocomplete="name" maxlength="160" />
+            <input
+              formControlName="customerName"
+              autocomplete="name"
+              maxlength="160"
+              required
+            />
             @if (form.controls.customerName.touched && form.controls.customerName.invalid) {
               <small class="field-error">Ingresá tu nombre.</small>
             }
@@ -37,12 +42,13 @@
             }
           </label>
           <label>
-            Correo electrónico <span>(opcional)</span>
+            Correo electrónico
             <input
               formControlName="customerEmail"
               type="email"
               autocomplete="email"
               maxlength="254"
+              required
             />
             @if (form.controls.customerEmail.touched && form.controls.customerEmail.invalid) {
               <small class="field-error">Ingresá un correo válido.</small>

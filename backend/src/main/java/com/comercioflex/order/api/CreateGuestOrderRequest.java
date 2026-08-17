@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Size;
 public record CreateGuestOrderRequest(
 	@NotBlank @Size(max = 160) String customerName,
 	@NotBlank @Size(max = 40) String customerPhone,
-	@Email @Size(max = 254) String customerEmail,
+	@NotBlank @Email @Size(max = 254) String customerEmail,
 	@Size(max = 1000) String notes,
 	@NotEmpty @Size(max = 50) List<@Valid CreateGuestOrderItemRequest> items) {
 }

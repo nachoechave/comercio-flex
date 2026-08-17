@@ -198,8 +198,8 @@ sistemas alojados en el mismo origen.
 1. Preparar un producto publicado con variante activa y stock físico.
 2. Agregar una cantidad al carrito y confirmar que todas las líneas queden
    disponibles.
-3. Pulsar `Continuar`, completar nombre y teléfono; probar también correo y
-   observaciones opcionales.
+3. Pulsar `Continuar`, completar nombre, teléfono y correo válido; probar también
+   las observaciones opcionales.
 4. Confirmar y verificar la ruta
    `/tiendas/{slug}/pedidos/{uuid}?token=...`.
 

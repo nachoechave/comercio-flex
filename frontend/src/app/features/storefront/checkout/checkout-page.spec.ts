@@ -106,7 +106,7 @@ describe('CheckoutPage', () => {
     component.form.setValue({
       customerName: 'Ana Pérez',
       customerPhone: '11 5555 1234',
-      customerEmail: '',
+      customerEmail: 'ana@example.com',
       notes: 'Cortado fino',
     });
     component.submit();
@@ -119,6 +119,7 @@ describe('CheckoutPage', () => {
     expect(order.request.body).toEqual({
       customerName: 'Ana Pérez',
       customerPhone: '11 5555 1234',
+      customerEmail: 'ana@example.com',
       notes: 'Cortado fino',
       items: [{ variantId: 'variant-1', quantity: '2' }],
     });
@@ -155,16 +156,48 @@ describe('CheckoutPage', () => {
     );
   });
 
+  it('requires the customer name and a valid email before creating the order', () => {
+    const component = fixture.componentInstance as unknown as {
+      form: {
+        patchValue(value: {
+          customerName: string;
+          customerPhone: string;
+          customerEmail: string;
+        }): void;
+      };
+      submit(): void;
+    };
+    component.form.patchValue({
+      customerName: '   ',
+      customerPhone: '11 5555 1234',
+      customerEmail: '',
+    });
+
+    component.submit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Ingresá tu nombre.');
+    expect(fixture.nativeElement.textContent).toContain('Ingresá un correo válido.');
+    expect(fixture.nativeElement.textContent).toContain('Revisá los datos de contacto marcados.');
+    http.expectNone('/api/v1/auth/csrf');
+    http.expectNone('/api/v1/stores/tienda-a/orders');
+  });
+
   it('keeps the idempotency key when the outcome is uncertain', () => {
     const component = fixture.componentInstance as unknown as {
       form: {
-        patchValue(value: { customerName: string; customerPhone: string }): void;
+        patchValue(value: {
+          customerName: string;
+          customerPhone: string;
+          customerEmail: string;
+        }): void;
       };
       submit(): void;
     };
     component.form.patchValue({
       customerName: 'Ana Pérez',
       customerPhone: '11 5555 1234',
+      customerEmail: 'ana@example.com',
     });
     component.submit();
     http.expectOne('/api/v1/auth/csrf').flush({});

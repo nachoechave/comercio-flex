@@ -70,6 +70,7 @@ describe('StorefrontApiService', () => {
     const body = {
       customerName: 'Ana Pérez',
       customerPhone: '11 5555 1234',
+      customerEmail: 'ana@example.com',
       items: [{ variantId: 'variant-1', quantity: '2' }],
     };
     service.createOrder('tienda-a', 'key-1', body).subscribe();
