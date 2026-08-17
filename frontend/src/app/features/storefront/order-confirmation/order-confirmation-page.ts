@@ -106,6 +106,7 @@ export class OrderConfirmationPage {
     const recovery =
       this.paymentRecovery.find(storeSlug, orderId) ??
       this.paymentRecovery.remember(storeSlug, orderId, token);
+    this.paymentsUnavailable.set(false);
     this.paymentStarting.set(true);
     this.paymentErrorMessage.set(null);
     this.csrf

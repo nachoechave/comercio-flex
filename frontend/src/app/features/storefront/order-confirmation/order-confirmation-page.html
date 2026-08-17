@@ -63,11 +63,15 @@
             <strong>{{ currentOrder.reservationExpiresAt | date: 'short' }}</strong
             >.
           </p>
-          @if (!paymentsUnavailable()) {
-            <button type="button" (click)="startPayment()" [disabled]="paymentStarting()">
-              {{ paymentStarting() ? 'Abriendo Mercado Pago…' : 'Pagar con Mercado Pago' }}
-            </button>
-          }
+          <button type="button" (click)="startPayment()" [disabled]="paymentStarting()">
+            @if (paymentStarting()) {
+              Abriendo Mercado Pago…
+            } @else if (paymentErrorMessage()) {
+              Reintentar con Mercado Pago
+            } @else {
+              Pagar con Mercado Pago
+            }
+          </button>
         }
         <a [routerLink]="['/tiendas', storeSlug()]">Seguir comprando</a>
       </aside>
