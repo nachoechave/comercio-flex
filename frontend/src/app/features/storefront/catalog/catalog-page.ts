@@ -52,6 +52,9 @@ export class CatalogPage {
   protected readonly isModern = computed(
     () => this.context.settings()?.branding?.template === 'MODERN',
   );
+  protected readonly isMinimal = computed(
+    () => this.context.settings()?.branding?.template === 'MINIMAL',
+  );
   protected readonly heroTitle = computed(
     () => this.context.settings()?.branding?.heroTitle || 'Una tienda con identidad propia.',
   );

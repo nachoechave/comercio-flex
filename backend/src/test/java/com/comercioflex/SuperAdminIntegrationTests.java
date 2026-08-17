@@ -3,6 +3,7 @@ package com.comercioflex;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -192,6 +193,60 @@ class SuperAdminIntegrationTests {
 		assertThat(jdbcTemplate.queryForObject(
 			"SELECT COUNT(*) FROM platform_audit_events",
 			Integer.class)).isEqualTo(2);
+	}
+
+	@Test
+	void exposesAndUpdatesTheCompleteCompanyRecordWithoutInfrastructureSecrets()
+			throws Exception {
+		AuthenticatedCookies superAdmin = login("superadmin@example.com");
+
+		mockMvc.perform(put("/api/v1/superadmin/companies/{id}", COMPANY_ID)
+				.cookie(superAdmin.sessionCookie(), superAdmin.csrfCookie())
+				.header("X-XSRF-TOKEN", superAdmin.csrfCookie().getValue())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "name": "Urban Clothes Palermo",
+					  "industry": "Indumentaria",
+					  "phone": "+54 11 4444-5555",
+					  "domain": "urban.example.com"
+					}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.name").value("Urban Clothes Palermo"))
+			.andExpect(jsonPath("$.industry").value("Indumentaria"))
+			.andExpect(jsonPath("$.domain").value("urban.example.com"))
+			.andExpect(jsonPath("$.databaseKey").doesNotExist());
+
+		mockMvc.perform(get("/api/v1/superadmin/companies/{id}/users", COMPANY_ID)
+				.cookie(superAdmin.sessionCookie()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$[0].email").value("owner@example.com"))
+			.andExpect(jsonPath("$[0].role").value("OWNER"))
+			.andExpect(jsonPath("$[0].passwordHash").doesNotExist());
+
+		mockMvc.perform(get("/api/v1/superadmin/companies/{id}/activity", COMPANY_ID)
+				.cookie(superAdmin.sessionCookie()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalItems").value(1))
+			.andExpect(jsonPath("$.items[0].action").value("COMPANY_UPDATED"))
+			.andExpect(jsonPath("$.items[0].actorEmail").value("superadmin@example.com"))
+			.andExpect(jsonPath("$.items[0].metadata").doesNotExist());
+
+		mockMvc.perform(get("/api/v1/superadmin/companies/{id}/infrastructure", COMPANY_ID)
+				.cookie(superAdmin.sessionCookie()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.isolationMode").value("DATABASE_PER_TENANT"))
+			.andExpect(jsonPath("$.provisioningStatus").value("EXTERNAL"))
+			.andExpect(jsonPath("$.customDomainConfigured").value(true))
+			.andExpect(jsonPath("$.databaseName").doesNotExist())
+			.andExpect(jsonPath("$.databaseKey").doesNotExist())
+			.andExpect(jsonPath("$.failureReason").doesNotExist());
+
+		assertThat(jdbcTemplate.queryForObject("""
+			SELECT COUNT(*) FROM platform_audit_events
+			WHERE action_name = 'COMPANY_UPDATED'
+			""", Integer.class)).isEqualTo(1);
 	}
 
 	@Test

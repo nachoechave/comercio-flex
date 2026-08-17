@@ -15,6 +15,7 @@ import com.comercioflex.tenant.application.ResolvedTenant;
 import com.comercioflex.tenant.application.TenantContext;
 import com.comercioflex.tenant.application.TenantNotFoundException;
 import com.comercioflex.tenant.application.TenantResolver;
+import com.comercioflex.tenant.infrastructure.control.TenantActivityRecorder;
 import com.comercioflex.identity.application.PlatformPrincipal;
 import com.comercioflex.identity.application.TenantAccessDeniedException;
 import com.comercioflex.identity.application.TenantMembership;
@@ -37,16 +38,19 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 	private final TenantResolver tenantResolver;
 	private final TenantContext tenantContext;
 	private final TenantMembershipAuthorizer membershipAuthorizer;
+	private final TenantActivityRecorder activityRecorder;
 	private final HandlerExceptionResolver exceptionResolver;
 
 	public TenantResolutionFilter(
 			TenantResolver tenantResolver,
 			TenantContext tenantContext,
 			TenantMembershipAuthorizer membershipAuthorizer,
+			TenantActivityRecorder activityRecorder,
 			@Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
 		this.tenantResolver = tenantResolver;
 		this.tenantContext = tenantContext;
 		this.membershipAuthorizer = membershipAuthorizer;
+		this.activityRecorder = activityRecorder;
 		this.exceptionResolver = exceptionResolver;
 	}
 
@@ -96,6 +100,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 					principal.id(),
 					tenant.id());
 				request.setAttribute(TENANT_MEMBERSHIP_ATTRIBUTE, membership);
+				activityRecorder.recordAdministrativeActivity(tenant.id());
 			}
 			try (TenantContext.Scope ignored = tenantContext.open(tenant.databaseKey())) {
 				filterChain.doFilter(request, response);

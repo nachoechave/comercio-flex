@@ -11,6 +11,7 @@ import {
   formatQuantity,
   QuantityFormatPipe,
 } from '../../../../shared/pipes/quantity-format.pipe';
+import { variantOptionsLabel } from '../../../../shared/variant-options';
 import { InventoryApiService } from '../inventory-api.service';
 import { inventoryErrorMessage } from '../inventory-errors';
 import {
@@ -84,6 +85,10 @@ export class StockAdjustmentForm {
       result: formatThousandths(result),
       valid: result >= 0n,
     };
+  }
+
+  optionLabel(item: InventoryItem): string {
+    return variantOptionsLabel(item.options, item.size, item.color) || 'Opción estándar';
   }
 
   otherNoteMissing(): boolean {

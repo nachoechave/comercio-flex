@@ -5,13 +5,17 @@ import { Observable, switchMap } from 'rxjs';
 import { CsrfService } from '../../core/auth/csrf.service';
 import {
   CompanyDetail,
+  CompanyActivityPage,
+  CompanyInfrastructure,
   CompanyPage,
+  CompanyUser,
   CompanyStatusFilter,
   CompanyBranding,
   UpdateCompanyBranding,
   BrandAssetType,
   CreateCompanyRequest,
   SuperAdminDashboardSummary,
+  UpdateCompanyRequest,
 } from './super-admin.models';
 
 @Injectable({ providedIn: 'root' })
@@ -43,6 +47,37 @@ export class SuperAdminApiService {
   company(companyId: string): Observable<CompanyDetail> {
     return this.http.get<CompanyDetail>(
       `${this.baseUrl}/companies/${encodeURIComponent(companyId)}`,
+    );
+  }
+
+  updateCompany(companyId: string, request: UpdateCompanyRequest): Observable<CompanyDetail> {
+    return this.csrf.ensureToken().pipe(
+      switchMap(() =>
+        this.http.put<CompanyDetail>(
+          `${this.baseUrl}/companies/${encodeURIComponent(companyId)}`,
+          request,
+        ),
+      ),
+    );
+  }
+
+  companyUsers(companyId: string): Observable<CompanyUser[]> {
+    return this.http.get<CompanyUser[]>(
+      `${this.baseUrl}/companies/${encodeURIComponent(companyId)}/users`,
+    );
+  }
+
+  companyActivity(companyId: string, page = 0, size = 20): Observable<CompanyActivityPage> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.http.get<CompanyActivityPage>(
+      `${this.baseUrl}/companies/${encodeURIComponent(companyId)}/activity`,
+      { params },
+    );
+  }
+
+  companyInfrastructure(companyId: string): Observable<CompanyInfrastructure> {
+    return this.http.get<CompanyInfrastructure>(
+      `${this.baseUrl}/companies/${encodeURIComponent(companyId)}/infrastructure`,
     );
   }
 

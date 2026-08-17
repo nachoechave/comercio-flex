@@ -4,7 +4,10 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,6 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.comercioflex.catalog.domain.ProductStatus;
+import com.comercioflex.catalog.domain.VariantOptionValue;
 import com.comercioflex.inventory.application.AdjustmentCommand;
 import com.comercioflex.inventory.application.InventoryPage;
 import com.comercioflex.inventory.application.InventoryRepository;
@@ -87,11 +91,11 @@ public class JdbcInventoryRepository implements InventoryRepository {
 			parameters.toArray());
 		parameters.add(search.size());
 		parameters.add(Math.multiplyExact((long) search.page(), search.size()));
-		List<InventoryItem> items = jdbcTemplate.query(
+		List<InventoryItem> items = withOptions(jdbcTemplate.query(
 			ITEM_SELECT + where
 				+ " ORDER BY product.name, variant.sku, variant.id LIMIT ? OFFSET ?",
 			this::mapItem,
-			parameters.toArray());
+			parameters.toArray()));
 		return new InventoryPage(
 			items,
 			search.page(),
@@ -101,12 +105,11 @@ public class JdbcInventoryRepository implements InventoryRepository {
 
 	@Override
 	public Optional<InventoryItem> findItem(UUID variantId) {
-		return jdbcTemplate.query(
+		List<InventoryItem> items = jdbcTemplate.query(
 			ITEM_SELECT + " WHERE variant.public_id = UUID_TO_BIN(?)",
 			this::mapItem,
-			variantId.toString())
-			.stream()
-			.findFirst();
+			variantId.toString());
+		return withOptions(items).stream().findFirst();
 	}
 
 	@Override
@@ -296,8 +299,25 @@ public class JdbcInventoryRepository implements InventoryRepository {
 			List<Object> parameters,
 			InventorySearch search) {
 		if (search.query() != null) {
-			where.append(" AND (product.name LIKE ? OR variant.sku LIKE ?)");
+			where.append("""
+				 AND (
+					product.name LIKE ?
+					OR variant.sku LIKE ?
+					OR EXISTS (
+						SELECT 1
+						FROM product_variant_option_values search_relation
+						JOIN product_option_values search_value
+							ON search_value.id = search_relation.option_value_id
+						JOIN product_options search_option
+							ON search_option.id = search_value.option_id
+						WHERE search_relation.variant_id = variant.id
+							AND (search_option.name LIKE ? OR search_value.value LIKE ?)
+					)
+				)
+				""");
 			String pattern = "%" + search.query() + "%";
+			parameters.add(pattern);
+			parameters.add(pattern);
 			parameters.add(pattern);
 			parameters.add(pattern);
 		}
@@ -319,10 +339,49 @@ public class JdbcInventoryRepository implements InventoryRepository {
 			resultSet.getString("sku"),
 			nullableOption(resultSet.getString("size_value")),
 			nullableOption(resultSet.getString("color_value")),
+			List.of(),
 			"ACTIVE".equals(resultSet.getString("variant_status")),
 			resultSet.getBigDecimal("quantity"),
 			resultSet.getLong("balance_version"),
 			resultSet.getTimestamp("inventory_updated_at").toInstant());
+	}
+
+	private List<InventoryItem> withOptions(List<InventoryItem> items) {
+		if (items.isEmpty()) {
+			return items;
+		}
+		String placeholders = String.join(", ",
+			Collections.nCopies(items.size(), "UUID_TO_BIN(?)"));
+		Map<UUID, List<VariantOptionValue>> optionsByVariant = new HashMap<>();
+		jdbcTemplate.query("""
+			SELECT BIN_TO_UUID(variant.public_id) variant_public_id,
+				product_option.name, option_value.value
+			FROM product_variants variant
+			JOIN product_variant_option_values relation ON relation.variant_id = variant.id
+			JOIN product_option_values option_value ON option_value.id = relation.option_value_id
+			JOIN product_options product_option ON product_option.id = option_value.option_id
+			WHERE variant.public_id IN (
+			""" + placeholders + ") ORDER BY variant.id, product_option.position, option_value.position",
+			(org.springframework.jdbc.core.RowCallbackHandler) resultSet -> optionsByVariant
+				.computeIfAbsent(
+					UUID.fromString(resultSet.getString("variant_public_id")),
+					ignored -> new ArrayList<>())
+				.add(new VariantOptionValue(
+					resultSet.getString("name"), resultSet.getString("value"))),
+			items.stream().map(item -> item.variantId().toString()).toArray());
+		return items.stream().map(item -> new InventoryItem(
+			item.variantId(),
+			item.productId(),
+			item.productName(),
+			item.productStatus(),
+			item.sku(),
+			item.size(),
+			item.color(),
+			List.copyOf(optionsByVariant.getOrDefault(item.variantId(), List.of())),
+			item.variantActive(),
+			item.quantity(),
+			item.version(),
+			item.updatedAt())).toList();
 	}
 
 	private InventoryMovement mapMovement(ResultSet resultSet, int rowNumber)

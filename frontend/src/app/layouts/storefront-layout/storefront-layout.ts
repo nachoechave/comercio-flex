@@ -42,6 +42,7 @@ export class StorefrontLayout {
   protected readonly cartUnits = computed(() => this.cart.totalUnits(this.storeSlug()));
   protected readonly branding = computed(() => this.context.settings()?.branding ?? DEFAULT_BRANDING);
   protected readonly isModern = computed(() => this.branding().template === 'MODERN');
+  protected readonly isMinimal = computed(() => this.branding().template === 'MINIMAL');
   protected readonly fontFamily = computed(() => this.fontStack(this.branding().font));
 
   constructor() {

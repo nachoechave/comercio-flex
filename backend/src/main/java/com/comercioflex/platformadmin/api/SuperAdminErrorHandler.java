@@ -14,6 +14,7 @@ import com.comercioflex.platformadmin.application.CompanyCreationConflictExcepti
 import com.comercioflex.platformadmin.application.CompanyProvisioningException;
 import com.comercioflex.platformadmin.application.CompanyProvisioningUnavailableException;
 import com.comercioflex.platformadmin.application.CompanyStatusConflictException;
+import com.comercioflex.platformadmin.application.CompanyUpdateConflictException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -51,6 +52,18 @@ public class SuperAdminErrorHandler {
 			"No se pudo registrar la empresa",
 			exception.getMessage(),
 			"company-creation-conflict",
+			request);
+	}
+
+	@ExceptionHandler(CompanyUpdateConflictException.class)
+	ProblemDetail updateConflict(
+			CompanyUpdateConflictException exception,
+			HttpServletRequest request) {
+		return problem(
+			HttpStatus.CONFLICT,
+			"No se pudo actualizar la empresa",
+			exception.getMessage(),
+			"company-update-conflict",
 			request);
 	}
 

@@ -12,7 +12,7 @@
   } @else if (inventory(); as current) {
     <p class="eyebrow">Ajuste auditable</p>
     <h1 id="adjustment-title">Ajustar {{ current.sku }}</h1>
-    <p>{{ current.productName }} · Existencia actual: <strong>{{ current.quantity | quantityFormat }}</strong></p>
+    <p>{{ current.productName }} · {{ optionLabel(current) }} · Existencia actual: <strong>{{ current.quantity | quantityFormat }}</strong></p>
 
     @if (!current.variantActive || current.productStatus === 'ARCHIVED') {
       <p class="warning" role="status">

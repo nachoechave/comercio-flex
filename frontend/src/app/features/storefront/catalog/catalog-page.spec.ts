@@ -255,6 +255,49 @@ describe('CatalogPage', () => {
     expect(fixture.nativeElement.querySelector('.hero')).not.toBeNull();
   });
 
+  it('renders a distinct minimal composition from the same catalog components', () => {
+    settings.set({
+      slug: 'tienda-a',
+      storeName: 'Tienda A',
+      currencyCode: 'ARS',
+      timezone: 'America/Argentina/Buenos_Aires',
+      branding: {
+        ...MODERN_BRANDING,
+        heroTitle: 'Objetos esenciales',
+        heroSubtitle: 'Una selección simple y cuidada.',
+        template: 'MINIMAL',
+      },
+    });
+    queryParams.next(convertToParamMap({}));
+    create();
+    flushCategories();
+    http.expectOne((request) => request.url.includes('/catalog/products')).flush({
+      items: [
+        {
+          id: 'product-1',
+          name: 'Producto esencial',
+          slug: 'producto-esencial',
+          category: { id: 'category-1', name: 'Infantil', slug: 'infantil' },
+          priceFrom: '1000.00',
+          priceTo: '1000.00',
+          available: true,
+          image: null,
+        },
+      ],
+      page: 0,
+      size: 24,
+      totalItems: 1,
+      totalPages: 1,
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.catalog--minimal')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.catalog--streetwear')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.product-card--minimal')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Objetos esenciales');
+    expect(fixture.nativeElement.textContent).toContain('Una selección simple y cuidada.');
+  });
+
   it('shows a retryable error state', () => {
     create();
     flushCategories();

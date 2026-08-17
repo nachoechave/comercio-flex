@@ -203,6 +203,43 @@
   display: none;
 }
 
+.product-page--minimal {
+  width: min(100% - 3rem, 82rem);
+}
+
+.product-page--minimal .product-hero {
+  align-items: start;
+  gap: clamp(2rem, 8vw, 8rem);
+}
+
+.product-page--minimal .visual,
+.product-page--minimal .visual img {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.product-page--minimal .visual {
+  color: var(--store-text-color);
+  background: color-mix(in srgb, var(--store-text-color) 6%, var(--store-background-color));
+}
+
+.product-page--minimal .summary h1 {
+  font-weight: 450;
+  letter-spacing: -0.055em;
+}
+
+.product-page--minimal .availability,
+.product-page--minimal .variant-card,
+.product-page--minimal .purchase-panel,
+.product-page--minimal .purchase-panel input,
+.product-page--minimal .purchase-panel button {
+  border-radius: 0;
+}
+
+.product-page--minimal .variant-card {
+  background: transparent;
+}
+
 .product-page--streetwear {
   width: min(100% - 3rem, 86rem);
   display: grid;

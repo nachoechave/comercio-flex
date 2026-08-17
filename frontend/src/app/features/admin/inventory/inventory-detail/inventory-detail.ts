@@ -7,6 +7,7 @@ import { forkJoin } from 'rxjs';
 import { routeParam } from '../../../../core/auth/auth.guards';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
 import { QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pipe';
+import { variantOptionsLabel } from '../../../../shared/variant-options';
 import { InventoryApiService } from '../inventory-api.service';
 import { inventoryErrorMessage } from '../inventory-errors';
 import { InventoryItem, InventoryMovementReason, MovementPage } from '../inventory.models';
@@ -99,5 +100,9 @@ export class InventoryDetail {
       ORDER_CONFIRMED: 'Pedido confirmado',
       ORDER_CANCELLED: 'Pedido cancelado',
     }[reason];
+  }
+
+  optionLabel(item: InventoryItem): string {
+    return variantOptionsLabel(item.options, item.size, item.color) || 'Opción estándar';
   }
 }

@@ -6,6 +6,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { routeParam } from '../../../../core/auth/auth.guards';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
 import { QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pipe';
+import { variantOptionsLabel } from '../../../../shared/variant-options';
 import { InventoryApiService } from '../inventory-api.service';
 import { inventoryErrorMessage } from '../inventory-errors';
 import { InventoryAvailability, InventoryPage } from '../inventory.models';
@@ -89,5 +90,9 @@ export class InventoryList {
     if (page < 0 || page >= this.page().totalPages) return;
     this.requestedPage = page;
     this.reloadVersion.update((value) => value + 1);
+  }
+
+  optionLabel(item: InventoryPage['items'][number]): string {
+    return variantOptionsLabel(item.options, item.size, item.color) || 'Opción estándar';
   }
 }

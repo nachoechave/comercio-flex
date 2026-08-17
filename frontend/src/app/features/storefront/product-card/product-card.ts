@@ -15,5 +15,6 @@ export class ProductCard {
   readonly storeSlug = input.required<string>();
   readonly currencyCode = input.required<string>();
   readonly modern = input(false);
+  readonly minimal = input(false);
   protected readonly initial = computed(() => this.product().name.trim().slice(0, 1).toUpperCase());
 }

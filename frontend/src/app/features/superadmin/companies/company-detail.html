@@ -1,7 +1,7 @@
 <a class="back" routerLink="/superadmin/empresas">← Volver a empresas</a>
 
 @if (loading()) {
-  <p class="state" role="status">Cargando empresa…</p>
+  <p class="state" role="status">Cargando ficha completa…</p>
 } @else if (!company()) {
   <section class="state error" role="alert">
     <p>{{ errorMessage() }}</p>
@@ -20,96 +20,180 @@
       </div>
     </div>
     <div class="actions">
-      <a [routerLink]="['/superadmin/empresas', current.id, 'apariencia']">Apariencia</a>
       <a [routerLink]="['/tiendas', current.slug]">Ver tienda pública</a>
       @if (current.status === 'ACTIVE') {
         <button class="danger" type="button" (click)="ask('suspend')">Suspender</button>
       } @else if (current.status === 'SUSPENDED' || current.status === 'INACTIVE') {
         <button class="primary" type="button" (click)="ask('activate')">Activar</button>
       } @else if (current.status === 'PROVISIONING_FAILED') {
-        <button
-          class="primary"
-          type="button"
-          (click)="retryProvisioning()"
-          [disabled]="changingStatus()"
-        >
+        <button class="primary" type="button" (click)="retryProvisioning()" [disabled]="changingStatus()">
           {{ changingStatus() ? 'Reintentando…' : 'Reintentar provisioning' }}
         </button>
       }
     </div>
   </header>
 
-  @if (noticeMessage()) {
-    <p class="notice success" role="status">{{ noticeMessage() }}</p>
-  }
-  @if (errorMessage()) {
-    <p class="notice error" role="alert">{{ errorMessage() }}</p>
-  }
+  @if (noticeMessage()) { <p class="notice success" role="status">{{ noticeMessage() }}</p> }
+  @if (errorMessage()) { <p class="notice error" role="alert">{{ errorMessage() }}</p> }
 
-  <section class="details" aria-label="Información de la empresa">
-    <article>
-      <h2>Identificación</h2>
-      <dl>
-        <div><dt>Estado</dt><dd>{{ statusLabel(current.status) }}</dd></div>
-        <div><dt>Tenant</dt><dd><code>{{ current.slug }}</code></dd></div>
-        <div><dt>Rubro</dt><dd>{{ current.industry || 'Sin especificar' }}</dd></div>
-        <div><dt>Teléfono</dt><dd>{{ current.phone || 'Sin configurar' }}</dd></div>
-        <div><dt>Fecha de alta</dt><dd>{{ current.createdAt | date: 'dd/MM/yyyy, HH:mm' }}</dd></div>
-      </dl>
-    </article>
+  <nav class="tabs" aria-label="Secciones de la empresa">
+    <button type="button" [class.active]="selectedTab() === 'summary'" (click)="selectTab('summary')">Resumen</button>
+    <button type="button" [class.active]="selectedTab() === 'users'" (click)="selectTab('users')">Usuarios <span>{{ users().length }}</span></button>
+    <button type="button" [class.active]="selectedTab() === 'branding'" (click)="selectTab('branding')">Apariencia</button>
+    <button type="button" [class.active]="selectedTab() === 'activity'" (click)="selectTab('activity')">Actividad</button>
+    <button type="button" [class.active]="selectedTab() === 'configuration'" (click)="selectTab('configuration')">Configuración</button>
+    <button type="button" [class.active]="selectedTab() === 'infrastructure'" (click)="selectTab('infrastructure')">Infraestructura</button>
+  </nav>
 
-    <article>
-      <h2>Administrador principal</h2>
-      @if (current.primaryAdministrator; as administrator) {
+  @if (selectedTab() === 'summary') {
+    <section class="details" aria-label="Resumen de la empresa">
+      <article>
+        <h2>Identificación</h2>
         <dl>
-          <div><dt>Nombre</dt><dd>{{ administrator.name }}</dd></div>
-          <div>
-            <dt>Email</dt>
-            <dd><a [href]="'mailto:' + administrator.email">{{ administrator.email }}</a></dd>
-          </div>
+          <div><dt>Estado</dt><dd>{{ statusLabel(current.status) }}</dd></div>
+          <div><dt>Tenant</dt><dd><code>{{ current.slug }}</code></dd></div>
+          <div><dt>Rubro</dt><dd>{{ current.industry || 'Sin especificar' }}</dd></div>
+          <div><dt>Fecha de alta</dt><dd>{{ current.createdAt | date: 'dd/MM/yyyy, HH:mm' }}</dd></div>
         </dl>
-      } @else {
-        <p class="muted">No hay un propietario activo asociado.</p>
-      }
-    </article>
+      </article>
+      <article>
+        <h2>Administrador principal</h2>
+        @if (current.primaryAdministrator; as administrator) {
+          <dl>
+            <div><dt>Nombre</dt><dd>{{ administrator.name }}</dd></div>
+            <div><dt>Email</dt><dd><a [href]="'mailto:' + administrator.email">{{ administrator.email }}</a></dd></div>
+          </dl>
+        } @else {
+          <p class="muted">No hay un propietario activo asociado.</p>
+        }
+      </article>
+      <article>
+        <h2>Presencia y actividad</h2>
+        <dl>
+          <div><dt>Dominio</dt><dd>{{ current.domain || 'Sin configurar' }}</dd></div>
+          <div><dt>Teléfono</dt><dd>{{ current.phone || 'Sin configurar' }}</dd></div>
+          <div><dt>Última actividad operativa</dt><dd>{{ current.lastActivityAt ? (current.lastActivityAt | date: 'dd/MM/yyyy, HH:mm') : 'Sin datos' }}</dd></div>
+        </dl>
+      </article>
+    </section>
+  }
 
-    <article>
-      <h2>Presencia y actividad</h2>
-      <dl>
-        <div><dt>Dominio</dt><dd>{{ current.domain || 'Sin configurar' }}</dd></div>
-        <div>
-          <dt>Última actividad</dt>
-          <dd>
-            {{ current.lastActivityAt ? (current.lastActivityAt | date: 'dd/MM/yyyy, HH:mm') : 'Sin datos' }}
-          </dd>
+  @if (selectedTab() === 'users') {
+    <section class="panel" aria-labelledby="users-title">
+      <header><div><p class="eyebrow">Accesos tenant</p><h2 id="users-title">Usuarios</h2></div></header>
+      @if (users().length === 0) {
+        <p class="empty">No hay membresías asociadas.</p>
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Alta</th></tr></thead>
+            <tbody>
+              @for (user of users(); track user.id) {
+                <tr>
+                  <td><strong>{{ user.name }}</strong><small>{{ user.email }}</small></td>
+                  <td>{{ roleLabel(user.role) }}</td>
+                  <td><span class="user-status" [class.inactive]="user.membershipStatus !== 'ACTIVE' || user.userStatus !== 'ACTIVE'">{{ userStatusLabel(user) }}</span></td>
+                  <td>{{ user.joinedAt | date: 'dd/MM/yyyy' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
-      </dl>
-    </article>
-  </section>
+      }
+    </section>
+  }
+
+  @if (selectedTab() === 'branding' && branding(); as appearance) {
+    <section class="panel branding-panel" aria-labelledby="branding-title">
+      <header>
+        <div><p class="eyebrow">Identidad visual</p><h2 id="branding-title">Apariencia</h2></div>
+        <a class="primary-link" [routerLink]="['/superadmin/empresas', current.id, 'apariencia']">Editar apariencia</a>
+      </header>
+      <div class="branding-summary" [style.--preview-primary]="appearance.primaryColor" [style.--preview-secondary]="appearance.secondaryColor" [style.--preview-background]="appearance.backgroundColor" [style.--preview-text]="appearance.textColor">
+        <div class="brand-preview">
+          <span></span>
+          <strong>{{ current.name }}</strong>
+          <small>{{ appearance.heroTitle || 'Vista previa de la tienda' }}</small>
+        </div>
+        <dl>
+          <div><dt>Template</dt><dd>{{ appearance.template }}</dd></div>
+          <div><dt>Tipografía</dt><dd>{{ appearance.font }}</dd></div>
+          <div><dt>Logo</dt><dd>{{ appearance.logoUrl ? 'Configurado' : 'Sin configurar' }}</dd></div>
+          <div><dt>Hero</dt><dd>{{ appearance.heroImageUrl ? 'Con imagen' : 'Sin imagen' }}</dd></div>
+        </dl>
+      </div>
+    </section>
+  }
+
+  @if (selectedTab() === 'activity') {
+    <section class="panel" aria-labelledby="activity-title">
+      <header><div><p class="eyebrow">Auditoría</p><h2 id="activity-title">Actividad administrativa</h2></div><span>{{ activity().totalItems }} eventos</span></header>
+      @if (activityLoading()) { <p class="empty" role="status">Actualizando actividad…</p> }
+      @if (activity().items.length === 0) {
+        <p class="empty">Todavía no hay acciones auditadas.</p>
+      } @else {
+        <ol class="timeline">
+          @for (event of activity().items; track event.id) {
+            <li><span aria-hidden="true"></span><div><strong>{{ activityLabel(event.action) }}</strong><p>{{ event.actorName }} · {{ event.actorEmail }}</p><time>{{ event.createdAt | date: 'dd/MM/yyyy, HH:mm' }}</time></div></li>
+          }
+        </ol>
+        @if (activity().totalPages > 1) {
+          <nav class="pagination" aria-label="Paginación de actividad">
+            <button type="button" (click)="goToActivityPage(activity().page - 1)" [disabled]="activity().page === 0 || activityLoading()">Anterior</button>
+            <span>Página {{ activity().page + 1 }} de {{ activity().totalPages }}</span>
+            <button type="button" (click)="goToActivityPage(activity().page + 1)" [disabled]="activity().page + 1 >= activity().totalPages || activityLoading()">Siguiente</button>
+          </nav>
+        }
+      }
+    </section>
+  }
+
+  @if (selectedTab() === 'configuration') {
+    <section class="panel configuration-panel" aria-labelledby="configuration-title">
+      <header><div><p class="eyebrow">Datos comerciales</p><h2 id="configuration-title">Configuración</h2></div></header>
+      <form [formGroup]="editForm" (ngSubmit)="saveCompany()" novalidate>
+        <label for="company-name">Nombre comercial</label>
+        <input id="company-name" formControlName="name" maxlength="160" />
+        @if (editForm.controls.name.touched && editForm.controls.name.invalid) { <small class="field-error">Ingresá un nombre válido.</small> }
+
+        <label for="company-industry">Rubro</label>
+        <input id="company-industry" formControlName="industry" maxlength="100" />
+        @if (editForm.controls.industry.touched && editForm.controls.industry.invalid) { <small class="field-error">Ingresá un rubro válido.</small> }
+
+        <label for="company-phone">Teléfono</label>
+        <input id="company-phone" formControlName="phone" maxlength="40" />
+
+        <label for="company-domain">Dominio personalizado</label>
+        <input id="company-domain" formControlName="domain" maxlength="253" placeholder="tienda.ejemplo.com" />
+        <small class="help">El dominio se registra como configuración. DNS, TLS y el enrutamiento del hosting se validan fuera de la aplicación.</small>
+        @if (editForm.controls.domain.touched && editForm.controls.domain.invalid) { <small class="field-error">Ingresá un dominio válido, sin protocolo ni ruta.</small> }
+
+        <div class="form-actions"><button class="primary" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar cambios' }}</button></div>
+      </form>
+    </section>
+  }
+
+  @if (selectedTab() === 'infrastructure' && infrastructure(); as technical) {
+    <section class="panel" aria-labelledby="infrastructure-title">
+      <header><div><p class="eyebrow">Estado técnico sanitizado</p><h2 id="infrastructure-title">Infraestructura</h2></div></header>
+      <div class="infrastructure-grid">
+        <article><span>Estado</span><strong>{{ infrastructureStatusLabel(technical.provisioningStatus) }}</strong><small>{{ technical.updatedAt ? ('Actualizado ' + (technical.updatedAt | date: 'dd/MM/yyyy, HH:mm')) : 'Sin marca de actualización' }}</small></article>
+        <article><span>Aislamiento</span><strong>Base independiente por tenant</strong><small>Los identificadores y credenciales no se exponen.</small></article>
+        <article><span>Provisionado</span><strong>{{ technical.provisionedAt ? (technical.provisionedAt | date: 'dd/MM/yyyy, HH:mm') : 'Administración externa' }}</strong><small>Flyway mantiene el esquema tenant.</small></article>
+        <article><span>Dominio personalizado</span><strong>{{ technical.customDomainConfigured ? 'Configurado' : 'No configurado' }}</strong><small>La publicación requiere DNS y TLS en infraestructura.</small></article>
+        <article><span>Última actividad</span><strong>{{ technical.lastActivityAt ? (technical.lastActivityAt | date: 'dd/MM/yyyy, HH:mm') : 'Sin datos' }}</strong><small>Se registra actividad autenticada del panel tenant.</small></article>
+      </div>
+    </section>
+  }
 
   @if (pendingAction(); as action) {
     <div class="dialog-backdrop">
       <section class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title">
-        <h2 id="dialog-title">
-          {{ action === 'suspend' ? 'Suspender empresa' : 'Activar empresa' }}
-        </h2>
-        <p>
-          @if (action === 'suspend') {
-            La tienda pública y el panel del comercio dejarán de estar disponibles inmediatamente.
-          } @else {
-            La tienda pública y los accesos tenant volverán a estar disponibles.
-          }
-        </p>
+        <h2 id="dialog-title">{{ action === 'suspend' ? 'Suspender empresa' : 'Activar empresa' }}</h2>
+        <p>@if (action === 'suspend') { La tienda pública y el panel del comercio dejarán de estar disponibles inmediatamente. } @else { La tienda pública y los accesos tenant volverán a estar disponibles. }</p>
         <div class="dialog-actions">
           <button type="button" (click)="cancel()" [disabled]="changingStatus()">Cancelar</button>
-          <button
-            type="button"
-            [class]="action === 'suspend' ? 'danger' : 'primary'"
-            (click)="confirm()"
-            [disabled]="changingStatus()"
-          >
-            {{ changingStatus() ? 'Guardando…' : 'Confirmar' }}
-          </button>
+          <button type="button" [class]="action === 'suspend' ? 'danger' : 'primary'" (click)="confirm()" [disabled]="changingStatus()">{{ changingStatus() ? 'Guardando…' : 'Confirmar' }}</button>
         </div>
       </section>
     </div>

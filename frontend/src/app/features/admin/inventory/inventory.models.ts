@@ -1,4 +1,5 @@
 import { ProductStatus } from '../products/product.models';
+import { VariantOptionValue } from '../../../shared/variant-options';
 
 export type InventoryAvailability = 'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK';
 export type AdjustmentDirection = 'INCREASE' | 'DECREASE';
@@ -13,6 +14,7 @@ export interface InventoryItem {
   sku: string;
   size: string | null;
   color: string | null;
+  options?: VariantOptionValue[];
   variantActive: boolean;
   quantity: string;
   version: number;

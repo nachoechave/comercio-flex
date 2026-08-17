@@ -31,12 +31,16 @@
   >
     @if (isModern()) {
       <aside class="announcement-bar" aria-label="Beneficios de compra">
-        <span>Envíos gratis desde $100.000</span>
-        <span>10% off en tu primera compra · Código <strong>PRIMERDROP</strong></span>
-        <span>Atención personalizada</span>
+        <span>Catálogo actualizado</span>
+        <span>Comprá online de forma simple y segura</span>
+        <span>Atención del comercio</span>
       </aside>
     }
-    <header class="site-header" [class.site-header--streetwear]="isModern()">
+    <header
+      class="site-header"
+      [class.site-header--streetwear]="isModern()"
+      [class.site-header--minimal]="isMinimal()"
+    >
       <a class="brand" [routerLink]="['/tiendas', settings.slug]">
         @if (branding().logoUrl; as logoUrl) {
           <img class="brand-logo" [src]="logoUrl" [alt]="'Logo de ' + settings.storeName" />
@@ -97,7 +101,7 @@
       <section class="store-newsletter" aria-labelledby="newsletter-title">
         <div>
           <span aria-hidden="true">✉</span>
-          <p><strong id="newsletter-title">Sumate al movimiento</strong><small>Nuevos drops, beneficios y novedades.</small></p>
+          <p><strong id="newsletter-title">Recibí novedades</strong><small>Productos, beneficios y noticias de la tienda.</small></p>
         </div>
         <form>
           <label class="visually-hidden" for="store-newsletter-email">Correo electrónico</label>
@@ -108,7 +112,7 @@
       <footer class="site-footer site-footer--streetwear">
         <div class="footer-brand">
           <strong>{{ settings.storeName }}</strong>
-          <p>Prendas urbanas para quienes eligen hacer las cosas a su manera.</p>
+          <p>Productos seleccionados y atención directa del comercio.</p>
           @if (settings.pickupAddress) { <span>{{ settings.pickupAddress }}</span> }
         </div>
         <div>
@@ -132,7 +136,7 @@
         </div>
       </footer>
     } @else {
-      <footer class="site-footer">
+      <footer class="site-footer" [class.site-footer--minimal]="isMinimal()">
         <div>
           <strong>{{ settings.storeName }}</strong>
           @if (settings.pickupAddress) { <span>{{ settings.pickupAddress }}</span> }

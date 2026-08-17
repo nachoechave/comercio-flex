@@ -13,7 +13,7 @@
       <div>
         <p class="eyebrow">Inventario por variante</p>
         <h1 id="inventory-detail-title">{{ current.productName }}</h1>
-        <p><strong>{{ current.sku }}</strong> · {{ current.size || 'Sin talle' }} · {{ current.color || 'Sin color' }}</p>
+        <p><strong>{{ current.sku }}</strong> · {{ optionLabel(current) }}</p>
       </div>
       <a class="primary" routerLink="ajustar">Ajustar existencia</a>
     </header>

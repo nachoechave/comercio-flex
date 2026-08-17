@@ -196,6 +196,29 @@ class InventoryManagementIntegrationTests {
 	}
 
 	@Test
+	void exposesAndSearchesGenericVariantOptionsInInventory() throws Exception {
+		Auth owner = login("owner@example.com");
+		insertGenericOption(TENANT_A_DATABASE, PRODUCT_A, VARIANT_A,
+			"Material", "material", "Algodón", "algodón");
+
+		mockMvc.perform(get(inventory("tienda-a"))
+				.param("q", "Algodón")
+				.cookie(owner.session()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalItems").value(1))
+			.andExpect(jsonPath("$.items[0].variantId").value(VARIANT_A))
+			.andExpect(jsonPath("$.items[0].sku").value("REM-ACTIVA"))
+			.andExpect(jsonPath("$.items[0].options[0].name").value("Material"))
+			.andExpect(jsonPath("$.items[0].options[0].value").value("Algodón"));
+
+		mockMvc.perform(get(variant("tienda-a", VARIANT_A))
+				.cookie(owner.session()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.options[0].name").value("Material"))
+			.andExpect(jsonPath("$.options[0].value").value("Algodón"));
+	}
+
+	@Test
 	void increasesTenThenDecreasesThreeAndReturnsCanonicalJsonStrings()
 			throws Exception {
 		Auth owner = login("owner@example.com");
@@ -974,6 +997,39 @@ class InventoryManagementIntegrationTests {
 			FROM products
 			WHERE public_id = UUID_TO_BIN('%s')
 			""".formatted(publicId, sku, size, status, productId));
+	}
+
+	private static void insertGenericOption(
+			MySQLContainer<?> database,
+			String productId,
+			String variantId,
+			String optionName,
+			String normalizedOption,
+			String value,
+			String normalizedValue) throws SQLException {
+		execute(database, """
+			INSERT INTO product_options
+				(public_id, product_id, name, normalized_name, position)
+			SELECT UUID_TO_BIN(UUID()), id, '%s', '%s', 0
+			FROM products WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(optionName, normalizedOption, productId));
+		execute(database, """
+			INSERT INTO product_option_values
+				(public_id, option_id, value, normalized_value, position)
+			SELECT UUID_TO_BIN(UUID()), id, '%s', '%s', 0
+			FROM product_options
+			WHERE product_id = (SELECT id FROM products WHERE public_id = UUID_TO_BIN('%s'))
+				AND normalized_name = '%s'
+			""".formatted(value, normalizedValue, productId, normalizedOption));
+		execute(database, """
+			INSERT INTO product_variant_option_values (variant_id, option_value_id)
+			SELECT variant.id, option_value.id
+			FROM product_variants variant
+			JOIN product_options product_option ON product_option.product_id = variant.product_id
+			JOIN product_option_values option_value ON option_value.option_id = product_option.id
+			WHERE variant.public_id = UUID_TO_BIN('%s')
+				AND product_option.normalized_name = '%s'
+			""".formatted(variantId, normalizedOption));
 	}
 
 	private static int count(MySQLContainer<?> database, String sql)

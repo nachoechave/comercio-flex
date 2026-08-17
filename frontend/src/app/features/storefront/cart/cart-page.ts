@@ -34,6 +34,9 @@ export class CartPage {
   protected readonly isStreetwear = computed(
     () => this.context.settings()?.branding?.template === 'MODERN',
   );
+  protected readonly isMinimal = computed(
+    () => this.context.settings()?.branding?.template === 'MINIMAL',
+  );
   protected readonly items = computed(() => this.cart.items(this.storeSlug() ?? ''));
   protected readonly subtotal = computed(() => this.cart.availableSubtotal(this.storeSlug() ?? ''));
   protected readonly canCheckout = computed(

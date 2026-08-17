@@ -1,5 +1,6 @@
 package com.comercioflex.platformadmin.api;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.security.core.Authentication;
@@ -141,6 +142,47 @@ public class SuperAdminController {
 			HttpServletRequest request) {
 		requireSuperAdmin(request);
 		return CompanyDetailResponse.from(companyService.findById(companyId));
+	}
+
+	@PutMapping("/companies/{companyId}")
+	CompanyDetailResponse updateCompany(
+			@PathVariable UUID companyId,
+			@Valid @RequestBody UpdateCompanyRequest requestBody,
+			Authentication authentication,
+			HttpServletRequest request) {
+		requireSuperAdmin(request);
+		return CompanyDetailResponse.from(companyService.update(
+			companyId, requestBody.toCommand(), principal(authentication)));
+	}
+
+	@GetMapping("/companies/{companyId}/users")
+	List<CompanyUserResponse> companyUsers(
+			@PathVariable UUID companyId,
+			HttpServletRequest request) {
+		requireSuperAdmin(request);
+		return companyService.users(companyId).stream()
+			.map(CompanyUserResponse::from)
+			.toList();
+	}
+
+	@GetMapping("/companies/{companyId}/activity")
+	CompanyActivityPageResponse companyActivity(
+			@PathVariable UUID companyId,
+			@RequestParam(defaultValue = "0") @Min(0) @Max(1_000_000) int page,
+			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+			HttpServletRequest request) {
+		requireSuperAdmin(request);
+		return CompanyActivityPageResponse.from(
+			companyService.activity(companyId, page, size));
+	}
+
+	@GetMapping("/companies/{companyId}/infrastructure")
+	CompanyInfrastructureResponse companyInfrastructure(
+			@PathVariable UUID companyId,
+			HttpServletRequest request) {
+		requireSuperAdmin(request);
+		return CompanyInfrastructureResponse.from(
+			companyService.infrastructure(companyId));
 	}
 
 	@PostMapping("/companies/{companyId}/activate")

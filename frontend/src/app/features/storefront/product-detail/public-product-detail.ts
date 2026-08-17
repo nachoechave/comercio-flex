@@ -50,6 +50,9 @@ export class PublicProductDetail {
   protected readonly isStreetwear = computed(
     () => this.context.settings()?.branding?.template === 'MODERN',
   );
+  protected readonly isMinimal = computed(
+    () => this.context.settings()?.branding?.template === 'MINIMAL',
+  );
   protected readonly featuredPrice = computed(
     () =>
       this.selectedVariant()?.price ??

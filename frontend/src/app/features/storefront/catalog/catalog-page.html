@@ -1,8 +1,13 @@
-<section class="catalog" [class.catalog--streetwear]="isModern()" aria-labelledby="catalog-title">
+<section
+  class="catalog"
+  [class.catalog--streetwear]="isModern()"
+  [class.catalog--minimal]="isMinimal()"
+  aria-labelledby="catalog-title"
+>
   @if (isModern()) {
     <header class="streetwear-hero">
       <div class="hero-copy">
-        <p class="eyebrow">Nueva colección · 2026</p>
+        <p class="eyebrow">Colección destacada</p>
         <h1 id="catalog-title">{{ heroTitle() }}</h1>
         <p>{{ heroSubtitle() }}</p>
         <div class="hero-actions">
@@ -25,8 +30,8 @@
     </header>
 
     <section class="trust-strip" aria-label="Beneficios de la tienda">
-      <article><span aria-hidden="true">↗</span><p><strong>Envíos a todo el país</strong><small>Gratis desde $100.000</small></p></article>
-      <article><span aria-hidden="true">↻</span><p><strong>Cambios simples</strong><small>Hasta 30 días</small></p></article>
+      <article><span aria-hidden="true">↗</span><p><strong>Compra online</strong><small>Desde cualquier dispositivo</small></p></article>
+      <article><span aria-hidden="true">↻</span><p><strong>Stock actualizado</strong><small>Disponibilidad por opción</small></p></article>
       <article><span aria-hidden="true">◇</span><p><strong>Compra segura</strong><small>Pagos protegidos</small></p></article>
       <article><span aria-hidden="true">◎</span><p><strong>Estamos para ayudarte</strong><small>Atención personalizada</small></p></article>
     </section>
@@ -56,9 +61,9 @@
     }
   } @else {
     <header class="hero">
-      <p class="eyebrow">Catálogo online</p>
-      <h1 id="catalog-title">{{ context.settings()?.storeName }}</h1>
-      <p>Encontrá productos, opciones y precios disponibles en nuestra tienda.</p>
+      <p class="eyebrow">{{ isMinimal() ? 'Selección' : 'Catálogo online' }}</p>
+      <h1 id="catalog-title">{{ isMinimal() ? heroTitle() : context.settings()?.storeName }}</h1>
+      <p>{{ isMinimal() ? heroSubtitle() : 'Encontrá productos, opciones y precios disponibles en nuestra tienda.' }}</p>
     </header>
   }
 
@@ -66,6 +71,7 @@
     id="catalog-search"
     class="filters"
     [class.filters--streetwear]="isModern()"
+    [class.filters--minimal]="isMinimal()"
     [formGroup]="filters"
     (ngSubmit)="search()"
     role="search"
@@ -146,6 +152,7 @@
           [storeSlug]="storeSlug() ?? ''"
           [currencyCode]="currencyCode()"
           [modern]="isModern()"
+          [minimal]="isMinimal()"
         />
       }
     </div>
@@ -173,18 +180,18 @@
     @if (isModern()) {
       <section class="campaign-grid" aria-label="Campañas destacadas">
         <article class="campaign campaign--dark">
-          <p>Vestí tu identidad</p>
-          <h2>Lo auténtico<br />no se copia.</h2>
+          <p>Selección del comercio</p>
+          <h2>Encontrá eso<br />que buscabas.</h2>
           <a
             [routerLink]="['/tiendas', storeSlug()]"
             fragment="catalog-products"
             queryParamsHandling="preserve"
-            >Ver el drop</a
+            >Ver productos</a
           >
         </article>
         <article class="campaign campaign--photo">
-          <p>Edición limitada</p>
-          <h2>Piezas que hablan<br />antes que vos.</h2>
+          <p>Novedades</p>
+          <h2>Conocé lo nuevo<br />de la tienda.</h2>
           <a
             [routerLink]="['/tiendas', storeSlug()]"
             fragment="catalog-products"

@@ -118,9 +118,18 @@ class TenantRoutingIntegrationTests {
 			INSERT INTO platform_users (
 				public_id, email_normalized, display_name, password_hash, status, platform_role
 			)
-			VALUES (UUID_TO_BIN(UUID()), 'superadmin@example.com', 'Super Admin', '%s',
-				'ACTIVE', 'SUPER_ADMIN')
-			""".formatted(PASSWORD_HASH));
+			VALUES
+				(UUID_TO_BIN(UUID()), 'superadmin@example.com', 'Super Admin', '%s',
+					'ACTIVE', 'SUPER_ADMIN'),
+				(UUID_TO_BIN(UUID()), 'owner@example.com', 'Tenant Owner', '%s',
+					'ACTIVE', 'USER')
+			""".formatted(PASSWORD_HASH, PASSWORD_HASH));
+		execute(CONTROL_DATABASE, """
+			INSERT INTO memberships (user_id, tenant_id, role, status)
+			SELECT user.id, tenant.id, 'OWNER', 'ACTIVE'
+			FROM platform_users user, tenants tenant
+			WHERE user.email_normalized = 'owner@example.com' AND tenant.slug = 'tienda-a'
+			""");
 
 		execute(TENANT_A_DATABASE, "DELETE FROM store_settings");
 		execute(TENANT_A_DATABASE, """
@@ -316,6 +325,25 @@ class TenantRoutingIntegrationTests {
 				'%s'
 			)
 			""".formatted(slug, slug, status, databaseKey);
+	}
+
+	@Test
+	void recordsAuthenticatedTenantAdministrationAsOperationalActivity() throws Exception {
+		AuthenticatedCookies owner = login("owner@example.com");
+
+		mockMvc.perform(get("/api/v1/stores/tienda-a/admin/settings")
+				.cookie(owner.sessionCookie()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.storeName").value("Tienda A"));
+
+		assertThat(queryInt(CONTROL_DATABASE, """
+			SELECT COUNT(*) FROM tenants
+			WHERE slug = 'tienda-a' AND last_activity_at IS NOT NULL
+			""")).isEqualTo(1);
+		assertThat(queryInt(CONTROL_DATABASE, """
+			SELECT COUNT(*) FROM tenants
+			WHERE slug = 'tienda-b' AND last_activity_at IS NOT NULL
+			""")).isZero();
 	}
 
 	private AuthenticatedCookies login(String email) throws Exception {

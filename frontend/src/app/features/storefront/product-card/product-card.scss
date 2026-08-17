@@ -111,6 +111,53 @@ h2 a::after {
   filter: saturate(0.5);
 }
 
+.product-card--minimal {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.product-card--minimal:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.product-card--minimal .visual,
+.product-card--minimal .visual img {
+  min-height: 20rem;
+  height: 20rem;
+  border-radius: 0;
+}
+
+.product-card--minimal .visual {
+  color: var(--store-text-color);
+  background: color-mix(in srgb, var(--store-text-color) 6%, var(--store-background-color));
+}
+
+.product-card--minimal .content {
+  padding: 1rem 0;
+}
+
+.product-card--minimal .category {
+  color: var(--color-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+}
+
+.product-card--minimal h2 {
+  min-height: 0;
+  margin: 0.45rem 0 1.25rem;
+  font-size: 1rem;
+  font-weight: 520;
+}
+
+.product-card--minimal .availability {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+}
+
 .product-card--streetwear {
   overflow: visible;
   border: 0;

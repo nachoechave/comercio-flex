@@ -109,4 +109,48 @@ describe('SuperAdminApiService', () => {
     expect(deletion.request.method).toBe('DELETE');
     deletion.flush({});
   });
+
+  it('loads the complete company record and updates only editable business data', () => {
+    service.companyUsers('company/1').subscribe();
+    const users = http.expectOne('/api/v1/superadmin/companies/company%2F1/users');
+    expect(users.request.method).toBe('GET');
+    users.flush([]);
+
+    service.companyActivity('company/1', 2, 10).subscribe();
+    const activity = http.expectOne(
+      (request) =>
+        request.url === '/api/v1/superadmin/companies/company%2F1/activity' &&
+        request.params.get('page') === '2' &&
+        request.params.get('size') === '10',
+    );
+    activity.flush({ items: [], page: 2, size: 10, totalItems: 0, totalPages: 0 });
+
+    service.companyInfrastructure('company/1').subscribe();
+    const infrastructure = http.expectOne(
+      '/api/v1/superadmin/companies/company%2F1/infrastructure',
+    );
+    infrastructure.flush({
+      isolationMode: 'DATABASE_PER_TENANT',
+      provisioningStatus: 'READY',
+      provisionedAt: null,
+      updatedAt: null,
+      customDomainConfigured: false,
+      lastActivityAt: null,
+    });
+
+    service
+      .updateCompany('company/1', {
+        name: 'Urban Clothes',
+        industry: 'Indumentaria',
+        phone: null,
+        domain: 'urban.example.com',
+      })
+      .subscribe();
+    const update = http.expectOne('/api/v1/superadmin/companies/company%2F1');
+    expect(update.request.method).toBe('PUT');
+    expect(update.request.body).not.toHaveProperty('slug');
+    expect(update.request.body).not.toHaveProperty('databaseKey');
+    expect(update.request.body).not.toHaveProperty('databaseName');
+    update.flush({});
+  });
 });

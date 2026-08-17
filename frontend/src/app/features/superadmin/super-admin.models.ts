@@ -36,6 +36,48 @@ export interface CompanyDetail extends CompanySummary {
   lastActivityAt: string | null;
 }
 
+export interface UpdateCompanyRequest {
+  name: string;
+  industry: string;
+  phone: string | null;
+  domain: string | null;
+}
+
+export interface CompanyUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'OWNER' | 'ADMIN' | 'STAFF';
+  membershipStatus: 'ACTIVE' | 'INACTIVE';
+  userStatus: 'ACTIVE' | 'LOCKED' | 'DISABLED';
+  joinedAt: string;
+}
+
+export interface CompanyActivity {
+  id: string;
+  action: string;
+  actorName: string;
+  actorEmail: string;
+  createdAt: string;
+}
+
+export interface CompanyActivityPage {
+  items: CompanyActivity[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface CompanyInfrastructure {
+  isolationMode: 'DATABASE_PER_TENANT';
+  provisioningStatus: 'PENDING' | 'READY' | 'FAILED' | 'EXTERNAL';
+  provisionedAt: string | null;
+  updatedAt: string | null;
+  customDomainConfigured: boolean;
+  lastActivityAt: string | null;
+}
+
 export interface CreateCompanyRequest {
   name: string;
   slug: string;

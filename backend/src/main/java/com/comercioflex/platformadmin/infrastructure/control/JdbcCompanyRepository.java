@@ -12,15 +12,23 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.comercioflex.platformadmin.application.CompanyDashboard;
+import com.comercioflex.platformadmin.application.CompanyActivityPage;
 import com.comercioflex.platformadmin.application.CompanyPage;
 import com.comercioflex.platformadmin.application.CompanyRepository;
 import com.comercioflex.platformadmin.application.CompanySearch;
 import com.comercioflex.platformadmin.application.CompanyStatusFilter;
 import com.comercioflex.platformadmin.application.LockedCompany;
+import com.comercioflex.platformadmin.application.UpdateCompanyCommand;
+import com.comercioflex.platformadmin.domain.CompanyActivity;
 import com.comercioflex.platformadmin.domain.CompanyDetail;
+import com.comercioflex.platformadmin.domain.CompanyInfrastructure;
 import com.comercioflex.platformadmin.domain.CompanyStatus;
 import com.comercioflex.platformadmin.domain.CompanySummary;
 import com.comercioflex.platformadmin.domain.PrimaryAdministrator;
+import com.comercioflex.platformadmin.domain.CompanyUser;
+import com.comercioflex.identity.domain.MembershipRole;
+import com.comercioflex.identity.domain.MembershipStatus;
+import com.comercioflex.identity.domain.UserStatus;
 
 @Repository
 public class JdbcCompanyRepository implements CompanyRepository {
@@ -113,6 +121,7 @@ public class JdbcCompanyRepository implements CompanyRepository {
 				tenant.domain,
 				tenant.status,
 				tenant.created_at,
+				tenant.last_activity_at,
 				owner_user.display_name owner_name,
 				owner_user.email_normalized owner_email
 			FROM tenants tenant
@@ -127,7 +136,7 @@ public class JdbcCompanyRepository implements CompanyRepository {
 				mapAdministrator(resultSet),
 				resultSet.getString("domain"),
 				resultSet.getTimestamp("created_at").toInstant(),
-				null),
+				nullableInstant(resultSet, "last_activity_at")),
 			companyId.toString())
 			.stream()
 			.findFirst();
@@ -136,17 +145,101 @@ public class JdbcCompanyRepository implements CompanyRepository {
 	@Override
 	public Optional<LockedCompany> lockById(UUID companyId) {
 		return jdbcTemplate.query("""
-			SELECT id, status
+			SELECT id, status, display_name, industry, contact_phone, domain
 			FROM tenants
 			WHERE public_id = UUID_TO_BIN(?)
 			FOR UPDATE
 			""",
 			(resultSet, rowNumber) -> new LockedCompany(
 				resultSet.getLong("id"),
-				CompanyStatus.valueOf(resultSet.getString("status"))),
+				CompanyStatus.valueOf(resultSet.getString("status")),
+				resultSet.getString("display_name"),
+				resultSet.getString("industry"),
+				resultSet.getString("contact_phone"),
+				resultSet.getString("domain")),
 			companyId.toString())
 			.stream()
 			.findFirst();
+	}
+
+	@Override
+	public List<CompanyUser> findUsers(UUID companyId) {
+		return jdbcTemplate.query("""
+			SELECT BIN_TO_UUID(user.public_id) public_id,
+				user.display_name, user.email_normalized, user.status user_status,
+				membership.role, membership.status membership_status,
+				membership.created_at
+			FROM tenants tenant
+			JOIN memberships membership ON membership.tenant_id = tenant.id
+			JOIN platform_users user ON user.id = membership.user_id
+			WHERE tenant.public_id = UUID_TO_BIN(?)
+			ORDER BY FIELD(membership.role, 'OWNER', 'ADMIN', 'STAFF'),
+				user.display_name, user.id
+			""", (resultSet, rowNumber) -> new CompanyUser(
+			UUID.fromString(resultSet.getString("public_id")),
+			resultSet.getString("display_name"),
+			resultSet.getString("email_normalized"),
+			MembershipRole.valueOf(resultSet.getString("role")),
+			MembershipStatus.valueOf(resultSet.getString("membership_status")),
+			UserStatus.valueOf(resultSet.getString("user_status")),
+			resultSet.getTimestamp("created_at").toInstant()),
+			companyId.toString());
+	}
+
+	@Override
+	public CompanyActivityPage findActivity(UUID companyId, int page, int size) {
+		Long total = jdbcTemplate.queryForObject("""
+			SELECT COUNT(*)
+			FROM platform_audit_events event
+			JOIN tenants tenant ON tenant.id = event.tenant_id
+			WHERE tenant.public_id = UUID_TO_BIN(?)
+			""", Long.class, companyId.toString());
+		List<CompanyActivity> items = jdbcTemplate.query("""
+			SELECT BIN_TO_UUID(event.public_id) public_id, event.action_name,
+				actor.display_name actor_name, actor.email_normalized actor_email,
+				event.created_at
+			FROM platform_audit_events event
+			JOIN tenants tenant ON tenant.id = event.tenant_id
+			JOIN platform_users actor ON actor.id = event.actor_user_id
+			WHERE tenant.public_id = UUID_TO_BIN(?)
+			ORDER BY event.created_at DESC, event.id DESC
+			LIMIT ? OFFSET ?
+			""", (resultSet, rowNumber) -> new CompanyActivity(
+			UUID.fromString(resultSet.getString("public_id")),
+			resultSet.getString("action_name"),
+			resultSet.getString("actor_name"),
+			resultSet.getString("actor_email"),
+			resultSet.getTimestamp("created_at").toInstant()),
+			companyId.toString(), size, Math.multiplyExact((long) page, size));
+		return new CompanyActivityPage(items, page, size, total == null ? 0 : total);
+	}
+
+	@Override
+	public Optional<CompanyInfrastructure> findInfrastructure(UUID companyId) {
+		return jdbcTemplate.query("""
+			SELECT COALESCE(infrastructure.provisioning_status, 'EXTERNAL') provisioning_status,
+				infrastructure.provisioned_at, infrastructure.updated_at,
+				tenant.domain, tenant.last_activity_at
+			FROM tenants tenant
+			LEFT JOIN tenant_infrastructure infrastructure ON infrastructure.tenant_id = tenant.id
+			WHERE tenant.public_id = UUID_TO_BIN(?)
+			""", (resultSet, rowNumber) -> new CompanyInfrastructure(
+			"DATABASE_PER_TENANT",
+			resultSet.getString("provisioning_status"),
+			nullableInstant(resultSet, "provisioned_at"),
+			nullableInstant(resultSet, "updated_at"),
+			resultSet.getString("domain") != null,
+			nullableInstant(resultSet, "last_activity_at")),
+			companyId.toString()).stream().findFirst();
+	}
+
+	@Override
+	public void updateDetails(long internalId, UpdateCompanyCommand command) {
+		jdbcTemplate.update("""
+			UPDATE tenants
+			SET display_name = ?, industry = ?, contact_phone = ?, domain = ?
+			WHERE id = ?
+			""", command.name(), command.industry(), command.phone(), command.domain(), internalId);
 	}
 
 	@Override
@@ -180,6 +273,22 @@ public class JdbcCompanyRepository implements CompanyRepository {
 			action,
 			previousStatus.name(),
 			newStatus.name());
+	}
+
+	@Override
+	public void appendDetailsAudit(
+			long tenantInternalId,
+			long actorUserId,
+			UpdateCompanyCommand command) {
+		jdbcTemplate.update("""
+			INSERT INTO platform_audit_events (
+				public_id, actor_user_id, tenant_id, action_name, metadata
+			)
+			VALUES (UUID_TO_BIN(?), ?, ?, 'COMPANY_UPDATED', JSON_OBJECT(
+				'name', ?, 'industry', ?, 'phone', ?, 'domain', ?
+			))
+			""", UUID.randomUUID().toString(), actorUserId, tenantInternalId,
+			command.name(), command.industry(), command.phone(), command.domain());
 	}
 
 	private void appendFilters(
@@ -220,5 +329,11 @@ public class JdbcCompanyRepository implements CompanyRepository {
 		return email == null
 			? null
 			: new PrimaryAdministrator(resultSet.getString("owner_name"), email);
+	}
+
+	private java.time.Instant nullableInstant(ResultSet resultSet, String column)
+			throws SQLException {
+		java.sql.Timestamp value = resultSet.getTimestamp(column);
+		return value == null ? null : value.toInstant();
 	}
 }
