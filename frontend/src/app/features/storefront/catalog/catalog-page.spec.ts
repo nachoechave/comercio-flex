@@ -208,6 +208,17 @@ describe('CatalogPage', () => {
     expect(fixture.nativeElement.querySelector('.category-card').getAttribute('href')).toContain(
       'categoria=infantil',
     );
+    const sectionLinks = Array.from<HTMLAnchorElement>(
+      fixture.nativeElement.querySelectorAll(
+        '.hero-primary, .hero-secondary, .campaign-grid a',
+      ),
+    );
+    expect(sectionLinks.map((link) => link.getAttribute('href'))).toEqual([
+      '/tiendas/tienda-a#catalog-products',
+      '/tiendas/tienda-a#category-section',
+      '/tiendas/tienda-a#catalog-products',
+      '/tiendas/tienda-a#catalog-products',
+    ]);
   });
 
   it('keeps the standard catalog presentation for other stores', () => {

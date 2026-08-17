@@ -6,8 +6,20 @@
         <h1 id="catalog-title">Hecho distinto.<br />Diseñado para <em>destacar.</em></h1>
         <p>Streetwear premium para quienes no necesitan permiso para marcar su propio camino.</p>
         <div class="hero-actions">
-          <a class="hero-primary" href="#catalog-products">Comprar ahora</a>
-          <a class="hero-secondary" href="#category-section">Ver colección</a>
+          <a
+            class="hero-primary"
+            [routerLink]="['/tiendas', storeSlug()]"
+            fragment="catalog-products"
+            queryParamsHandling="preserve"
+            >Comprar ahora</a
+          >
+          <a
+            class="hero-secondary"
+            [routerLink]="['/tiendas', storeSlug()]"
+            fragment="category-section"
+            queryParamsHandling="preserve"
+            >Ver colección</a
+          >
         </div>
       </div>
     </header>
@@ -162,12 +174,22 @@
         <article class="campaign campaign--dark">
           <p>Vestí tu identidad</p>
           <h2>Lo auténtico<br />no se copia.</h2>
-          <a href="#catalog-products">Ver el drop</a>
+          <a
+            [routerLink]="['/tiendas', storeSlug()]"
+            fragment="catalog-products"
+            queryParamsHandling="preserve"
+            >Ver el drop</a
+          >
         </article>
         <article class="campaign campaign--photo">
           <p>Edición limitada</p>
           <h2>Piezas que hablan<br />antes que vos.</h2>
-          <a href="#catalog-products">Explorar ahora</a>
+          <a
+            [routerLink]="['/tiendas', storeSlug()]"
+            fragment="catalog-products"
+            queryParamsHandling="preserve"
+            >Explorar ahora</a
+          >
         </article>
       </section>
     }

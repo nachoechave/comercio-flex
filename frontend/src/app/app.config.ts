@@ -4,7 +4,7 @@ import {
   withInterceptors,
   withXsrfConfiguration,
 } from '@angular/common/http';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withInMemoryScrolling } from '@angular/router';
 
 import { authErrorInterceptor } from './core/auth/auth-error.interceptor';
 import { routes } from './app.routes';
@@ -19,6 +19,12 @@ export const appConfig: ApplicationConfig = {
       }),
       withInterceptors([authErrorInterceptor]),
     ),
-    provideRouter(routes),
+    provideRouter(
+      routes,
+      withInMemoryScrolling({
+        anchorScrolling: 'enabled',
+        scrollPositionRestoration: 'enabled',
+      }),
+    ),
   ],
 };

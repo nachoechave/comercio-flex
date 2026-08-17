@@ -38,12 +38,23 @@
       <nav aria-label="Navegación principal">
         @if (isStreetwear()) {
           <a [routerLink]="['/tiendas', settings.slug]">Inicio</a>
-          <a href="#catalog-products">Tienda</a>
-          <a class="desktop-nav" href="#category-section">Colecciones</a>
-          <a class="desktop-nav" href="#catalog-products">Novedades</a>
+          <a [routerLink]="['/tiendas', storeSlug()]" fragment="catalog-products">Tienda</a>
+          <a
+            class="desktop-nav"
+            [routerLink]="['/tiendas', storeSlug()]"
+            fragment="category-section"
+            >Colecciones</a
+          >
+          <a
+            class="desktop-nav"
+            [routerLink]="['/tiendas', storeSlug()]"
+            fragment="catalog-products"
+            >Novedades</a
+          >
           <a
             class="icon-link search-link"
-            href="#catalog-search"
+            [routerLink]="['/tiendas', storeSlug()]"
+            fragment="catalog-search"
             aria-label="Buscar productos"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
@@ -89,8 +100,10 @@
         </div>
         <div>
           <strong>Tienda</strong>
-          <a href="#catalog-products">Productos</a>
-          <a href="#category-section">Colecciones</a>
+          <a [routerLink]="['/tiendas', storeSlug()]" fragment="catalog-products">Productos</a>
+          <a [routerLink]="['/tiendas', storeSlug()]" fragment="category-section"
+            >Colecciones</a
+          >
           <a [routerLink]="['/tiendas', settings.slug, 'carrito']">Carrito</a>
         </div>
         <div>
