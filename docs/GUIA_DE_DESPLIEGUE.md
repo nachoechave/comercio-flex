@@ -52,10 +52,41 @@ Grupos principales:
   `MEDIA_S3_ACCESS_KEY`, `MEDIA_S3_SECRET_KEY`, `MEDIA_S3_PATH_STYLE`.
 - Pagos: modo, token TEST/productivo, OAuth, secreto webhook y clave AES-256
   versionada para cifrar tokens.
+- Primer acceso global: las cuatro variables `SUPER_ADMIN_BOOTSTRAP_*`, sólo
+  durante el despliegue inicial descrito abajo.
 
 Usar un usuario DML diferente para control y para cada tenant. Sólo el usuario de
 migración recibe DDL. El usuario del bucket necesita leer/escribir/eliminar objetos
 del bucket/prefijo asignado, no administrar la cuenta completa.
+
+### Crear el primer `SUPER_ADMIN` en producción
+
+El bootstrap productivo es explícito, idempotente para el mismo correo y sólo
+puede crear el primer `SUPER_ADMIN`. No reemplaza contraseñas, no convierte un
+usuario normal en administrador y no crea membresías tenant.
+
+1. Cargar en el entorno privado del backend:
+
+   ```text
+   SUPER_ADMIN_BOOTSTRAP_ENABLED=true
+   SUPER_ADMIN_BOOTSTRAP_EMAIL=correo-real-del-operador
+   SUPER_ADMIN_BOOTSTRAP_PASSWORD=contraseña-única-de-al-menos-12-caracteres
+   SUPER_ADMIN_BOOTSTRAP_DISPLAY_NAME=Administrador de plataforma
+   ```
+
+2. Guardar y desplegar. El arranque aplica primero las migraciones y luego crea
+   la cuenta con contraseña cifrada.
+3. Esperar que el servicio quede saludable e iniciar sesión con ese correo y
+   contraseña. Confirmar que abre `/superadmin`.
+4. Inmediatamente establecer `SUPER_ADMIN_BOOTSTRAP_ENABLED=false`, eliminar
+   `SUPER_ADMIN_BOOTSTRAP_PASSWORD` del proveedor y volver a desplegar. También
+   se pueden retirar el correo y el nombre, porque ya no se necesitan.
+5. Confirmar que el segundo despliegue queda saludable y que la misma cuenta
+   sigue pudiendo iniciar sesión.
+
+Nunca guardar los valores reales en Git ni compartir la contraseña en logs o
+capturas. Si ya existe un administrador con otro correo, el arranque falla de
+forma intencional para impedir una elevación accidental.
 
 ## Secuencia de primera demostración
 

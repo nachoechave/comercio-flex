@@ -59,6 +59,11 @@ logging:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level requestId=%X{requestId:-none} logger=%logger{36} - %msg%n"
 
 app:
+  super-admin-bootstrap:
+    enabled: ${SUPER_ADMIN_BOOTSTRAP_ENABLED:false}
+    email: ${SUPER_ADMIN_BOOTSTRAP_EMAIL:}
+    password: ${SUPER_ADMIN_BOOTSTRAP_PASSWORD:}
+    display-name: ${SUPER_ADMIN_BOOTSTRAP_DISPLAY_NAME:}
   media:
     storage: ${MEDIA_STORAGE:local}
     local-root: ${MEDIA_LOCAL_ROOT:.data/media}

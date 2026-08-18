@@ -6,7 +6,8 @@
   búsqueda/filtro/detalle de empresas, activación/suspensión y auditoría.
 - Angular: área `/superadmin` con guard, layout, estados de carga/error/empty y
   confirmación de cambios sensibles.
-- Bootstrap local opcional mediante `LOCAL_SUPER_ADMIN_*`.
+- Bootstrap local opcional mediante `LOCAL_SUPER_ADMIN_*` y bootstrap productivo
+  de un solo uso mediante `SUPER_ADMIN_BOOTSTRAP_*` para la primera cuenta global.
 - Fase 2 — Alta automática: formulario SuperAdmin, base MySQL aislada, Flyway,
   configuración inicial, `OWNER`, pool Hikari dinámico, auditoría y reintento.
 - Fase 3 — Branding: Apariencia exclusiva SuperAdmin, paleta, tipografía, hero,
