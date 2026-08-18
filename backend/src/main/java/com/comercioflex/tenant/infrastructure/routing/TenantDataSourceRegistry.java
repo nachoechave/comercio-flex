@@ -25,10 +25,12 @@ public final class TenantDataSourceRegistry implements TenantConnectionCatalog, 
 	public TenantDataSourceRegistry(
 			TenantContext tenantContext,
 			TenantDatabaseProperties properties) {
-		properties.getTenantConnections().forEach(this::validate);
+		Map<String, TenantDatabaseProperties.ConnectionDetails> configuredConnections =
+			properties.configuredTenantConnections();
+		configuredConnections.forEach(this::validate);
 
 		try {
-			properties.getTenantConnections().forEach(this::register);
+			configuredConnections.forEach(this::register);
 		}
 		catch (RuntimeException exception) {
 			dataSources.values().forEach(HikariDataSource::close);

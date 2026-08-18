@@ -120,7 +120,15 @@ app:
       provisioning-password: ${TENANT_PROVISIONING_DB_PASSWORD:}
       database-prefix: ${TENANT_DATABASE_PREFIX:comercio_flex_tenant_}
       database-user-host: ${TENANT_DATABASE_USER_HOST:%}
-    tenant-connections: {}
+    tenant-connections:
+      tenant-a:
+        url: ${TENANT_A_DB_URL:}
+        username: ${TENANT_A_DB_USER:}
+        password: ${TENANT_A_DB_PASSWORD:}
+      tenant-b:
+        url: ${TENANT_B_DB_URL:}
+        username: ${TENANT_B_DB_USER:}
+        password: ${TENANT_B_DB_PASSWORD:}
   security:
     login-rate-limit:
       max-attempts: ${LOGIN_RATE_LIMIT_MAX_ATTEMPTS:5}

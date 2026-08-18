@@ -59,6 +59,11 @@ Usar un usuario DML diferente para control y para cada tenant. Sólo el usuario 
 migración recibe DDL. El usuario del bucket necesita leer/escribir/eliminar objetos
 del bucket/prefijo asignado, no administrar la cuenta completa.
 
+Las conexiones fijas `tenant-a` y `tenant-b` son opcionales en producción. Para
+habilitar una se deben definir juntas sus variables `*_DB_URL`, `*_DB_USER` y
+`*_DB_PASSWORD`; si las tres están vacías se omite, y una configuración parcial
+detiene el arranque para evitar una empresa aparentemente activa pero inaccesible.
+
 ### Crear el primer `SUPER_ADMIN` en producción
 
 El bootstrap productivo es explícito, idempotente para el mismo correo y sólo

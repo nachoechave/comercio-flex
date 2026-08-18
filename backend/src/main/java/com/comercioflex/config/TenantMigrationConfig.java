@@ -26,7 +26,7 @@ public class TenantMigrationConfig {
 			if (!properties.isTenantMigrationEnabled()) {
 				return;
 			}
-			properties.getTenantConnections().values().forEach(details ->
+			properties.configuredTenantConnections().values().forEach(details ->
 				migrator.migrate(details.getUrl()));
 			controlJdbcTemplate.queryForList("""
 				SELECT database_name

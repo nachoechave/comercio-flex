@@ -54,6 +54,28 @@ public class TenantDatabaseProperties {
 		this.tenantConnections = tenantConnections;
 	}
 
+	public Map<String, ConnectionDetails> configuredTenantConnections() {
+		Map<String, ConnectionDetails> configured = new LinkedHashMap<>();
+		tenantConnections.forEach((databaseKey, details) -> {
+			boolean hasUrl = !isBlank(details.getUrl());
+			boolean hasUsername = !isBlank(details.getUsername());
+			boolean hasPassword = !isBlank(details.getPassword());
+			if (!hasUrl && !hasUsername && !hasPassword) {
+				return;
+			}
+			if (!hasUrl || !hasUsername || !hasPassword) {
+				throw new IllegalStateException(
+					"Incomplete tenant database configuration for key " + databaseKey);
+			}
+			configured.put(databaseKey, details);
+		});
+		return configured;
+	}
+
+	private boolean isBlank(String value) {
+		return value == null || value.isBlank();
+	}
+
 	public static class ConnectionDetails {
 
 		private String url;
