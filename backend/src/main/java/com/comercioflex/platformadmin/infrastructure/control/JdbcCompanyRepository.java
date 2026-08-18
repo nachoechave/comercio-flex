@@ -218,7 +218,7 @@ public class JdbcCompanyRepository implements CompanyRepository {
 	public Optional<CompanyInfrastructure> findInfrastructure(UUID companyId) {
 		return jdbcTemplate.query("""
 			SELECT COALESCE(infrastructure.provisioning_status, 'EXTERNAL') provisioning_status,
-				infrastructure.provisioned_at, infrastructure.updated_at,
+				infrastructure.failure_reason, infrastructure.provisioned_at, infrastructure.updated_at,
 				tenant.domain, tenant.last_activity_at
 			FROM tenants tenant
 			LEFT JOIN tenant_infrastructure infrastructure ON infrastructure.tenant_id = tenant.id
@@ -226,6 +226,7 @@ public class JdbcCompanyRepository implements CompanyRepository {
 			""", (resultSet, rowNumber) -> new CompanyInfrastructure(
 			"DATABASE_PER_TENANT",
 			resultSet.getString("provisioning_status"),
+			resultSet.getString("failure_reason"),
 			nullableInstant(resultSet, "provisioned_at"),
 			nullableInstant(resultSet, "updated_at"),
 			resultSet.getString("domain") != null,

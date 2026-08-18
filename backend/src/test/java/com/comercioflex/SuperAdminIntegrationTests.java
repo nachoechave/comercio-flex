@@ -159,6 +159,21 @@ class SuperAdminIntegrationTests {
 	}
 
 	@Test
+	void exposesProvisioningCapabilityWithoutReturningCredentials() throws Exception {
+		AuthenticatedCookies superAdmin = login("superadmin@example.com");
+
+		mockMvc.perform(get("/api/v1/superadmin/provisioning-capability")
+				.cookie(superAdmin.sessionCookie()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.available").value(true))
+			.andExpect(jsonPath("$.provider").value("MANAGED_MYSQL"))
+			.andExpect(jsonPath("$.reason").doesNotExist())
+			.andExpect(jsonPath("$.username").doesNotExist())
+			.andExpect(jsonPath("$.password").doesNotExist())
+			.andExpect(jsonPath("$.url").doesNotExist());
+	}
+
+	@Test
 	void suspendsAndReactivatesACompanyWithCsrfAndAudit() throws Exception {
 		AuthenticatedCookies superAdmin = login("superadmin@example.com");
 		AuthenticatedCookies owner = login("owner@example.com");
@@ -305,6 +320,10 @@ class SuperAdminIntegrationTests {
 				.cookie(owner.sessionCookie()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.slug").value("nueva-tienda"));
+
+		mockMvc.perform(get("/api/v1/stores/urban-clothes/admin/settings")
+				.cookie(owner.sessionCookie()))
+			.andExpect(status().isForbidden());
 
 		assertThat(jdbcTemplate.queryForObject("""
 			SELECT COUNT(*) FROM platform_audit_events

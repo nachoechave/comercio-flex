@@ -1,9 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { SuperAdminApiService } from '../super-admin-api.service';
+import { TenantProvisioningCapability } from '../super-admin.models';
 
 @Component({
   selector: 'app-company-create',
@@ -17,6 +18,14 @@ export class CompanyCreate {
 
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly capabilityLoading = signal(true);
+  readonly capability = signal<TenantProvisioningCapability | null>(null);
+  readonly creationDisabled = computed(
+    () =>
+      this.submitting() ||
+      this.capabilityLoading() ||
+      this.capability()?.available !== true,
+  );
   readonly form = new FormGroup({
     name: new FormControl('', {
       nonNullable: true,
@@ -62,9 +71,26 @@ export class CompanyCreate {
     status: new FormControl<'ACTIVE' | 'INACTIVE'>('ACTIVE', { nonNullable: true }),
   });
 
+  constructor() {
+    this.api.provisioningCapability().subscribe({
+      next: (capability) => {
+        this.capability.set(capability);
+        this.capabilityLoading.set(false);
+      },
+      error: () => {
+        this.capability.set({
+          available: false,
+          provider: 'UNKNOWN',
+          reason: 'No pudimos verificar la configuración de aprovisionamiento.',
+        });
+        this.capabilityLoading.set(false);
+      },
+    });
+  }
+
   submit(): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.submitting()) return;
+    if (this.form.invalid || this.creationDisabled()) return;
 
     this.submitting.set(true);
     this.errorMessage.set(null);

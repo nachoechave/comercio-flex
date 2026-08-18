@@ -4,12 +4,15 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
 import com.comercioflex.platformadmin.application.PendingCompany;
 import com.comercioflex.platformadmin.application.TenantProvisioner;
+import com.comercioflex.platformadmin.application.TenantProvisioningCapability;
+import com.comercioflex.platformadmin.application.TenantProvisioningStepException;
 import com.comercioflex.tenant.infrastructure.routing.ManagedTenantConnectionFactory;
 import com.comercioflex.tenant.infrastructure.routing.TenantDatabaseProperties;
 import com.comercioflex.tenant.infrastructure.routing.TenantDataSourceRegistry;
@@ -18,6 +21,7 @@ import com.comercioflex.tenant.infrastructure.routing.TenantSchemaMigrator;
 @Component
 public class MySqlTenantProvisioner implements TenantProvisioner {
 
+	private static final String PROVIDER = "MANAGED_MYSQL";
 	private static final Pattern SAFE_ACCOUNT = Pattern.compile("[A-Za-z0-9_@.-]{1,64}");
 	private static final Pattern SAFE_HOST = Pattern.compile("[%A-Za-z0-9_.:-]{1,255}");
 
@@ -38,15 +42,44 @@ public class MySqlTenantProvisioner implements TenantProvisioner {
 	}
 
 	@Override
+	public TenantProvisioningCapability capability() {
+		String issue = connectionFactory.provisioningConfigurationIssue();
+		return issue == null
+			? TenantProvisioningCapability.available(PROVIDER)
+			: TenantProvisioningCapability.unavailable(PROVIDER, issue);
+	}
+
+	@Override
+	public String databaseNameFor(UUID companyId) {
+		return connectionFactory.newDatabaseName(companyId);
+	}
+
+	@Override
 	public void provision(PendingCompany company) {
 		connectionFactory.requireProvisioningEnabled();
 		String targetUrl = connectionFactory.urlFor(company.databaseName());
-		createDatabase(company.databaseName());
-		schemaMigrator.migrate(targetUrl);
-		initializeStore(company, targetUrl);
-		registry.register(
-			company.databaseKey(),
-			connectionFactory.applicationDetails(company.databaseName()));
+		runStep("No se pudo preparar la base aislada del tenant.",
+			() -> createDatabase(company.databaseName()));
+		runStep("No se pudieron aplicar las migraciones del tenant.",
+			() -> schemaMigrator.migrate(targetUrl));
+		runStep("No se pudo crear la configuración inicial de la tienda.",
+			() -> initializeStore(company, targetUrl));
+		runStep("No se pudo registrar la conexión runtime del tenant.",
+			() -> registry.register(
+				company.databaseKey(),
+				connectionFactory.applicationDetails(company.databaseName())));
+	}
+
+	private void runStep(String safeReason, Runnable step) {
+		try {
+			step.run();
+		}
+		catch (TenantProvisioningStepException exception) {
+			throw exception;
+		}
+		catch (RuntimeException exception) {
+			throw new TenantProvisioningStepException(safeReason, exception);
+		}
 	}
 
 	private void createDatabase(String databaseName) {

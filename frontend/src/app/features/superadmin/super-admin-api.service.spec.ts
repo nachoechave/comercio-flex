@@ -73,6 +73,17 @@ describe('SuperAdminApiService', () => {
     request.flush({});
   });
 
+  it('loads the provisioning capability without exposing connection data', () => {
+    service.provisioningCapability().subscribe((capability) => {
+      expect(capability.available).toBe(true);
+      expect(capability).not.toHaveProperty('password');
+    });
+
+    const request = http.expectOne('/api/v1/superadmin/provisioning-capability');
+    expect(request.request.method).toBe('GET');
+    request.flush({ available: true, provider: 'MANAGED_MYSQL', reason: null });
+  });
+
   it('updates branding through a protected endpoint without exposing database identifiers', () => {
     service.updateBranding('company/1', {
       primaryColor: '#112233',

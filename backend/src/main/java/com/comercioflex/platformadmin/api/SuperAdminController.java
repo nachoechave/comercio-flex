@@ -118,6 +118,12 @@ public class SuperAdminController {
 			requestBody.toCommand(), principal(authentication)));
 	}
 
+	@GetMapping("/provisioning-capability")
+	TenantProvisioningCapabilityResponse provisioningCapability(HttpServletRequest request) {
+		requireSuperAdmin(request);
+		return TenantProvisioningCapabilityResponse.from(provisioningService.capability());
+	}
+
 	@GetMapping("/dashboard")
 	CompanyDashboardResponse dashboard(HttpServletRequest request) {
 		requireSuperAdmin(request);

@@ -14,7 +14,14 @@ describe('CompanyCreate', () => {
       imports: [CompanyCreate],
       providers: [
         provideRouter([]),
-        { provide: SuperAdminApiService, useValue: { createCompany } },
+        {
+          provide: SuperAdminApiService,
+          useValue: {
+            createCompany,
+            provisioningCapability: () =>
+              of({ available: true, provider: 'MANAGED_MYSQL', reason: null }),
+          },
+        },
       ],
     });
     const fixture = TestBed.createComponent(CompanyCreate);
@@ -47,5 +54,37 @@ describe('CompanyCreate', () => {
       ['/superadmin/empresas', 'company-1'],
       expect.any(Object),
     );
+  });
+
+  it('disables creation and explains the missing provider configuration', () => {
+    const createCompany = vi.fn();
+    TestBed.configureTestingModule({
+      imports: [CompanyCreate],
+      providers: [
+        provideRouter([]),
+        {
+          provide: SuperAdminApiService,
+          useValue: {
+            createCompany,
+            provisioningCapability: () =>
+              of({
+                available: false,
+                provider: 'MANAGED_MYSQL',
+                reason: 'Activá TENANT_PROVISIONING_ENABLED.',
+              }),
+          },
+        },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(CompanyCreate);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.creationDisabled()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain(
+      'Activá TENANT_PROVISIONING_ENABLED.',
+    );
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(true);
+    expect(createCompany).not.toHaveBeenCalled();
   });
 });

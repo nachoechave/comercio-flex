@@ -190,6 +190,9 @@
     @if (infrastructure(); as technical) {
       <section class="panel" aria-labelledby="infrastructure-title">
         <header><div><p class="eyebrow">Estado técnico sanitizado</p><h2 id="infrastructure-title">Infraestructura</h2></div></header>
+        @if (technical.failureReason) {
+          <p class="notice error" role="alert">{{ technical.failureReason }}</p>
+        }
         <div class="infrastructure-grid">
           <article><span>Estado</span><strong>{{ infrastructureStatusLabel(technical.provisioningStatus) }}</strong><small>{{ technical.updatedAt ? ('Actualizado ' + (technical.updatedAt | date: 'dd/MM/yyyy, HH:mm')) : 'Sin marca de actualización' }}</small></article>
           <article><span>Aislamiento</span><strong>Base independiente por tenant</strong><small>Los identificadores y credenciales no se exponen.</small></article>

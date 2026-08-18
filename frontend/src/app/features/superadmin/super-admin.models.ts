@@ -72,10 +72,17 @@ export interface CompanyActivityPage {
 export interface CompanyInfrastructure {
   isolationMode: 'DATABASE_PER_TENANT';
   provisioningStatus: 'PENDING' | 'READY' | 'FAILED' | 'EXTERNAL';
+  failureReason?: string | null;
   provisionedAt: string | null;
   updatedAt: string | null;
   customDomainConfigured: boolean;
   lastActivityAt: string | null;
+}
+
+export interface TenantProvisioningCapability {
+  available: boolean;
+  provider: string;
+  reason: string | null;
 }
 
 export interface CreateCompanyRequest {

@@ -46,15 +46,41 @@ public class ManagedTenantConnectionFactory {
 	}
 
 	public void requireProvisioningEnabled() {
+		String issue = provisioningConfigurationIssue();
+		if (issue != null) {
+			throw new IllegalStateException(issue);
+		}
+	}
+
+	public String provisioningConfigurationIssue() {
 		if (!managed().isProvisioningEnabled()) {
-			throw new IllegalStateException("Managed tenant provisioning is disabled");
+			return "Activá TENANT_PROVISIONING_ENABLED para crear empresas automáticamente.";
 		}
 		if (isBlank(managed().getProvisioningUrl())
 				|| isBlank(managed().getProvisioningUsername())
 				|| isBlank(managed().getProvisioningPassword())) {
-			throw new IllegalStateException("Tenant provisioning credentials are required");
+			return "Completá TENANT_PROVISIONING_DB_URL, TENANT_PROVISIONING_DB_USER y "
+				+ "TENANT_PROVISIONING_DB_PASSWORD.";
 		}
-		applicationDetails(newDatabaseName(UUID.randomUUID()));
+		if (isBlank(managed().getUrlTemplate())
+				|| !managed().getUrlTemplate().contains(DATABASE_TOKEN)) {
+			return "Configurá TENANT_DB_URL_TEMPLATE incluyendo el marcador {database}.";
+		}
+		if (isBlank(managed().getApplicationUsername())
+				|| isBlank(managed().getApplicationPassword())) {
+			return "Completá TENANT_SHARED_DB_USER y TENANT_SHARED_DB_PASSWORD para el acceso runtime.";
+		}
+		if (isBlank(properties.getMigrationUsername())
+				|| isBlank(properties.getMigrationPassword())) {
+			return "Completá MIGRATION_DB_USER y MIGRATION_DB_PASSWORD para ejecutar Flyway.";
+		}
+		try {
+			newDatabaseName(UUID.randomUUID());
+		}
+		catch (IllegalStateException exception) {
+			return "TENANT_DATABASE_PREFIX debe generar nombres MySQL seguros de hasta 64 caracteres.";
+		}
+		return null;
 	}
 
 	public TenantDatabaseProperties.ManagedConnections managed() {

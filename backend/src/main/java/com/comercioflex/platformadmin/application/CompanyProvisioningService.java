@@ -15,7 +15,6 @@ import com.comercioflex.identity.application.EmailNormalizer;
 import com.comercioflex.identity.application.PlatformPrincipal;
 import com.comercioflex.platformadmin.domain.CompanyDetail;
 import com.comercioflex.platformadmin.domain.CompanyStatus;
-import com.comercioflex.tenant.infrastructure.routing.ManagedTenantConnectionFactory;
 
 @Service
 public class CompanyProvisioningService {
@@ -27,7 +26,6 @@ public class CompanyProvisioningService {
 	private final CompanyCreationRepository creationRepository;
 	private final CompanyRepository companyRepository;
 	private final TenantProvisioner provisioner;
-	private final ManagedTenantConnectionFactory connectionFactory;
 	private final TransactionTemplate transactionTemplate;
 	private final PasswordEncoder passwordEncoder;
 	private final EmailNormalizer emailNormalizer;
@@ -36,32 +34,24 @@ public class CompanyProvisioningService {
 			CompanyCreationRepository creationRepository,
 			CompanyRepository companyRepository,
 			TenantProvisioner provisioner,
-			ManagedTenantConnectionFactory connectionFactory,
 			@Qualifier("controlTransactionTemplate") TransactionTemplate transactionTemplate,
 			PasswordEncoder passwordEncoder,
 			EmailNormalizer emailNormalizer) {
 		this.creationRepository = creationRepository;
 		this.companyRepository = companyRepository;
 		this.provisioner = provisioner;
-		this.connectionFactory = connectionFactory;
 		this.transactionTemplate = transactionTemplate;
 		this.passwordEncoder = passwordEncoder;
 		this.emailNormalizer = emailNormalizer;
 	}
 
 	public CompanyDetail create(CreateCompanyCommand rawCommand, PlatformPrincipal actor) {
-		try {
-			connectionFactory.requireProvisioningEnabled();
-		}
-		catch (IllegalStateException exception) {
-			throw new CompanyProvisioningUnavailableException(
-				"El aprovisionamiento administrado no está configurado.", exception);
-		}
+		requireProvisioningAvailable();
 		CreateCompanyCommand command = normalize(rawCommand);
 		UUID companyId = UUID.randomUUID();
 		String compactId = companyId.toString().replace("-", "");
 		String databaseKey = "tenant-" + compactId;
-		String databaseName = connectionFactory.newDatabaseName(companyId);
+		String databaseName = provisioner.databaseNameFor(companyId);
 		PendingCompany pending;
 		try {
 			pending = transactionTemplate.execute(status -> creationRepository.createPending(
@@ -80,6 +70,7 @@ public class CompanyProvisioningService {
 	}
 
 	public CompanyDetail retry(UUID companyId, PlatformPrincipal actor) {
+		requireProvisioningAvailable();
 		PendingCompany pending = transactionTemplate.execute(status ->
 			creationRepository.lockProvisioningCompany(companyId)
 				.orElseThrow(CompanyNotFoundException::new));
@@ -96,9 +87,23 @@ public class CompanyProvisioningService {
 		}
 		catch (RuntimeException exception) {
 			LOGGER.error("Managed tenant provisioning failed for company {}", pending.publicId(), exception);
+			String failureReason = exception instanceof TenantProvisioningStepException stepException
+				? stepException.safeReason()
+				: PUBLIC_FAILURE_REASON;
 			transactionTemplate.executeWithoutResult(status ->
-				creationRepository.markFailed(pending, actor, PUBLIC_FAILURE_REASON));
-			throw new CompanyProvisioningException(PUBLIC_FAILURE_REASON, exception);
+				creationRepository.markFailed(pending, actor, failureReason));
+			throw new CompanyProvisioningException(failureReason, exception);
+		}
+	}
+
+	public TenantProvisioningCapability capability() {
+		return provisioner.capability();
+	}
+
+	private void requireProvisioningAvailable() {
+		TenantProvisioningCapability capability = provisioner.capability();
+		if (!capability.available()) {
+			throw new CompanyProvisioningUnavailableException(capability.reason());
 		}
 	}
 

@@ -10,6 +10,17 @@
   <p class="notice error" role="alert">{{ errorMessage() }}</p>
 }
 
+@if (capabilityLoading()) {
+  <p class="notice info" role="status">Verificando el provider de aprovisionamiento…</p>
+} @else if (capability(); as currentCapability) {
+  @if (!currentCapability.available) {
+    <p class="notice warning" id="provisioning-unavailable" role="alert">
+      <strong>No se pueden crear empresas todavía.</strong>
+      <span>{{ currentCapability.reason }}</span>
+    </p>
+  }
+}
+
 <form [formGroup]="form" (ngSubmit)="submit()">
   <fieldset>
     <legend>Empresa</legend>
@@ -87,8 +98,13 @@
 
   <footer class="actions">
     <a routerLink="/superadmin/empresas">Cancelar</a>
-    <button type="submit" [disabled]="submitting()">
-      {{ submitting() ? 'Creando tenant…' : 'Crear empresa' }}
+    <button
+      type="submit"
+      [disabled]="creationDisabled()"
+      [attr.aria-describedby]="capability()?.available === false ? 'provisioning-unavailable' : null"
+      [title]="capability()?.available === false ? (capability()?.reason ?? '') : ''"
+    >
+      {{ submitting() ? 'Creando tenant…' : capabilityLoading() ? 'Verificando…' : 'Crear empresa' }}
     </button>
   </footer>
 </form>

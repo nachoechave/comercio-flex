@@ -1,18 +1,18 @@
 # Guía de despliegue
 
-> Estado al 2026-08-04: preparación versionada; no existe un despliegue
-> productivo declarado ni autoriza contratar servicios o activar cobros reales.
+> Estado al 2026-08-18: despliegue previsto en Render con Aiven MySQL. Los
+> secretos y las operaciones de Aiven siguen siendo responsabilidad del operador.
 
 ## Arquitectura recomendada para el primer piloto
 
-Un contenedor sirve Angular y Spring Boot desde un único origen HTTPS. Railway
-puede construir el `Dockerfile` y validar `/actuator/health/readiness`. La base
-debe ser MySQL administrada y las imágenes deben vivir en un bucket privado
-compatible con S3, como Cloudflare R2.
+Un contenedor sirve Angular y Spring Boot desde un único origen HTTPS. Render
+construye el `Dockerfile` y puede validar `/actuator/health/readiness`. Aiven
+aloja la base de control y una base MySQL aislada por tenant; las imágenes viven
+en un bucket privado compatible con S3, como Cloudflare R2.
 
-Esta opción evita cookies cross-site y CORS entre frontend/backend. Se inicia con
-una réplica porque la sesión vive en memoria; escalar horizontalmente requiere
-sticky sessions o un almacén compartido de sesiones.
+Esta opción evita cookies cross-site y CORS entre frontend/backend. Las sesiones
+se guardan por JDBC en la base de control, por lo que no dependen de la memoria
+de una réplica concreta.
 
 ## Qué ya está preparado
 
@@ -20,14 +20,15 @@ sticky sessions o un almacén compartido de sesiones.
   backend y el runtime corre como usuario `comercioflex` sin privilegios.
 - `.dockerignore` evita enviar secretos, builds y datos locales al contexto.
 - `railway.json` selecciona Docker, readiness y reinicio ante fallos.
-- `application-prod.yml` activa S3 y credenciales separadas de migración/runtime.
+- `application-prod.yml` activa S3 y migraciones; las altas nuevas usan el
+  provider dinámico y no requieren bloques `TENANT_C`, `TENANT_D`, etc.
 - `infra/production.env.example` enumera variables sin valores reales.
 - `.github/workflows/ci.yml` prueba frontend/backend y construye la imagen.
 - `infra/operations/mysql-backup.sh` y `mysql-restore.sh` preparan recuperación.
 
 ## Recursos externos necesarios
 
-1. Proyecto Railway (u otro runtime Docker) con dominio/HTTPS.
+1. Web Service de Render (u otro runtime Docker) con dominio/HTTPS.
 2. MySQL administrado con base de control y una base por tenant.
 3. Bucket S3/R2 privado y credenciales limitadas al prefijo de Comercio Flex.
 4. Gestor de secretos del proveedor.
@@ -46,8 +47,11 @@ Grupos principales:
 - URLs/origen: `PUBLIC_FRONTEND_BASE_URI`, `PUBLIC_BACKEND_BASE_URI`,
   `FRONTEND_ORIGINS`, `SESSION_COOKIE_SECURE`.
 - Base de control: `CONTROL_DB_URL`, `CONTROL_DB_USER`, `CONTROL_DB_PASSWORD`.
-- Tenant: `TENANT_*_DB_URL`, `TENANT_*_DB_USER`, `TENANT_*_DB_PASSWORD`.
-- Migraciones: `MIGRATION_DB_USER`, `MIGRATION_DB_PASSWORD`.
+- Provider dinámico: `TENANT_PROVISIONING_ENABLED`, `TENANT_DB_URL_TEMPLATE`,
+  `TENANT_DATABASE_PREFIX`, `TENANT_PROVISIONING_DB_URL`,
+  `TENANT_PROVISIONING_DB_USER`, `TENANT_PROVISIONING_DB_PASSWORD`.
+- Runtime tenant: `TENANT_SHARED_DB_USER`, `TENANT_SHARED_DB_PASSWORD`.
+- Migraciones control/tenant: `MIGRATION_DB_USER`, `MIGRATION_DB_PASSWORD`.
 - Medios: `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION`, `MEDIA_S3_ENDPOINT`,
   `MEDIA_S3_ACCESS_KEY`, `MEDIA_S3_SECRET_KEY`, `MEDIA_S3_PATH_STYLE`.
 - Pagos: modo, token TEST/productivo, OAuth, secreto webhook y clave AES-256
@@ -55,14 +59,55 @@ Grupos principales:
 - Primer acceso global: las cuatro variables `SUPER_ADMIN_BOOTSTRAP_*`, sólo
   durante el despliegue inicial descrito abajo.
 
-Usar un usuario DML diferente para control y para cada tenant. Sólo el usuario de
-migración recibe DDL. El usuario del bucket necesita leer/escribir/eliminar objetos
-del bucket/prefijo asignado, no administrar la cuenta completa.
+No reutilizar credenciales entre control, runtime tenant, migración y provider.
+El usuario runtime tenant sólo recibe DML; el de migración recibe DDL sobre cada
+base administrada; el provider crea bases y otorga esos permisos. `avnadmin`, si
+resulta necesario por las restricciones de Aiven, se usa sólo como secreto del
+provider. El usuario del bucket necesita leer/escribir/eliminar objetos del
+bucket/prefijo asignado, no administrar la cuenta completa.
 
 Las conexiones fijas `tenant-a` y `tenant-b` son opcionales en producción. Para
 habilitar una se deben definir juntas sus variables `*_DB_URL`, `*_DB_USER` y
 `*_DB_PASSWORD`; si las tres están vacías se omite, y una configuración parcial
 detiene el arranque para evitar una empresa aparentemente activa pero inaccesible.
+
+### Aprovisionamiento dinámico en Render + Aiven
+
+El adapter actual implementa el puerto desacoplado `TenantProvisioner` mediante
+MySQL estándar. No necesita la API de Aiven: crea la base por SQL, ejecuta Flyway,
+inicializa `store_settings`, registra el datasource en memoria y persiste sólo
+metadatos sanitizados (`database_name`, estado y motivo seguro). Las contraseñas
+MySQL permanecen como secretos de Render y nunca se guardan en la base de control.
+
+Preparación única en Aiven:
+
+1. Crear `comercio_flex_control` y los service users de control runtime, runtime
+   tenant y migración. Aiven administra la creación de service users desde su
+   consola, CLI o API.
+2. Dar al usuario de control sólo DML sobre `comercio_flex_control`. Dar al de
+   migración el DDL requerido por Flyway, pero no permisos globales para crear
+   bases.
+3. Configurar como provider una cuenta separada capaz de `CREATE DATABASE` y
+   `GRANT`. Los usuarios runtime/migración deben existir antes, porque el adapter
+   sólo les concede permisos exactos sobre la nueva base.
+4. Copiar a Render las variables de `infra/production.env.example`, usando el
+   host y puerto de Aiven y `sslMode=REQUIRED`. No pegar el Service URI completo
+   en logs, tickets ni Git.
+5. Desplegar una vez y abrir `/superadmin/empresas/nueva`. La pantalla consulta
+   la capacidad del provider y explica qué variable falta sin mostrar valores.
+
+Para cada alta posterior no se agregan variables ni se redespliega: el estado
+pasa por `PROVISIONING`; si base, Flyway, configuración o registro runtime fallan,
+queda `PROVISIONING_FAILED` con motivo seguro y puede reintentarse. Sólo después
+de completar todos los pasos pasa al estado solicitado (`ACTIVE` o `INACTIVE`).
+Al reiniciar, las bases dinámicas `READY` se migran y registran desde la metadata
+de control usando el template, por lo que no dependen de `TENANT_A/TENANT_B`.
+
+El runtime usa una cuenta de servicio compartida por el backend, pero cada
+datasource apunta a una sola base y el routing exige el `TenantContext` resuelto
+desde una empresa activa. Esa cuenta no se entrega a propietarios ni tenants y
+carece de DDL. La prueba de integración verifica que el propietario de una
+empresa no puede usar endpoints administrativos de otra.
 
 ### Crear el primer `SUPER_ADMIN` en producción
 
@@ -98,7 +143,7 @@ forma intencional para impedir una elevación accidental.
 1. Crear MySQL y usuarios de mínimo privilegio.
 2. Crear bucket privado; bloquear acceso público.
 3. Configurar variables TEST y URLs HTTPS definitivas.
-4. Conectar repositorio y desplegar con el `Dockerfile`.
+4. Conectar el repositorio a Render y desplegar con el `Dockerfile`.
 5. Confirmar CI verde y readiness `UP`.
 6. Ejecutar smoke manual: tienda, imagen, carrito, `PICKUP`, pedido, pago TEST,
    webhook, administración y aislamiento tenant.
@@ -164,7 +209,7 @@ estable, webhook HTTPS, cuenta vendedora correcta y checklist aprobado. Luego:
 
 ## Alternativas y crecimiento
 
-- Demostración/primer piloto: Railway + MySQL administrado + R2, una réplica.
+- Demostración/primer piloto: Render + Aiven MySQL + R2, una réplica.
 - Primer cliente con mayores garantías: plataforma de contenedores y MySQL
   administrado con backups/PITR y soporte contratado.
 - Crecimiento: RDS MySQL o equivalente, CDN para medios, sesión compartida y más

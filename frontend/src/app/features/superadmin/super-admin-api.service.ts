@@ -15,6 +15,7 @@ import {
   BrandAssetType,
   CreateCompanyRequest,
   SuperAdminDashboardSummary,
+  TenantProvisioningCapability,
   UpdateCompanyRequest,
 } from './super-admin.models';
 
@@ -26,6 +27,12 @@ export class SuperAdminApiService {
 
   dashboard(): Observable<SuperAdminDashboardSummary> {
     return this.http.get<SuperAdminDashboardSummary>(`${this.baseUrl}/dashboard`);
+  }
+
+  provisioningCapability(): Observable<TenantProvisioningCapability> {
+    return this.http.get<TenantProvisioningCapability>(
+      `${this.baseUrl}/provisioning-capability`,
+    );
   }
 
   companies(
