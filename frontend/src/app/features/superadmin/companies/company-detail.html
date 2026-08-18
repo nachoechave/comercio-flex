@@ -35,6 +35,11 @@
 
   @if (noticeMessage()) { <p class="notice success" role="status">{{ noticeMessage() }}</p> }
   @if (errorMessage()) { <p class="notice error" role="alert">{{ errorMessage() }}</p> }
+  @if (unavailableSections().length > 0) {
+    <p class="notice warning" role="status">
+      La ficha se cargó parcialmente. No pudimos consultar: {{ unavailableSectionLabels() }}.
+    </p>
+  }
 
   <nav class="tabs" aria-label="Secciones de la empresa">
     <button type="button" [class.active]="selectedTab() === 'summary'" (click)="selectTab('summary')">Resumen</button>
@@ -81,7 +86,9 @@
   @if (selectedTab() === 'users') {
     <section class="panel" aria-labelledby="users-title">
       <header><div><p class="eyebrow">Accesos tenant</p><h2 id="users-title">Usuarios</h2></div></header>
-      @if (users().length === 0) {
+      @if (sectionUnavailable('users')) {
+        <p class="empty error">No pudimos consultar los usuarios de esta empresa.</p>
+      } @else if (users().length === 0) {
         <p class="empty">No hay membresías asociadas.</p>
       } @else {
         <div class="table-wrap">
@@ -103,33 +110,39 @@
     </section>
   }
 
-  @if (selectedTab() === 'branding' && branding(); as appearance) {
-    <section class="panel branding-panel" aria-labelledby="branding-title">
-      <header>
-        <div><p class="eyebrow">Identidad visual</p><h2 id="branding-title">Apariencia</h2></div>
-        <a class="primary-link" [routerLink]="['/superadmin/empresas', current.id, 'apariencia']">Editar apariencia</a>
-      </header>
-      <div class="branding-summary" [style.--preview-primary]="appearance.primaryColor" [style.--preview-secondary]="appearance.secondaryColor" [style.--preview-background]="appearance.backgroundColor" [style.--preview-text]="appearance.textColor">
-        <div class="brand-preview">
-          <span></span>
-          <strong>{{ current.name }}</strong>
-          <small>{{ appearance.heroTitle || 'Vista previa de la tienda' }}</small>
+  @if (selectedTab() === 'branding') {
+    @if (branding(); as appearance) {
+      <section class="panel branding-panel" aria-labelledby="branding-title">
+        <header>
+          <div><p class="eyebrow">Identidad visual</p><h2 id="branding-title">Apariencia</h2></div>
+          <a class="primary-link" [routerLink]="['/superadmin/empresas', current.id, 'apariencia']">Editar apariencia</a>
+        </header>
+        <div class="branding-summary" [style.--preview-primary]="appearance.primaryColor" [style.--preview-secondary]="appearance.secondaryColor" [style.--preview-background]="appearance.backgroundColor" [style.--preview-text]="appearance.textColor">
+          <div class="brand-preview">
+            <span></span>
+            <strong>{{ current.name }}</strong>
+            <small>{{ appearance.heroTitle || 'Vista previa de la tienda' }}</small>
+          </div>
+          <dl>
+            <div><dt>Template</dt><dd>{{ appearance.template }}</dd></div>
+            <div><dt>Tipografía</dt><dd>{{ appearance.font }}</dd></div>
+            <div><dt>Logo</dt><dd>{{ appearance.logoUrl ? 'Configurado' : 'Sin configurar' }}</dd></div>
+            <div><dt>Hero</dt><dd>{{ appearance.heroImageUrl ? 'Con imagen' : 'Sin imagen' }}</dd></div>
+          </dl>
         </div>
-        <dl>
-          <div><dt>Template</dt><dd>{{ appearance.template }}</dd></div>
-          <div><dt>Tipografía</dt><dd>{{ appearance.font }}</dd></div>
-          <div><dt>Logo</dt><dd>{{ appearance.logoUrl ? 'Configurado' : 'Sin configurar' }}</dd></div>
-          <div><dt>Hero</dt><dd>{{ appearance.heroImageUrl ? 'Con imagen' : 'Sin imagen' }}</dd></div>
-        </dl>
-      </div>
-    </section>
+      </section>
+    } @else {
+      <section class="panel"><p class="empty error">La apariencia no está disponible hasta que la base tenant esté operativa.</p></section>
+    }
   }
 
   @if (selectedTab() === 'activity') {
     <section class="panel" aria-labelledby="activity-title">
       <header><div><p class="eyebrow">Auditoría</p><h2 id="activity-title">Actividad administrativa</h2></div><span>{{ activity().totalItems }} eventos</span></header>
       @if (activityLoading()) { <p class="empty" role="status">Actualizando actividad…</p> }
-      @if (activity().items.length === 0) {
+      @if (sectionUnavailable('activity')) {
+        <p class="empty error">No pudimos consultar la actividad administrativa.</p>
+      } @else if (activity().items.length === 0) {
         <p class="empty">Todavía no hay acciones auditadas.</p>
       } @else {
         <ol class="timeline">
@@ -173,17 +186,21 @@
     </section>
   }
 
-  @if (selectedTab() === 'infrastructure' && infrastructure(); as technical) {
-    <section class="panel" aria-labelledby="infrastructure-title">
-      <header><div><p class="eyebrow">Estado técnico sanitizado</p><h2 id="infrastructure-title">Infraestructura</h2></div></header>
-      <div class="infrastructure-grid">
-        <article><span>Estado</span><strong>{{ infrastructureStatusLabel(technical.provisioningStatus) }}</strong><small>{{ technical.updatedAt ? ('Actualizado ' + (technical.updatedAt | date: 'dd/MM/yyyy, HH:mm')) : 'Sin marca de actualización' }}</small></article>
-        <article><span>Aislamiento</span><strong>Base independiente por tenant</strong><small>Los identificadores y credenciales no se exponen.</small></article>
-        <article><span>Provisionado</span><strong>{{ technical.provisionedAt ? (technical.provisionedAt | date: 'dd/MM/yyyy, HH:mm') : 'Administración externa' }}</strong><small>Flyway mantiene el esquema tenant.</small></article>
-        <article><span>Dominio personalizado</span><strong>{{ technical.customDomainConfigured ? 'Configurado' : 'No configurado' }}</strong><small>La publicación requiere DNS y TLS en infraestructura.</small></article>
-        <article><span>Última actividad</span><strong>{{ technical.lastActivityAt ? (technical.lastActivityAt | date: 'dd/MM/yyyy, HH:mm') : 'Sin datos' }}</strong><small>Se registra actividad autenticada del panel tenant.</small></article>
-      </div>
-    </section>
+  @if (selectedTab() === 'infrastructure') {
+    @if (infrastructure(); as technical) {
+      <section class="panel" aria-labelledby="infrastructure-title">
+        <header><div><p class="eyebrow">Estado técnico sanitizado</p><h2 id="infrastructure-title">Infraestructura</h2></div></header>
+        <div class="infrastructure-grid">
+          <article><span>Estado</span><strong>{{ infrastructureStatusLabel(technical.provisioningStatus) }}</strong><small>{{ technical.updatedAt ? ('Actualizado ' + (technical.updatedAt | date: 'dd/MM/yyyy, HH:mm')) : 'Sin marca de actualización' }}</small></article>
+          <article><span>Aislamiento</span><strong>Base independiente por tenant</strong><small>Los identificadores y credenciales no se exponen.</small></article>
+          <article><span>Provisionado</span><strong>{{ technical.provisionedAt ? (technical.provisionedAt | date: 'dd/MM/yyyy, HH:mm') : 'Administración externa' }}</strong><small>Flyway mantiene el esquema tenant.</small></article>
+          <article><span>Dominio personalizado</span><strong>{{ technical.customDomainConfigured ? 'Configurado' : 'No configurado' }}</strong><small>La publicación requiere DNS y TLS en infraestructura.</small></article>
+          <article><span>Última actividad</span><strong>{{ technical.lastActivityAt ? (technical.lastActivityAt | date: 'dd/MM/yyyy, HH:mm') : 'Sin datos' }}</strong><small>Se registra actividad autenticada del panel tenant.</small></article>
+        </div>
+      </section>
+    } @else {
+      <section class="panel"><p class="empty error">No pudimos consultar el estado de infraestructura.</p></section>
+    }
   }
 
   @if (pendingAction(); as action) {

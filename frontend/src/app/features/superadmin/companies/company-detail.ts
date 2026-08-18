@@ -3,7 +3,7 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { finalize, forkJoin } from 'rxjs';
+import { catchError, finalize, forkJoin, of } from 'rxjs';
 
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { SuperAdminApiService } from '../super-admin-api.service';
@@ -59,6 +59,7 @@ export class CompanyDetailPage {
   readonly changingStatus = signal(false);
   readonly saving = signal(false);
   readonly activityLoading = signal(false);
+  readonly unavailableSections = signal<CompanyTab[]>([]);
   readonly pendingAction = signal<StatusAction | null>(null);
   readonly errorMessage = signal<string | null>(null);
   readonly noticeMessage = signal<string | null>(null);
@@ -86,12 +87,33 @@ export class CompanyDetailPage {
         this.errorMessage.set('No pudimos identificar la empresa solicitada.');
         return;
       }
+      const unavailableSections: CompanyTab[] = [];
       const subscription = forkJoin({
         company: this.api.company(companyId),
-        users: this.api.companyUsers(companyId),
-        branding: this.api.branding(companyId),
-        activity: this.api.companyActivity(companyId),
-        infrastructure: this.api.companyInfrastructure(companyId),
+        users: this.api.companyUsers(companyId).pipe(
+          catchError(() => {
+            unavailableSections.push('users');
+            return of([] as CompanyUser[]);
+          }),
+        ),
+        branding: this.api.branding(companyId).pipe(
+          catchError(() => {
+            unavailableSections.push('branding');
+            return of(null);
+          }),
+        ),
+        activity: this.api.companyActivity(companyId).pipe(
+          catchError(() => {
+            unavailableSections.push('activity');
+            return of(EMPTY_ACTIVITY);
+          }),
+        ),
+        infrastructure: this.api.companyInfrastructure(companyId).pipe(
+          catchError(() => {
+            unavailableSections.push('infrastructure');
+            return of(null);
+          }),
+        ),
       }).subscribe({
         next: ({ company, users, branding, activity, infrastructure }) => {
           this.company.set(company);
@@ -99,6 +121,7 @@ export class CompanyDetailPage {
           this.branding.set(branding);
           this.activity.set(activity);
           this.infrastructure.set(infrastructure);
+          this.unavailableSections.set(unavailableSections);
           this.populateForm(company);
           this.loading.set(false);
         },
@@ -154,6 +177,22 @@ export class CompanyDetailPage {
       FAILED: 'Requiere atención',
       EXTERNAL: 'Configuración externa',
     }[status];
+  }
+
+  sectionUnavailable(section: CompanyTab): boolean {
+    return this.unavailableSections().includes(section);
+  }
+
+  unavailableSectionLabels(): string {
+    const labels: Partial<Record<CompanyTab, string>> = {
+      users: 'Usuarios',
+      branding: 'Apariencia',
+      activity: 'Actividad',
+      infrastructure: 'Infraestructura',
+    };
+    return this.unavailableSections()
+      .map((section) => labels[section] ?? section)
+      .join(', ');
   }
 
   ask(action: StatusAction): void {
@@ -294,6 +333,7 @@ export class CompanyDetailPage {
     this.branding.set(null);
     this.activity.set(EMPTY_ACTIVITY);
     this.infrastructure.set(null);
+    this.unavailableSections.set([]);
     this.selectedTab.set('summary');
     this.loading.set(true);
     this.errorMessage.set(null);

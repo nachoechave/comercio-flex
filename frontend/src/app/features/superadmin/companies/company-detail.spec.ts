@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { SuperAdminApiService } from '../super-admin-api.service';
 import { CompanyDetailPage } from './company-detail';
@@ -105,4 +105,76 @@ describe('CompanyDetailPage', () => {
     expect(updateCompany.mock.calls[0][1]).not.toHaveProperty('slug');
     expect(updateCompany.mock.calls[0][1]).not.toHaveProperty('databaseKey');
   });
+
+  it('keeps the company available when an optional section fails', () => {
+    const company = {
+      id: 'company-1',
+      name: 'Urban Clothes',
+      slug: 'urban-clothes',
+      status: 'PROVISIONING_FAILED' as const,
+      primaryAdministrator: null,
+      createdAt: '2026-08-17T12:00:00Z',
+      industry: 'Indumentaria',
+      phone: null,
+      domain: null,
+      lastActivityAt: null,
+    };
+    const api = {
+      company: vi.fn().mockReturnValue(of(company)),
+      companyUsers: vi.fn().mockReturnValue(of([])),
+      branding: vi.fn().mockReturnValue(throwError(() => new Error('Tenant unavailable'))),
+      companyActivity: vi.fn().mockReturnValue(of(EMPTY_ACTIVITY_RESPONSE)),
+      companyInfrastructure: vi.fn().mockReturnValue(
+        of({
+          isolationMode: 'DATABASE_PER_TENANT',
+          provisioningStatus: 'FAILED',
+          provisionedAt: null,
+          updatedAt: '2026-08-17T12:00:00Z',
+          customDomainConfigured: false,
+          lastActivityAt: null,
+        }),
+      ),
+      updateCompany: vi.fn(),
+      activate: vi.fn(),
+      suspend: vi.fn(),
+      retryProvisioning: vi.fn(),
+    };
+    const params = of(convertToParamMap({ companyId: 'company-1' }));
+
+    TestBed.configureTestingModule({
+      imports: [CompanyDetailPage],
+      providers: [
+        provideRouter([]),
+        { provide: SuperAdminApiService, useValue: api },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            pathFromRoot: [{ paramMap: params }],
+            snapshot: { paramMap: convertToParamMap({ companyId: 'company-1' }), parent: null },
+          },
+        },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(CompanyDetailPage);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Urban Clothes');
+    expect(fixture.nativeElement.textContent).toContain('No pudimos consultar: Apariencia');
+    expect(fixture.nativeElement.textContent).toContain('Reintentar provisioning');
+
+    fixture.componentInstance.selectTab('branding');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'La apariencia no está disponible hasta que la base tenant esté operativa.',
+    );
+  });
 });
+
+const EMPTY_ACTIVITY_RESPONSE = {
+  items: [],
+  page: 0,
+  size: 20,
+  totalItems: 0,
+  totalPages: 0,
+};
