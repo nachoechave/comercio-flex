@@ -39,6 +39,9 @@ class HealthEndpointSecurityTests {
 		mockMvc.perform(get("/tiendas/tienda-a/catalogo"))
 			.andExpect(status().isOk())
 			.andExpect(forwardedUrl("/index.html"));
+		mockMvc.perform(get("/superadmin/empresas/bc979239-95a1-11f1-9748-8234a5e60875"))
+			.andExpect(status().isOk())
+			.andExpect(forwardedUrl("/index.html"));
 		mockMvc.perform(get("/stores/tienda-a/payment-return/opaque-token")
 				.queryParam("status", "approved")
 				.queryParam("payment_id", "173304330197"))
