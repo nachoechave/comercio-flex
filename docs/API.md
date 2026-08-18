@@ -156,6 +156,10 @@ también requieren CSRF.
 GET /api/v1/superadmin/dashboard
 GET /api/v1/superadmin/companies?page=0&size=20&status=ACTIVE&q=urban
 GET /api/v1/superadmin/companies/{companyPublicId}
+PUT /api/v1/superadmin/companies/{companyPublicId}
+GET /api/v1/superadmin/companies/{companyPublicId}/users
+GET /api/v1/superadmin/companies/{companyPublicId}/activity?page=0&size=20
+GET /api/v1/superadmin/companies/{companyPublicId}/infrastructure
 POST /api/v1/superadmin/companies/{companyPublicId}/activate
 POST /api/v1/superadmin/companies/{companyPublicId}/suspend
 POST /api/v1/superadmin/companies/{companyPublicId}/retry-provisioning
@@ -168,9 +172,12 @@ DELETE /api/v1/superadmin/companies/{companyPublicId}/branding/assets/{logo|favi
 El listado permite buscar por nombre, slug o email del `OWNER` activo más antiguo.
 Activar y suspender registra un evento global con actor, tenant, transición y fecha.
 Una empresa suspendida deja de resolver tanto tienda pública como panel tenant.
-El contrato nunca devuelve `database_key`, URL JDBC ni credenciales. El dominio
-es metadato opcional; última actividad permanece nula hasta contar con una fuente
-confiable.
+La edición de empresa actualiza nombre, rubro, dominio y datos del administrador,
+y registra `COMPANY_UPDATED`. La ficha expone usuarios y roles, actividad global
+paginada e infraestructura sanitizada. Nunca devuelve `database_key`, nombre de
+base, URL JDBC ni credenciales. `lastActivityAt` se actualiza de forma acotada al
+recibir actividad autenticada del panel tenant; no se escribe por tráfico público.
+El dominio es metadato opcional: DNS, TLS y routing efectivo pertenecen al hosting.
 
 ### Alta automática de empresa
 
@@ -414,9 +421,11 @@ Todas las rutas parten de:
 GET /api/v1/stores/{storeSlug}/admin/inventory?page=0&size=20&q=&availability=ALL
 ```
 
-`availability` admite `ALL`, `IN_STOCK` y `OUT_OF_STOCK`; `q` busca por producto
-o SKU. La respuesta pagina variantes, incluso cuando todavía no tienen una fila
-de balance: en ese caso la cantidad lógica es `"0.000"`.
+`availability` admite `ALL`, `IN_STOCK` y `OUT_OF_STOCK`; `q` busca por producto,
+SKU, nombre de opción o valor. La respuesta pagina variantes, incluso cuando
+todavía no tienen una fila de balance: en ese caso la cantidad lógica es
+`"0.000"`. Cada item incluye `options`, la lista ordenada de pares genéricos; los
+campos heredados `size` y `color` sólo permanecen por compatibilidad.
 
 ### Consultar balance e historial
 
@@ -971,3 +980,8 @@ sirven con cache pública, `ETag` y resolución tenant:
 ```http
 GET /api/v1/stores/{slug}/media/branding/{logo|favicon|hero}
 ```
+
+`CLASSIC`, `MODERN` y `MINIMAL` seleccionan composiciones distintas de layout,
+catálogo, tarjetas, detalle y carrito dentro de la misma aplicación Angular. Los
+tres consumen los mismos contratos y componentes de dominio; no existe una SPA
+duplicada por comercio o template.

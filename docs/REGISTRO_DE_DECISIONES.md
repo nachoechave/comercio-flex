@@ -10,7 +10,7 @@
 | ADR-003 | Autenticación | Sesión/cookie HttpOnly para web MVP | Aceptada |
 | ADR-004 | Identidad | Usuario global + membresía por comercio | Aceptada |
 | ADR-005 | URL de tienda | Path y SPA | Aceptada |
-| ADR-006 | Frontend | Una app Angular con shells lazy | Pendiente |
+| ADR-006 | Frontend | Una app Angular con shells lazy | Aceptada |
 | ADR-007 | Renderizado | CSR (SPA), sin SSR en MVP | Aceptada |
 | ADR-008 | Producto vendible | Toda venta usa variante vendible | Aceptada |
 | ADR-009 | Inventario | Una ubicación y stock por variante | Aceptada |
@@ -128,6 +128,11 @@
 | ADR-121 | Checkout | Correo obligatorio para confirmaciones de pedidos | Aceptada |
 | ADR-122 | SuperAdmin | Rol global separado de las membresías tenant | Aceptada |
 | ADR-123 | Provisioning | Provisionador MySQL administrado detrás de un puerto reemplazable | Aceptada |
+| ADR-124 | Branding | Configuración tenant gobernada por SuperAdmin | Aceptada |
+| ADR-125 | Variantes | Opciones genéricas normalizadas por producto | Aceptada |
+| ADR-126 | Inventario | Opciones genéricas con compatibilidad temporal | Aceptada |
+| ADR-127 | Templates | Tres composiciones dentro de una sola SPA | Aceptada |
+| ADR-128 | Ficha global | Infraestructura sanitizada y actividad tenant acotada | Aceptada |
 
 ## Plantilla ADR
 
@@ -1987,3 +1992,59 @@
   request no altera la identidad. La aplicación valida un valor por nombre; las
   columnas heredadas podrán retirarse sólo mediante una futura versión de API.
   Esta decisión reemplaza el modelo fijo aprobado en ADR-029 y ADR-030.
+
+### ADR-126 — Inventario consume opciones genéricas sin romper compatibilidad
+
+- **Fecha:** 2026-08-18
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** después de generalizar variantes, inventario todavía presentaba
+  talle y color como su contrato principal.
+- **Problema:** mostrar y buscar cualquier combinación sin degradar paginación ni
+  multiplicar consultas, conservando clientes anteriores durante la transición.
+- **Alternativas:** continuar con campos fijos; ejecutar una consulta por variante;
+  cargar en lote los pares normalizados y derivar los campos heredados.
+- **Decisión:** inventario devuelve una lista ordenada `options`, incluye nombres y
+  valores en la búsqueda y los carga en lote para la página solicitada. `size` y
+  `color` continúan derivados únicamente como compatibilidad temporal.
+- **Consecuencias:** inventario queda independiente del rubro, sin N+1. Una futura
+  versión mayor podrá retirar los campos fijos cuando no existan clientes previos.
+
+### ADR-127 — Tres composiciones visuales dentro de una sola SPA
+
+- **Fecha:** 2026-08-18
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** la tienda necesita identidades visuales distintas sin mantener una
+  aplicación o flujo funcional por template.
+- **Problema:** diferenciar de forma perceptible catálogo, navegación, detalle y
+  carrito manteniendo un único contrato, routing y estado.
+- **Alternativas:** sólo cambiar colores; duplicar componentes o builds; aplicar
+  estrategias de composición sobre los componentes compartidos.
+- **Decisión:** `CLASSIC`, `MODERN` y `MINIMAL` seleccionan composiciones distintas
+  en layout, catálogo, cards, detalle y carrito. Comparten una única aplicación
+  Angular, servicios, rutas y componentes funcionales. El contenido es neutral al
+  rubro y el branding tenant continúa suministrando paleta, tipografía y assets.
+- **Consecuencias:** cada comercio obtiene una presentación coherente sin forks.
+  Los cambios funcionales se implementan una vez y se prueban sobre las variantes.
+
+### ADR-128 — Ficha global sanitizada y actividad tenant acotada
+
+- **Fecha:** 2026-08-18
+- **Estado:** Aceptada
+- **Responsable de aprobación:** Product Owner
+- **Contexto:** SuperAdmin necesita operar una empresa desde una ficha completa,
+  pero los secretos y detalles físicos de aislamiento no deben cruzar la API.
+- **Problema:** combinar edición, usuarios, auditoría, branding y diagnóstico sin
+  exponer `database_key`, nombres de base, JDBC o credenciales, y disponer de una
+  señal confiable de uso reciente.
+- **Alternativas:** mostrar infraestructura completa; omitir diagnóstico; ofrecer
+  un estado sanitizado y registrar sólo actividad administrativa autenticada.
+- **Decisión:** la ficha se divide en Resumen, Usuarios, Apariencia, Actividad,
+  Configuración e Infraestructura. Las mutaciones quedan auditadas; usuarios y
+  actividad se leen de control DB; infraestructura devuelve estados lógicos. La
+  actividad tenant actualiza `last_activity_at` sólo en solicitudes administrativas
+  autenticadas y limita escrituras repetidas mediante una condición temporal SQL.
+- **Consecuencias:** soporte obtiene contexto operativo sin recibir secretos ni
+  acceso directo a datasources. El dominio sigue siendo metadato: DNS, TLS y
+  routing efectivo pertenecen al proveedor de hosting.

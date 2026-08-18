@@ -489,6 +489,20 @@ tienda aplica colores y tipografía mediante variables CSS. El checkout sólo of
 `PICKUP`. `OWNER`/`ADMIN` tienen `MANAGE_BASIC_SETTINGS`; `STAFF` ingresa a
 pedidos y no ve navegación de dashboard, comercio o pagos que no pueda usar.
 
+Los templates `CLASSIC`, `MODERN` y `MINIMAL` son estrategias de composición de
+la misma SPA: modifican estructura y presentación de layout, catálogo, tarjetas,
+detalle y carrito, pero comparten routing, estado, API y componentes funcionales.
+Inventario carga en lote las opciones normalizadas de cada variante y busca por
+sus nombres/valores sin introducir consultas por fila.
+
+La ficha SuperAdmin agrega una vista agregada desde control DB: empresa editable,
+usuarios/membresías, auditoría paginada y estado de infraestructura sanitizado.
+`TenantActivityRecorder` actualiza `last_activity_at` sólo para solicitudes tenant
+administrativas autenticadas y limita la frecuencia de escritura en SQL. Ningún
+contrato global expone claves de routing, nombres de base, JDBC ni secretos. El
+dominio personalizado se valida y persiste como metadato; DNS, certificados y
+routing del proveedor continúan fuera del proceso de la aplicación.
+
 Las respuestas incluyen `X-Request-Id`: se conserva el identificador válido que
 envía el proxy o se genera uno, se incorpora a logs y se devuelve al cliente.
 Actuator separa liveness de readiness. La CI ejecuta pruebas/build de Angular,

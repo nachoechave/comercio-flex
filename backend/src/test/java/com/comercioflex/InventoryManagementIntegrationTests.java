@@ -1010,13 +1010,16 @@ class InventoryManagementIntegrationTests {
 		execute(database, """
 			INSERT INTO product_options
 				(public_id, product_id, name, normalized_name, position)
-			SELECT UUID_TO_BIN(UUID()), id, '%s', '%s', 0
-			FROM products WHERE public_id = UUID_TO_BIN('%s')
+			SELECT UUID_TO_BIN(UUID()), product.id, '%s', '%s',
+				COALESCE((SELECT MAX(existing.position) + 1
+					FROM product_options existing
+					WHERE existing.product_id = product.id), 1)
+			FROM products product WHERE product.public_id = UUID_TO_BIN('%s')
 			""".formatted(optionName, normalizedOption, productId));
 		execute(database, """
 			INSERT INTO product_option_values
 				(public_id, option_id, value, normalized_value, position)
-			SELECT UUID_TO_BIN(UUID()), id, '%s', '%s', 0
+			SELECT UUID_TO_BIN(UUID()), id, '%s', '%s', 1
 			FROM product_options
 			WHERE product_id = (SELECT id FROM products WHERE public_id = UUID_TO_BIN('%s'))
 				AND normalized_name = '%s'

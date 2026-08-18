@@ -15,28 +15,27 @@
   backfill de Talle/Color, combinaciones canónicas, editor Angular, catálogo,
   carrito y snapshots inmutables de pedido.
 
-## En curso — checkpoint Fases 5–7
+## Completado — Fases 5–7
 
-- Fase 5: Inventario ya devuelve/busca `options` genéricas y Angular dejó de
+- Fase 5: Inventario devuelve/busca `options` genéricas y Angular dejó de
   presentar `size/color` como contrato principal. SKU, movimientos y stock por
-  variante se conservan; falta completar la suite backend focalizada.
+  variante se conservan.
 - Fase 6: `MODERN` quedó neutral para cualquier rubro y `MINIMAL` posee composición
   propia en layout, catálogo, cards, detalle y carrito. Una sola app/componentes.
 - Fase 7: backend y Angular incorporan ficha con Resumen, Usuarios, Apariencia,
   Actividad, Configuración e Infraestructura; edición auditada, estado técnico
   sanitizado y `last_activity_at` para actividad autenticada del panel tenant.
-- Validación al pausar: backend compila; frontend build correcto y 177 tests pasan.
-  La ejecución backend de `InventoryManagementIntegrationTests`,
-  `SuperAdminIntegrationTests` y `TenantRoutingIntegrationTests` fue interrumpida
-  a pedido del usuario antes de obtener resultado y debe retomarse.
+- Validación final: backend completo con 170 pruebas aprobadas; frontend build
+  correcto y 177 pruebas aprobadas. Las migraciones control V001–V011 y tenant
+  V001–V015 se verificaron sobre MySQL 8.4 limpio mediante Testcontainers.
 
 ## Decisiones
 
 - `SUPER_ADMIN` vive en `platform_users.platform_role`; roles tenant permanecen
   en `memberships` y no se concede acceso implícito a bases tenant.
 - `SUSPENDED` impide resolver tienda pública y panel tenant.
-- Dominio se persiste como metadato; su resolución HTTP y la señal de última
-  actividad siguen pendientes.
+- Dominio se persiste como metadato; su resolución HTTP/DNS/TLS pertenece al
+  hosting. La última actividad autenticada tenant se registra con throttling.
 - `database_key` y datos de conexión nunca se exponen.
 - Provisioning MySQL vive detrás de un puerto reemplazable; usa una plantilla JDBC
   y secretos globales, con grants exactos por base.
@@ -47,12 +46,12 @@
 - `size`/`color` permanecen derivados en API y base para compatibilidad; los
   clientes nuevos usan exclusivamente `options`.
 
-## Pendiente
+## Pendiente externo a las fases
 
-- Completar/corregir pruebas backend focalizadas y luego ejecutar suites completas.
-- Revisar visualmente CLASSIC/MODERN/MINIMAL y cerrar documentación/API/ADR.
 - La resolución efectiva de dominios sigue siendo responsabilidad de DNS, TLS y
   routing del hosting; la app persiste y valida el metadato sin asumir despliegue.
+- El despliegue productivo, secretos reales, almacenamiento administrado y prueba
+  real de restore continúan sujetos a las decisiones operativas del piloto.
 
 ## Archivos clave
 
