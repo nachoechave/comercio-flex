@@ -103,7 +103,7 @@ import { AuthService } from '../../core/auth/auth.service';
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
-      max-width: 70rem;
+      max-width: var(--content-platform);
       margin: 0 auto;
       padding: 1rem;
       border-bottom: 1px solid var(--color-border);
@@ -124,7 +124,7 @@ import { AuthService } from '../../core/auth/auth.service';
       display: flex;
       flex-wrap: wrap;
       gap: 1rem;
-      max-width: 70rem;
+      max-width: var(--content-platform);
       margin: 0 auto;
       padding: 0.75rem 1rem;
     }
@@ -142,10 +142,10 @@ import { AuthService } from '../../core/auth/auth.service';
     }
 
     button {
-      min-height: 2.5rem;
+      min-height: var(--control-height);
       padding: 0.5rem 0.75rem;
       border: 1px solid var(--color-border);
-      border-radius: 0.5rem;
+      border-radius: var(--radius-sm);
       color: var(--color-text);
       background: var(--color-surface);
       font: inherit;
@@ -158,7 +158,7 @@ import { AuthService } from '../../core/auth/auth.service';
     }
 
     .logout-error {
-      max-width: 70rem;
+      max-width: var(--content-platform);
       margin: 1rem auto;
       padding: 0 1rem;
       color: #a22323;

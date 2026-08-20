@@ -5,6 +5,8 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { BehaviorSubject } from 'rxjs';
 
 import { StorefrontLayout } from './storefront-layout';
+import { CartPreviewService } from '../../features/storefront/cart/cart-preview.service';
+import { CartService } from '../../features/storefront/cart/cart.service';
 
 describe('StorefrontLayout', () => {
   let fixture: ComponentFixture<StorefrontLayout>;
@@ -65,5 +67,42 @@ describe('StorefrontLayout', () => {
       '/tiendas/tienda-a#category-section',
       '/tiendas/tienda-a/carrito',
     ]);
+  });
+
+  it('shows the current tenant cart in an accessible preview panel', () => {
+    TestBed.inject(CartService).add('tienda-a', {
+      product: {
+        id: 'product-1',
+        name: 'Remera azul',
+        slug: 'remera-azul',
+        description: null,
+        category: { id: 'category-1', name: 'Remeras', slug: 'remeras' },
+        image: {
+          id: 'image-1',
+          url: '/media/image-1',
+          thumbnailUrl: '/media/image-1/thumbnail',
+          altText: 'Remera azul',
+        },
+        variants: [
+          { id: 'variant-1', price: '2500.00', size: 'M', color: 'Azul', available: true },
+        ],
+      },
+      variant: { id: 'variant-1', price: '2500.00', size: 'M', color: 'Azul', available: true },
+      quantity: 2,
+    });
+    TestBed.inject(CartPreviewService).open('tienda-a');
+    fixture.detectChanges();
+
+    const preview: HTMLElement = fixture.nativeElement.querySelector('.cart-preview');
+    expect(preview.getAttribute('role')).toBe('dialog');
+    expect(preview.textContent).toContain('Artículos agregados a tu carrito');
+    expect(preview.textContent).toContain('2 × Remera azul');
+    expect(preview.textContent).toContain('Talle: M · Color: Azul');
+    expect(preview.textContent).toContain('Ver carrito');
+    expect(preview.querySelector('a')?.getAttribute('href')).toBe('/tiendas/tienda-a/carrito');
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.cart-preview')).toBeNull();
   });
 });

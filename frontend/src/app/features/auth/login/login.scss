@@ -9,9 +9,9 @@
   width: min(100%, 28rem);
   padding: clamp(1.5rem, 5vw, 2.5rem);
   border: 1px solid var(--color-border);
-  border-radius: 1rem;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
-  box-shadow: 0 1.5rem 4rem rgb(23 32 51 / 10%);
+  box-shadow: var(--shadow-floating);
 }
 
 .back-link {
@@ -51,10 +51,10 @@ label {
 
 input {
   width: 100%;
-  min-height: 2.75rem;
+  min-height: var(--control-height);
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   color: var(--color-text);
   background: var(--color-surface);
   font: inherit;
@@ -81,9 +81,9 @@ input:focus-visible {
 
 button {
   width: 100%;
-  min-height: 2.75rem;
+  min-height: var(--control-height);
   border: 0;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   color: #fff;
   background: var(--color-accent);
   font: inherit;

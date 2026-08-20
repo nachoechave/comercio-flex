@@ -7,7 +7,7 @@
 .platform-nav,
 .platform-main,
 .logout-error {
-  width: min(100% - 2rem, 72rem);
+  width: min(100% - 2rem, var(--content-platform));
   margin-inline: auto;
 }
 
@@ -37,7 +37,7 @@
   width: 2.75rem;
   height: 2.75rem;
   place-items: center;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-md);
   color: white;
   background: var(--color-accent);
   font-weight: 800;
@@ -63,10 +63,10 @@
 }
 
 button {
-  min-height: 2.5rem;
+  min-height: var(--control-height);
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--color-border);
-  border-radius: 0.55rem;
+  border-radius: var(--radius-sm);
   color: var(--color-text);
   background: var(--color-surface);
   font: inherit;

@@ -15,6 +15,7 @@ import {
 } from '../storefront.models';
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
 import { CartService } from '../cart/cart.service';
+import { CartPreviewService } from '../cart/cart-preview.service';
 
 @Component({
   selector: 'app-public-product-detail',
@@ -25,6 +26,7 @@ import { CartService } from '../cart/cart.service';
 export class PublicProductDetail {
   private readonly api = inject(StorefrontApiService);
   private readonly cart = inject(CartService);
+  private readonly cartPreview = inject(CartPreviewService);
   protected readonly context = inject(StorefrontContextService);
   private readonly route = inject(ActivatedRoute);
   private readonly title = inject(Title);
@@ -161,6 +163,7 @@ export class PublicProductDetail {
         ? `El carrito admite hasta 99 unidades de ${this.variantLabel(variant)}.`
         : `Agregamos ${this.quantity()} ${this.quantity() === 1 ? 'unidad' : 'unidades'} al carrito.`,
     );
+    this.cartPreview.open(this.storeSlug() ?? '');
   }
 
   private updateMetadata(product: PublicProductDetailModel, storeName: string): void {

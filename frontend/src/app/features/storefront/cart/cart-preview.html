@@ -1,0 +1,60 @@
+@if (isOpen() && items().length > 0) {
+  <section
+    class="cart-preview"
+    role="dialog"
+    aria-modal="false"
+    aria-labelledby="cart-preview-title"
+    aria-describedby="cart-preview-summary"
+  >
+    <header>
+      <div>
+        <p>Carrito actualizado</p>
+        <h2 id="cart-preview-title">Artículos agregados a tu carrito</h2>
+      </div>
+      <button
+        type="button"
+        class="close-button"
+        aria-label="Cerrar resumen del carrito"
+        (click)="close()"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+    </header>
+
+    <div class="preview-lines">
+      @for (line of visibleItems(); track line.variantId) {
+        <article class="preview-line">
+          <div class="line-image" [attr.aria-hidden]="line.imageThumbnailUrl ? null : 'true'">
+            @if (line.imageThumbnailUrl; as imageUrl) {
+              <img [src]="imageUrl" [alt]="line.imageAltText || line.productName" />
+            } @else {
+              <span>{{ line.productName.slice(0, 1).toUpperCase() }}</span>
+            }
+          </div>
+          <div class="line-copy">
+            <strong>{{ line.quantity }} × {{ line.productName }}</strong>
+            <span>{{ optionLabel(line) }}</span>
+          </div>
+          <strong class="line-price">
+            {{ line.unitPrice | storefrontMoney: context.currencyCode() }}
+          </strong>
+        </article>
+      }
+    </div>
+
+    @if (remainingItems() > 0) {
+      <p class="remaining">
+        + {{ remainingItems() }} artículo{{ remainingItems() === 1 ? '' : 's' }} más
+      </p>
+    }
+
+    <div class="preview-total" id="cart-preview-summary">
+      <span>{{ totalUnits() }} {{ totalUnits() === 1 ? 'unidad' : 'unidades' }}</span>
+      <strong>Subtotal {{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
+    </div>
+
+    <a class="view-cart" [routerLink]="['/tiendas', storeSlug(), 'carrito']" (click)="close()">
+      Ver carrito
+    </a>
+  </section>
+}

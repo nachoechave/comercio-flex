@@ -6,6 +6,21 @@
   --color-muted: #5a667a;
   --color-border: #dce3ec;
   --color-accent: #6b3fd6;
+  --color-danger: #a22323;
+  --color-danger-soft: #fbeaec;
+  --color-warning: #8a5a00;
+  --color-warning-soft: #fff8df;
+  --color-success: #26734d;
+  --color-success-soft: #e1f5e9;
+  --content-platform: 72rem;
+  --content-storefront: 76rem;
+  --control-height: 2.875rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --shadow-card: 0 1rem 3rem rgb(23 32 51 / 7%);
+  --shadow-floating: 0 1.5rem 4rem rgb(23 32 51 / 18%);
   font-family:
     Inter,
     ui-sans-serif,
@@ -32,14 +47,64 @@ body {
   background:
     radial-gradient(circle at 90% 5%, rgb(107 63 214 / 12%), transparent 24rem),
     var(--color-background);
+  line-height: 1.5;
 }
 
 a {
   color: var(--color-accent);
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
 a:focus-visible,
-button:focus-visible {
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid var(--color-accent);
   outline-offset: 3px;
+}
+
+::selection {
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-accent) 24%, white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

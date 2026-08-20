@@ -1,5 +1,5 @@
 .product-page {
-  width: min(100% - 2rem, 76rem);
+  width: var(--store-shell-width, min(100% - 2rem, 76rem));
   margin: 0 auto;
   padding: 1.5rem 0 2rem;
 }
@@ -128,7 +128,7 @@
   gap: 1rem;
   padding: 1rem;
   border: 1px solid #b8dcc8;
-  border-radius: 1rem;
+  border-radius: var(--store-card-radius, 1.25rem);
   background: var(--color-surface);
   cursor: pointer;
 }

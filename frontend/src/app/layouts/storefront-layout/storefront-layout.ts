@@ -6,6 +6,7 @@ import { map } from 'rxjs';
 
 import { StorefrontApiService } from '../../features/storefront/storefront-api.service';
 import { StorefrontContextService } from '../../features/storefront/storefront-context.service';
+import { CartPreview } from '../../features/storefront/cart/cart-preview';
 import { CartService } from '../../features/storefront/cart/cart.service';
 import { BrandFont, TenantBranding } from '../../features/storefront/storefront.models';
 
@@ -25,7 +26,7 @@ const DEFAULT_BRANDING: TenantBranding = {
 
 @Component({
   selector: 'app-storefront-layout',
-  imports: [RouterLink, RouterOutlet],
+  imports: [RouterLink, RouterOutlet, CartPreview],
   providers: [StorefrontApiService, StorefrontContextService],
   templateUrl: './storefront-layout.html',
   styleUrl: './storefront-layout.scss',

@@ -10,6 +10,7 @@ import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { StoreSettings } from '../storefront.models';
 import { CartService } from '../cart/cart.service';
+import { CartPreviewService } from '../cart/cart-preview.service';
 import { PublicProductDetail } from './public-product-detail';
 
 const MODERN_BRANDING = {
@@ -160,6 +161,7 @@ describe('PublicProductDetail', () => {
     fixture.detectChanges();
 
     expect(TestBed.inject(CartService).totalUnits('tienda-a')).toBe(2);
+    expect(TestBed.inject(CartPreviewService).storeSlug()).toBe('tienda-a');
     expect(fixture.nativeElement.textContent).toContain('Agregamos 2 unidades al carrito');
     expect(fixture.nativeElement.textContent).toContain('Ver carrito');
   });

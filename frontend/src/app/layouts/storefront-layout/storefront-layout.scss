@@ -11,6 +11,11 @@
   --color-accent: var(--store-accent);
   --color-background: var(--store-background-color, #f7f5fb);
   --color-text: var(--store-text-color, #211a2d);
+  --store-content-width: var(--content-storefront, 76rem);
+  --store-shell-width: min(100% - 2rem, var(--store-content-width));
+  --store-card-radius: var(--radius-xl, 1.25rem);
+  --store-control-radius: var(--radius-md, 0.75rem);
+  --store-card-shadow: var(--shadow-card, 0 1rem 3rem rgb(23 32 51 / 7%));
   min-height: 100vh;
   color: var(--color-text);
   background-color: var(--color-background);
@@ -70,7 +75,7 @@
 
 .site-header,
 .site-footer {
-  width: min(100% - 2rem, 76rem);
+  width: var(--store-shell-width);
   margin: 0 auto;
 }
 
