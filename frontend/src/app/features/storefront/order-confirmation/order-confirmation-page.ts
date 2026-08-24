@@ -10,6 +10,7 @@ import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
 import { variantOptionsLabel } from '../../../shared/variant-options';
 import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
 import { PaymentApiService } from '../payment/payment-api.service';
+import { BankTransferPayment, PaymentMethods } from '../payment/payment.models';
 import { paymentErrorMessage } from '../payment/payment-errors';
 import { PaymentRecoveryService } from '../payment/payment-recovery.service';
 import { StorefrontApiService } from '../storefront-api.service';
@@ -52,6 +53,13 @@ export class OrderConfirmationPage {
   protected readonly paymentStarting = signal(false);
   protected readonly paymentErrorMessage = signal<string | null>(null);
   protected readonly paymentsUnavailable = signal(false);
+  protected readonly paymentMethods = signal<PaymentMethods | null>(null);
+  protected readonly paymentMethodsLoading = signal(false);
+  protected readonly paymentMethodsErrorMessage = signal<string | null>(null);
+  protected readonly bankTransfer = signal<BankTransferPayment | null>(null);
+  protected readonly bankTransferStarting = signal(false);
+  protected readonly receiptUploading = signal(false);
+  protected readonly bankTransferMessage = signal<string | null>(null);
 
   constructor() {
     effect((onCleanup) => {
@@ -76,6 +84,7 @@ export class OrderConfirmationPage {
         next: (order) => {
           this.order.set(order);
           this.loading.set(false);
+          this.loadPaymentMethods(storeSlug, orderId, token);
           if (this.paymentResult() === 'failed') {
             this.paymentErrorMessage.set(
               'Tu pedido quedó guardado, pero no pudimos abrir Mercado Pago. Podés intentarlo nuevamente.',
@@ -92,6 +101,89 @@ export class OrderConfirmationPage {
         },
       });
       onCleanup(() => subscription.unsubscribe());
+    });
+  }
+
+  protected startBankTransfer(): void {
+    if (this.bankTransferStarting()) return;
+    this.bankTransferStarting.set(true);
+    this.bankTransferMessage.set(null);
+    this.paymentApi
+      .startBankTransfer(this.storeSlug() ?? '', this.orderId() ?? '', this.token() ?? '')
+      .pipe(finalize(() => this.bankTransferStarting.set(false)))
+      .subscribe({
+        next: (payment) => this.bankTransfer.set(payment),
+        error: (error: unknown) =>
+          this.bankTransferMessage.set(
+            paymentErrorMessage(error, 'No pudimos iniciar la transferencia.'),
+          ),
+      });
+  }
+
+  protected uploadReceipt(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const payment = this.bankTransfer();
+    if (!file || !payment || this.receiptUploading()) return;
+    this.receiptUploading.set(true);
+    this.bankTransferMessage.set(null);
+    this.paymentApi
+      .uploadBankTransferReceipt(
+        this.storeSlug() ?? '',
+        this.orderId() ?? '',
+        payment.id,
+        this.token() ?? '',
+        file,
+      )
+      .pipe(finalize(() => {
+        this.receiptUploading.set(false);
+        input.value = '';
+      }))
+      .subscribe({
+        next: (updated) => {
+          this.bankTransfer.set(updated);
+          this.bankTransferMessage.set('Comprobante enviado. El comercio está revisándolo.');
+        },
+        error: (error: unknown) =>
+          this.bankTransferMessage.set(
+            paymentErrorMessage(error, 'No pudimos subir el comprobante.'),
+          ),
+      });
+  }
+
+  protected copy(value: string | null): void {
+    if (!value) return;
+    void globalThis.navigator.clipboard?.writeText(value);
+  }
+
+  protected retryPaymentMethods(): void {
+    const storeSlug = this.storeSlug();
+    const orderId = this.orderId();
+    const token = this.token();
+    if (!storeSlug || !orderId || !token || this.paymentMethodsLoading()) return;
+    this.loadPaymentMethods(storeSlug, orderId, token);
+  }
+
+  private loadPaymentMethods(storeSlug: string, orderId: string, token: string): void {
+    this.paymentMethods.set(null);
+    this.paymentMethodsLoading.set(true);
+    this.paymentMethodsErrorMessage.set(null);
+    this.paymentApi.getMethods(storeSlug).subscribe({
+      next: (methods) => {
+        this.paymentMethodsLoading.set(false);
+        this.paymentMethods.set(methods);
+        this.paymentApi.getCurrentBankTransfer(storeSlug, orderId, token).subscribe({
+          next: (payment) => this.bankTransfer.set(payment),
+          error: () => undefined,
+        });
+      },
+      error: () => {
+        this.paymentMethodsLoading.set(false);
+        this.paymentMethods.set(null);
+        this.paymentMethodsErrorMessage.set(
+          'No pudimos consultar los medios de pago. Intentá nuevamente.',
+        );
+      },
     });
   }
 

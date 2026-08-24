@@ -18,11 +18,17 @@ public class JdbcOrderPaymentPolicy implements OrderPaymentPolicy {
 
 	@Override
 	public boolean blocksManualConfirmation(long orderInternalId) {
-		return count("""
-			SELECT COUNT(*) FROM payment_intents
-			WHERE order_id = ?
-				AND status IN ('CREATED', 'PENDING', 'REQUIRES_REVIEW')
-			""", orderInternalId) > 0;
+		Integer value = jdbcTemplate.queryForObject("""
+			SELECT (
+				SELECT COUNT(*) FROM payment_intents
+				WHERE order_id = ?
+					AND status IN ('CREATED', 'PENDING', 'REQUIRES_REVIEW')
+			) + (
+				SELECT COUNT(*) FROM bank_transfer_payments
+				WHERE order_id = ? AND status IN ('AWAITING_RECEIPT', 'UNDER_REVIEW')
+			)
+			""", Integer.class, orderInternalId, orderInternalId);
+		return value != null && value > 0;
 	}
 
 	@Override

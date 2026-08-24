@@ -57,6 +57,8 @@ public class SecurityConfig {
 				.ignoringRequestMatchers(
 					postMatcher("/api/v1/stores/*/orders"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/checkout-pro"),
+					postMatcher("/api/v1/stores/*/orders/*/payments/bank-transfer"),
+					postMatcher("/api/v1/stores/*/orders/*/payments/bank-transfer/*/receipt"),
 					postMatcher("/api/v1/stores/*/payment-returns/*/reconcile"),
 					postMatcher("/api/v1/stores/*/payment-returns/*/inspect"),
 					postMatcher("/api/v1/integrations/mercado-pago/webhooks"))
@@ -74,6 +76,7 @@ public class SecurityConfig {
 				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers("/api/v1/stores/*/settings").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/payment-methods").permitAll()
 				.requestMatchers(
 					HttpMethod.GET,
 					"/api/v1/stores/*/media/product-images/*/*",
@@ -96,6 +99,10 @@ public class SecurityConfig {
 				.requestMatchers(
 					HttpMethod.POST,
 					"/api/v1/stores/*/orders/*/payments/checkout-pro")
+				.permitAll()
+				.requestMatchers(
+					"/api/v1/stores/*/orders/*/payments/bank-transfer",
+					"/api/v1/stores/*/orders/*/payments/bank-transfer/**")
 				.permitAll()
 				.requestMatchers(
 					HttpMethod.GET,
@@ -151,7 +158,9 @@ public class SecurityConfig {
 					TenantPermission.ADJUST_STOCK))
 				.requestMatchers(
 					"/api/v1/stores/*/admin/orders",
-					"/api/v1/stores/*/admin/orders/**")
+					"/api/v1/stores/*/admin/orders/**",
+					"/api/v1/stores/*/admin/bank-transfer-payments",
+					"/api/v1/stores/*/admin/bank-transfer-payments/**")
 				.access(new TenantPermissionAuthorizationManager(
 					TenantPermission.MANAGE_ORDERS))
 				.requestMatchers(

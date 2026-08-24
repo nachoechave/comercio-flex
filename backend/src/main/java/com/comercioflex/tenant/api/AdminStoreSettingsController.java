@@ -31,15 +31,15 @@ public class AdminStoreSettingsController {
 	}
 
 	@GetMapping
-	StoreSettingsResponse find(@PathVariable String storeSlug, HttpServletRequest request) {
+	AdminStoreSettingsResponse find(@PathVariable String storeSlug, HttpServletRequest request) {
 		permissionGuard.require(request, TenantPermission.MANAGE_BASIC_SETTINGS);
-		return StoreSettingsResponse.from(storeSlug, queryService.findCurrent());
+		return AdminStoreSettingsResponse.from(storeSlug, queryService.findCurrent());
 	}
 
 	@PutMapping
-	StoreSettingsResponse update(@PathVariable String storeSlug,
+	AdminStoreSettingsResponse update(@PathVariable String storeSlug,
 			@Valid @RequestBody UpdateStoreSettingsRequest body, HttpServletRequest request) {
 		permissionGuard.require(request, TenantPermission.MANAGE_BASIC_SETTINGS);
-		return StoreSettingsResponse.from(storeSlug, service.update(body.toCommand()));
+		return AdminStoreSettingsResponse.from(storeSlug, service.update(body.toCommand()));
 	}
 }

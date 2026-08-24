@@ -46,6 +46,14 @@ public class JdbcCheckoutControlRepository implements CheckoutControlRepository 
 
 	@Override
 	public void requireCommerciallyEnabled(long tenantId, PaymentEnvironment environment) {
+		if (!isCommerciallyEnabled(tenantId, environment)) {
+			throw new CheckoutPaymentException(
+				"PAYMENTS_NOT_ENABLED", "Los pagos en línea no están habilitados para este comercio.");
+		}
+	}
+
+	@Override
+	public boolean isCommerciallyEnabled(long tenantId, PaymentEnvironment environment) {
 		Integer count = jdbcTemplate.queryForObject("""
 			SELECT COUNT(*)
 			FROM merchant_payment_capabilities capability
@@ -53,10 +61,7 @@ public class JdbcCheckoutControlRepository implements CheckoutControlRepository 
 			WHERE capability.tenant_id = ? AND capability.environment = ?
 				AND capability.checkout_enabled = TRUE AND tenant.status = 'ACTIVE'
 			""", Integer.class, tenantId, environment.name());
-		if (count == null || count != 1) {
-			throw new CheckoutPaymentException(
-				"PAYMENTS_NOT_ENABLED", "Los pagos en línea no están habilitados para este comercio.");
-		}
+		return count != null && count == 1;
 	}
 
 	@Override

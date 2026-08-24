@@ -2,18 +2,18 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { StoreSettings, UpdateStoreSettings } from './store-settings.models';
+import { AdminStoreSettings, UpdateStoreSettings } from './store-settings.models';
 
 @Injectable({ providedIn: 'root' })
 export class StoreSettingsApiService {
   private readonly http = inject(HttpClient);
 
-  get(storeSlug: string): Observable<StoreSettings> {
-    return this.http.get<StoreSettings>(this.url(storeSlug));
+  get(storeSlug: string): Observable<AdminStoreSettings> {
+    return this.http.get<AdminStoreSettings>(this.url(storeSlug));
   }
 
-  update(storeSlug: string, body: UpdateStoreSettings): Observable<StoreSettings> {
-    return this.http.put<StoreSettings>(this.url(storeSlug), body);
+  update(storeSlug: string, body: UpdateStoreSettings): Observable<AdminStoreSettings> {
+    return this.http.put<AdminStoreSettings>(this.url(storeSlug), body);
   }
 
   private url(storeSlug: string): string {

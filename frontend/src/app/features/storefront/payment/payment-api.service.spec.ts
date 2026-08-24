@@ -54,6 +54,44 @@ describe('PaymentApiService', () => {
     });
   });
 
+  it('queries enabled methods and starts a private bank transfer', () => {
+    api.getMethods('tienda a').subscribe();
+    const methods = http.expectOne('/api/v1/stores/tienda%20a/payment-methods');
+    expect(methods.request.method).toBe('GET');
+    methods.flush({ mercadoPago: true, bankTransfer: true });
+
+    api.startBankTransfer('tienda a', 'order/1', 'private token').subscribe();
+    const start = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/v1/stores/tienda%20a/orders/order%2F1/payments/bank-transfer' &&
+        candidate.params.get('token') === 'private token',
+    );
+    expect(start.request.method).toBe('POST');
+    expect(start.request.body).toEqual({});
+    start.flush({});
+  });
+
+  it('uploads a bank receipt as multipart without setting a public object key', () => {
+    const file = new File(['%PDF-1.4\n%%EOF'], 'receipt.pdf', { type: 'application/pdf' });
+    api.uploadBankTransferReceipt(
+      'tienda a', 'order/1', 'payment/1', 'private token', file,
+    ).subscribe();
+
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url ===
+          '/api/v1/stores/tienda%20a/orders/order%2F1/payments/bank-transfer/payment%2F1/receipt' &&
+        candidate.params.get('token') === 'private token',
+    );
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeInstanceOf(FormData);
+    const uploaded = (request.request.body as FormData).get('file') as File;
+    expect(uploaded.name).toBe(file.name);
+    expect(uploaded.type).toBe(file.type);
+    expect(uploaded.size).toBe(file.size);
+    request.flush({});
+  });
+
   it('asks the backend to reconcile a provider payment securely', () => {
     api.reconcileReturn('tienda a', 'return/token', '171652320068').subscribe();
 

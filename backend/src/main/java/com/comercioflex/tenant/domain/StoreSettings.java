@@ -8,6 +8,11 @@ public record StoreSettings(
 	String contactEmail,
 	String pickupAddress,
 	String pickupInstructions,
+	boolean bankTransferEnabled,
+	String bankName,
+	String bankAccountHolder,
+	String bankAlias,
+	String bankCbuCvu,
 	BrandTheme brandTheme,
 	TenantBranding branding
 ) {

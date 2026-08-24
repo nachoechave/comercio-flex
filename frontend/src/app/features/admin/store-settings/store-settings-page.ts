@@ -26,6 +26,11 @@ export class StoreSettingsPage {
     contactEmail: ['', [Validators.email, Validators.maxLength(254)]],
     pickupAddress: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(240)]],
     pickupInstructions: ['', Validators.maxLength(500)],
+    bankTransferEnabled: [false],
+    bankName: ['', Validators.maxLength(120)],
+    bankAccountHolder: ['', Validators.maxLength(160)],
+    bankAlias: ['', Validators.maxLength(120)],
+    bankCbuCvu: ['', [Validators.maxLength(40), Validators.pattern(/^$|^[0-9]{6,40}$/)]],
   });
 
   constructor() {
@@ -34,9 +39,14 @@ export class StoreSettingsPage {
       if (!slug) { this.loading.set(false); return; }
       const subscription = this.api.get(slug).subscribe({
         next: (settings) => {
-          this.form.setValue({ storeName: settings.storeName, contactPhone: settings.contactPhone ?? '',
-            contactEmail: settings.contactEmail ?? '', pickupAddress: settings.pickupAddress ?? '',
-            pickupInstructions: settings.pickupInstructions ?? '' });
+          this.form.setValue({ storeName: settings.storeName,
+            contactPhone: settings.contactPhone ?? '',
+            contactEmail: settings.contactEmail ?? '',
+            pickupAddress: settings.pickupAddress ?? '',
+            pickupInstructions: settings.pickupInstructions ?? '',
+            bankTransferEnabled: settings.bankTransferEnabled ?? false,
+            bankName: settings.bankName ?? '', bankAccountHolder: settings.bankAccountHolder ?? '',
+            bankAlias: settings.bankAlias ?? '', bankCbuCvu: settings.bankCbuCvu ?? '' });
           this.loading.set(false);
         },
         error: () => { this.errorMessage.set('No pudimos cargar la configuración.'); this.loading.set(false); },
@@ -48,7 +58,10 @@ export class StoreSettingsPage {
   save(): void {
     this.form.markAllAsTouched();
     const value = this.form.getRawValue();
-    if (this.form.invalid || (!value.contactPhone.trim() && !value.contactEmail.trim()) || this.saving()) {
+    const invalidBankTransfer = value.bankTransferEnabled &&
+      (!value.bankAccountHolder.trim() || (!value.bankAlias.trim() && !value.bankCbuCvu.trim()));
+    if (this.form.invalid || (!value.contactPhone.trim() && !value.contactEmail.trim()) ||
+        invalidBankTransfer || this.saving()) {
       this.errorMessage.set('Revisá los campos. Necesitamos al menos un teléfono o correo.');
       return;
     }
@@ -59,7 +72,9 @@ export class StoreSettingsPage {
       exhaustMap(() => this.api.update(slug, { ...value,
         storeName: value.storeName.trim(), contactPhone: value.contactPhone.trim(),
         contactEmail: value.contactEmail.trim(), pickupAddress: value.pickupAddress.trim(),
-        pickupInstructions: value.pickupInstructions.trim() })),
+        pickupInstructions: value.pickupInstructions.trim(), bankName: value.bankName.trim(),
+        bankAccountHolder: value.bankAccountHolder.trim(), bankAlias: value.bankAlias.trim(),
+        bankCbuCvu: value.bankCbuCvu.trim() })),
       finalize(() => this.saving.set(false)),
     ).subscribe({ next: () => this.noticeMessage.set('La tienda quedó actualizada.'),
       error: () => this.errorMessage.set('No pudimos guardar los cambios.') });

@@ -9,13 +9,15 @@ public record StoreSettingsResponse(
 	String contactEmail,
 	String pickupAddress,
 	String pickupInstructions,
+	boolean bankTransferEnabled,
 	String brandTheme,
 	BrandingResponse branding
 ) {
 	static StoreSettingsResponse from(String slug, com.comercioflex.tenant.domain.StoreSettings settings) {
 		return new StoreSettingsResponse(slug, settings.storeName(), settings.currencyCode(),
 			settings.timezone(), settings.contactPhone(), settings.contactEmail(),
-			settings.pickupAddress(), settings.pickupInstructions(), settings.brandTheme().name(),
+			settings.pickupAddress(), settings.pickupInstructions(),
+			settings.bankTransferEnabled(), settings.brandTheme().name(),
 			BrandingResponse.from(slug, settings.branding()));
 	}
 

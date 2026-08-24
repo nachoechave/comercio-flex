@@ -64,6 +64,14 @@ import { AuthService } from '../../core/auth/auth.service';
         >
           Pedidos
         </a>
+        <a
+          [routerLink]="[
+            '/tiendas', currentMembership.storeSlug, 'admin', 'pedidos', 'transferencias'
+          ]"
+          routerLinkActive="active"
+        >
+          Transferencias
+        </a>
         @if (currentMembership.role !== 'STAFF') {
           <a
             [routerLink]="[

@@ -136,6 +136,93 @@ button:disabled {
   background: #fff5f4;
 }
 
+.payment-methods,
+.bank-transfer {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.payment-methods h2,
+.bank-transfer h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.payment-methods button {
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.payment-methods button span,
+.bank-transfer span,
+.bank-transfer small {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+button.secondary,
+button.copy {
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid var(--color-accent);
+}
+
+button.copy {
+  width: auto;
+  justify-self: start;
+  min-height: 2rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.82rem;
+}
+
+.bank-transfer p,
+.receipt-status {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+}
+
+.receipt-status {
+  padding: 0.8rem;
+  border-radius: 0.7rem;
+  background: #edf8f2;
+}
+
+.receipt-status.rejected {
+  background: #fff1ef;
+}
+
+.upload-button {
+  display: grid;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  place-items: center;
+  border-radius: 0.7rem;
+  color: #fff;
+  background: var(--color-accent);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.upload-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.bank-message {
+  padding: 0.75rem;
+  border-radius: 0.7rem;
+  background: #f5f1ff;
+}
+
 .loading {
   min-height: 20rem;
 }

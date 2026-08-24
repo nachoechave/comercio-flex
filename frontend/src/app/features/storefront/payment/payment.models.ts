@@ -15,6 +15,36 @@ export interface CheckoutProStart {
   replayed: boolean;
 }
 
+export interface PaymentMethods {
+  mercadoPago: boolean;
+  bankTransfer: boolean;
+}
+
+export type BankTransferStatus =
+  | 'AWAITING_RECEIPT'
+  | 'UNDER_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED';
+
+export interface BankTransferPayment {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  attemptNumber: number;
+  status: BankTransferStatus;
+  bankName: string | null;
+  accountHolder: string;
+  alias: string | null;
+  cbuCvu: string | null;
+  amount: string;
+  currencyCode: string;
+  reservationExpiresAt: string;
+  receiptUploadedAt: string | null;
+  rejectionReason: string | null;
+  canUpload: boolean;
+  updatedAt: string;
+}
+
 export interface PaymentReturnStatus {
   orderId: string;
   orderNumber: string;
