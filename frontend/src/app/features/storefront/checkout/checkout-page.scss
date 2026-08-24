@@ -110,6 +110,77 @@ textarea:focus-visible {
   background: color-mix(in srgb, var(--color-accent), white 94%);
 }
 
+.payment-selection {
+  align-content: start;
+}
+
+.payment-method-card {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.8rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.payment-method-card.selected {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent), white 96%);
+}
+
+.payment-method-card input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.payment-method-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.payment-method-copy strong {
+  color: var(--color-text);
+}
+
+.payment-method-copy > span {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.payment-method-status {
+  margin: 0;
+  padding: 1rem;
+  border-radius: 0.8rem;
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-border), white 75%);
+}
+
+.payment-method-status.error {
+  border: 1px solid #dc8f8f;
+  color: var(--color-text);
+  background: #fff0f0;
+}
+
+.payment-method-status p {
+  margin: 0;
+}
+
+.payment-method-status button {
+  width: fit-content;
+  min-height: auto;
+  margin-top: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-border);
+}
+
 button,
 .warning a {
   display: grid;

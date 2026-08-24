@@ -71,6 +71,67 @@
           </div>
         </fieldset>
 
+        <fieldset class="payment-selection">
+          <legend>¿Cómo querés pagar?</legend>
+          @if (paymentMethodsLoading()) {
+            <p class="payment-method-status" role="status">Consultando medios de pago…</p>
+          } @else if (paymentMethodsErrorMessage(); as methodsError) {
+            <div class="payment-method-status error" role="alert">
+              <p>{{ methodsError }}</p>
+              <button type="button" class="secondary" (click)="retryPaymentMethods()">
+                Reintentar consulta
+              </button>
+            </div>
+          } @else if (paymentMethods(); as methods) {
+            @if (methods.mercadoPago) {
+              <label
+                class="payment-method-card"
+                [class.selected]="selectedPaymentMethod() === 'MERCADO_PAGO'"
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="MERCADO_PAGO"
+                  [checked]="selectedPaymentMethod() === 'MERCADO_PAGO'"
+                  [disabled]="submitting()"
+                  (change)="selectPaymentMethod('MERCADO_PAGO')"
+                />
+                <span class="payment-method-copy">
+                  <strong>Mercado Pago</strong>
+                  <span>Tarjetas y dinero disponible</span>
+                </span>
+              </label>
+            }
+            @if (methods.bankTransfer) {
+              <label
+                class="payment-method-card"
+                [class.selected]="selectedPaymentMethod() === 'BANK_TRANSFER'"
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="BANK_TRANSFER"
+                  [checked]="selectedPaymentMethod() === 'BANK_TRANSFER'"
+                  [disabled]="submitting()"
+                  (change)="selectPaymentMethod('BANK_TRANSFER')"
+                />
+                <span class="payment-method-copy">
+                  <strong>Transferencia bancaria</strong>
+                  <span>Transferí y enviá el comprobante</span>
+                </span>
+              </label>
+            }
+            @if (!methods.mercadoPago && !methods.bankTransfer) {
+              <div class="payment-method-status error" role="alert">
+                <p>El comercio no tiene medios de pago habilitados en este momento.</p>
+                <button type="button" class="secondary" (click)="retryPaymentMethods()">
+                  Reintentar consulta
+                </button>
+              </div>
+            }
+          }
+        </fieldset>
+
         @if (errorMessage()) {
           <div class="error-message" role="alert">
             <strong>{{
@@ -80,8 +141,11 @@
           </div>
         }
 
-        <button type="submit" [disabled]="submitting()">
-          {{ submitting() ? 'Preparando pago…' : 'Continuar a Mercado Pago' }}
+        <button
+          type="submit"
+          [disabled]="submitting() || paymentMethodsLoading() || !selectedPaymentMethod()"
+        >
+          {{ submitLabel() }}
         </button>
       </form>
 
