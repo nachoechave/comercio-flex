@@ -9,6 +9,7 @@ export interface StoreSettings {
   contactEmail?: string | null;
   pickupAddress?: string | null;
   pickupInstructions?: string | null;
+  bankTransferEnabled?: boolean;
   brandTheme?: BrandTheme;
   branding?: TenantBranding;
 }

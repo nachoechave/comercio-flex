@@ -25,7 +25,12 @@ public class StoreSettingsService {
 			nullIfBlank(command.contactPhone()),
 			nullIfBlank(command.contactEmail()),
 			command.pickupAddress().trim(),
-			nullIfBlank(command.pickupInstructions()));
+			nullIfBlank(command.pickupInstructions()),
+			command.bankTransferEnabled(),
+			nullIfBlank(command.bankName()),
+			nullIfBlank(command.bankAccountHolder()),
+			nullIfBlank(command.bankAlias()),
+			nullIfBlank(command.bankCbuCvu()));
 		return transactionTemplate.execute(status -> {
 			if (repository.findCurrent().isEmpty()) {
 				throw new TenantNotFoundException();

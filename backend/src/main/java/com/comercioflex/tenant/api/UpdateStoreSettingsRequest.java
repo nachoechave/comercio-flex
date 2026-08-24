@@ -12,7 +12,12 @@ public record UpdateStoreSettingsRequest(
 	@Size(max = 40) @Pattern(regexp = "^$|^[+0-9][0-9 ()\\-]{6,39}$") String contactPhone,
 	@Size(max = 254) @Email String contactEmail,
 	@NotBlank @Size(min = 5, max = 240) String pickupAddress,
-	@Size(max = 500) String pickupInstructions
+	@Size(max = 500) String pickupInstructions,
+	boolean bankTransferEnabled,
+	@Size(max = 120) String bankName,
+	@Size(max = 160) String bankAccountHolder,
+	@Size(max = 120) String bankAlias,
+	@Size(max = 40) @Pattern(regexp = "^$|^[0-9]{6,40}$") String bankCbuCvu
 ) {
 	@AssertTrue(message = "Debe indicar al menos un teléfono o correo de contacto.")
 	public boolean isContactProvided() {
@@ -25,9 +30,16 @@ public record UpdateStoreSettingsRequest(
 			&& trimmedLengthBetween(pickupAddress, 5, 240);
 	}
 
+	@AssertTrue(message = "La transferencia requiere titular y alias o CBU/CVU.")
+	public boolean isBankTransferConfigurationValid() {
+		return !bankTransferEnabled
+			|| (hasText(bankAccountHolder) && (hasText(bankAlias) || hasText(bankCbuCvu)));
+	}
+
 	UpdateStoreSettingsCommand toCommand() {
 		return new UpdateStoreSettingsCommand(storeName, contactPhone, contactEmail,
-			pickupAddress, pickupInstructions);
+			pickupAddress, pickupInstructions, bankTransferEnabled, bankName,
+			bankAccountHolder, bankAlias, bankCbuCvu);
 	}
 
 	private static boolean hasText(String value) {

@@ -103,6 +103,20 @@ describe('OrderConfirmationPage', () => {
   });
 
   it('allows retrying when the previous attempt reported payments not enabled', () => {
+    http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush({
+      mercadoPago: true,
+      bankTransfer: false,
+    });
+    http
+      .expectOne(
+        (request) =>
+          request.url ===
+            `/api/v1/stores/tienda-a/orders/${orderId}/payments/bank-transfer` &&
+          request.params.get('token') === 'private-token',
+      )
+      .flush({}, { status: 404, statusText: 'Not Found' });
+    fixture.detectChanges();
+
     expect(fixture.nativeElement.textContent).toContain(
       'El pago en línea no está habilitado para esta tienda.',
     );
@@ -130,6 +144,88 @@ describe('OrderConfirmationPage', () => {
 
     expect(paymentNavigation.navigate).toHaveBeenCalledWith(
       'https://www.mercadopago.com.ar/checkout/v1/redirect',
+    );
+  });
+
+  it('fails closed and allows retrying when payment methods cannot be loaded', () => {
+    http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush(
+      {},
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'No pudimos consultar los medios de pago. Intentá nuevamente.',
+    );
+    const initialLabels = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).map((button) => button.textContent ?? '');
+    expect(initialLabels.some((label) => label.includes('Mercado Pago'))).toBe(false);
+    expect(initialLabels.some((label) => label.includes('Transferencia bancaria'))).toBe(false);
+
+    const retry = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Reintentar consulta'));
+    expect(retry).toBeDefined();
+    retry?.click();
+
+    http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush({
+      mercadoPago: false,
+      bankTransfer: true,
+    });
+    http
+      .expectOne(
+        (request) =>
+          request.url ===
+            `/api/v1/stores/tienda-a/orders/${orderId}/payments/bank-transfer` &&
+          request.params.get('token') === 'private-token',
+      )
+      .flush({}, { status: 404, statusText: 'Not Found' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'No pudimos consultar los medios de pago. Intentá nuevamente.',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Transferencia bancaria');
+    expect(fixture.nativeElement.textContent).not.toContain('Tarjetas y dinero disponible');
+  });
+
+  it('keeps an existing bank transfer usable after new transfers are disabled', () => {
+    http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush({
+      mercadoPago: false,
+      bankTransfer: false,
+    });
+    http
+      .expectOne(
+        (request) =>
+          request.url ===
+            `/api/v1/stores/tienda-a/orders/${orderId}/payments/bank-transfer` &&
+          request.params.get('token') === 'private-token',
+      )
+      .flush({
+        id: '22222222-2222-4222-8222-222222222222',
+        orderId,
+        orderNumber: 'ORD-000004',
+        attemptNumber: 1,
+        status: 'AWAITING_RECEIPT',
+        bankName: 'Banco Demo',
+        accountHolder: 'Tienda A SA',
+        alias: 'TIENDA.A',
+        cbuCvu: null,
+        amount: '12333.00',
+        currencyCode: 'ARS',
+        reservationExpiresAt: '2026-08-25T03:31:00Z',
+        receiptUploadedAt: null,
+        rejectionReason: null,
+        canUpload: true,
+        updatedAt: '2026-08-24T03:31:00Z',
+      });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Transferencia bancaria');
+    expect(fixture.nativeElement.textContent).toContain('Subir comprobante');
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'El comercio todavía no habilitó un medio de pago.',
     );
   });
 });

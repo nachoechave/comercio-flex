@@ -6,6 +6,8 @@ fieldset { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--c
 legend { padding: 0 .4rem; font-size: 1.15rem; font-weight: 800; }
 label { display: grid; gap: .4rem; font-weight: 700; }
 label span, fieldset p { color: var(--color-muted); font-weight: 400; }
+.switch-row { grid-template-columns: auto 1fr; align-items: center; }
+.switch-row input { width: auto; }
 input, select, textarea { width: 100%; padding: .7rem; border: 1px solid #9389a5; border-radius: .6rem; background: white; font: inherit; }
 button { min-height: 2.8rem; padding: .7rem 1rem; border: 0; border-radius: .7rem; color: white; background: var(--color-accent); font: inherit; font-weight: 800; cursor: pointer; }
 button:disabled { opacity: .65; cursor: wait; }

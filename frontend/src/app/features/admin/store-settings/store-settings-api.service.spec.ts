@@ -23,6 +23,8 @@ describe('StoreSettingsApiService', () => {
     api.update('tienda/a', {
       storeName: 'Tienda', contactPhone: '1111111', contactEmail: '',
       pickupAddress: 'Calle 123', pickupInstructions: '',
+      bankTransferEnabled: false, bankName: '', bankAccountHolder: '',
+      bankAlias: '', bankCbuCvu: '',
     }).subscribe();
     const request = http.expectOne('/api/v1/stores/tienda%2Fa/admin/settings');
     expect(request.request.method).toBe('PUT');

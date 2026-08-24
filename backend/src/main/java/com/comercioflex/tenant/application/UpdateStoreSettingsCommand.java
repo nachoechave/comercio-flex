@@ -5,6 +5,11 @@ public record UpdateStoreSettingsCommand(
 	String contactPhone,
 	String contactEmail,
 	String pickupAddress,
-	String pickupInstructions
+	String pickupInstructions,
+	boolean bankTransferEnabled,
+	String bankName,
+	String bankAccountHolder,
+	String bankAlias,
+	String bankCbuCvu
 ) {
 }

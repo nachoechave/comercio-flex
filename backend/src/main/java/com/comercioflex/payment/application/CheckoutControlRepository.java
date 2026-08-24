@@ -11,6 +11,8 @@ public interface CheckoutControlRepository {
 
 	void requireCommerciallyEnabled(long tenantId, PaymentEnvironment environment);
 
+	boolean isCommerciallyEnabled(long tenantId, PaymentEnvironment environment);
+
 	void insertRoute(
 		UUID routeId,
 		byte[] routeTokenHash,

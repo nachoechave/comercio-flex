@@ -62,6 +62,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 		}
 		String storeResource = matcher.group(2);
 		return !storeResource.equals("/settings")
+			&& !storeResource.equals("/payment-methods")
 			&& !storeResource.equals("/catalog")
 			&& !storeResource.startsWith("/catalog/")
 			&& !storeResource.equals("/orders")

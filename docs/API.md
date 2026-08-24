@@ -863,6 +863,48 @@ Errores públicos implementados:
 Las respuestas nunca incluyen access/refresh token, secreto de firma, digest,
 seller interno, payload completo, ciphertext ni error crudo del SDK.
 
+## Transferencia bancaria con comprobante
+
+La disponibilidad pública de medios de pago se consulta sin exponer datos
+bancarios:
+
+```http
+GET /api/v1/stores/{storeSlug}/payment-methods
+```
+
+El flujo invitado usa el mismo `lookupToken` privado del pedido. Iniciar una
+transferencia extiende tanto el vencimiento del pedido como todas sus reservas
+`ACTIVE` a 24 horas desde ese momento. No crea `payment_intents` ni
+`payment_transactions` de Mercado Pago.
+
+| Método | Ruta | Uso |
+|---|---|---|
+| `POST` | `/api/v1/stores/{slug}/orders/{orderId}/payments/bank-transfer?token=...` | Inicia o recupera el intento vigente. |
+| `GET` | `/api/v1/stores/{slug}/orders/{orderId}/payments/bank-transfer?token=...` | Consulta el último intento e instrucciones. |
+| `POST` | `/api/v1/stores/{slug}/orders/{orderId}/payments/bank-transfer/{paymentId}/receipt?token=...` | Sube `file` como `multipart/form-data`. |
+
+El comprobante admite JPEG, PNG o PDF real de hasta 5 MiB. El backend compara
+`Content-Type` con la firma del contenido, genera una object key impredecible y
+lo guarda en storage privado. La respuesta pública nunca contiene object key ni
+URL permanente. Un rechazo conserva el intento en el historial y habilita uno
+nuevo mientras la reserva siga vigente.
+
+La revisión requiere sesión tenant y permiso `MANAGE_ORDERS`:
+
+| Método | Ruta | Uso |
+|---|---|---|
+| `GET` | `/api/v1/stores/{slug}/admin/bank-transfer-payments` | Lista comprobantes `UNDER_REVIEW`. |
+| `GET` | `/api/v1/stores/{slug}/admin/bank-transfer-payments/{id}` | Obtiene el detalle. |
+| `GET` | `/api/v1/stores/{slug}/admin/bank-transfer-payments/{id}/receipt` | Sirve los bytes privados sin cache. |
+| `POST` | `/api/v1/stores/{slug}/admin/bank-transfer-payments/{id}/approve` | Confirma pedido y consume reserva/stock en una transacción idempotente. |
+| `POST` | `/api/v1/stores/{slug}/admin/bank-transfer-payments/{id}/reject` | Rechaza con `{ "reason": "..." }` sin consumir stock. |
+
+La configuración administrativa amplía `PUT /admin/settings` con
+`bankTransferEnabled`, `bankName`, `bankAccountHolder`, `bankAlias` y
+`bankCbuCvu`. Al habilitar exige titular y al menos alias o CBU/CVU. La API
+pública de settings sólo informa el booleano; los datos bancarios completos se
+entregan exclusivamente al enlace privado de un pedido iniciado.
+
 ## Dashboard administrativo
 
 `OWNER` y `ADMIN` pueden consultar el resumen operativo del comercio seleccionado:

@@ -63,15 +63,93 @@
             <strong>{{ currentOrder.reservationExpiresAt | date: 'short' }}</strong
             >.
           </p>
-          <button type="button" (click)="startPayment()" [disabled]="paymentStarting()">
-            @if (paymentStarting()) {
-              Abriendo Mercado Pago…
-            } @else if (paymentErrorMessage()) {
-              Reintentar con Mercado Pago
-            } @else {
-              Pagar con Mercado Pago
-            }
-          </button>
+          @if (paymentMethodsLoading()) {
+            <p role="status">Consultando medios de pago…</p>
+          } @else if (paymentMethodsErrorMessage(); as methodsError) {
+            <div class="payment-message" role="alert">
+              <p>{{ methodsError }}</p>
+              <button type="button" class="secondary" (click)="retryPaymentMethods()">
+                Reintentar consulta
+              </button>
+            </div>
+          } @else if (paymentMethods(); as methods) {
+            <section class="payment-methods" aria-labelledby="payment-methods-title">
+              <h2 id="payment-methods-title">¿Cómo querés pagar?</h2>
+              @if (methods.mercadoPago) {
+                <button type="button" (click)="startPayment()" [disabled]="paymentStarting()">
+                  <strong>{{ paymentErrorMessage() ? 'Reintentar con Mercado Pago' : 'Mercado Pago' }}</strong>
+                  <span>Tarjetas y dinero disponible</span>
+                </button>
+              }
+              @if (methods.bankTransfer && !bankTransfer()) {
+                <button
+                  type="button"
+                  class="secondary"
+                  (click)="startBankTransfer()"
+                  [disabled]="bankTransferStarting()"
+                >
+                  <strong>Transferencia bancaria</strong>
+                  <span>Transferí y enviá el comprobante</span>
+                </button>
+              }
+              @if (!methods.mercadoPago && !methods.bankTransfer && !bankTransfer()) {
+                <p>El comercio todavía no habilitó un medio de pago.</p>
+              }
+            </section>
+          }
+
+          @if (bankTransfer(); as transfer) {
+            <section class="bank-transfer" aria-labelledby="bank-transfer-title">
+              <h2 id="bank-transfer-title">Transferencia bancaria</h2>
+              @if (transfer.bankName) { <p><span>Banco</span><strong>{{ transfer.bankName }}</strong></p> }
+              <p><span>Titular</span><strong>{{ transfer.accountHolder }}</strong></p>
+              @if (transfer.alias) {
+                <p><span>Alias</span><strong>{{ transfer.alias }}</strong></p>
+                <button type="button" class="copy" (click)="copy(transfer.alias)">Copiar alias</button>
+              }
+              @if (transfer.cbuCvu) {
+                <p><span>CBU/CVU</span><strong>{{ transfer.cbuCvu }}</strong></p>
+                <button type="button" class="copy" (click)="copy(transfer.cbuCvu)">Copiar CBU/CVU</button>
+              }
+              <p>
+                <span>Total exacto</span>
+                <strong>{{ transfer.amount | storefrontMoney: transfer.currencyCode }}</strong>
+              </p>
+              <p><span>Reserva hasta</span><strong>{{ transfer.reservationExpiresAt | date: 'short' }}</strong></p>
+
+              @if (transfer.status === 'UNDER_REVIEW') {
+                <div class="receipt-status" role="status">
+                  <strong>Comprobante enviado</strong>
+                  <span>El comercio está revisando tu transferencia. Consultá nuevamente este pedido para ver el estado.</span>
+                </div>
+              } @else if (transfer.status === 'REJECTED') {
+                <div class="receipt-status rejected" role="alert">
+                  <strong>Comprobante rechazado</strong>
+                  <span>{{ transfer.rejectionReason }}</span>
+                </div>
+                @if (transfer.canUpload) {
+                  <button type="button" class="secondary" (click)="startBankTransfer()">
+                    Crear un nuevo intento
+                  </button>
+                }
+              } @else if (transfer.status === 'AWAITING_RECEIPT' && transfer.canUpload) {
+                <label class="upload-button">
+                  {{ receiptUploading() ? 'Subiendo…' : 'Subir comprobante' }}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,application/pdf"
+                    (change)="uploadReceipt($event)"
+                    [disabled]="receiptUploading()"
+                  />
+                </label>
+                <small>JPEG, PNG o PDF. Máximo 5 MB.</small>
+              }
+            </section>
+          }
+
+          @if (bankTransferMessage()) {
+            <p class="bank-message" role="status">{{ bankTransferMessage() }}</p>
+          }
         }
         <a [routerLink]="['/tiendas', storeSlug()]">Seguir comprando</a>
       </aside>

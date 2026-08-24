@@ -1,0 +1,43 @@
+<section class="page" aria-labelledby="transfer-title">
+  <nav><a [routerLink]="['../']">Transferencias pendientes</a> / Detalle</nav>
+  @if (loading()) { <p role="status">Cargando transferencia…</p> }
+  @else if (payment(); as current) {
+    <header>
+      <p class="eyebrow">{{ current.status }}</p>
+      <h1 id="transfer-title">{{ current.orderNumber }}</h1>
+      <p>{{ current.customerName }} · {{ current.createdAt | date: 'short' }}</p>
+    </header>
+    @if (errorMessage()) { <p class="error" role="alert">{{ errorMessage() }}</p> }
+    <div class="layout">
+      <section class="card">
+        <h2>Comprobante</h2>
+        <dl>
+          <div><dt>Total</dt><dd>{{ current.amount | storefrontMoney: current.currencyCode }}</dd></div>
+          <div><dt>Archivo</dt><dd>{{ current.receiptOriginalFilename }}</dd></div>
+          <div><dt>Enviado</dt><dd>{{ current.receiptUploadedAt | date: 'short' }}</dd></div>
+          <div><dt>Reserva</dt><dd>{{ current.reservationExpiresAt | date: 'short' }}</dd></div>
+        </dl>
+        @if (current.receiptAvailable) {
+          <a class="primary" [href]="receiptUrl()" target="_blank" rel="noopener">Ver comprobante</a>
+        }
+      </section>
+      <aside class="card">
+        <h2>Revisión</h2>
+        @if (current.status === 'UNDER_REVIEW') {
+          <button type="button" (click)="approve()" [disabled]="submitting()">Confirmar pago</button>
+          <form [formGroup]="form" (ngSubmit)="reject()">
+            <label>Motivo del rechazo
+              <textarea formControlName="reason" rows="4" maxlength="500"></textarea>
+            </label>
+            <button class="destructive" type="submit" [disabled]="submitting() || form.invalid">
+              Rechazar comprobante
+            </button>
+          </form>
+        } @else {
+          <p>Este comprobante ya fue revisado.</p>
+          @if (current.rejectionReason) { <p>{{ current.rejectionReason }}</p> }
+        }
+      </aside>
+    </div>
+  }
+</section>

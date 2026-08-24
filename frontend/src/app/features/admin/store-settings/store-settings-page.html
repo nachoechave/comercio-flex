@@ -16,6 +16,21 @@
         <label>Dirección<input formControlName="pickupAddress" autocomplete="street-address" maxlength="240" /></label>
         <label>Indicaciones <span>(opcional)</span><textarea formControlName="pickupInstructions" rows="4" maxlength="500"></textarea></label>
       </fieldset>
+      <fieldset>
+        <legend>Medios de pago</legend>
+        <p>Mercado Pago se administra desde la sección Pagos.</p>
+        <label class="switch-row">
+          <input type="checkbox" formControlName="bankTransferEnabled" />
+          Transferencia bancaria habilitada
+        </label>
+        @if (form.controls.bankTransferEnabled.value) {
+          <label>Banco <span>(opcional)</span><input formControlName="bankName" maxlength="120" /></label>
+          <label>Titular<input formControlName="bankAccountHolder" maxlength="160" /></label>
+          <label>Alias<input formControlName="bankAlias" maxlength="120" /></label>
+          <label>CBU/CVU<input formControlName="bankCbuCvu" inputmode="numeric" maxlength="40" /></label>
+          <small>Indicá el titular y al menos un alias o CBU/CVU.</small>
+        }
+      </fieldset>
       <button type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar configuración' }}</button>
     </form>
   }

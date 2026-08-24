@@ -92,10 +92,15 @@ public class JdbcCheckoutRepository implements CheckoutRepository {
 	@Override
 	public boolean hasBlockingIntent(long orderInternalId) {
 		Integer count = jdbcTemplate.queryForObject("""
-			SELECT COUNT(*) FROM payment_intents
-			WHERE order_id = ?
-				AND status IN ('CREATED', 'PENDING', 'APPROVED', 'REQUIRES_REVIEW')
-			""", Integer.class, orderInternalId);
+			SELECT (
+				SELECT COUNT(*) FROM payment_intents
+				WHERE order_id = ?
+					AND status IN ('CREATED', 'PENDING', 'APPROVED', 'REQUIRES_REVIEW')
+			) + (
+				SELECT COUNT(*) FROM bank_transfer_payments
+				WHERE order_id = ? AND status IN ('AWAITING_RECEIPT', 'UNDER_REVIEW')
+			)
+			""", Integer.class, orderInternalId, orderInternalId);
 		return count != null && count > 0;
 	}
 

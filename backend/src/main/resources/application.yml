@@ -81,6 +81,16 @@ app:
   cors:
     allowed-origin: ${FRONTEND_ORIGINS:${FRONTEND_ORIGIN:http://localhost:4200}}
   payments:
+    receipt-storage:
+      storage: ${PAYMENT_RECEIPT_STORAGE:local}
+      local-root: ${PAYMENT_RECEIPT_LOCAL_ROOT:.data/payment-receipts}
+      s3:
+        bucket: ${PAYMENT_RECEIPT_S3_BUCKET:}
+        region: ${PAYMENT_RECEIPT_S3_REGION:auto}
+        endpoint: ${PAYMENT_RECEIPT_S3_ENDPOINT:}
+        access-key: ${PAYMENT_RECEIPT_S3_ACCESS_KEY:}
+        secret-key: ${PAYMENT_RECEIPT_S3_SECRET_KEY:}
+        path-style: ${PAYMENT_RECEIPT_S3_PATH_STYLE:false}
     mercado-pago:
       enabled: ${PAYMENTS_MERCADO_PAGO_ENABLED:false}
       environment: ${PAYMENT_MODE:TEST}

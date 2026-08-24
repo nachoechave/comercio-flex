@@ -5,7 +5,10 @@ spring:
 
 app:
   media:
-    storage: s3
+    storage: ${MEDIA_STORAGE:s3}
+  payments:
+    receipt-storage:
+      storage: ${PAYMENT_RECEIPT_STORAGE:s3}
   database:
     tenant-migration-enabled: true
     migration-username: ${MIGRATION_DB_USER}

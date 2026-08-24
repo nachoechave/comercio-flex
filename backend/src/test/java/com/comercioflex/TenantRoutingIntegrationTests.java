@@ -98,6 +98,15 @@ class TenantRoutingIntegrationTests {
 		registry.add("app.database.migration-username", TENANT_A_DATABASE::getUsername);
 		registry.add("app.database.migration-password", TENANT_A_DATABASE::getPassword);
 		registry.add("app.media.local-root", () -> "target/test-media-tenant-routing");
+		registry.add("app.payments.checkout-pro.enabled", () -> "true");
+		registry.add("app.payments.checkout-pro.test-access-token", () -> "TEST-token");
+		registry.add("app.payments.checkout-pro.test-seller-account-id", () -> "seller-test");
+		registry.add("app.payments.checkout-pro.test-demo-tenant-slug", () -> "tienda-a");
+		registry.add("app.payments.checkout-pro.public-backend-base-uri",
+			() -> "https://backend.example.test");
+		registry.add("app.payments.checkout-pro.frontend-base-uri",
+			() -> "https://frontend.example.test");
+		registry.add("app.payments.checkout-pro.webhook-secret", () -> "test-webhook-secret");
 		registerTenantConnection(registry, "tenant-a", TENANT_A_DATABASE);
 		registerTenantConnection(registry, "tenant-b", TENANT_B_DATABASE);
 	}
@@ -107,6 +116,7 @@ class TenantRoutingIntegrationTests {
 		execute(CONTROL_DATABASE, "DELETE FROM SPRING_SESSION_ATTRIBUTES");
 		execute(CONTROL_DATABASE, "DELETE FROM SPRING_SESSION");
 		execute(CONTROL_DATABASE, "DELETE FROM platform_audit_events");
+		execute(CONTROL_DATABASE, "DELETE FROM merchant_payment_capabilities");
 		execute(CONTROL_DATABASE, "DELETE FROM memberships");
 		execute(CONTROL_DATABASE, "DELETE FROM platform_users");
 		execute(CONTROL_DATABASE, "DELETE FROM tenants");
@@ -325,6 +335,47 @@ class TenantRoutingIntegrationTests {
 				'%s'
 			)
 			""".formatted(slug, slug, status, databaseKey);
+	}
+
+	@Test
+	void paymentMethodsResolveTenantSettingsAndCommercialCapability() throws Exception {
+		execute(CONTROL_DATABASE, """
+			INSERT INTO merchant_payment_capabilities (
+				tenant_id, environment, checkout_enabled
+			)
+			SELECT id, 'TEST', TRUE FROM tenants WHERE slug = 'tienda-a'
+			""");
+
+		mockMvc.perform(get("/api/v1/stores/tienda-a/payment-methods"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.mercadoPago").value(true))
+			.andExpect(jsonPath("$.bankTransfer").value(false));
+		assertThat(tenantContext.currentDatabaseKey()).isEmpty();
+
+		execute(TENANT_A_DATABASE, """
+			UPDATE store_settings
+			SET bank_transfer_enabled = TRUE,
+				bank_account_holder = 'Tienda A SA', bank_alias = 'TIENDA.A'
+			""");
+
+		mockMvc.perform(get("/api/v1/stores/tienda-a/payment-methods"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.mercadoPago").value(true))
+			.andExpect(jsonPath("$.bankTransfer").value(true));
+		assertThat(tenantContext.currentDatabaseKey()).isEmpty();
+
+		execute(CONTROL_DATABASE, """
+			UPDATE merchant_payment_capabilities capability
+			JOIN tenants tenant ON tenant.id = capability.tenant_id
+			SET capability.checkout_enabled = FALSE
+			WHERE tenant.slug = 'tienda-a' AND capability.environment = 'TEST'
+			""");
+
+		mockMvc.perform(get("/api/v1/stores/tienda-a/payment-methods"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.mercadoPago").value(false))
+			.andExpect(jsonPath("$.bankTransfer").value(true));
+		assertThat(tenantContext.currentDatabaseKey()).isEmpty();
 	}
 
 	@Test

@@ -2,7 +2,12 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { CheckoutProStart, PaymentReturnStatus } from './payment.models';
+import {
+  BankTransferPayment,
+  CheckoutProStart,
+  PaymentMethods,
+  PaymentReturnStatus,
+} from './payment.models';
 
 @Injectable({ providedIn: 'root' })
 export class PaymentApiService {
@@ -20,6 +25,54 @@ export class PaymentApiService {
       `${this.ordersUrl(storeSlug)}/${encodeURIComponent(orderId)}/payments/checkout-pro`,
       {},
       { headers, params },
+    );
+  }
+
+  getMethods(storeSlug: string): Observable<PaymentMethods> {
+    return this.http.get<PaymentMethods>(
+      `/api/v1/stores/${encodeURIComponent(storeSlug)}/payment-methods`,
+    );
+  }
+
+  startBankTransfer(
+    storeSlug: string,
+    orderId: string,
+    lookupToken: string,
+  ): Observable<BankTransferPayment> {
+    const params = new HttpParams().set('token', lookupToken);
+    return this.http.post<BankTransferPayment>(
+      `${this.ordersUrl(storeSlug)}/${encodeURIComponent(orderId)}/payments/bank-transfer`,
+      {},
+      { params },
+    );
+  }
+
+  getCurrentBankTransfer(
+    storeSlug: string,
+    orderId: string,
+    lookupToken: string,
+  ): Observable<BankTransferPayment> {
+    const params = new HttpParams().set('token', lookupToken);
+    return this.http.get<BankTransferPayment>(
+      `${this.ordersUrl(storeSlug)}/${encodeURIComponent(orderId)}/payments/bank-transfer`,
+      { params },
+    );
+  }
+
+  uploadBankTransferReceipt(
+    storeSlug: string,
+    orderId: string,
+    paymentId: string,
+    lookupToken: string,
+    file: File,
+  ): Observable<BankTransferPayment> {
+    const params = new HttpParams().set('token', lookupToken);
+    const body = new FormData();
+    body.append('file', file, file.name);
+    return this.http.post<BankTransferPayment>(
+      `${this.ordersUrl(storeSlug)}/${encodeURIComponent(orderId)}/payments/bank-transfer/${encodeURIComponent(paymentId)}/receipt`,
+      body,
+      { params },
     );
   }
 
