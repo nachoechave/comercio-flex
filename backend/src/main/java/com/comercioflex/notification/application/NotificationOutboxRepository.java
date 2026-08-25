@@ -7,7 +7,10 @@ import java.util.UUID;
 public interface NotificationOutboxRepository {
 	boolean enqueue(String eventKey, String eventType, UUID orderId,
 		Long bankTransferInternalId, TransactionalEmail email);
-	Optional<OutboxEmail> claim(String eventKey);
-	void markSent(long id, Instant sentAt);
-	void markFailed(long id, String error);
+	Optional<OutboxEmail> claimNext(Instant eligibleAt, Instant staleSendingBefore,
+		int maxAttempts);
+	int recoverExhaustedStaleSending(Instant staleSendingBefore, int maxAttempts, int limit);
+	boolean markSent(long id, int attemptCount, Instant sentAt);
+	boolean markFailed(long id, int attemptCount, String error, Instant nextAttemptAt);
+	boolean makeEligibleForManualRetry(long id, Instant eligibleAt);
 }

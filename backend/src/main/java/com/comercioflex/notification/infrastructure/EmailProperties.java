@@ -13,6 +13,16 @@ public class EmailProperties {
 	private String username = "";
 	private String password = "";
 	private boolean starttls = true;
+	private int smtpConnectTimeoutMs = 5_000;
+	private int smtpReadTimeoutMs = 10_000;
+	private int smtpWriteTimeoutMs = 10_000;
+	private boolean outboxWorkerEnabled = true;
+	private long outboxPollIntervalMs = 30_000;
+	private int outboxBatchSize = 25;
+	private int outboxMaxAttempts = 5;
+	private long outboxInitialBackoffSeconds = 60;
+	private long outboxMaxBackoffSeconds = 3_600;
+	private long outboxSendingTimeoutSeconds = 300;
 
 	public boolean isEnabled() { return enabled; }
 	public void setEnabled(boolean enabled) { this.enabled = enabled; }
@@ -32,4 +42,24 @@ public class EmailProperties {
 	public void setPassword(String password) { this.password = password; }
 	public boolean isStarttls() { return starttls; }
 	public void setStarttls(boolean starttls) { this.starttls = starttls; }
+	public int getSmtpConnectTimeoutMs() { return smtpConnectTimeoutMs; }
+	public void setSmtpConnectTimeoutMs(int value) { this.smtpConnectTimeoutMs = value; }
+	public int getSmtpReadTimeoutMs() { return smtpReadTimeoutMs; }
+	public void setSmtpReadTimeoutMs(int value) { this.smtpReadTimeoutMs = value; }
+	public int getSmtpWriteTimeoutMs() { return smtpWriteTimeoutMs; }
+	public void setSmtpWriteTimeoutMs(int value) { this.smtpWriteTimeoutMs = value; }
+	public boolean isOutboxWorkerEnabled() { return outboxWorkerEnabled; }
+	public void setOutboxWorkerEnabled(boolean value) { this.outboxWorkerEnabled = value; }
+	public long getOutboxPollIntervalMs() { return outboxPollIntervalMs; }
+	public void setOutboxPollIntervalMs(long value) { this.outboxPollIntervalMs = value; }
+	public int getOutboxBatchSize() { return outboxBatchSize; }
+	public void setOutboxBatchSize(int value) { this.outboxBatchSize = value; }
+	public int getOutboxMaxAttempts() { return outboxMaxAttempts; }
+	public void setOutboxMaxAttempts(int value) { this.outboxMaxAttempts = value; }
+	public long getOutboxInitialBackoffSeconds() { return outboxInitialBackoffSeconds; }
+	public void setOutboxInitialBackoffSeconds(long value) { this.outboxInitialBackoffSeconds = value; }
+	public long getOutboxMaxBackoffSeconds() { return outboxMaxBackoffSeconds; }
+	public void setOutboxMaxBackoffSeconds(long value) { this.outboxMaxBackoffSeconds = value; }
+	public long getOutboxSendingTimeoutSeconds() { return outboxSendingTimeoutSeconds; }
+	public void setOutboxSendingTimeoutSeconds(long value) { this.outboxSendingTimeoutSeconds = value; }
 }
