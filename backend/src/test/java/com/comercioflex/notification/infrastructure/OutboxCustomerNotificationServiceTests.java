@@ -18,10 +18,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.context.ApplicationEventPublisher;
 
 import com.comercioflex.notification.application.NotificationOutboxRepository;
-import com.comercioflex.notification.application.NotificationQueuedEvent;
 import com.comercioflex.notification.application.TransactionalEmail;
 import com.comercioflex.order.application.AdminOrderDetail;
 import com.comercioflex.order.application.AdminOrderRepository;
@@ -42,14 +40,13 @@ class OutboxCustomerNotificationServiceTests {
 	private final NotificationOutboxRepository outbox = mock(NotificationOutboxRepository.class);
 	private final AdminOrderRepository orders = mock(AdminOrderRepository.class);
 	private final StoreSettingsRepository stores = mock(StoreSettingsRepository.class);
-	private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
 	private OutboxCustomerNotificationService service;
 
 	@BeforeEach
 	void setUp() {
 		when(stores.findCurrent()).thenReturn(Optional.of(store()));
 		service = new OutboxCustomerNotificationService(
-			outbox, orders, stores, new EmailTemplateRenderer(), events);
+			outbox, orders, stores, new EmailTemplateRenderer());
 	}
 
 	@Test
@@ -64,7 +61,6 @@ class OutboxCustomerNotificationServiceTests {
 		verify(outbox, org.mockito.Mockito.times(2)).enqueue(
 			eq("ORDER_CONFIRMED:" + ORDER_ID), eq("ORDER_CONFIRMED"), eq(ORDER_ID),
 			eq(null), email.capture());
-		verify(events).publishEvent(new NotificationQueuedEvent("ORDER_CONFIRMED:" + ORDER_ID));
 		assertThat(email.getValue().subject()).isEqualTo("Tu pedido ORD-000011 fue confirmado");
 		assertThat(email.getValue().htmlBody())
 			.contains("Tienda A", "Ana Pérez", "Remera", "25/08/2026, 12:05")

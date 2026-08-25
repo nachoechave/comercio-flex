@@ -1,20 +1,18 @@
 package com.comercioflex.notification.infrastructure;
 
 import java.time.Clock;
-import java.util.Optional;
+import java.time.Duration;
+import java.time.Instant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.comercioflex.notification.application.NotificationOutboxRepository;
-import com.comercioflex.notification.application.NotificationQueuedEvent;
 import com.comercioflex.notification.application.OutboxEmail;
 import com.comercioflex.notification.application.TransactionalEmailSender;
 
@@ -45,25 +43,40 @@ public class TransactionalEmailOutboxDispatcher {
 		this.clock = clock;
 	}
 
-	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-	public void afterCommit(NotificationQueuedEvent event) {
-		trySend(event.eventKey());
-	}
-
-	public void trySend(String eventKey) {
-		if (!properties.isEnabled()) return;
-		Optional<OutboxEmail> claimed = requiresNew.execute(status -> outbox.claim(eventKey));
-		if (claimed == null || claimed.isEmpty()) return;
-		OutboxEmail message = claimed.get();
+	public void deliver(OutboxEmail message) {
 		try {
 			sender.send(message.email());
-			requiresNew.executeWithoutResult(status -> outbox.markSent(message.id(), clock.instant()));
+			Boolean changed = requiresNew.execute(status ->
+				outbox.markSent(message.id(), message.attemptCount(), clock.instant()));
+			if (Boolean.TRUE.equals(changed)) {
+				LOGGER.info("email_outbox_sent event_type={} attempt={}",
+					message.eventType(), message.attemptCount());
+			}
 		}
 		catch (RuntimeException exception) {
-			requiresNew.executeWithoutResult(status ->
-				outbox.markFailed(message.id(), safeMessage(exception)));
-			LOGGER.warn("Transactional email delivery failed eventKey={}", eventKey, exception);
+			Instant failedAt = clock.instant();
+			Instant nextAttemptAt = nextAttemptAt(message.attemptCount(), failedAt);
+			requiresNew.executeWithoutResult(status -> outbox.markFailed(
+				message.id(), message.attemptCount(), safeMessage(exception), nextAttemptAt));
+			LOGGER.warn("email_outbox_failed event_type={} attempt={} next_attempt_at={} error_type={}",
+				message.eventType(), message.attemptCount(), nextAttemptAt,
+				exception.getClass().getSimpleName());
 		}
+	}
+
+	Duration backoffForAttempt(int attemptCount) {
+		long initial = Math.max(1, properties.getOutboxInitialBackoffSeconds());
+		long maximum = Math.max(initial, properties.getOutboxMaxBackoffSeconds());
+		long delay = initial;
+		for (int attempt = 1; attempt < attemptCount && delay < maximum; attempt++) {
+			delay = Math.min(maximum, delay > maximum / 2 ? maximum : delay * 2);
+		}
+		return Duration.ofSeconds(delay);
+	}
+
+	private Instant nextAttemptAt(int attemptCount, Instant failedAt) {
+		if (attemptCount >= properties.getOutboxMaxAttempts()) return null;
+		return failedAt.plus(backoffForAttempt(attemptCount));
 	}
 
 	private String safeMessage(RuntimeException exception) {

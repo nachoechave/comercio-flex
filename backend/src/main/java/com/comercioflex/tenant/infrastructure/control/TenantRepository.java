@@ -1,5 +1,6 @@
 package com.comercioflex.tenant.infrastructure.control;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,4 +21,17 @@ public interface TenantRepository extends JpaRepository<TenantEntity, Long> {
 			AND tenant.status = com.comercioflex.tenant.infrastructure.control.TenantStatus.ACTIVE
 		""")
 	Optional<ActiveTenant> findActiveBySlug(@Param("slug") String slug);
+
+	@Query("""
+		SELECT new com.comercioflex.tenant.infrastructure.control.ActiveTenant(
+			tenant.id,
+			tenant.slug,
+			tenant.displayName,
+			tenant.databaseKey
+		)
+		FROM TenantEntity tenant
+		WHERE tenant.status = com.comercioflex.tenant.infrastructure.control.TenantStatus.ACTIVE
+		ORDER BY tenant.slug
+		""")
+	List<ActiveTenant> findAllActive();
 }
