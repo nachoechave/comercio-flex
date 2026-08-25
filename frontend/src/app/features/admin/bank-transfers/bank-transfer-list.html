@@ -17,7 +17,7 @@
             <td><strong>{{ payment.orderNumber }}</strong><small>Intento {{ payment.attemptNumber }}</small></td>
             <td>{{ payment.customerName }}</td>
             <td>{{ payment.amount | storefrontMoney: payment.currencyCode }}</td>
-            <td>{{ payment.receiptUploadedAt | date: 'short' }}</td>
+            <td>{{ payment.receiptUploadedAt | commerceDate }}</td>
             <td>{{ payment.receiptOriginalFilename }}</td>
             <td><a [routerLink]="[payment.id]">Revisar</a></td>
           </tr>

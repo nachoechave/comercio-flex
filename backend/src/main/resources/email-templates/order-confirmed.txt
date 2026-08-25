@@ -1,0 +1,12 @@
+{{storeName}}
+
+Hola {{customerName}},
+
+Tu pedido {{orderNumber}} fue confirmado.
+
+Productos:
+{{itemsText}}
+
+Total: {{total}}
+Modalidad: {{fulfillment}}
+Fecha de confirmación: {{eventDate}}

@@ -1,16 +1,16 @@
-import { DatePipe } from '@angular/common';
 import { Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { CommerceDatePipe } from '../../../shared/pipes/commerce-date.pipe';
 import { StorefrontMoneyPipe } from '../../storefront/storefront-money.pipe';
 import { BankTransferApiService } from './bank-transfer-api.service';
 import { AdminBankTransferPayment } from './bank-transfer.models';
 
 @Component({
   selector: 'app-bank-transfer-list',
-  imports: [DatePipe, RouterLink, StorefrontMoneyPipe],
+  imports: [CommerceDatePipe, RouterLink, StorefrontMoneyPipe],
   templateUrl: './bank-transfer-list.html',
   styleUrl: './bank-transfer-list.scss',
 })

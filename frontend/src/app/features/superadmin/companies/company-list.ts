@@ -1,7 +1,7 @@
-import { DatePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { CommerceDatePipe } from '../../../shared/pipes/commerce-date.pipe';
 
 import { SuperAdminApiService } from '../super-admin-api.service';
 import {
@@ -13,7 +13,7 @@ import {
 
 @Component({
   selector: 'app-company-list',
-  imports: [DatePipe, ReactiveFormsModule, RouterLink],
+  imports: [CommerceDatePipe, ReactiveFormsModule, RouterLink],
   templateUrl: './company-list.html',
   styleUrl: './company-list.scss',
 })

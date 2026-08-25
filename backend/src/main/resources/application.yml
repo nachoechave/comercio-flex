@@ -59,6 +59,16 @@ logging:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level requestId=%X{requestId:-none} logger=%logger{36} - %msg%n"
 
 app:
+  email:
+    enabled: ${EMAIL_ENABLED:false}
+    provider: ${EMAIL_PROVIDER:smtp}
+    from-name: ${EMAIL_FROM_NAME:Comercio Flex}
+    from-address: ${EMAIL_FROM_ADDRESS:no-reply@example.com}
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    starttls: ${SMTP_STARTTLS:true}
   super-admin-bootstrap:
     enabled: ${SUPER_ADMIN_BOOTSTRAP_ENABLED:false}
     email: ${SUPER_ADMIN_BOOTSTRAP_EMAIL:}

@@ -55,7 +55,7 @@
               <td>
                 {{ order.customerName }}<small>{{ order.customerPhone }}</small>
               </td>
-              <td>{{ order.createdAt | date: 'short' }}</td>
+              <td>{{ order.createdAt | commerceDate }}</td>
               <td>
                 <span class="badge">{{ labels[order.status] }}</span>
               </td>

@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, ElementRef, OnDestroy, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
@@ -14,6 +13,7 @@ import {
 } from 'rxjs';
 
 import { CsrfService } from '../../../../core/auth/csrf.service';
+import { CommerceDatePipe } from '../../../../shared/pipes/commerce-date.pipe';
 import { CheckoutProNavigationService } from '../checkout-pro-navigation.service';
 import { PaymentApiService } from '../payment-api.service';
 import { paymentErrorMessage } from '../payment-errors';
@@ -24,7 +24,7 @@ const PENDING_STATUSES = new Set<PublicPaymentStatus>(['CREATED', 'PENDING']);
 
 @Component({
   selector: 'app-payment-return-page',
-  imports: [DatePipe, RouterLink],
+  imports: [CommerceDatePipe, RouterLink],
   templateUrl: './payment-return-page.html',
   styleUrl: './payment-return-page.scss',
 })

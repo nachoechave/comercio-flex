@@ -79,6 +79,7 @@
         } @else {
           <a [routerLink]="['/tiendas', settings.slug]">Productos</a>
         }
+        <a [routerLink]="['/tiendas', settings.slug, 'mis-pedidos']">Mis pedidos</a>
         <a
           class="cart-link"
           [routerLink]="['/tiendas', settings.slug, 'carrito']"
@@ -123,6 +124,7 @@
             >Colecciones</a
           >
           <a [routerLink]="['/tiendas', settings.slug, 'carrito']">Carrito</a>
+          <a [routerLink]="['/tiendas', settings.slug, 'mis-pedidos']">Mis pedidos</a>
         </div>
         <div>
           <strong>Ayuda</strong>
@@ -150,6 +152,7 @@
         </div>
         <div>
           <p>Tienda creada con <a routerLink="/">Comercio Flex</a></p>
+          <a [routerLink]="['/tiendas', settings.slug, 'mis-pedidos']">Mis pedidos</a>
           <a [routerLink]="['/tiendas', settings.slug, 'admin']">Administrar tienda</a>
         </div>
       </footer>

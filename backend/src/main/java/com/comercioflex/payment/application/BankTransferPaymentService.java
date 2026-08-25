@@ -19,6 +19,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.comercioflex.order.application.OrderTransitionExecution;
 import com.comercioflex.order.application.PaidOrderConfirmer;
 import com.comercioflex.order.domain.OrderStatus;
+import com.comercioflex.notification.application.CustomerNotificationPublisher;
 import com.comercioflex.payment.domain.BankTransferStatus;
 
 @Service
@@ -31,6 +32,7 @@ public class BankTransferPaymentService {
 	private final BankTransferRepository repository;
 	private final PaymentReceiptStorage storage;
 	private final PaidOrderConfirmer orderConfirmer;
+	private final CustomerNotificationPublisher notifications;
 	private final TransactionTemplate transactions;
 	private final Clock clock;
 
@@ -39,8 +41,9 @@ public class BankTransferPaymentService {
 			BankTransferRepository repository,
 			PaymentReceiptStorage storage,
 			PaidOrderConfirmer orderConfirmer,
+			CustomerNotificationPublisher notifications,
 			@Qualifier("tenantTransactionTemplate") TransactionTemplate transactions) {
-		this(repository, storage, orderConfirmer, transactions, Clock.systemUTC());
+		this(repository, storage, orderConfirmer, notifications, transactions, Clock.systemUTC());
 	}
 
 	BankTransferPaymentService(
@@ -49,9 +52,21 @@ public class BankTransferPaymentService {
 			PaidOrderConfirmer orderConfirmer,
 			TransactionTemplate transactions,
 			Clock clock) {
+		this(repository, storage, orderConfirmer, CustomerNotificationPublisher.noop(),
+			transactions, clock);
+	}
+
+	BankTransferPaymentService(
+			BankTransferRepository repository,
+			PaymentReceiptStorage storage,
+			PaidOrderConfirmer orderConfirmer,
+			CustomerNotificationPublisher notifications,
+			TransactionTemplate transactions,
+			Clock clock) {
 		this.repository = repository;
 		this.storage = storage;
 		this.orderConfirmer = orderConfirmer;
+		this.notifications = notifications;
 		this.transactions = transactions;
 		this.clock = clock;
 	}
@@ -204,7 +219,10 @@ public class BankTransferPaymentService {
 					"El comprobante no está pendiente de revisión.");
 			}
 			repository.reject(payment, reviewerId, reason, clock.instant());
-			return repository.findById(paymentId, false).orElseThrow(this::notFound);
+			BankTransferPayment rejected = repository.findById(paymentId, false)
+				.orElseThrow(this::notFound);
+			notifications.bankTransferReceiptRejected(rejected, clock.instant());
+			return rejected;
 		}));
 	}
 

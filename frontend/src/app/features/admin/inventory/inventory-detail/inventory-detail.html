@@ -27,7 +27,7 @@
     <section class="quantity-card" aria-labelledby="current-quantity-title">
       <h2 id="current-quantity-title">Existencia actual</h2>
       <strong>{{ current.quantity | quantityFormat }}</strong>
-      <small>Última actualización: {{ current.updatedAt | date: 'short' }}</small>
+      <small>Última actualización: {{ current.updatedAt | commerceDate }}</small>
     </section>
 
     <section aria-labelledby="movements-title">
@@ -41,7 +41,7 @@
             <tbody>
               @for (movement of movements().items; track movement.id) {
                 <tr>
-                  <td>{{ movement.createdAt | date: 'short' }}</td>
+                  <td>{{ movement.createdAt | commerceDate }}</td>
                   <td><strong>{{ movement.delta | quantityFormat }}</strong></td>
                   <td>{{ movement.quantityBefore | quantityFormat }}</td>
                   <td>{{ movement.quantityAfter | quantityFormat }}</td>

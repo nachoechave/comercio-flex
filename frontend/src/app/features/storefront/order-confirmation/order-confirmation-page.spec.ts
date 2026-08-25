@@ -56,7 +56,9 @@ describe('OrderConfirmationPage', () => {
   };
 
   beforeEach(async () => {
+    vi.useFakeTimers();
     sessionStorage.clear();
+    localStorage.clear();
     paymentNavigation.navigate.mockReset();
     await TestBed.configureTestingModule({
       imports: [OrderConfirmationPage],
@@ -100,6 +102,8 @@ describe('OrderConfirmationPage', () => {
   afterEach(() => {
     http.verify();
     sessionStorage.clear();
+    localStorage.clear();
+    vi.useRealTimers();
   });
 
   it('allows retrying when the previous attempt reported payments not enabled', () => {
@@ -228,4 +232,86 @@ describe('OrderConfirmationPage', () => {
       'El comercio todavía no habilitó un medio de pago.',
     );
   });
+
+  it('updates UNDER_REVIEW to APPROVED without refreshing the page', async () => {
+    flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
+
+    await vi.advanceTimersByTimeAsync(12_000);
+    http.expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
+      .flush({ ...order, status: 'CONFIRMED' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Pedido confirmado');
+    expect(fixture.nativeElement.textContent).not.toContain('Subir comprobante');
+  });
+
+  it('updates UNDER_REVIEW to REJECTED and allows a new receipt', async () => {
+    flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
+
+    await vi.advanceTimersByTimeAsync(12_000);
+    http.expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
+      .flush(order);
+    http.expectOne((request) => request.url.endsWith('/payments/bank-transfer'))
+      .flush(bankTransfer('REJECTED'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('El comprobante fue rechazado');
+    expect(fixture.nativeElement.textContent).toContain('No se distingue el importe');
+    expect(fixture.nativeElement.textContent).toContain('Enviar un nuevo comprobante');
+  });
+
+  it('cancels polling on destroy and does not overlap slow requests', async () => {
+    flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
+
+    await vi.advanceTimersByTimeAsync(12_000);
+    const slow = http.expectOne(
+      (request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`,
+    );
+    await vi.advanceTimersByTimeAsync(24_000);
+    http.expectNone((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`);
+    slow.flush(order);
+    http.expectOne((request) => request.url.endsWith('/payments/bank-transfer'))
+      .flush(bankTransfer('UNDER_REVIEW'));
+
+    fixture.destroy();
+    await vi.advanceTimersByTimeAsync(24_000);
+    http.expectNone((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`);
+  });
+
+  it('shows one clear success message after uploading a receipt', () => {
+    flushPaymentMethodsAndTransfer(bankTransfer('AWAITING_RECEIPT'));
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('input[type="file"]');
+    const file = new File(['%PDF-1.4\n%%EOF'], 'comprobante.pdf', { type: 'application/pdf' });
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.dispatchEvent(new Event('change'));
+
+    http.expectOne((request) => request.url.endsWith('/receipt')).flush(bankTransfer('UNDER_REVIEW'));
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement.textContent.match(/Comprobante enviado/g) ?? []).length).toBe(1);
+    expect(fixture.nativeElement.textContent).toContain(
+      'El comercio está revisando tu transferencia.',
+    );
+  });
+
+  function flushPaymentMethodsAndTransfer(transfer: ReturnType<typeof bankTransfer>): void {
+    http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush({
+      mercadoPago: true,
+      bankTransfer: true,
+    });
+    http.expectOne((request) => request.url.endsWith('/payments/bank-transfer')).flush(transfer);
+    fixture.detectChanges();
+  }
+
+  function bankTransfer(status: 'AWAITING_RECEIPT' | 'UNDER_REVIEW' | 'REJECTED') {
+    return {
+      id: '22222222-2222-4222-8222-222222222222', orderId,
+      orderNumber: 'ORD-000004', attemptNumber: 1, status,
+      bankName: 'Banco Demo', accountHolder: 'Tienda A SA', alias: 'TIENDA.A', cbuCvu: null,
+      amount: '12333.00', currencyCode: 'ARS', reservationExpiresAt: '2026-08-25T18:31:00Z',
+      receiptUploadedAt: status === 'AWAITING_RECEIPT' ? null : '2026-08-25T15:00:00Z',
+      rejectionReason: status === 'REJECTED' ? 'No se distingue el importe' : null,
+      canUpload: status !== 'UNDER_REVIEW', updatedAt: '2026-08-25T15:00:00Z',
+    };
+  }
 });

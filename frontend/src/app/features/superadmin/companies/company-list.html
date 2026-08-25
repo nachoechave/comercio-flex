@@ -73,7 +73,7 @@
                   <span class="muted">Sin administrador</span>
                 }
               </td>
-              <td>{{ company.createdAt | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ company.createdAt | commerceDate: 'date' }}</td>
               <td>
                 <span class="status" [class]="'status ' + company.status.toLowerCase()">
                   {{ statusLabel(company.status) }}

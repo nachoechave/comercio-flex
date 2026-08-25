@@ -1,0 +1,33 @@
+<section class="recent-orders" aria-labelledby="recent-orders-title">
+  <header>
+    <p class="eyebrow">Seguimiento local</p>
+    <h1 id="recent-orders-title">Mis pedidos</h1>
+    <p>Los pedidos que aparecen acá son los realizados desde este navegador.</p>
+  </header>
+
+  @if (loading() && entries().length === 0) {
+    <p role="status">Buscando tus pedidos recientes…</p>
+  } @else if (entries().length === 0) {
+    <div class="empty-state">
+      <p>No tenés pedidos recientes en este dispositivo.</p>
+      <a [routerLink]="['/tiendas', storeSlug()]">Ver productos</a>
+    </div>
+  } @else {
+    <ul>
+      @for (entry of entries(); track entry.storeSlug + ':' + entry.orderId) {
+        <li>
+          <div>
+            <strong>{{ entry.orderNumber }}</strong>
+            <span>{{ statusLabel(entry.lastKnownStatus) }}</span>
+            <time [attr.datetime]="entry.createdAt">{{ entry.createdAt | commerceDate: 'date' }}</time>
+          </div>
+          <div>
+            <strong>{{ entry.total | storefrontMoney: entry.currencyCode }}</strong>
+            <button type="button" (click)="open(entry)">Ver pedido</button>
+          </div>
+        </li>
+      }
+    </ul>
+    @if (loading()) { <p class="refreshing" role="status">Actualizando estados…</p> }
+  }
+</section>

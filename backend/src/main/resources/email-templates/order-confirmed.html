@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<style>body{margin:0;background:#f5f5f7;color:#242424;font-family:Arial,sans-serif}.card{max-width:620px;margin:24px auto;background:#fff;border-radius:14px;overflow:hidden}.header{padding:28px;background:#29242f;color:#fff}.content{padding:28px}.items{width:100%;border-collapse:collapse}.items td{padding:10px 0;border-bottom:1px solid #e8e8eb}.amount{text-align:right}.total{font-size:20px;font-weight:bold}.muted{color:#65616a}.footer{padding:20px 28px;background:#fafafa;color:#65616a;font-size:13px}@media(max-width:640px){.card{margin:0;border-radius:0}.header,.content{padding:22px}}</style>
+</head><body><main class="card"><header class="header"><strong>{{storeName}}</strong><h1>Pedido confirmado</h1></header>
+<section class="content"><p>Hola {{customerName}},</p><p>Tu pedido <strong>{{orderNumber}}</strong> fue confirmado.</p>
+<table class="items" role="presentation">{{itemsHtml}}<tr class="total"><td>Total</td><td class="amount">{{total}}</td></tr></table>
+<h2>Retiro</h2><p>{{fulfillment}}</p><p class="muted">Confirmado el {{eventDate}}.</p></section>
+<footer class="footer">Este es un email transaccional de {{storeName}}.</footer></main></body></html>

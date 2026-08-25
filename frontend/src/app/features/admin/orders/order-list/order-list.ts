@@ -1,10 +1,11 @@
 import { Component, effect, inject, signal } from '@angular/core';
-import { DatePipe, KeyValuePipe } from '@angular/common';
+import { KeyValuePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
+import { CommerceDatePipe } from '../../../../shared/pipes/commerce-date.pipe';
 import { StorefrontMoneyPipe } from '../../../storefront/storefront-money.pipe';
 import { OrderApiService } from '../order-api.service';
 import { AdminOrderPage, ORDER_STATUS_LABELS, OrderStatus } from '../order.models';
@@ -19,7 +20,7 @@ const EMPTY_PAGE: AdminOrderPage = {
 
 @Component({
   selector: 'app-order-list',
-  imports: [DatePipe, KeyValuePipe, ReactiveFormsModule, RouterLink, StorefrontMoneyPipe],
+  imports: [CommerceDatePipe, KeyValuePipe, ReactiveFormsModule, RouterLink, StorefrontMoneyPipe],
   templateUrl: './order-list.html',
   styleUrl: './order-list.scss',
 })

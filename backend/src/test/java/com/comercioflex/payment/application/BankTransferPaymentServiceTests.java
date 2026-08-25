@@ -30,6 +30,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.comercioflex.order.application.OrderTransitionExecution;
 import com.comercioflex.order.application.PaidOrderConfirmer;
 import com.comercioflex.order.domain.OrderStatus;
+import com.comercioflex.notification.application.CustomerNotificationPublisher;
 import com.comercioflex.payment.domain.BankTransferStatus;
 
 class BankTransferPaymentServiceTests {
@@ -42,6 +43,7 @@ class BankTransferPaymentServiceTests {
 	private final BankTransferRepository repository = mock(BankTransferRepository.class);
 	private final PaymentReceiptStorage storage = mock(PaymentReceiptStorage.class);
 	private final PaidOrderConfirmer confirmer = mock(PaidOrderConfirmer.class);
+	private final CustomerNotificationPublisher notifications = mock(CustomerNotificationPublisher.class);
 	private final TransactionTemplate transactions = mock(TransactionTemplate.class);
 	private BankTransferPaymentService service;
 
@@ -52,7 +54,7 @@ class BankTransferPaymentServiceTests {
 			TransactionCallback<Object> callback = invocation.getArgument(0);
 			return callback.doInTransaction(mock(TransactionStatus.class));
 		});
-		service = new BankTransferPaymentService(repository, storage, confirmer,
+		service = new BankTransferPaymentService(repository, storage, confirmer, notifications,
 			transactions, Clock.fixed(NOW, ZoneOffset.UTC));
 	}
 
@@ -213,6 +215,7 @@ class BankTransferPaymentServiceTests {
 		assertThat(service.reject(PAYMENT_ID, 7L, "No se distingue el importe").status())
 			.isEqualTo(BankTransferStatus.REJECTED);
 		verify(repository).reject(reviewing, 7L, "No se distingue el importe", NOW);
+		verify(notifications).bankTransferReceiptRejected(rejected, NOW);
 		verify(confirmer, never()).confirmWithinCurrentTransaction(any(), any());
 	}
 

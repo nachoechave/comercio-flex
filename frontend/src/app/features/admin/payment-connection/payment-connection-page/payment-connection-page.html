@@ -47,7 +47,7 @@
         @if (current.connectedAt) {
           <div>
             <dt>Conectada el:</dt>
-            <dd>{{ current.connectedAt | date: 'short' }}</dd>
+            <dd>{{ current.connectedAt | commerceDate }}</dd>
           </div>
         }
       </dl>
