@@ -58,7 +58,7 @@
           <div><dt>Estado</dt><dd>{{ statusLabel(current.status) }}</dd></div>
           <div><dt>Tenant</dt><dd><code>{{ current.slug }}</code></dd></div>
           <div><dt>Rubro</dt><dd>{{ current.industry || 'Sin especificar' }}</dd></div>
-          <div><dt>Fecha de alta</dt><dd>{{ current.createdAt | date: 'dd/MM/yyyy, HH:mm' }}</dd></div>
+          <div><dt>Fecha de alta</dt><dd>{{ current.createdAt | commerceDate }}</dd></div>
         </dl>
       </article>
       <article>
@@ -77,7 +77,7 @@
         <dl>
           <div><dt>Dominio</dt><dd>{{ current.domain || 'Sin configurar' }}</dd></div>
           <div><dt>Teléfono</dt><dd>{{ current.phone || 'Sin configurar' }}</dd></div>
-          <div><dt>Última actividad operativa</dt><dd>{{ current.lastActivityAt ? (current.lastActivityAt | date: 'dd/MM/yyyy, HH:mm') : 'Sin datos' }}</dd></div>
+          <div><dt>Última actividad operativa</dt><dd>{{ current.lastActivityAt ? (current.lastActivityAt | commerceDate) : 'Sin datos' }}</dd></div>
         </dl>
       </article>
     </section>
@@ -100,7 +100,7 @@
                   <td><strong>{{ user.name }}</strong><small>{{ user.email }}</small></td>
                   <td>{{ roleLabel(user.role) }}</td>
                   <td><span class="user-status" [class.inactive]="user.membershipStatus !== 'ACTIVE' || user.userStatus !== 'ACTIVE'">{{ userStatusLabel(user) }}</span></td>
-                  <td>{{ user.joinedAt | date: 'dd/MM/yyyy' }}</td>
+                  <td>{{ user.joinedAt | commerceDate: 'date' }}</td>
                 </tr>
               }
             </tbody>
@@ -147,7 +147,7 @@
       } @else {
         <ol class="timeline">
           @for (event of activity().items; track event.id) {
-            <li><span aria-hidden="true"></span><div><strong>{{ activityLabel(event.action) }}</strong><p>{{ event.actorName }} · {{ event.actorEmail }}</p><time>{{ event.createdAt | date: 'dd/MM/yyyy, HH:mm' }}</time></div></li>
+            <li><span aria-hidden="true"></span><div><strong>{{ activityLabel(event.action) }}</strong><p>{{ event.actorName }} · {{ event.actorEmail }}</p><time>{{ event.createdAt | commerceDate }}</time></div></li>
           }
         </ol>
         @if (activity().totalPages > 1) {
@@ -194,11 +194,11 @@
           <p class="notice error" role="alert">{{ technical.failureReason }}</p>
         }
         <div class="infrastructure-grid">
-          <article><span>Estado</span><strong>{{ infrastructureStatusLabel(technical.provisioningStatus) }}</strong><small>{{ technical.updatedAt ? ('Actualizado ' + (technical.updatedAt | date: 'dd/MM/yyyy, HH:mm')) : 'Sin marca de actualización' }}</small></article>
+          <article><span>Estado</span><strong>{{ infrastructureStatusLabel(technical.provisioningStatus) }}</strong><small>{{ technical.updatedAt ? ('Actualizado ' + (technical.updatedAt | commerceDate)) : 'Sin marca de actualización' }}</small></article>
           <article><span>Aislamiento</span><strong>Base independiente por tenant</strong><small>Los identificadores y credenciales no se exponen.</small></article>
-          <article><span>Provisionado</span><strong>{{ technical.provisionedAt ? (technical.provisionedAt | date: 'dd/MM/yyyy, HH:mm') : 'Administración externa' }}</strong><small>Flyway mantiene el esquema tenant.</small></article>
+          <article><span>Provisionado</span><strong>{{ technical.provisionedAt ? (technical.provisionedAt | commerceDate) : 'Administración externa' }}</strong><small>Flyway mantiene el esquema tenant.</small></article>
           <article><span>Dominio personalizado</span><strong>{{ technical.customDomainConfigured ? 'Configurado' : 'No configurado' }}</strong><small>La publicación requiere DNS y TLS en infraestructura.</small></article>
-          <article><span>Última actividad</span><strong>{{ technical.lastActivityAt ? (technical.lastActivityAt | date: 'dd/MM/yyyy, HH:mm') : 'Sin datos' }}</strong><small>Se registra actividad autenticada del panel tenant.</small></article>
+          <article><span>Última actividad</span><strong>{{ technical.lastActivityAt ? (technical.lastActivityAt | commerceDate) : 'Sin datos' }}</strong><small>Se registra actividad autenticada del panel tenant.</small></article>
         </div>
       </section>
     } @else {

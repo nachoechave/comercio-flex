@@ -9,6 +9,7 @@ import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
 import { CartService } from '../cart/cart.service';
+import { GuestOrderHistoryService } from '../guest-orders/guest-order-history.service';
 import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
 import { PaymentApiService } from '../payment/payment-api.service';
 import { PaymentMethods } from '../payment/payment.models';
@@ -35,6 +36,7 @@ export class CheckoutPage {
   private readonly paymentApi = inject(PaymentApiService);
   private readonly paymentNavigation = inject(CheckoutProNavigationService);
   private readonly paymentRecovery = inject(PaymentRecoveryService);
+  private readonly guestOrders = inject(GuestOrderHistoryService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly context = inject(StorefrontContextService);
@@ -159,13 +161,19 @@ export class CheckoutPage {
         switchMap(() => this.api.createOrder(storeSlug, this.idempotencyKey!, body)),
         switchMap((response) => {
           createdOrder = { id: response.order.id, lookupToken: response.lookupToken };
-          this.cart.clear(storeSlug);
+          // Persist the private recovery credential before any external payment navigation.
+          try {
+            this.guestOrders.remember(storeSlug, response.order, response.lookupToken);
+          } catch {
+            // Browser persistence is a recovery aid and must never invalidate a created order.
+          }
           this.paymentRecovery.remember(
             storeSlug,
             response.order.id,
             response.lookupToken,
             this.paymentIdempotencyKey!,
           );
+          this.cart.clear(storeSlug);
           if (selectedPaymentMethod === 'BANK_TRANSFER') {
             return this.paymentApi
               .startBankTransfer(storeSlug, response.order.id, response.lookupToken)

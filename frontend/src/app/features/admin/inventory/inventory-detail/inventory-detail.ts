@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -6,6 +5,7 @@ import { forkJoin } from 'rxjs';
 
 import { routeParam } from '../../../../core/auth/auth.guards';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
+import { CommerceDatePipe } from '../../../../shared/pipes/commerce-date.pipe';
 import { QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pipe';
 import { variantOptionsLabel } from '../../../../shared/variant-options';
 import { InventoryApiService } from '../inventory-api.service';
@@ -22,7 +22,7 @@ const EMPTY_MOVEMENTS: MovementPage = {
 
 @Component({
   selector: 'app-inventory-detail',
-  imports: [DatePipe, QuantityFormatPipe, RouterLink],
+  imports: [CommerceDatePipe, QuantityFormatPipe, RouterLink],
   templateUrl: './inventory-detail.html',
   styleUrl: './inventory-detail.scss',
 })

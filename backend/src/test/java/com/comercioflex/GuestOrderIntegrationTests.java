@@ -682,6 +682,12 @@ class GuestOrderIntegrationTests {
 			"SELECT COUNT(*) FROM payment_transactions")).isEqualTo(1);
 		assertThat(count(TENANT_A_DATABASE,
 			"SELECT COUNT(*) FROM inventory_movements")).isEqualTo(1);
+		assertThat(count(TENANT_A_DATABASE, """
+			SELECT COUNT(*) FROM transactional_email_outbox
+			WHERE event_type = 'ORDER_CONFIRMED'
+			""")).isEqualTo(1);
+		assertThat(count(TENANT_B_DATABASE,
+			"SELECT COUNT(*) FROM transactional_email_outbox")).isZero();
 		assertThat(decimal(TENANT_A_DATABASE,
 			"SELECT quantity FROM inventory_balances")).isEqualTo("3.000");
 	}

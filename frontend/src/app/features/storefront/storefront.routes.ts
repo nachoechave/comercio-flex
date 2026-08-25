@@ -14,6 +14,11 @@ export const STOREFRONT_ROUTES: Routes = [
     loadComponent: () => import('./checkout/checkout-page').then((module) => module.CheckoutPage),
   },
   {
+    path: 'mis-pedidos',
+    loadComponent: () =>
+      import('./guest-orders/recent-orders-page').then((module) => module.RecentOrdersPage),
+  },
+  {
     path: 'pedidos/:orderId',
     loadComponent: () =>
       import('./order-confirmation/order-confirmation-page').then(

@@ -63,9 +63,11 @@ describe('StorefrontLayout', () => {
       '/tiendas/tienda-a#category-section',
       '/tiendas/tienda-a#catalog-products',
       '/tiendas/tienda-a#catalog-search',
+      '/tiendas/tienda-a/mis-pedidos',
       '/tiendas/tienda-a#catalog-products',
       '/tiendas/tienda-a#category-section',
       '/tiendas/tienda-a/carrito',
+      '/tiendas/tienda-a/mis-pedidos',
     ]);
   });
 

@@ -1,0 +1,11 @@
+{{storeName}}
+
+Hola {{customerName}},
+
+Necesitamos que revises el comprobante de tu pedido {{orderNumber}}.
+Motivo: {{rejectionReason}}
+Total: {{total}}
+Reserva vigente hasta: {{reservationExpiresAt}}
+
+Podés enviar un nuevo comprobante mientras la reserva siga vigente.
+Tu pedido sigue pendiente de confirmación.

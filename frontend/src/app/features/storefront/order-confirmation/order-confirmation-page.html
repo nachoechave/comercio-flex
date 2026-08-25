@@ -60,7 +60,7 @@
         @if (currentOrder.status === 'PENDING_CONFIRMATION') {
           <p>
             La reserva automática vence el
-            <strong>{{ currentOrder.reservationExpiresAt | date: 'short' }}</strong
+            <strong>{{ currentOrder.reservationExpiresAt | commerceDate }}</strong
             >.
           </p>
           @if (paymentMethodsLoading()) {
@@ -73,6 +73,7 @@
               </button>
             </div>
           } @else if (paymentMethods(); as methods) {
+            @if (!bankTransfer()) {
             <section class="payment-methods" aria-labelledby="payment-methods-title">
               <h2 id="payment-methods-title">¿Cómo querés pagar?</h2>
               @if (methods.mercadoPago) {
@@ -96,6 +97,7 @@
                 <p>El comercio todavía no habilitó un medio de pago.</p>
               }
             </section>
+            }
           }
 
           @if (bankTransfer(); as transfer) {
@@ -115,24 +117,33 @@
                 <span>Total exacto</span>
                 <strong>{{ transfer.amount | storefrontMoney: transfer.currencyCode }}</strong>
               </p>
-              <p><span>Reserva hasta</span><strong>{{ transfer.reservationExpiresAt | date: 'short' }}</strong></p>
+              <p><span>Reserva hasta</span><strong>{{ transfer.reservationExpiresAt | commerceDate }}</strong></p>
 
               @if (transfer.status === 'UNDER_REVIEW') {
                 <div class="receipt-status" role="status">
                   <strong>Comprobante enviado</strong>
-                  <span>El comercio está revisando tu transferencia. Consultá nuevamente este pedido para ver el estado.</span>
+                  <span>El comercio está revisando tu transferencia.<br />Consultá nuevamente este pedido para ver el estado.</span>
                 </div>
               } @else if (transfer.status === 'REJECTED') {
                 <div class="receipt-status rejected" role="alert">
-                  <strong>Comprobante rechazado</strong>
+                  <strong>El comprobante fue rechazado</strong>
                   <span>{{ transfer.rejectionReason }}</span>
+                  <span>Podés enviar otro comprobante mientras la reserva siga vigente.</span>
                 </div>
                 @if (transfer.canUpload) {
                   <button type="button" class="secondary" (click)="startBankTransfer()">
-                    Crear un nuevo intento
+                    Enviar un nuevo comprobante
                   </button>
                 }
+              } @else if (transfer.status === 'APPROVED') {
+                <div class="receipt-status" role="status">
+                  <strong>Pago confirmado</strong>
+                  <span>Tu pedido fue confirmado.</span>
+                </div>
               } @else if (transfer.status === 'AWAITING_RECEIPT' && transfer.canUpload) {
+                <div class="receipt-status" role="status">
+                  <strong>Esperando comprobante</strong>
+                </div>
                 <label class="upload-button">
                   {{ receiptUploading() ? 'Subiendo…' : 'Subir comprobante' }}
                   <input

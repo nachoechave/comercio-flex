@@ -244,7 +244,7 @@ describe('PaymentConnectionPage', () => {
     flushConnection(CONNECTED);
 
     const text = fixture.nativeElement.textContent.replace(/\s+/g, ' ');
-    expect(text).toContain('Fecha:1/8/26, 9:00');
+    expect(text).toContain('Fecha:01/08/2026, 09:00');
     expect(text).toContain('(America/Argentina/Buenos_Aires)');
   });
 

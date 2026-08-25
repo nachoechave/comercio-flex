@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<style>body{margin:0;background:#f5f5f7;color:#242424;font-family:Arial,sans-serif}.card{max-width:620px;margin:24px auto;background:#fff;border-radius:14px;overflow:hidden}.header{padding:28px;background:#29242f;color:#fff}.content{padding:28px}.notice{padding:16px;border-left:4px solid #b44343;background:#fff5f5}.footer{padding:20px 28px;background:#fafafa;color:#65616a;font-size:13px}@media(max-width:640px){.card{margin:0;border-radius:0}.header,.content{padding:22px}}</style>
+</head><body><main class="card"><header class="header"><strong>{{storeName}}</strong><h1>Necesitamos que revises tu comprobante</h1></header>
+<section class="content"><p>Hola {{customerName}},</p><p>El comprobante de tu pedido <strong>{{orderNumber}}</strong> no pudo ser aprobado.</p>
+<div class="notice"><strong>Motivo</strong><p>{{rejectionReason}}</p></div><p>Total: <strong>{{total}}</strong></p>
+<p>Podés enviar un nuevo comprobante mientras la reserva siga vigente, hasta el <strong>{{reservationExpiresAt}}</strong>.</p>
+<p>Tu pedido sigue pendiente de confirmación.</p></section><footer class="footer">Este es un email transaccional de {{storeName}}. No adjuntamos comprobantes.</footer></main></body></html>

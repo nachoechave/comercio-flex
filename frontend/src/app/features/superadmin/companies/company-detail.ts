@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -6,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { CommerceDatePipe } from '../../../shared/pipes/commerce-date.pipe';
 import { SuperAdminApiService } from '../super-admin-api.service';
 import {
   COMPANY_STATUS_LABELS,
@@ -37,7 +37,7 @@ const EMPTY_ACTIVITY: CompanyActivityPage = {
 
 @Component({
   selector: 'app-company-detail',
-  imports: [DatePipe, ReactiveFormsModule, RouterLink],
+  imports: [CommerceDatePipe, ReactiveFormsModule, RouterLink],
   templateUrl: './company-detail.html',
   styleUrl: './company-detail.scss',
 })

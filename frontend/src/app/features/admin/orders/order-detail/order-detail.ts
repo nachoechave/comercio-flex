@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -7,6 +6,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
+import { CommerceDatePipe } from '../../../../shared/pipes/commerce-date.pipe';
 import { QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pipe';
 import { VariantOptionValue, variantOptionsLabel } from '../../../../shared/variant-options';
 import { StorefrontMoneyPipe } from '../../../storefront/storefront-money.pipe';
@@ -21,7 +21,7 @@ import {
 
 @Component({
   selector: 'app-order-detail',
-  imports: [DatePipe, QuantityFormatPipe, ReactiveFormsModule, RouterLink, StorefrontMoneyPipe],
+  imports: [CommerceDatePipe, QuantityFormatPipe, ReactiveFormsModule, RouterLink, StorefrontMoneyPipe],
   templateUrl: './order-detail.html',
   styleUrl: './order-detail.scss',
 })

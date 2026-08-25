@@ -5,7 +5,7 @@
     <header>
       <p class="eyebrow">{{ current.status }}</p>
       <h1 id="transfer-title">{{ current.orderNumber }}</h1>
-      <p>{{ current.customerName }} · {{ current.createdAt | date: 'short' }}</p>
+      <p>{{ current.customerName }} · {{ current.createdAt | commerceDate }}</p>
     </header>
     @if (errorMessage()) { <p class="error" role="alert">{{ errorMessage() }}</p> }
     <div class="layout">
@@ -14,8 +14,11 @@
         <dl>
           <div><dt>Total</dt><dd>{{ current.amount | storefrontMoney: current.currencyCode }}</dd></div>
           <div><dt>Archivo</dt><dd>{{ current.receiptOriginalFilename }}</dd></div>
-          <div><dt>Enviado</dt><dd>{{ current.receiptUploadedAt | date: 'short' }}</dd></div>
-          <div><dt>Reserva</dt><dd>{{ current.reservationExpiresAt | date: 'short' }}</dd></div>
+          <div><dt>Enviado</dt><dd>{{ current.receiptUploadedAt | commerceDate }}</dd></div>
+          <div><dt>Reserva</dt><dd>{{ current.reservationExpiresAt | commerceDate }}</dd></div>
+          @if (current.reviewedAt) {
+            <div><dt>Revisado</dt><dd>{{ current.reviewedAt | commerceDate }}</dd></div>
+          }
         </dl>
         @if (current.receiptAvailable) {
           <a class="primary" [href]="receiptUrl()" target="_blank" rel="noopener">Ver comprobante</a>

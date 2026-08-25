@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import {
   Component,
   computed,
@@ -14,6 +13,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, finalize, forkJoin, of, Subscription, switchMap } from 'rxjs';
 
 import { CsrfService } from '../../../../core/auth/csrf.service';
+import { CommerceDatePipe, formatCommerceDate } from '../../../../shared/pipes/commerce-date.pipe';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
 import { PaymentAuthorizationNavigationService } from '../payment-authorization-navigation.service';
 import { PaymentConnectionApiService } from '../payment-connection-api.service';
@@ -24,7 +24,7 @@ type OAuthResult = 'connected' | 'cancelled' | 'failed';
 
 @Component({
   selector: 'app-payment-connection-page',
-  imports: [DatePipe],
+  imports: [CommerceDatePipe],
   templateUrl: './payment-connection-page.html',
   styleUrl: './payment-connection-page.scss',
 })
@@ -167,11 +167,7 @@ export class PaymentConnectionPage {
 
   formatEventDate(occurredAt: string): string {
     try {
-      return new Intl.DateTimeFormat('es-AR', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-        timeZone: this.storeTimezone(),
-      }).format(new Date(occurredAt));
+      return formatCommerceDate(occurredAt, 'dateTime', this.storeTimezone());
     } catch {
       return occurredAt;
     }

@@ -1,14 +1,16 @@
-import { DatePipe } from '@angular/common';
-import { Component, effect, inject, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { finalize, map, Subscription, switchMap } from 'rxjs';
+import { catchError, exhaustMap, finalize, map, of, Subscription, switchMap, takeWhile, timer } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
+import { CommerceDatePipe } from '../../../shared/pipes/commerce-date.pipe';
 import { variantOptionsLabel } from '../../../shared/variant-options';
 import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
+import { GuestOrderHistoryService } from '../guest-orders/guest-order-history.service';
 import { PaymentApiService } from '../payment/payment-api.service';
 import { BankTransferPayment, PaymentMethods } from '../payment/payment.models';
 import { paymentErrorMessage } from '../payment/payment-errors';
@@ -21,7 +23,7 @@ import { GuestOrder, GuestOrderItem, GuestOrderStatus } from '../storefront.mode
 
 @Component({
   selector: 'app-order-confirmation-page',
-  imports: [DatePipe, QuantityFormatPipe, RouterLink, StorefrontMoneyPipe],
+  imports: [CommerceDatePipe, QuantityFormatPipe, RouterLink, StorefrontMoneyPipe],
   templateUrl: './order-confirmation-page.html',
   styleUrl: './order-confirmation-page.scss',
 })
@@ -31,7 +33,9 @@ export class OrderConfirmationPage {
   private readonly paymentApi = inject(PaymentApiService);
   private readonly paymentNavigation = inject(CheckoutProNavigationService);
   private readonly paymentRecovery = inject(PaymentRecoveryService);
+  private readonly guestOrders = inject(GuestOrderHistoryService);
   private readonly route = inject(ActivatedRoute);
+  private readonly document = inject(DOCUMENT);
   protected readonly context = inject(StorefrontContextService);
   protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
     initialValue: '',
@@ -39,9 +43,14 @@ export class OrderConfirmationPage {
   protected readonly orderId = toSignal(inheritedRouteParam(this.route, 'orderId'), {
     initialValue: '',
   });
-  protected readonly token = toSignal(
+  private readonly queryToken = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('token') ?? '')),
     { initialValue: this.route.snapshot.queryParamMap.get('token') ?? '' },
+  );
+  protected readonly token = computed(() =>
+    this.queryToken() ||
+    this.guestOrders.find(this.storeSlug() ?? '', this.orderId() ?? '')?.lookupToken ||
+    '',
   );
   protected readonly paymentResult = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('payment') ?? '')),
@@ -80,11 +89,15 @@ export class OrderConfirmationPage {
       if (!recovery || recovery.lookupToken !== token) {
         this.paymentRecovery.remember(storeSlug, orderId, token);
       }
-      const subscription: Subscription = this.api.getOrder(storeSlug, orderId, token).subscribe({
+      const subscriptions = new Subscription();
+      subscriptions.add(this.api.getOrder(storeSlug, orderId, token).subscribe({
         next: (order) => {
-          this.order.set(order);
+          this.applyOrder(storeSlug, order);
           this.loading.set(false);
           this.loadPaymentMethods(storeSlug, orderId, token);
+          if (order.status === 'PENDING_CONFIRMATION') {
+            subscriptions.add(this.pollOrder(storeSlug, orderId, token));
+          }
           if (this.paymentResult() === 'failed') {
             this.paymentErrorMessage.set(
               'Tu pedido quedó guardado, pero no pudimos abrir Mercado Pago. Podés intentarlo nuevamente.',
@@ -97,10 +110,11 @@ export class OrderConfirmationPage {
         },
         error: (error: unknown) => {
           this.loading.set(false);
+          if (this.isInvalidPrivateOrder(error)) this.guestOrders.remove(storeSlug, orderId);
           this.errorMessage.set(storefrontErrorMessage(error, 'No pudimos recuperar este pedido.'));
         },
-      });
-      onCleanup(() => subscription.unsubscribe());
+      }));
+      onCleanup(() => subscriptions.unsubscribe());
     });
   }
 
@@ -142,7 +156,6 @@ export class OrderConfirmationPage {
       .subscribe({
         next: (updated) => {
           this.bankTransfer.set(updated);
-          this.bankTransferMessage.set('Comprobante enviado. El comercio está revisándolo.');
         },
         error: (error: unknown) =>
           this.bankTransferMessage.set(
@@ -185,6 +198,41 @@ export class OrderConfirmationPage {
         );
       },
     });
+  }
+
+  private pollOrder(storeSlug: string, orderId: string, token: string): Subscription {
+    return timer(12_000, 12_000).pipe(
+      exhaustMap(() => {
+        if (this.document.visibilityState === 'hidden') return of(null);
+        return this.api.getOrder(storeSlug, orderId, token).pipe(
+          switchMap((order) => {
+            this.applyOrder(storeSlug, order);
+            if (order.status !== 'PENDING_CONFIRMATION') return of({ order, transfer: null });
+            return this.paymentApi.getCurrentBankTransfer(storeSlug, orderId, token).pipe(
+              map((transfer) => ({ order, transfer })),
+              catchError(() => of({ order, transfer: null })),
+            );
+          }),
+          catchError((error: unknown) => {
+            if (this.isInvalidPrivateOrder(error)) this.guestOrders.remove(storeSlug, orderId);
+            return of(null);
+          }),
+        );
+      }),
+      takeWhile((result) => result === null || result.order.status === 'PENDING_CONFIRMATION', true),
+    ).subscribe((result) => {
+      if (result?.transfer) this.bankTransfer.set(result.transfer);
+    });
+  }
+
+  private applyOrder(storeSlug: string, order: GuestOrder): void {
+    this.order.set(order);
+    this.guestOrders.update(storeSlug, order);
+  }
+
+  private isInvalidPrivateOrder(error: unknown): boolean {
+    return typeof error === 'object' && error !== null && 'status' in error &&
+      [401, 403, 404].includes(Number(error.status));
   }
 
   protected startPayment(): void {

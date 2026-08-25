@@ -7,7 +7,7 @@
       <div>
         <p class="eyebrow">{{ labels[current.status] }}</p>
         <h1 id="order-title">{{ current.number }}</h1>
-        <p>{{ current.createdAt | date: 'short' }}</p>
+        <p>{{ current.createdAt | commerceDate }}</p>
       </div>
       <strong class="total">{{ current.subtotal | storefrontMoney: current.currencyCode }}</strong>
     </header>
@@ -100,7 +100,7 @@
             @for (entry of current.history; track entry.id) {
               <li>
                 <strong>{{ labels[entry.newStatus] }}</strong>
-                <span>{{ entry.createdAt | date: 'short' }} · {{ entry.actorDisplayName }}</span>
+                <span>{{ entry.createdAt | commerceDate }} · {{ entry.actorDisplayName }}</span>
                 @if (entry.note) {
                   <p>{{ entry.note }}</p>
                 }

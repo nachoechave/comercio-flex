@@ -27,7 +27,7 @@
       <p class="eyebrow">{{ statusLabel(current) }}</p>
       <h1 #resultTitle id="payment-result-title" tabindex="-1">Pedido {{ current.orderNumber }}</h1>
       <p class="message">{{ statusMessage(current) }}</p>
-      <p class="updated">Última actualización: {{ current.updatedAt | date: 'short' }}</p>
+      <p class="updated">Última actualización: {{ current.updatedAt | commerceDate }}</p>
 
       @if (timedOut() && isPending(current.paymentStatus) && current.returnOutcome !== 'PAYMENT_NOT_RECORDED') {
         <div class="notice" role="status">

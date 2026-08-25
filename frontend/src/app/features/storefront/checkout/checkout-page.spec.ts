@@ -208,6 +208,15 @@ describe('CheckoutPage', () => {
     expect(order.request.body.items[0].unitPrice).toBeUndefined();
     flushCreatedOrder(order);
 
+    expect(JSON.parse(localStorage.getItem('comercioflex:guest-orders:v1')!)[0]).toEqual(
+      expect.objectContaining({
+        storeSlug: 'tienda-a',
+        orderId: 'order-1',
+        lookupToken: 'private-token',
+      }),
+    );
+    expect(cart.items('tienda-a')).toEqual([]);
+
     const payment = http.expectOne(
       (request) =>
         request.url === '/api/v1/stores/tienda-a/orders/order-1/payments/checkout-pro' &&
@@ -247,6 +256,14 @@ describe('CheckoutPage', () => {
     http.expectOne('/api/v1/auth/csrf').flush({});
     const order = expectOrderRequest();
     flushCreatedOrder(order);
+
+    expect(JSON.parse(localStorage.getItem('comercioflex:guest-orders:v1')!)[0]).toEqual(
+      expect.objectContaining({
+        storeSlug: 'tienda-a',
+        orderId: 'order-1',
+        lookupToken: 'private-token',
+      }),
+    );
 
     const bankTransfer = http.expectOne(
       (request) =>
@@ -337,7 +354,19 @@ describe('CheckoutPage', () => {
 
   function flushCreatedOrder(order: ReturnType<typeof expectOrderRequest>): void {
     order.flush({
-      order: { id: 'order-1' },
+      order: {
+        id: 'order-1',
+        number: 'ORD-000011',
+        status: 'PENDING_CONFIRMATION',
+        fulfillmentType: 'PICKUP',
+        customerName: 'Ana Pérez',
+        contactHint: 'a***@example.com',
+        currencyCode: 'ARS',
+        subtotal: '5000.00',
+        reservationExpiresAt: '2026-08-01T13:00:00Z',
+        createdAt: '2026-08-01T12:00:00Z',
+        items: [],
+      },
       lookupToken: 'private-token',
       replayed: false,
     });
