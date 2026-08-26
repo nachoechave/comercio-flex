@@ -194,112 +194,206 @@
         <div>
           <h2 id="variants-title">3. Variantes</h2>
           <p>
-            Definí cualquier combinación, por ejemplo Talle, Color, Material o Presentación. SKU y
-            precio son obligatorios.
+            Definí las opciones del producto y completá SKU, precio y stock para cada combinación
+            vendible.
           </p>
         </div>
-        @if (!archived()) {
-          <button type="button" (click)="addVariant()">Agregar variante</button>
-        }
       </header>
 
-      <div class="variants">
-        @for (row of variants.controls; track row; let index = $index) {
-          <fieldset class="variant" [formGroup]="row" [disabled]="archived()">
-            <legend>Variante {{ index + 1 }}</legend>
-            <div class="variant-grid">
+      <div class="product-options" [class.product-options--legacy]="!variantStructureCompatible()">
+        <div class="options-heading">
+          <div>
+            <strong>Opciones del producto</strong>
+            <p>Por ejemplo Talle, Color, Material, Presentación o Peso. Máximo: 5.</p>
+          </div>
+          @if (!archived() && variantStructureCompatible()) {
+            <button
+              type="button"
+              (click)="addProductOption()"
+              [disabled]="productOptions.length >= 5"
+            >
+              Agregar opción
+            </button>
+          }
+        </div>
+
+        @if (!variantStructureCompatible()) {
+          <p class="notice" role="status">
+            Este producto tiene variantes legacy con estructuras diferentes. Podés actualizar cada
+            variante sin recrearla; no se modificarán sus identidades ni inventario.
+          </p>
+        } @else if (!productOptions.length) {
+          <p class="simple-product-help">
+            Producto simple: tendrá una sola variante sin opciones. Agregá una opción si se vende,
+            por ejemplo, en varios talles o presentaciones.
+          </p>
+        }
+
+        @for (option of productOptions.controls; track option; let optionIndex = $index) {
+          <fieldset class="product-option" [formGroup]="option" [disabled]="archived()">
+            <legend>Opción {{ optionIndex + 1 }}</legend>
+            <div class="product-option-heading">
               <div>
-                <label [for]="'sku-' + index">SKU</label>
+                <label [for]="'product-option-name-' + optionIndex">Nombre</label>
                 <input
-                  [id]="'sku-' + index"
-                  formControlName="sku"
-                  maxlength="64"
-                  [attr.aria-invalid]="row.controls.sku.touched && row.controls.sku.invalid"
-                  [attr.aria-describedby]="'sku-error-' + index"
+                  [id]="'product-option-name-' + optionIndex"
+                  formControlName="name"
+                  maxlength="40"
+                  placeholder="Ej.: Talle"
+                  [attr.aria-invalid]="option.controls.name.touched && option.controls.name.invalid"
                 />
-                @if (row.controls.sku.touched && row.controls.sku.invalid) {
-                  <p [id]="'sku-error-' + index" class="field-error">
-                    Usá hasta 64 caracteres: letras, números, punto, guion o guion bajo; comenzá con
-                    letra o número.
-                  </p>
-                }
               </div>
-              <div>
-                <label [for]="'price-' + index">Precio</label>
-                <input
-                  [id]="'price-' + index"
-                  formControlName="price"
-                  inputmode="decimal"
-                  placeholder="19999.90"
-                  [attr.aria-invalid]="row.controls.price.touched && row.controls.price.invalid"
-                  [attr.aria-describedby]="'price-error-' + index"
-                />
-                @if (row.controls.price.touched && row.controls.price.invalid) {
-                  <p [id]="'price-error-' + index" class="field-error">
-                    Ingresá un precio mayor que cero, con punto y hasta 2 decimales.
-                  </p>
-                }
-              </div>
+              <button type="button" (click)="removeProductOption(optionIndex)">
+                Eliminar opción
+              </button>
             </div>
-            <div class="options-editor">
-              <div class="options-heading">
-                <div>
-                  <strong>Opciones <small>(opcional)</small></strong>
-                  <p>Una variante simple puede quedar sin opciones. Máximo: 5.</p>
-                </div>
-                <button
-                  type="button"
-                  (click)="addVariantOption(index)"
-                  [disabled]="row.controls.options.length >= 5"
-                >
-                  Agregar opción
-                </button>
-              </div>
-              <div formArrayName="options" class="option-list">
-                @for (
-                  option of row.controls.options.controls;
-                  track option;
-                  let optionIndex = $index
-                ) {
-                  <div class="option-row" [formGroupName]="optionIndex">
-                    <div>
-                      <label [for]="'option-name-' + index + '-' + optionIndex">Nombre</label>
-                      <input
-                        [id]="'option-name-' + index + '-' + optionIndex"
-                        formControlName="name"
-                        maxlength="40"
-                        placeholder="Ej.: Material"
-                      />
-                    </div>
-                    <div>
-                      <label [for]="'option-value-' + index + '-' + optionIndex">Valor</label>
-                      <input
-                        [id]="'option-value-' + index + '-' + optionIndex"
-                        formControlName="value"
-                        maxlength="60"
-                        placeholder="Ej.: Algodón"
-                      />
-                    </div>
+
+            <div formArrayName="values" class="option-values">
+              @for (
+                valueControl of option.controls.values.controls;
+                track valueControl;
+                let valueIndex = $index
+              ) {
+                <div class="option-value">
+                  <div>
+                    <label [for]="'product-option-value-' + optionIndex + '-' + valueIndex">
+                      Valor {{ valueIndex + 1 }}
+                    </label>
+                    <input
+                      [id]="'product-option-value-' + optionIndex + '-' + valueIndex"
+                      [formControl]="valueControl"
+                      maxlength="60"
+                      placeholder="Ej.: M"
+                      [attr.aria-invalid]="valueControl.touched && valueControl.invalid"
+                    />
+                  </div>
+                  @if (option.controls.values.length > 1) {
                     <button
                       type="button"
-                      (click)="removeVariantOption(index, optionIndex)"
-                      aria-label="Quitar opción"
+                      (click)="removeProductOptionValue(optionIndex, valueIndex)"
+                      [attr.aria-label]="'Eliminar valor ' + (valueIndex + 1)"
                     >
-                      Quitar
+                      Eliminar
                     </button>
-                  </div>
-                }
-              </div>
+                  }
+                </div>
+              }
             </div>
-            <div class="variant-actions">
+            <button type="button" (click)="addProductOptionValue(optionIndex)">
+              Agregar valor
+            </button>
+          </fieldset>
+        }
+      </div>
+
+      @if (optionError()) {
+        <p class="error" role="alert">{{ optionError() }}</p>
+      }
+
+      <div class="generated-variants-heading">
+        <div>
+          <h3>Variantes generadas</h3>
+          <p>{{ variants.length }} {{ variants.length === 1 ? 'variante' : 'variantes' }}.</p>
+        </div>
+        <div class="bulk-price">
+          <label for="bulk-price">Precio general</label>
+          <input
+            id="bulk-price"
+            [formControl]="bulkPrice"
+            inputmode="decimal"
+            placeholder="22111"
+          />
+          <button type="button" (click)="applyPriceToAll()">Aplicar a todas</button>
+        </div>
+      </div>
+
+      @if (inventoryError()) {
+        <p class="error" role="alert">{{ inventoryError() }}</p>
+      }
+
+      <div class="variant-table" [attr.aria-busy]="inventoryLoading()">
+        <div class="variant-table-header" aria-hidden="true">
+          <span>Variante</span><span>SKU</span><span>Precio</span><span>Stock</span><span></span>
+        </div>
+        @for (row of variants.controls; track row; let index = $index) {
+          <fieldset class="variant-row" [formGroup]="row" [disabled]="archived()">
+            <legend>{{ row.controls.label.value }}</legend>
+            <div class="variant-name">
+              <strong>{{ row.controls.label.value }}</strong>
               @if (editing()) {
+                <small>{{ row.controls.id.value ? 'Existente' : 'Nueva combinación' }}</small>
+              }
+            </div>
+            <div>
+              <label [for]="'sku-' + index">SKU</label>
+              <input
+                [id]="'sku-' + index"
+                formControlName="sku"
+                maxlength="64"
+                [attr.aria-invalid]="row.controls.sku.touched && row.controls.sku.invalid"
+              />
+              @if (row.controls.sku.touched && row.controls.sku.invalid) {
+                <p class="field-error">Usá un SKU válido y único.</p>
+              }
+            </div>
+            <div>
+              <label [for]="'price-' + index">Precio</label>
+              <input
+                [id]="'price-' + index"
+                formControlName="price"
+                inputmode="decimal"
+                placeholder="19999.90"
+                [attr.aria-invalid]="row.controls.price.touched && row.controls.price.invalid"
+              />
+              @if (row.controls.price.touched && row.controls.price.invalid) {
+                <p class="field-error">Ingresá un precio mayor que cero.</p>
+              }
+            </div>
+            <div class="variant-stock">
+              @if (editing() && inventoryFor(row.controls.id.value); as inventory) {
+                <p>
+                  Stock actual: <strong>{{ inventory.quantity }}</strong>
+                </p>
+                <a
+                  [routerLink]="[
+                    '/tiendas',
+                    storeSlug(),
+                    'admin',
+                    'inventario',
+                    row.controls.id.value,
+                    'ajustar',
+                  ]"
+                  >Ajustar stock</a
+                >
+              } @else if (editing() && row.controls.id.value && inventoryLoading()) {
+                <p>Cargando stock actual…</p>
+              } @else if (editing() && !row.controls.id.value) {
+                <p>Guardala para ajustar su stock de forma auditable.</p>
+              } @else {
+                <label [for]="'initial-stock-' + index">Stock inicial</label>
+                <input
+                  [id]="'initial-stock-' + index"
+                  formControlName="initialStock"
+                  inputmode="numeric"
+                  placeholder="0"
+                  [attr.aria-invalid]="
+                    row.controls.initialStock.touched && row.controls.initialStock.invalid
+                  "
+                />
+                @if (row.controls.initialStock.touched && row.controls.initialStock.invalid) {
+                  <p class="field-error">Ingresá un entero mayor o igual a cero.</p>
+                }
+              }
+            </div>
+            @if (editing()) {
+              <div class="variant-actions">
                 <span>{{ row.controls.active.value ? 'Activa' : 'Inactiva' }}</span>
                 <button
                   type="button"
                   (click)="saveVariant(index)"
                   [disabled]="pendingVariantId() !== null"
                 >
-                  Guardar variante
+                  {{ row.controls.id.value ? 'Guardar' : 'Crear variante' }}
                 </button>
                 @if (row.controls.id.value) {
                   <button
@@ -309,90 +403,43 @@
                   >
                     {{ row.controls.active.value ? 'Desactivar' : 'Activar' }}
                   </button>
-                } @else if (variants.length > 1) {
-                  <button type="button" (click)="removeUnsavedVariant(index)">Quitar</button>
-                }
-              } @else if (variants.length > 1) {
-                <button type="button" (click)="removeUnsavedVariant(index)">Quitar variante</button>
-              }
-            </div>
-          </fieldset>
-        }
-      </div>
-    </section>
-
-    <section class="form-section" aria-labelledby="inventory-title">
-      <div class="section-heading">
-        <div>
-          <h2 id="inventory-title">4. Inventario</h2>
-          <p>
-            {{
-              editing()
-                ? 'Consultá la existencia actual y usá ajustes auditables para modificarla.'
-                : 'El stock inicial se registrará como una recepción auditable por variante.'
-            }}
-          </p>
-        </div>
-      </div>
-
-      @if (inventoryError()) {
-        <p class="error" role="alert">{{ inventoryError() }}</p>
-      }
-      <div class="inventory-list" [attr.aria-busy]="inventoryLoading()">
-        @for (row of variants.controls; track row; let index = $index) {
-          <article class="inventory-row">
-            <div>
-              <strong>{{ row.controls.sku.value || 'Variante ' + (index + 1) }}</strong>
-              @if (editing() && inventoryFor(row.controls.id.value); as inventory) {
-                <p>
-                  Stock actual: <strong>{{ inventory.quantity }}</strong>
-                </p>
-              } @else if (editing() && row.controls.id.value && inventoryLoading()) {
-                <p>Cargando stock actual…</p>
-              } @else if (editing() && !row.controls.id.value) {
-                <p>Guardá la variante para administrar su stock.</p>
-              }
-            </div>
-            @if (editing() && row.controls.id.value) {
-              <a
-                [routerLink]="[
-                  '/tiendas',
-                  storeSlug(),
-                  'admin',
-                  'inventario',
-                  row.controls.id.value,
-                  'ajustar',
-                ]"
-                >Ajustar stock</a
-              >
-            } @else if (!editing()) {
-              <div class="initial-stock-field">
-                <label [for]="'initial-stock-' + index">Stock inicial</label>
-                <input
-                  [id]="'initial-stock-' + index"
-                  [formControl]="row.controls.initialStock"
-                  inputmode="numeric"
-                  placeholder="0"
-                  [disabled]="saving()"
-                  [attr.aria-invalid]="
-                    row.controls.initialStock.touched && row.controls.initialStock.invalid
-                  "
-                  [attr.aria-describedby]="'initial-stock-error-' + index"
-                />
-                @if (row.controls.initialStock.touched && row.controls.initialStock.invalid) {
-                  <p [id]="'initial-stock-error-' + index" class="field-error">
-                    Ingresá un entero entre 0 y 999999999999.
-                  </p>
                 }
               </div>
             }
-          </article>
+          </fieldset>
         }
       </div>
+
+      @if (removedExistingVariants().length) {
+        <section class="removed-variants" aria-labelledby="removed-variants-title">
+          <h3 id="removed-variants-title">Variantes fuera de las opciones actuales</h3>
+          <p>
+            No se eliminan para proteger inventario, pedidos e historial. Desactivalas si ya no se
+            venden.
+          </p>
+          @for (variant of removedExistingVariants(); track variant.id) {
+            <article>
+              <div>
+                <strong>{{ variant.label }}</strong>
+                <span>{{ variant.sku }} · {{ variant.active ? 'Activa' : 'Inactiva' }}</span>
+              </div>
+              @if (variant.active) {
+                <button
+                  type="button"
+                  (click)="deactivateRemovedVariant(variant)"
+                  [disabled]="pendingVariantId() !== null || archived()"
+                >
+                  Desactivar variante
+                </button>
+              }
+            </article>
+          }
+        </section>
+      }
     </section>
 
     <section class="form-section publication" aria-labelledby="publication-title">
-      <h2 id="publication-title">5. Publicación</h2>
+      <h2 id="publication-title">4. Publicación</h2>
       @if (publishWithoutImageWarning()) {
         <p class="notice" role="alert">
           El producto no tiene una imagen principal guardada. Podés publicarlo igualmente, pero el

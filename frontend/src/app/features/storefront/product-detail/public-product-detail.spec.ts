@@ -166,6 +166,62 @@ describe('PublicProductDetail', () => {
     expect(fixture.nativeElement.textContent).toContain('Ver carrito');
   });
 
+  it('selects the exact generic-option variant and keeps availability independent', () => {
+    create();
+    http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul').flush({
+      id: 'product-1',
+      name: 'Remera azul',
+      slug: 'remera-azul',
+      description: null,
+      category: { id: 'category-1', name: 'Remeras', slug: 'remeras' },
+      variants: [
+        {
+          id: 'variant-m-negro',
+          price: '2500.00',
+          size: 'M',
+          color: 'Negro',
+          options: [
+            { name: 'Talle', value: 'M' },
+            { name: 'Color', value: 'Negro' },
+          ],
+          available: false,
+        },
+        {
+          id: 'variant-l-negro',
+          price: '2700.00',
+          size: 'L',
+          color: 'Negro',
+          options: [
+            { name: 'Talle', value: 'L' },
+            { name: 'Color', value: 'Negro' },
+          ],
+          available: true,
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    const radios: NodeListOf<HTMLInputElement> =
+      fixture.nativeElement.querySelectorAll('input[type="radio"]');
+    expect(radios[0].disabled).toBe(true);
+    expect(radios[1].disabled).toBe(false);
+    radios[1].dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.featured-price').textContent).toContain('2.700');
+
+    const addButton: HTMLButtonElement =
+      fixture.nativeElement.querySelector('.purchase-panel button');
+    addButton.click();
+    expect(TestBed.inject(CartService).items('tienda-a')[0]).toMatchObject({
+      variantId: 'variant-l-negro',
+      unitPrice: '2700.00',
+      options: [
+        { name: 'Talle', value: 'L' },
+        { name: 'Color', value: 'Negro' },
+      ],
+    });
+  });
+
   it('renders a product-specific not-found state', () => {
     create();
     http
