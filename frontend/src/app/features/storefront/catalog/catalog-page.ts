@@ -10,7 +10,7 @@ import { ProductCard } from '../product-card/product-card';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { storefrontErrorMessage } from '../storefront-errors';
-import { PublicCategory, PublicProductImage, PublicProductPage } from '../storefront.models';
+import { PublicCategory, PublicProductPage } from '../storefront.models';
 
 const PAGE_SIZE = 24;
 const EMPTY_PAGE: PublicProductPage = {
@@ -118,10 +118,7 @@ export class CatalogPage {
         error: (error: unknown) => {
           this.loading.set(false);
           this.errorMessage.set(
-            storefrontErrorMessage(
-              error,
-              'No pudimos cargar los productos. Intentá nuevamente.',
-            ),
+            storefrontErrorMessage(error, 'No pudimos cargar los productos. Intentá nuevamente.'),
           );
         },
       });
@@ -179,14 +176,6 @@ export class CatalogPage {
 
   protected retry(): void {
     this.retryVersion.update((value) => value + 1);
-  }
-
-  protected categoryImage(categorySlug: string): PublicProductImage | null {
-    return (
-      this.page().items.find(
-        (product) => product.category.slug === categorySlug && product.image !== null,
-      )?.image ?? null
-    );
   }
 
   private readPage(params: ParamMap): number {

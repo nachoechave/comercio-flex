@@ -60,6 +60,10 @@ class PublicCatalogIntegrationTests {
 		"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0102";
 	private static final String VARIANT_EXHAUSTED =
 		"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0201";
+	private static final String IMAGE_AVAILABLE =
+		"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa1001";
+	private static final String IMAGE_B =
+		"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbb1001";
 
 	@Container
 	static final MySQLContainer<?> CONTROL_DATABASE = new MySQLContainer<>(MYSQL_IMAGE);
@@ -156,6 +160,11 @@ class PublicCatalogIntegrationTests {
 			"Rojo",
 			"INACTIVE");
 		insertBalance(TENANT_A_DATABASE, VARIANT_AVAILABLE, "5.000");
+		insertProductImage(
+			TENANT_A_DATABASE,
+			IMAGE_AVAILABLE,
+			PRODUCT_AVAILABLE,
+			"Producto disponible de Moda");
 
 		insertProduct(
 			TENANT_A_DATABASE,
@@ -193,6 +202,11 @@ class PublicCatalogIntegrationTests {
 			"U",
 			"Negro",
 			"ACTIVE");
+		insertProductImage(
+			TENANT_B_DATABASE,
+			IMAGE_B,
+			PRODUCT_B,
+			"Producto exclusivo de Moda B");
 	}
 
 	@Test
@@ -227,7 +241,74 @@ class PublicCatalogIntegrationTests {
 			.andExpect(jsonPath("$.length()").value(1))
 			.andExpect(jsonPath("$[0].id").value(CATEGORY_A))
 			.andExpect(jsonPath("$[0].name").value("Moda"))
-			.andExpect(jsonPath("$[0].slug").value("moda"));
+			.andExpect(jsonPath("$[0].slug").value("moda"))
+			.andExpect(jsonPath("$[0].image.id").value(IMAGE_AVAILABLE))
+			.andExpect(jsonPath("$[0].image.thumbnailUrl").value(
+				"/api/v1/stores/tienda-a/media/product-images/"
+					+ IMAGE_AVAILABLE + "/thumbnail"));
+	}
+
+	@Test
+	void mapsEachVisibleCategoryToItsOwnRepresentativeImage() throws Exception {
+		String hoodiesCategory = "11111111-1111-4111-8111-111111111121";
+		String jacketsCategory = "11111111-1111-4111-8111-111111111122";
+		String hoodiesProduct = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21";
+		String jacketsProduct = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa22";
+		String hoodiesImage = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa1021";
+		String jacketsImage = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa1022";
+		insertCategory(TENANT_A_DATABASE, hoodiesCategory, "Buzos", "buzos", "ACTIVE");
+		insertCategory(TENANT_A_DATABASE, jacketsCategory, "Camperas", "camperas", "ACTIVE");
+		insertProduct(
+			TENANT_A_DATABASE,
+			hoodiesProduct,
+			hoodiesCategory,
+			"Buzo clásico",
+			"buzo-clasico",
+			null,
+			"PUBLISHED");
+		insertProduct(
+			TENANT_A_DATABASE,
+			jacketsProduct,
+			jacketsCategory,
+			"Campera urbana",
+			"campera-urbana",
+			null,
+			"PUBLISHED");
+		insertVariant(
+			TENANT_A_DATABASE,
+			"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0121",
+			hoodiesProduct,
+			"BUZO-1",
+			"100.00",
+			"",
+			"",
+			"ACTIVE");
+		insertVariant(
+			TENANT_A_DATABASE,
+			"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0122",
+			jacketsProduct,
+			"CAMPERA-1",
+			"200.00",
+			"",
+			"",
+			"ACTIVE");
+		insertProductImage(TENANT_A_DATABASE, hoodiesImage, hoodiesProduct, "Buzo negro");
+		insertProductImage(TENANT_A_DATABASE, jacketsImage, jacketsProduct, "Campera azul");
+
+		mockMvc.perform(get(catalog("tienda-a") + "/categories"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.length()").value(3))
+			.andExpect(jsonPath("$[0].slug").value("buzos"))
+			.andExpect(jsonPath("$[0].image.id").value(hoodiesImage))
+			.andExpect(jsonPath("$[1].slug").value("camperas"))
+			.andExpect(jsonPath("$[1].image.id").value(jacketsImage))
+			.andExpect(jsonPath("$[2].slug").value("moda"))
+			.andExpect(jsonPath("$[2].image.id").value(IMAGE_AVAILABLE));
+
+		mockMvc.perform(get(catalog("tienda-b") + "/categories"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.length()").value(1))
+			.andExpect(jsonPath("$[0].image.id").value(IMAGE_B));
 	}
 
 	@Test
@@ -438,6 +519,7 @@ class PublicCatalogIntegrationTests {
 	private static void resetTenant(MySQLContainer<?> database) throws SQLException {
 		execute(database, "DELETE FROM inventory_movements");
 		execute(database, "DELETE FROM inventory_balances");
+		execute(database, "DELETE FROM product_images");
 		execute(database, "DELETE FROM product_variant_option_values");
 		execute(database, "DELETE FROM product_option_values");
 		execute(database, "DELETE FROM product_options");
@@ -517,6 +599,31 @@ class PublicCatalogIntegrationTests {
 			FROM product_variants variant
 			WHERE variant.public_id = UUID_TO_BIN('%s')
 			""".formatted(quantity, variantId));
+	}
+
+	private static void insertProductImage(
+			MySQLContainer<?> database,
+			String id,
+			String productId,
+			String altText) throws SQLException {
+		execute(database, """
+			INSERT INTO product_images (
+				public_id, product_id, display_storage_key, thumbnail_storage_key,
+				content_type, display_byte_size, thumbnail_byte_size, width, height,
+				alt_text, sha256
+			)
+			SELECT
+				UUID_TO_BIN('%s'), product.id, '%s/display.png', '%s/thumbnail.png',
+				'image/png', 100, 50, 1200, 900, '%s', SHA2('%s', 256)
+			FROM products product
+			WHERE product.public_id = UUID_TO_BIN('%s')
+			""".formatted(
+				id,
+				id,
+				id,
+				altText.replace("'", "''"),
+				id,
+				productId));
 	}
 
 	private static void registerTenant(

@@ -30,10 +30,22 @@
     </header>
 
     <section class="trust-strip" aria-label="Beneficios de la tienda">
-      <article><span aria-hidden="true">↗</span><p><strong>Compra online</strong><small>Desde cualquier dispositivo</small></p></article>
-      <article><span aria-hidden="true">↻</span><p><strong>Stock actualizado</strong><small>Disponibilidad por opción</small></p></article>
-      <article><span aria-hidden="true">◇</span><p><strong>Compra segura</strong><small>Pagos protegidos</small></p></article>
-      <article><span aria-hidden="true">◎</span><p><strong>Estamos para ayudarte</strong><small>Atención personalizada</small></p></article>
+      <article>
+        <span aria-hidden="true">↗</span>
+        <p><strong>Compra online</strong><small>Desde cualquier dispositivo</small></p>
+      </article>
+      <article>
+        <span aria-hidden="true">↻</span>
+        <p><strong>Stock actualizado</strong><small>Disponibilidad por opción</small></p>
+      </article>
+      <article>
+        <span aria-hidden="true">◇</span>
+        <p><strong>Compra segura</strong><small>Pagos protegidos</small></p>
+      </article>
+      <article>
+        <span aria-hidden="true">◎</span>
+        <p><strong>Estamos para ayudarte</strong><small>Atención personalizada</small></p>
+      </article>
     </section>
 
     @if (categories().length > 0) {
@@ -47,13 +59,18 @@
               [routerLink]="['/tiendas', storeSlug()]"
               [queryParams]="{ categoria: category.slug }"
             >
-              @if (categoryImage(category.slug); as image) {
+              @if (category.image; as image) {
                 <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" />
               } @else {
-                <span class="category-monogram" aria-hidden="true">{{ category.name.slice(0, 1) }}</span>
+                <span class="category-monogram" aria-hidden="true">{{
+                  category.name.slice(0, 1)
+                }}</span>
               }
               <span class="category-shade"></span>
-              <span class="category-copy"><strong>{{ category.name }}</strong><small>Ver productos →</small></span>
+              <span class="category-copy"
+                ><strong>{{ category.name }}</strong
+                ><small>Ver productos →</small></span
+              >
             </a>
           }
         </div>
@@ -63,7 +80,13 @@
     <header class="hero">
       <p class="eyebrow">{{ isMinimal() ? 'Selección' : 'Catálogo online' }}</p>
       <h1 id="catalog-title">{{ isMinimal() ? heroTitle() : context.settings()?.storeName }}</h1>
-      <p>{{ isMinimal() ? heroSubtitle() : 'Encontrá productos, opciones y precios disponibles en nuestra tienda.' }}</p>
+      <p>
+        {{
+          isMinimal()
+            ? heroSubtitle()
+            : 'Encontrá productos, opciones y precios disponibles en nuestra tienda.'
+        }}
+      </p>
     </header>
   }
 
@@ -134,11 +157,15 @@
         @if (isModern()) {
           <h2>Nuevos ingresos</h2>
         } @else {
-          <h2>{{ page().totalItems }} {{ page().totalItems === 1 ? 'resultado' : 'resultados' }}</h2>
+          <h2>
+            {{ page().totalItems }} {{ page().totalItems === 1 ? 'resultado' : 'resultados' }}
+          </h2>
         }
       </div>
       @if (isModern()) {
-        <span class="result-count">{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span>
+        <span class="result-count"
+          >{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span
+        >
       }
       @if (query() || selectedCategory()) {
         <button class="text-button" type="button" (click)="clearFilters()">Limpiar filtros</button>
@@ -159,11 +186,7 @@
 
     @if (page().totalPages > 1) {
       <nav class="pagination" aria-label="Paginación del catálogo">
-        <button
-          type="button"
-          (click)="goToPage(page().page - 1)"
-          [disabled]="page().page === 0"
-        >
+        <button type="button" (click)="goToPage(page().page - 1)" [disabled]="page().page === 0">
           Anterior
         </button>
         <span>Página {{ page().page + 1 }} de {{ page().totalPages }}</span>

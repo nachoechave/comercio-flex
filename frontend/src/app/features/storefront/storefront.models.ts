@@ -37,6 +37,7 @@ export interface PublicCategory {
   id: string;
   name: string;
   slug: string;
+  image: PublicProductImage | null;
 }
 
 export interface PublicProductCategory {

@@ -24,7 +24,7 @@
 
     <form [formGroup]="form" (ngSubmit)="submitProduct()" novalidate>
       <fieldset [disabled]="archived()">
-        <legend>Datos del producto</legend>
+        <legend>1. Información</legend>
         <label for="product-name">Nombre</label>
         <input
           id="product-name"
@@ -72,71 +72,83 @@
       }
     </form>
 
-    @if (editing()) {
-      <section class="image-editor" aria-labelledby="product-image-title">
-        <div class="section-heading">
-          <div>
-            <h2 id="product-image-title">Imagen principal</h2>
-            <p>Se mostrará en el catálogo y en el detalle del producto.</p>
-          </div>
+    <section class="image-editor" aria-labelledby="product-image-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="product-image-title">2. Imágenes</h2>
+          <p>
+            {{
+              editing()
+                ? 'La imagen principal actual se muestra aquí y puede reemplazarse.'
+                : 'Seleccioná una imagen principal y revisá su vista previa antes de crear.'
+            }}
+          </p>
+        </div>
+      </div>
+
+      @if (imageError()) {
+        <p class="error" role="alert">{{ imageError() }}</p>
+      }
+
+      <div class="image-editor-grid">
+        <div class="image-preview">
+          @if (imagePreviewUrl(); as previewUrl) {
+            <img
+              [src]="previewUrl"
+              [alt]="imageAltText.value || 'Vista previa de la imagen seleccionada'"
+            />
+          } @else {
+            <span aria-hidden="true">Sin imagen</span>
+          }
         </div>
 
-        @if (imageError()) {
-          <p class="error" role="alert">{{ imageError() }}</p>
-        }
+        <div>
+          <label for="product-image">Archivo JPEG o PNG</label>
+          <input
+            #imageInput
+            id="product-image"
+            type="file"
+            accept="image/jpeg,image/png"
+            [disabled]="archived() || imageBusy() || saving()"
+            aria-describedby="product-image-help"
+            (change)="selectImage($event)"
+          />
+          <p id="product-image-help" class="field-help">Tamaño máximo: 5 MiB.</p>
 
-        <div class="image-editor-grid">
-          <div class="image-preview">
-            @if (imagePreviewUrl(); as previewUrl) {
-              <img
-                [src]="previewUrl"
-                [alt]="imageAltText.value || 'Vista previa de la imagen seleccionada'"
-              />
-            } @else {
-              <span aria-hidden="true">Sin imagen</span>
-            }
-          </div>
-
-          <div>
-            <label for="product-image">Archivo JPEG o PNG</label>
-            <input
-              #imageInput
-              id="product-image"
-              type="file"
-              accept="image/jpeg,image/png"
-              [disabled]="archived() || imageBusy()"
-              aria-describedby="product-image-help"
-              (change)="selectImage($event)"
-            />
-            <p id="product-image-help" class="field-help">Tamaño máximo: 5 MiB.</p>
-
-            <label for="product-image-alt">Texto alternativo</label>
-            <input
-              id="product-image-alt"
-              type="text"
-              maxlength="180"
-              [formControl]="imageAltText"
-              [disabled]="archived() || imageBusy()"
-              [attr.aria-invalid]="imageAltText.touched && imageAltText.invalid"
-              aria-describedby="product-image-alt-help product-image-alt-error"
-            />
-            <p id="product-image-alt-help" class="field-help">
-              Describí brevemente lo que aparece en la imagen.
+          <label for="product-image-alt">Texto alternativo</label>
+          <input
+            id="product-image-alt"
+            type="text"
+            maxlength="180"
+            [formControl]="imageAltText"
+            [disabled]="archived() || imageBusy() || saving()"
+            [attr.aria-invalid]="imageAltText.touched && imageAltText.invalid"
+            aria-describedby="product-image-alt-help product-image-alt-error"
+          />
+          <p id="product-image-alt-help" class="field-help">
+            Describí brevemente lo que aparece en la imagen.
+          </p>
+          @if (imageAltText.touched && imageAltText.invalid) {
+            <p id="product-image-alt-error" class="field-error">
+              Ingresá entre 1 y 180 caracteres.
             </p>
-            @if (imageAltText.touched && imageAltText.invalid) {
-              <p id="product-image-alt-error" class="field-error">
-                Ingresá entre 1 y 180 caracteres.
-              </p>
-            }
+          }
 
-            <div class="image-actions">
+          <div class="image-actions">
+            @if (editing()) {
               <button
                 type="button"
                 class="primary"
                 [disabled]="!selectedImageFile() || imageBusy() || archived()"
                 (click)="uploadImage()"
               >
-                {{ imageBusy() ? 'Guardando…' : 'Guardar imagen' }}
+                {{
+                  imageBusy()
+                    ? 'Guardando…'
+                    : product()?.image
+                      ? 'Cambiar imagen principal'
+                      : 'Guardar imagen principal'
+                }}
               </button>
               @if (product()?.image) {
                 <button
@@ -147,38 +159,40 @@
                   Eliminar imagen
                 </button>
               }
-            </div>
+            } @else if (selectedImageFile()) {
+              <span class="field-help">La imagen se subirá al crear el producto.</span>
+            }
           </div>
         </div>
+      </div>
 
-        @if (confirmingImageRemoval()) {
-          <div
-            class="image-confirmation"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="remove-image-title"
-            aria-describedby="remove-image-description"
-            (keydown.escape)="cancelImageRemoval($event)"
-          >
-            <h3 id="remove-image-title">¿Eliminar la imagen principal?</h3>
-            <p id="remove-image-description">
-              El producto volverá a mostrar el identificador visual predeterminado.
-            </p>
-            <div class="image-actions">
-              <button type="button" (click)="cancelImageRemoval()">Cancelar</button>
-              <button #imageRemovalConfirm type="button" class="danger" (click)="deleteImage()">
-                Confirmar eliminación
-              </button>
-            </div>
+      @if (confirmingImageRemoval()) {
+        <div
+          class="image-confirmation"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="remove-image-title"
+          aria-describedby="remove-image-description"
+          (keydown.escape)="cancelImageRemoval($event)"
+        >
+          <h3 id="remove-image-title">¿Eliminar la imagen principal?</h3>
+          <p id="remove-image-description">
+            El producto volverá a mostrar el identificador visual predeterminado.
+          </p>
+          <div class="image-actions">
+            <button type="button" (click)="cancelImageRemoval()">Cancelar</button>
+            <button #imageRemovalConfirm type="button" class="danger" (click)="deleteImage()">
+              Confirmar eliminación
+            </button>
           </div>
-        }
-      </section>
-    }
+        </div>
+      }
+    </section>
 
     <section aria-labelledby="variants-title">
       <header class="section-heading">
         <div>
-          <h2 id="variants-title">Variantes</h2>
+          <h2 id="variants-title">3. Variantes</h2>
           <p>
             Definí cualquier combinación, por ejemplo Talle, Color, Material o Presentación. SKU y
             precio son obligatorios.
@@ -307,13 +321,143 @@
       </div>
     </section>
 
-    @if (!editing()) {
-      <div class="footer-actions">
-        <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'productos']">Cancelar</a>
-        <button class="primary" type="button" (click)="submitProduct()" [disabled]="saving()">
-          {{ saving() ? 'Creando…' : 'Crear como borrador' }}
-        </button>
+    <section class="form-section" aria-labelledby="inventory-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="inventory-title">4. Inventario</h2>
+          <p>
+            {{
+              editing()
+                ? 'Consultá la existencia actual y usá ajustes auditables para modificarla.'
+                : 'El stock inicial se registrará como una recepción auditable por variante.'
+            }}
+          </p>
+        </div>
       </div>
-    }
+
+      @if (inventoryError()) {
+        <p class="error" role="alert">{{ inventoryError() }}</p>
+      }
+      <div class="inventory-list" [attr.aria-busy]="inventoryLoading()">
+        @for (row of variants.controls; track row; let index = $index) {
+          <article class="inventory-row">
+            <div>
+              <strong>{{ row.controls.sku.value || 'Variante ' + (index + 1) }}</strong>
+              @if (editing() && inventoryFor(row.controls.id.value); as inventory) {
+                <p>
+                  Stock actual: <strong>{{ inventory.quantity }}</strong>
+                </p>
+              } @else if (editing() && row.controls.id.value && inventoryLoading()) {
+                <p>Cargando stock actual…</p>
+              } @else if (editing() && !row.controls.id.value) {
+                <p>Guardá la variante para administrar su stock.</p>
+              }
+            </div>
+            @if (editing() && row.controls.id.value) {
+              <a
+                [routerLink]="[
+                  '/tiendas',
+                  storeSlug(),
+                  'admin',
+                  'inventario',
+                  row.controls.id.value,
+                  'ajustar',
+                ]"
+                >Ajustar stock</a
+              >
+            } @else if (!editing()) {
+              <div class="initial-stock-field">
+                <label [for]="'initial-stock-' + index">Stock inicial</label>
+                <input
+                  [id]="'initial-stock-' + index"
+                  [formControl]="row.controls.initialStock"
+                  inputmode="numeric"
+                  placeholder="0"
+                  [disabled]="saving()"
+                  [attr.aria-invalid]="
+                    row.controls.initialStock.touched && row.controls.initialStock.invalid
+                  "
+                  [attr.aria-describedby]="'initial-stock-error-' + index"
+                />
+                @if (row.controls.initialStock.touched && row.controls.initialStock.invalid) {
+                  <p [id]="'initial-stock-error-' + index" class="field-error">
+                    Ingresá un entero entre 0 y 999999999999.
+                  </p>
+                }
+              </div>
+            }
+          </article>
+        }
+      </div>
+    </section>
+
+    <section class="form-section publication" aria-labelledby="publication-title">
+      <h2 id="publication-title">5. Publicación</h2>
+      @if (publishWithoutImageWarning()) {
+        <p class="notice" role="alert">
+          El producto no tiene una imagen principal guardada. Podés publicarlo igualmente, pero el
+          storefront mostrará su placeholder. Volvé a elegir “Crear y publicar” o “Publicar
+          igualmente” para confirmar.
+        </p>
+      }
+
+      @if (!editing()) {
+        <p>
+          Guardar como borrador conserva toda la configuración sin mostrar el producto en el
+          storefront. Crear y publicar lo hace visible sólo después de completar imagen y stock.
+        </p>
+        <div class="footer-actions">
+          <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'productos']">Cancelar</a>
+          <button type="button" (click)="submitProduct('DRAFT')" [disabled]="saving()">
+            {{
+              saving() && creationIntent() === 'DRAFT'
+                ? 'Creando producto…'
+                : 'Guardar como borrador'
+            }}
+          </button>
+          <button
+            class="primary"
+            type="button"
+            (click)="submitProduct('PUBLISHED')"
+            [disabled]="saving()"
+          >
+            {{
+              saving() && creationIntent() === 'PUBLISHED'
+                ? 'Creando y publicando…'
+                : publishWithoutImageWarning()
+                  ? 'Crear y publicar igualmente'
+                  : 'Crear y publicar'
+            }}
+          </button>
+        </div>
+      } @else if (product(); as current) {
+        <p>
+          Estado actual: <strong>{{ statusLabel(current.status) }}</strong
+          >.
+        </p>
+        <div class="footer-actions">
+          @if (current.status === 'DRAFT') {
+            <button
+              class="primary"
+              type="button"
+              (click)="changeProductStatus('PUBLISHED')"
+              [disabled]="statusBusy()"
+            >
+              {{
+                statusBusy()
+                  ? 'Publicando…'
+                  : publishWithoutImageWarning()
+                    ? 'Publicar igualmente'
+                    : 'Publicar'
+              }}
+            </button>
+          } @else if (current.status === 'PUBLISHED') {
+            <button type="button" (click)="changeProductStatus('DRAFT')" [disabled]="statusBusy()">
+              {{ statusBusy() ? 'Guardando…' : 'Guardar como borrador' }}
+            </button>
+          }
+        </div>
+      }
+    </section>
   }
 </section>
