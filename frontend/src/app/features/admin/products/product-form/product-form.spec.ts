@@ -45,6 +45,49 @@ describe('ProductForm creation', () => {
 
   afterEach(() => http.verify());
 
+  function fillValidProduct(): void {
+    fixture.componentInstance.form.setValue({
+      name: 'Remera clásica',
+      description: '',
+      categoryId: 'category-1',
+    });
+    fixture.componentInstance.variants.at(0).patchValue({
+      sku: 'REM-M-NEG',
+      price: '19999.90',
+      size: 'M',
+      color: 'Negro',
+    });
+  }
+
+  function productResponse(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'product-1',
+      name: 'Remera clásica',
+      slug: 'remera-clasica',
+      description: null,
+      status: 'DRAFT',
+      category: { id: 'category-1', name: 'Remeras', active: true },
+      variants: [
+        {
+          id: 'variant-1',
+          sku: 'REM-M-NEG',
+          price: '19999.90',
+          size: 'M',
+          color: 'Negro',
+          active: true,
+          version: 0,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      image: null,
+      version: 0,
+      createdAt: '',
+      updatedAt: '',
+      ...overrides,
+    };
+  }
+
   it('creates the product and its manual variant in one request', async () => {
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
     fixture.componentInstance.form.setValue({
@@ -70,6 +113,126 @@ describe('ProductForm creation', () => {
     request.flush({ id: 'product-1' });
     await fixture.whenStable();
     expect(router.navigate).toHaveBeenCalled();
+    http.expectNone((candidate) => candidate.url.endsWith('/status'));
+  });
+
+  it('creates multiple variants in the same draft request', () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fillValidProduct();
+    fixture.componentInstance.addVariant();
+    fixture.componentInstance.variants.at(1).patchValue({
+      sku: 'REM-L-BLA',
+      price: '21999.90',
+      size: 'L',
+      color: 'Blanco',
+    });
+
+    fixture.componentInstance.submitProduct('DRAFT');
+
+    const request = http.expectOne('/api/v1/stores/tienda-a/admin/products');
+    expect(request.request.body.variants).toHaveLength(2);
+    request.flush(productResponse());
+  });
+
+  it('previews and uploads the selected image after creating the draft', () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const createObjectUrl = vi.fn(() => 'blob:new-product');
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectUrl });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    fillValidProduct();
+    const file = new File(['image'], 'remera.png', { type: 'image/png' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: { item: () => file } });
+    fixture.componentInstance.selectImage({ target: input } as unknown as Event);
+    fixture.componentInstance.imageAltText.setValue('Remera negra');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.image-preview img')?.getAttribute('src')).toBe(
+      'blob:new-product',
+    );
+
+    fixture.componentInstance.submitProduct('DRAFT');
+    http.expectOne('/api/v1/stores/tienda-a/admin/products').flush(productResponse());
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    const upload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image');
+    expect((upload.request.body as FormData).get('file')).toBe(file);
+    upload.flush({
+      id: 'image-1',
+      url: '/media/image-1',
+      thumbnailUrl: '/media/image-1/thumbnail',
+      altText: 'Remera negra',
+    });
+    expect(router.navigate).toHaveBeenCalled();
+  });
+
+  it('registers initial stock through an auditable inventory adjustment', () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fillValidProduct();
+    fixture.componentInstance.variants.at(0).controls.initialStock.setValue('10');
+
+    fixture.componentInstance.submitProduct('DRAFT');
+    http.expectOne('/api/v1/stores/tienda-a/admin/products').flush(productResponse());
+    const adjustment = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-1/adjustments',
+    );
+    expect(adjustment.request.headers.get('Idempotency-Key')).toBeTruthy();
+    expect(adjustment.request.body).toEqual({
+      direction: 'INCREASE',
+      quantity: '10',
+      reason: 'RECEIPT',
+      note: 'Stock inicial registrado durante la creación del producto.',
+    });
+    adjustment.flush({ inventory: { variantId: 'variant-1', quantity: '10.000' } });
+    expect(router.navigate).toHaveBeenCalled();
+  });
+
+  it('publishes only after product setup is complete and requires image warning confirmation', () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fillValidProduct();
+
+    fixture.componentInstance.submitProduct('PUBLISHED');
+    expect(fixture.componentInstance.publishWithoutImageWarning()).toBe(true);
+    http.expectNone('/api/v1/stores/tienda-a/admin/products');
+
+    fixture.componentInstance.submitProduct('PUBLISHED');
+    http.expectOne('/api/v1/stores/tienda-a/admin/products').flush(productResponse());
+    const publication = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/status');
+    expect(publication.request.body).toEqual({ status: 'PUBLISHED', version: 0 });
+    publication.flush(productResponse({ status: 'PUBLISHED', version: 1 }));
+    expect(router.navigate).toHaveBeenCalled();
+  });
+
+  it('blocks a double submit while the create request is in flight', () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fillValidProduct();
+
+    fixture.componentInstance.submitProduct('DRAFT');
+    fixture.componentInstance.submitProduct('DRAFT');
+
+    const requests = http.match('/api/v1/stores/tienda-a/admin/products');
+    expect(requests).toHaveLength(1);
+    requests[0].flush(productResponse());
+  });
+
+  it('reports an upload failure and resumes on the created draft instead of duplicating it', () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fillValidProduct();
+    fixture.componentInstance.selectedImageFile.set(
+      new File(['image'], 'remera.png', { type: 'image/png' }),
+    );
+    fixture.componentInstance.imageAltText.setValue('Remera negra');
+
+    fixture.componentInstance.submitProduct('DRAFT');
+    http.expectOne('/api/v1/stores/tienda-a/admin/products').flush(productResponse());
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image')
+      .flush({ detail: 'No se pudo almacenar la imagen.' }, { status: 503, statusText: 'Error' });
+
+    expect(fixture.componentInstance.formError()).toContain('No se pudo almacenar la imagen.');
+    expect(router.navigate).toHaveBeenCalledWith(
+      ['/tiendas', 'tienda-a', 'admin', 'productos', 'product-1', 'editar'],
+      { queryParams: { setup: 'image' } },
+    );
   });
 
   it('creates a variant with arbitrary named options', () => {
@@ -266,7 +429,12 @@ describe('ProductForm image management', () => {
       status: 'DRAFT',
       category: { id: 'category-1', name: 'Remeras', active: true },
       variants: [],
-      image: null,
+      image: {
+        id: 'image-current',
+        url: '/media/image-current',
+        thumbnailUrl: '/media/image-current/thumbnail',
+        altText: 'Imagen actual de la remera',
+      },
       version: 1,
       createdAt: '',
       updatedAt: '',
@@ -275,6 +443,12 @@ describe('ProductForm image management', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('shows the current main image prominently while editing', () => {
+    const image: HTMLImageElement = fixture.nativeElement.querySelector('.image-preview img');
+    expect(image.getAttribute('src')).toBe('/media/image-current');
+    expect(image.alt).toBe('Imagen actual de la remera');
+  });
 
   it('rejects unsupported files before sending a request', () => {
     const file = new File(['plain text'], 'producto.txt', { type: 'text/plain' });
@@ -403,5 +577,127 @@ describe('ProductForm image management', () => {
     fixture.destroy();
 
     expect(upload.cancelled).toBe(true);
+  });
+});
+
+describe('ProductForm inventory editing', () => {
+  let fixture: ComponentFixture<ProductForm>;
+  let http: HttpTestingController;
+
+  beforeEach(async () => {
+    const parent = { paramMap: convertToParamMap({ storeSlug: 'tienda-a' }), parent: null };
+    await TestBed.configureTestingModule({
+      imports: [ProductForm],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ productId: 'product-1' }), parent },
+          },
+        },
+      ],
+    }).compileComponents();
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ProductForm);
+    fixture.detectChanges();
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/categories')
+      .flush([{ id: 'category-1', name: 'Remeras', active: true }]);
+    http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1').flush({
+      id: 'product-1',
+      name: 'Remera',
+      slug: 'remera',
+      description: null,
+      status: 'DRAFT',
+      category: { id: 'category-1', name: 'Remeras', active: true },
+      variants: [
+        {
+          id: 'variant-1',
+          sku: 'REM-M',
+          price: '1000.00',
+          size: 'M',
+          color: null,
+          active: true,
+          version: 1,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      image: null,
+      version: 1,
+      createdAt: '',
+      updatedAt: '',
+    });
+    http.expectOne('/api/v1/stores/tienda-a/admin/inventory/variants/variant-1').flush({
+      variantId: 'variant-1',
+      productId: 'product-1',
+      productName: 'Remera',
+      productStatus: 'DRAFT',
+      sku: 'REM-M',
+      size: 'M',
+      color: null,
+      variantActive: true,
+      quantity: '10.000',
+      version: 1,
+      updatedAt: '',
+    });
+    fixture.detectChanges();
+  });
+
+  afterEach(() => http.verify());
+
+  it('shows current stock and routes adjustments through the audited inventory flow', () => {
+    expect(fixture.nativeElement.textContent).toContain('Stock actual:');
+    expect(fixture.nativeElement.textContent).toContain('10.000');
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('.inventory-row a');
+    expect(link.getAttribute('href')).toBe('/tiendas/tienda-a/admin/inventario/variant-1/ajustar');
+  });
+
+  it('updates a variant price without replacing or dropping the variant', () => {
+    const row = fixture.componentInstance.variants.at(0);
+    row.controls.price.setValue('1250.00');
+
+    fixture.componentInstance.saveVariant(0);
+
+    const update = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/products/product-1/variants/variant-1',
+    );
+    expect(update.request.method).toBe('PUT');
+    expect(update.request.body).toEqual({
+      sku: 'REM-M',
+      price: '1250.00',
+      options: [{ name: 'Talle', value: 'M' }],
+      version: 1,
+    });
+    update.flush({
+      id: 'variant-1',
+      sku: 'REM-M',
+      price: '1250.00',
+      size: 'M',
+      color: null,
+      options: [{ name: 'Talle', value: 'M' }],
+      active: true,
+      version: 2,
+      createdAt: '',
+      updatedAt: '',
+    });
+    http.expectOne('/api/v1/stores/tienda-a/admin/inventory/variants/variant-1').flush({
+      variantId: 'variant-1',
+      productId: 'product-1',
+      productName: 'Remera',
+      productStatus: 'DRAFT',
+      sku: 'REM-M',
+      size: 'M',
+      color: null,
+      variantActive: true,
+      quantity: '10.000',
+      version: 1,
+      updatedAt: '',
+    });
+    expect(fixture.componentInstance.variants).toHaveLength(1);
+    expect(fixture.componentInstance.variants.at(0).controls.price.value).toBe('1250.00');
   });
 });

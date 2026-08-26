@@ -12,10 +12,17 @@ import { StoreSettings } from '../storefront.models';
 import { CatalogPage } from './catalog-page';
 
 const MODERN_BRANDING = {
-  primaryColor: '#B7FF2A', secondaryColor: '#080808', backgroundColor: '#FFFFFF',
-  textColor: '#0B0B0B', font: 'SANS' as const, heroTitle: 'Colección dinámica',
-  heroSubtitle: 'Identidad configurada por plataforma.', template: 'MODERN' as const,
-  logoUrl: null, faviconUrl: null, heroImageUrl: null,
+  primaryColor: '#B7FF2A',
+  secondaryColor: '#080808',
+  backgroundColor: '#FFFFFF',
+  textColor: '#0B0B0B',
+  font: 'SANS' as const,
+  heroTitle: 'Colección dinámica',
+  heroSubtitle: 'Identidad configurada por plataforma.',
+  template: 'MODERN' as const,
+  logoUrl: null,
+  faviconUrl: null,
+  heroImageUrl: null,
 };
 
 describe('CatalogPage', () => {
@@ -82,9 +89,9 @@ describe('CatalogPage', () => {
   }
 
   function flushCategories(store = 'tienda-a'): void {
-    http.expectOne(`/api/v1/stores/${store}/catalog/categories`).flush([
-      { id: 'category-1', name: 'Infantil', slug: 'infantil' },
-    ]);
+    http
+      .expectOne(`/api/v1/stores/${store}/catalog/categories`)
+      .flush([{ id: 'category-1', name: 'Infantil', slug: 'infantil' }]);
   }
 
   it('restores q, category and one-based page from the URL', () => {
@@ -111,23 +118,25 @@ describe('CatalogPage', () => {
   it('clears tenant-bound results before loading another tenant', () => {
     create();
     flushCategories();
-    http.expectOne((request) => request.url.includes('/tienda-a/catalog/products')).flush({
-      items: [
-        {
-          id: 'product-a',
-          name: 'Remera A',
-          slug: 'remera-a',
-          category: { id: 'category-1', name: 'Infantil', slug: 'infantil' },
-          priceFrom: '100.00',
-          priceTo: '100.00',
-          available: true,
-        },
-      ],
-      page: 1,
-      size: 24,
-      totalItems: 1,
-      totalPages: 2,
-    });
+    http
+      .expectOne((request) => request.url.includes('/tienda-a/catalog/products'))
+      .flush({
+        items: [
+          {
+            id: 'product-a',
+            name: 'Remera A',
+            slug: 'remera-a',
+            category: { id: 'category-1', name: 'Infantil', slug: 'infantil' },
+            priceFrom: '100.00',
+            priceTo: '100.00',
+            available: true,
+          },
+        ],
+        page: 1,
+        size: 24,
+        totalItems: 1,
+        totalPages: 2,
+      });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Remera A');
 
@@ -137,42 +146,46 @@ describe('CatalogPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Cargando productos');
 
     flushCategories('tienda-b');
-    http.expectOne((request) => request.url.includes('/tienda-b/catalog/products')).flush({
-      items: [],
-      page: 1,
-      size: 24,
-      totalItems: 0,
-      totalPages: 0,
-    });
+    http
+      .expectOne((request) => request.url.includes('/tienda-b/catalog/products'))
+      .flush({
+        items: [],
+        page: 1,
+        size: 24,
+        totalItems: 0,
+        totalPages: 0,
+      });
   });
 
   it('renders cards, ranges and availability without exposing quantities', () => {
     queryParams.next(convertToParamMap({}));
     create();
     flushCategories();
-    http.expectOne((request) => request.url.includes('/catalog/products')).flush({
-      items: [
-        {
-          id: 'product-1',
-          name: 'Remera',
-          slug: 'remera',
-          category: { id: 'category-1', name: 'Infantil', slug: 'infantil' },
-          priceFrom: '1000.00',
-          priceTo: '1500.00',
-          available: false,
-          image: {
-            id: 'image-1',
-            url: '/media/image-1',
-            thumbnailUrl: '/media/image-1/thumbnail',
-            altText: 'Remera blanca doblada',
+    http
+      .expectOne((request) => request.url.includes('/catalog/products'))
+      .flush({
+        items: [
+          {
+            id: 'product-1',
+            name: 'Remera',
+            slug: 'remera',
+            category: { id: 'category-1', name: 'Infantil', slug: 'infantil' },
+            priceFrom: '1000.00',
+            priceTo: '1500.00',
+            available: false,
+            image: {
+              id: 'image-1',
+              url: '/media/image-1',
+              thumbnailUrl: '/media/image-1/thumbnail',
+              altText: 'Remera blanca doblada',
+            },
           },
-        },
-      ],
-      page: 0,
-      size: 24,
-      totalItems: 1,
-      totalPages: 1,
-    });
+        ],
+        page: 0,
+        size: 24,
+        totalItems: 1,
+        totalPages: 1,
+      });
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
@@ -188,24 +201,26 @@ describe('CatalogPage', () => {
     queryParams.next(convertToParamMap({}));
     create();
     flushCategories();
-    http.expectOne((request) => request.url.includes('/catalog/products')).flush({
-      items: [
-        {
-          id: 'product-1',
-          name: 'Remera urbana',
-          slug: 'remera-urbana',
-          category: { id: 'category-1', name: 'Infantil', slug: 'infantil' },
-          priceFrom: '25000.00',
-          priceTo: '25000.00',
-          available: true,
-          image: null,
-        },
-      ],
-      page: 0,
-      size: 24,
-      totalItems: 1,
-      totalPages: 1,
-    });
+    http
+      .expectOne((request) => request.url.includes('/catalog/products'))
+      .flush({
+        items: [
+          {
+            id: 'product-1',
+            name: 'Remera urbana',
+            slug: 'remera-urbana',
+            category: { id: 'category-1', name: 'Infantil', slug: 'infantil' },
+            priceFrom: '25000.00',
+            priceTo: '25000.00',
+            available: true,
+            image: null,
+          },
+        ],
+        page: 0,
+        size: 24,
+        totalItems: 1,
+        totalPages: 1,
+      });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.catalog--streetwear')).not.toBeNull();
@@ -218,9 +233,7 @@ describe('CatalogPage', () => {
       'categoria=infantil',
     );
     const sectionLinks = Array.from<HTMLAnchorElement>(
-      fixture.nativeElement.querySelectorAll(
-        '.hero-primary, .hero-secondary, .campaign-grid a',
-      ),
+      fixture.nativeElement.querySelectorAll('.hero-primary, .hero-secondary, .campaign-grid a'),
     );
     expect(sectionLinks.map((link) => link.getAttribute('href'))).toEqual([
       '/tiendas/tienda-a#catalog-products',
@@ -228,6 +241,87 @@ describe('CatalogPage', () => {
       '/tiendas/tienda-a#catalog-products',
       '/tiendas/tienda-a#catalog-products',
     ]);
+  });
+
+  it('keeps each category image mapped to its own stable category id', () => {
+    queryParams.next(convertToParamMap({}));
+    create();
+    const categories = [
+      {
+        id: 'category-buzos',
+        name: 'Buzos',
+        slug: 'buzos',
+        image: {
+          id: 'image-buzos',
+          url: '/media/buzos',
+          thumbnailUrl: '/media/buzos/thumbnail',
+          altText: 'Buzo negro',
+        },
+      },
+      {
+        id: 'category-camperas',
+        name: 'Camperas',
+        slug: 'camperas',
+        image: {
+          id: 'image-camperas',
+          url: '/media/camperas',
+          thumbnailUrl: '/media/camperas/thumbnail',
+          altText: 'Campera azul',
+        },
+      },
+      {
+        id: 'category-remeras',
+        name: 'Remeras',
+        slug: 'remeras',
+        image: {
+          id: 'image-remeras',
+          url: '/media/remeras',
+          thumbnailUrl: '/media/remeras/thumbnail',
+          altText: 'Remera blanca',
+        },
+      },
+      { id: 'category-gorras', name: 'Gorras', slug: 'gorras', image: null },
+    ];
+    http.expectOne('/api/v1/stores/tienda-a/catalog/categories').flush(categories);
+    http
+      .expectOne((request) => request.url.includes('/catalog/products'))
+      .flush({
+        items: [],
+        page: 0,
+        size: 24,
+        totalItems: 0,
+        totalPages: 0,
+      });
+    fixture.detectChanges();
+
+    const cards = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('.category-card'));
+    expect(cards).toHaveLength(4);
+    expect(cards[0].querySelector('img')?.getAttribute('src')).toBe('/media/buzos/thumbnail');
+    expect(cards[1].querySelector('img')?.getAttribute('src')).toBe('/media/camperas/thumbnail');
+    expect(cards[2].querySelector('img')?.getAttribute('src')).toBe('/media/remeras/thumbnail');
+    expect(cards[3].querySelector('img')).toBeNull();
+    expect(cards[3].querySelector('.category-monogram')?.textContent?.trim()).toBe('G');
+
+    queryParams.next(convertToParamMap({ categoria: 'camperas' }));
+    fixture.detectChanges();
+    http.expectOne('/api/v1/stores/tienda-a/catalog/categories').flush(categories);
+    http
+      .expectOne((request) => request.url.includes('/catalog/products'))
+      .flush({
+        items: [],
+        page: 0,
+        size: 24,
+        totalItems: 0,
+        totalPages: 0,
+      });
+    fixture.detectChanges();
+    const refreshed = Array.from<HTMLElement>(
+      fixture.nativeElement.querySelectorAll('.category-card'),
+    );
+    expect(refreshed[0].querySelector('img')?.getAttribute('src')).toBe('/media/buzos/thumbnail');
+    expect(refreshed[1].querySelector('img')?.getAttribute('src')).toBe(
+      '/media/camperas/thumbnail',
+    );
   });
 
   it('keeps the standard catalog presentation for other stores', () => {
@@ -241,13 +335,15 @@ describe('CatalogPage', () => {
     queryParams.next(convertToParamMap({}));
     create();
     flushCategories('tienda-b');
-    http.expectOne((request) => request.url.includes('/tienda-b/catalog/products')).flush({
-      items: [],
-      page: 0,
-      size: 24,
-      totalItems: 0,
-      totalPages: 0,
-    });
+    http
+      .expectOne((request) => request.url.includes('/tienda-b/catalog/products'))
+      .flush({
+        items: [],
+        page: 0,
+        size: 24,
+        totalItems: 0,
+        totalPages: 0,
+      });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.catalog--streetwear')).toBeNull();
@@ -271,24 +367,26 @@ describe('CatalogPage', () => {
     queryParams.next(convertToParamMap({}));
     create();
     flushCategories();
-    http.expectOne((request) => request.url.includes('/catalog/products')).flush({
-      items: [
-        {
-          id: 'product-1',
-          name: 'Producto esencial',
-          slug: 'producto-esencial',
-          category: { id: 'category-1', name: 'Infantil', slug: 'infantil' },
-          priceFrom: '1000.00',
-          priceTo: '1000.00',
-          available: true,
-          image: null,
-        },
-      ],
-      page: 0,
-      size: 24,
-      totalItems: 1,
-      totalPages: 1,
-    });
+    http
+      .expectOne((request) => request.url.includes('/catalog/products'))
+      .flush({
+        items: [
+          {
+            id: 'product-1',
+            name: 'Producto esencial',
+            slug: 'producto-esencial',
+            category: { id: 'category-1', name: 'Infantil', slug: 'infantil' },
+            priceFrom: '1000.00',
+            priceTo: '1000.00',
+            available: true,
+            image: null,
+          },
+        ],
+        page: 0,
+        size: 24,
+        totalItems: 1,
+        totalPages: 1,
+      });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.catalog--minimal')).not.toBeNull();
@@ -301,10 +399,12 @@ describe('CatalogPage', () => {
   it('shows a retryable error state', () => {
     create();
     flushCategories();
-    http.expectOne((request) => request.url.includes('/catalog/products')).flush(
-      { detail: 'No se pudo consultar el catálogo.' },
-      { status: 503, statusText: 'Unavailable' },
-    );
+    http
+      .expectOne((request) => request.url.includes('/catalog/products'))
+      .flush(
+        { detail: 'No se pudo consultar el catálogo.' },
+        { status: 503, statusText: 'Unavailable' },
+      );
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
@@ -316,13 +416,15 @@ describe('CatalogPage', () => {
     queryParams.next(convertToParamMap({}));
     create();
     flushCategories();
-    http.expectOne((request) => request.url.includes('/tienda-a/catalog/products')).flush({
-      items: [],
-      page: 0,
-      size: 24,
-      totalItems: 0,
-      totalPages: 0,
-    });
+    http
+      .expectOne((request) => request.url.includes('/tienda-a/catalog/products'))
+      .flush({
+        items: [],
+        page: 0,
+        size: 24,
+        totalItems: 0,
+        totalPages: 0,
+      });
     fixture.detectChanges();
     expect(TestBed.inject(Title).getTitle()).toBe('Productos | Tienda A');
 
@@ -333,10 +435,9 @@ describe('CatalogPage', () => {
     expect(TestBed.inject(Meta).getTag('name="description"')?.content).not.toContain('Tienda A');
 
     flushCategories('tienda-b');
-    http.expectOne((request) => request.url.includes('/tienda-b/catalog/products')).flush(
-      { detail: 'Tienda no encontrada.' },
-      { status: 404, statusText: 'Not Found' },
-    );
+    http
+      .expectOne((request) => request.url.includes('/tienda-b/catalog/products'))
+      .flush({ detail: 'Tienda no encontrada.' }, { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
     expect(TestBed.inject(Title).getTitle()).toBe('Catálogo | Comercio Flex');
   });

@@ -34,10 +34,11 @@ public class PublicCatalogController {
 	}
 
 	@GetMapping("/categories")
-	ResponseEntity<List<PublicCategoryResponse>> findCategories() {
-		List<PublicCategoryResponse> response = catalogService.findCategories()
+	ResponseEntity<List<PublicCategoryCardResponse>> findCategories(
+			@PathVariable String storeSlug) {
+		List<PublicCategoryCardResponse> response = catalogService.findCategories()
 			.stream()
-			.map(PublicCategoryResponse::from)
+			.map(category -> PublicCategoryCardResponse.from(category, storeSlug))
 			.toList();
 		return noStore(response);
 	}

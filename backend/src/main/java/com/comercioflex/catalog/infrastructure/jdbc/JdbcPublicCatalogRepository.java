@@ -50,8 +50,26 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 			SELECT
 				BIN_TO_UUID(category.public_id) category_public_id,
 				category.name category_name,
-				category.slug category_slug
+				category.slug category_slug,
+				BIN_TO_UUID(category_image.public_id) category_image_public_id,
+				category_image.alt_text category_image_alt_text
 			FROM categories category
+			LEFT JOIN product_images category_image ON category_image.id = (
+				SELECT candidate_image.id
+				FROM products image_product
+				JOIN product_images candidate_image
+					ON candidate_image.product_id = image_product.id
+				WHERE image_product.category_id = category.id
+					AND image_product.status = 'PUBLISHED'
+					AND EXISTS (
+						SELECT 1
+						FROM product_variants image_variant
+						WHERE image_variant.product_id = image_product.id
+							AND image_variant.status = 'ACTIVE'
+					)
+				ORDER BY image_product.name, image_product.id
+				LIMIT 1
+			)
 			WHERE category.status = 'ACTIVE'
 				AND EXISTS (
 					SELECT 1
@@ -67,7 +85,7 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				)
 			ORDER BY category.name, category.id
 			""",
-			(resultSet, rowNumber) -> mapCategory(resultSet));
+			(resultSet, rowNumber) -> mapVisibleCategory(resultSet));
 	}
 
 	@Override
@@ -278,7 +296,19 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 		return new PublicCategory(
 			UUID.fromString(resultSet.getString("category_public_id")),
 			resultSet.getString("category_name"),
-			resultSet.getString("category_slug"));
+			resultSet.getString("category_slug"),
+			null);
+	}
+
+	private PublicCategory mapVisibleCategory(ResultSet resultSet) throws SQLException {
+		String imageId = resultSet.getString("category_image_public_id");
+		return new PublicCategory(
+			UUID.fromString(resultSet.getString("category_public_id")),
+			resultSet.getString("category_name"),
+			resultSet.getString("category_slug"),
+			imageId == null ? null : new ProductImageReference(
+				UUID.fromString(imageId),
+				resultSet.getString("category_image_alt_text")));
 	}
 
 	private ProductImageReference mapImage(ResultSet resultSet) throws SQLException {

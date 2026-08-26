@@ -2,5 +2,11 @@ package com.comercioflex.catalog.domain;
 
 import java.util.UUID;
 
-public record PublicCategory(UUID id, String name, String slug) {
+import com.comercioflex.media.domain.ProductImageReference;
+
+public record PublicCategory(
+	UUID id,
+	String name,
+	String slug,
+	ProductImageReference image) {
 }
