@@ -1,4 +1,5 @@
 <section class="page" aria-labelledby="transfers-title">
+  <nav aria-label="Migas de pan"><a [routerLink]="['/tiendas', storeSlug(), 'admin']">Panel</a><span aria-hidden="true">/</span><span>Transferencias</span></nav>
   <header>
     <p class="eyebrow">Pedidos / Pagos</p>
     <h1 id="transfers-title">Transferencias pendientes</h1>
@@ -10,7 +11,7 @@
     <div class="empty"><h2>No hay comprobantes pendientes</h2><p>Los nuevos comprobantes aparecerán acá.</p></div>
   } @else {
     <div class="table-wrapper"><table>
-      <thead><tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Fecha</th><th>Comprobante</th><th></th></tr></thead>
+      <thead><tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Fecha</th><th>Estado</th><th>Comprobante</th><th></th></tr></thead>
       <tbody>
         @for (payment of items(); track payment.id) {
           <tr>
@@ -18,6 +19,7 @@
             <td>{{ payment.customerName }}</td>
             <td>{{ payment.amount | storefrontMoney: payment.currencyCode }}</td>
             <td>{{ payment.receiptUploadedAt | commerceDate }}</td>
+            <td><span [attr.data-status]="payment.status">{{ payment.status === 'UNDER_REVIEW' ? 'A revisar' : payment.status }}</span></td>
             <td>{{ payment.receiptOriginalFilename }}</td>
             <td><a [routerLink]="[payment.id]">Revisar</a></td>
           </tr>

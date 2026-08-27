@@ -11,7 +11,7 @@
   } @else if (product(); as current) {
     <header>
       <div>
-        <span class="status">{{ statusLabel(current.status) }}</span>
+        <span class="status" [attr.data-status]="current.status">{{ statusLabel(current.status) }}</span>
         <h1 id="product-title">{{ current.name }}</h1>
         <p>{{ current.category.name }} · {{ current.slug }}</p>
       </div>
@@ -55,7 +55,7 @@
                 </td>
                 <td>{{ optionLabel(variant.options, variant.size, variant.color) }}</td>
                 <td>{{ variant.price }}</td>
-                <td>{{ variant.active ? 'Activa' : 'Inactiva' }}</td>
+                <td><span [attr.data-status]="variant.active ? 'ACTIVE' : 'ARCHIVED'">{{ variant.active ? 'Activa' : 'Inactiva' }}</span></td>
               </tr>
             }
           </tbody>

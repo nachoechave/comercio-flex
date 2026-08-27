@@ -1,14 +1,14 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { exhaustMap, finalize } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { StoreSettingsApiService } from './store-settings-api.service';
 
-@Component({ selector: 'app-store-settings-page', imports: [ReactiveFormsModule],
+@Component({ selector: 'app-store-settings-page', imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './store-settings-page.html', styleUrl: './store-settings-page.scss' })
 export class StoreSettingsPage {
   private readonly api = inject(StoreSettingsApiService);

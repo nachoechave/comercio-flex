@@ -83,7 +83,7 @@
                   <small>{{ category.slug }}</small>
                 </td>
                 <td>
-                  <span class="status" [class.inactive]="!category.active">
+                  <span class="status" [class.inactive]="!category.active" [attr.data-status]="category.active ? 'ACTIVE' : 'ARCHIVED'">
                     {{ category.active ? 'Activa' : 'Inactiva' }}
                   </span>
                 </td>

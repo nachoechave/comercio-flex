@@ -13,6 +13,10 @@ table { width: 100%; border-collapse: collapse; }
 th,td { padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: left; }
 td small { display: block; color: var(--color-muted); }
 .status { padding: .25rem .5rem; border-radius: 999px; background: #edf0f4; font-weight: 700; }
+.product-cell { display: flex; min-width: 13rem; align-items: center; gap: .75rem; }
+.product-cell img,.product-placeholder { width: 2.75rem; height: 2.75rem; border-radius: .5rem; flex: 0 0 auto; }
+.product-cell img { object-fit: cover; }
+.product-placeholder { display: grid; color: var(--cf-primary); background: var(--cf-primary-soft); font-weight: 800; place-items: center; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; }
 .error { color: #8b2029; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }

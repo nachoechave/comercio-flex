@@ -9,11 +9,12 @@ import {
   viewChildren,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, of, Subscription, switchMap } from 'rxjs';
 
 import { CsrfService } from '../../../../core/auth/csrf.service';
 import { CommerceDatePipe, formatCommerceDate } from '../../../../shared/pipes/commerce-date.pipe';
+import { StatusPill } from '../../../../shared/ui/status-pill/status-pill';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
 import { PaymentAuthorizationNavigationService } from '../payment-authorization-navigation.service';
 import { PaymentConnectionApiService } from '../payment-connection-api.service';
@@ -24,7 +25,7 @@ type OAuthResult = 'connected' | 'cancelled' | 'failed';
 
 @Component({
   selector: 'app-payment-connection-page',
-  imports: [CommerceDatePipe],
+  imports: [CommerceDatePipe, RouterLink, StatusPill],
   templateUrl: './payment-connection-page.html',
   styleUrl: './payment-connection-page.scss',
 })

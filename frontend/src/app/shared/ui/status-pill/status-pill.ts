@@ -23,9 +23,19 @@ import { Component, input } from '@angular/core';
       color: #8a1724;
       background: #fde2e5;
     }
+
+    .status[data-tone='warning'] {
+      color: #805400;
+      background: #fff2c7;
+    }
+
+    .status[data-tone='info'] {
+      color: #125f99;
+      background: #e2f2ff;
+    }
   `,
 })
 export class StatusPill {
   readonly label = input.required<string>();
-  readonly tone = input<'neutral' | 'success' | 'danger'>('neutral');
+  readonly tone = input<'neutral' | 'success' | 'warning' | 'danger' | 'info'>('neutral');
 }

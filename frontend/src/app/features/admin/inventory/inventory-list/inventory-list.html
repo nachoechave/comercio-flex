@@ -9,6 +9,7 @@
       <h1 id="inventory-title">Inventario</h1>
       <p>Consultá y ajustá la existencia física de cada variante.</p>
     </div>
+    @if (canManage()) { <a class="secondary" routerLink="configuracion">Configurar alertas</a> }
   </header>
 
   <form class="filters" [formGroup]="filters" (ngSubmit)="search()">
@@ -49,11 +50,7 @@
               <td>{{ optionLabel(item) }}</td>
               <td class="quantity">{{ item.quantity | quantityFormat }}</td>
               <td>
-                @if (!item.variantActive || item.productStatus === 'ARCHIVED') {
-                  <span class="warning">{{ item.productStatus === 'ARCHIVED' ? 'Producto archivado' : 'Variante inactiva' }}</span>
-                } @else {
-                  Disponible
-                }
+                <span [attr.data-status]="stockStatus(item).tone">{{ stockStatus(item).label }}</span>
               </td>
               <td class="actions">
                 <a [routerLink]="[item.variantId]" [attr.aria-label]="'Ver movimientos de ' + item.sku">Ver</a>

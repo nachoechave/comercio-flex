@@ -1,9 +1,9 @@
 <section class="page" aria-labelledby="transfer-title">
-  <nav><a [routerLink]="['../']">Transferencias pendientes</a> / Detalle</nav>
+  <nav aria-label="Migas de pan"><a [routerLink]="['../']">Transferencias</a><span aria-hidden="true">/</span><span>Detalle</span></nav>
   @if (loading()) { <p role="status">Cargando transferencia…</p> }
   @else if (payment(); as current) {
     <header>
-      <p class="eyebrow">{{ current.status }}</p>
+      <p><span [attr.data-status]="current.status">{{ current.status === 'UNDER_REVIEW' ? 'A revisar' : current.status }}</span></p>
       <h1 id="transfer-title">{{ current.orderNumber }}</h1>
       <p>{{ current.customerName }} · {{ current.createdAt | commerceDate }}</p>
     </header>

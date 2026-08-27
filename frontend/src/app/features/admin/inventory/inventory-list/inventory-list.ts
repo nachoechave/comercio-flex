@@ -1,12 +1,15 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { catchError, of } from 'rxjs';
 
+import { AuthService } from '../../../../core/auth/auth.service';
 import { routeParam } from '../../../../core/auth/auth.guards';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
 import { QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pipe';
 import { variantOptionsLabel } from '../../../../shared/variant-options';
+import { DashboardApiService } from '../../dashboard/dashboard-api.service';
 import { InventoryApiService } from '../inventory-api.service';
 import { inventoryErrorMessage } from '../inventory-errors';
 import { InventoryAvailability, InventoryPage } from '../inventory.models';
@@ -27,6 +30,8 @@ const EMPTY_PAGE: InventoryPage = {
 })
 export class InventoryList {
   private readonly api = inject(InventoryApiService);
+  private readonly dashboardApi = inject(DashboardApiService);
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly formBuilder = inject(FormBuilder);
   private readonly reloadVersion = signal(0);
@@ -39,12 +44,28 @@ export class InventoryList {
   readonly page = signal<InventoryPage>(EMPTY_PAGE);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
+  readonly lowStockThreshold = signal<number | null>(null);
+  readonly canManage = computed(
+    () => this.auth.membershipFor(this.storeSlug() ?? '')?.role !== 'STAFF',
+  );
   readonly filters = this.formBuilder.nonNullable.group({
     q: [''],
     availability: ['ALL' as InventoryAvailability],
   });
 
   constructor() {
+    effect((onCleanup) => {
+      const slug = this.storeSlug();
+      if (!slug) return;
+      this.lowStockThreshold.set(null);
+      const subscription = this.dashboardApi.get(slug).pipe(catchError(() => of(null))).subscribe((summary) => {
+        this.lowStockThreshold.set(
+          summary === null ? null : Number(summary.lowStockThreshold),
+        );
+      });
+      onCleanup(() => subscription.unsubscribe());
+    });
+
     effect((onCleanup) => {
       const slug = this.storeSlug();
       this.reloadVersion();
@@ -94,5 +115,20 @@ export class InventoryList {
 
   optionLabel(item: InventoryPage['items'][number]): string {
     return variantOptionsLabel(item.options, item.size, item.color) || 'Opción estándar';
+  }
+
+  stockStatus(item: InventoryPage['items'][number]): { label: string; tone: string } {
+    if (!item.variantActive || item.productStatus === 'ARCHIVED') {
+      return {
+        label: item.productStatus === 'ARCHIVED' ? 'Producto archivado' : 'Variante inactiva',
+        tone: 'ARCHIVED',
+      };
+    }
+    const quantity = Number(item.quantity);
+    if (quantity <= 0) return { label: 'Sin stock', tone: 'OUT' };
+    const threshold = this.lowStockThreshold();
+    if (threshold === null) return { label: 'Estado no disponible', tone: 'NEUTRAL' };
+    if (quantity <= threshold) return { label: 'Stock bajo', tone: 'LOW' };
+    return { label: 'Normal', tone: 'ACTIVE' };
   }
 }

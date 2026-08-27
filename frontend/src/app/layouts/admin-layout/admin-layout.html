@@ -1,0 +1,74 @@
+@if (membership(); as currentMembership) {
+  <div class="admin-frame" [class.navigation-open]="mobileNavigationOpen()" [class.navigation-compact]="compactNavigation()">
+    <a class="skip-link" href="#main-content">Saltar al contenido</a>
+
+    <aside id="admin-navigation" class="sidebar" aria-label="Navegación principal">
+      <div class="brand-row">
+        <a class="brand" [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin']">
+          <span class="brand-mark" aria-hidden="true">CF</span>
+          <span class="brand-copy"><strong>Comercio Flex</strong><small>Administración</small></span>
+        </a>
+        <button type="button" class="icon-button close-navigation" (click)="closeMobileNavigation()" aria-label="Cerrar navegación">
+          <app-admin-icon name="x" />
+        </button>
+      </div>
+
+      <div class="store-context">
+        <span class="store-avatar" aria-hidden="true"><app-admin-icon name="store" /></span>
+        <span class="store-copy"><strong>{{ currentMembership.storeName }}</strong><small>{{ currentMembership.role }}</small></span>
+        @if (hasMultipleStores()) {
+          <a routerLink="/admin/comercios" aria-label="Cambiar de comercio"><app-admin-icon name="chevron" /></a>
+        }
+      </div>
+
+      <nav class="admin-nav">
+        @if (currentMembership.role !== 'STAFF') {
+          <p class="nav-group-label">Resumen</p>
+          <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin']" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <app-admin-icon name="dashboard" /><span>Inicio</span>
+          </a>
+        }
+
+        <p class="nav-group-label">Operación</p>
+        <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'pedidos']" [class.active]="ordersNavigationActive()"><app-admin-icon name="orders" /><span>Pedidos</span></a>
+        <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'pedidos', 'transferencias']" [class.active]="transfersNavigationActive()"><app-admin-icon name="transfers" /><span>Transferencias</span></a>
+        <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'productos']" routerLinkActive="active"><app-admin-icon name="products" /><span>Productos</span></a>
+        <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'categorias']" routerLinkActive="active"><app-admin-icon name="categories" /><span>Categorías</span></a>
+        <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'inventario']" routerLinkActive="active"><app-admin-icon name="inventory" /><span>Inventario</span></a>
+
+        @if (currentMembership.role !== 'STAFF') {
+          <p class="nav-group-label">Tienda</p>
+          <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'comercio']" routerLinkActive="active"><app-admin-icon name="commerce" /><span>Comercio</span></a>
+        }
+        @if (currentMembership.role === 'OWNER') {
+          <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'pagos']" routerLinkActive="active"><app-admin-icon name="payments" /><span>Pagos</span></a>
+        }
+      </nav>
+
+      <button type="button" class="compact-toggle" (click)="toggleCompactNavigation()" [attr.aria-label]="compactNavigation() ? 'Expandir navegación' : 'Contraer navegación'">
+        <app-admin-icon name="chevron" /><span>{{ compactNavigation() ? 'Expandir' : 'Contraer' }}</span>
+      </button>
+    </aside>
+
+    <button type="button" class="navigation-backdrop" (click)="closeMobileNavigation()" aria-label="Cerrar navegación"></button>
+
+    <section class="admin-workspace">
+      <header class="topbar">
+        <button type="button" class="icon-button menu-button" (click)="toggleMobileNavigation()" [attr.aria-expanded]="mobileNavigationOpen()" aria-controls="admin-navigation" aria-label="Abrir navegación">
+          <app-admin-icon name="menu" />
+        </button>
+        <a class="storefront-link" [routerLink]="['/tiendas', currentMembership.storeSlug]">Ver tienda</a>
+        <div class="user-context">
+          <span class="user-avatar" aria-hidden="true"><app-admin-icon name="user" /></span>
+          <span class="user-copy"><strong>{{ user()?.displayName || 'Mi cuenta' }}</strong><small>{{ user()?.email }}</small></span>
+          <button type="button" class="logout-button" (click)="logout()" [disabled]="loggingOut()">
+            <app-admin-icon name="logout" /><span>{{ loggingOut() ? 'Saliendo…' : 'Cerrar sesión' }}</span>
+          </button>
+        </div>
+      </header>
+
+      @if (logoutError()) { <p class="logout-error" role="alert">{{ logoutError() }}</p> }
+      <main id="main-content" class="admin-content" tabindex="-1"><router-outlet /></main>
+    </section>
+  </div>
+}

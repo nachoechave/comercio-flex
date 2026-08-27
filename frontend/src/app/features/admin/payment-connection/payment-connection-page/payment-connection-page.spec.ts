@@ -105,6 +105,9 @@ describe('PaymentConnectionPage', () => {
     expect(text).toContain('Conectada a: TESTABC123');
     expect(fixture.nativeElement.querySelector('dt').textContent).toContain('Ambiente:');
     expect(fixture.nativeElement.querySelector('dd').textContent).toContain('Prueba');
+    expect(fixture.nativeElement.querySelector('app-status-pill .status').dataset.tone).toBe(
+      'success',
+    );
     expect(text).not.toContain('access_token');
   });
 

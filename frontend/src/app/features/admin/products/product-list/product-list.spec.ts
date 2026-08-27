@@ -65,6 +65,46 @@ describe('ProductList', () => {
     expect(fixture.nativeElement.querySelector('a.primary')).toBeNull();
   });
 
+  it('lazy-loads product thumbnails', () => {
+    fixture = TestBed.createComponent(ProductList);
+    fixture.detectChanges();
+    http
+      .expectOne((request) => request.url.includes('/tienda-a/admin/products'))
+      .flush({
+        items: [
+          {
+            id: 'product-1',
+            name: 'Remera',
+            slug: 'remera',
+            status: 'PUBLISHED',
+            category: { id: 'category-1', name: 'Indumentaria', active: true },
+            variantCount: 1,
+            activeVariantCount: 1,
+            priceFrom: '10000.00',
+            priceTo: '10000.00',
+            image: {
+              id: 'image-1',
+              url: 'https://cdn.example.com/remera.jpg',
+              thumbnailUrl: 'https://cdn.example.com/remera-thumb.jpg',
+              altText: 'Remera negra',
+            },
+            version: 1,
+            updatedAt: '2026-08-27T12:00:00Z',
+          },
+        ],
+        page: 0,
+        size: 20,
+        totalItems: 1,
+        totalPages: 1,
+      });
+    http.expectOne('/api/v1/stores/tienda-a/admin/categories').flush([]);
+    fixture.detectChanges();
+
+    const image = fixture.nativeElement.querySelector('.product-cell img') as HTMLImageElement;
+    expect(image.getAttribute('loading')).toBe('lazy');
+    expect(image.alt).toBe('Remera negra');
+  });
+
   it('resets page and tenant-bound filters when reused from A to B', () => {
     createAndFlush();
     fixture.componentInstance.filters.setValue({

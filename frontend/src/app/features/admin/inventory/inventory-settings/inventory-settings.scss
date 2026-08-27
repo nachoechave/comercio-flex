@@ -1,0 +1,9 @@
+:host { display: block; }
+.settings-page { max-width: 48rem !important; }
+form { display: grid; gap: 1.5rem; padding: 1.5rem; }
+form h2 { margin: .2rem 0 .4rem; }
+.field { display: grid; gap: .45rem; max-width: 20rem; }
+.field small { color: var(--cf-text-muted); }
+.field-error { margin: 0; color: var(--cf-danger) !important; font-size: .82rem; }
+.form-actions { display: flex; padding-top: 1rem; align-items: center; justify-content: flex-end; gap: 1rem; border-top: 1px solid var(--cf-border); }
+.form-actions a { font-weight: 700; text-decoration: none; }
