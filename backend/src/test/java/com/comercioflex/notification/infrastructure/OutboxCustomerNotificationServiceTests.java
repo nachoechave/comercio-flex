@@ -40,13 +40,16 @@ class OutboxCustomerNotificationServiceTests {
 	private final NotificationOutboxRepository outbox = mock(NotificationOutboxRepository.class);
 	private final AdminOrderRepository orders = mock(AdminOrderRepository.class);
 	private final StoreSettingsRepository stores = mock(StoreSettingsRepository.class);
+	private final EmailBrandingResolver branding = mock(EmailBrandingResolver.class);
 	private OutboxCustomerNotificationService service;
 
 	@BeforeEach
 	void setUp() {
 		when(stores.findCurrent()).thenReturn(Optional.of(store()));
+		when(branding.resolve(any())).thenReturn(
+			new EmailBranding("Tienda A", "#6D3CE7", "#FFFFFF", null));
 		service = new OutboxCustomerNotificationService(
-			outbox, orders, stores, new EmailTemplateRenderer());
+			outbox, orders, stores, new EmailTemplateRenderer(), branding);
 	}
 
 	@Test
@@ -78,7 +81,8 @@ class OutboxCustomerNotificationServiceTests {
 		verify(outbox).enqueue(eq("BANK_TRANSFER_RECEIPT_REJECTED:" + PAYMENT_ID),
 			eq("BANK_TRANSFER_RECEIPT_REJECTED"), eq(ORDER_ID), eq(20L), email.capture());
 		assertThat(email.getValue().textBody())
-			.contains("comprobante", "No se distingue el importe", "sigue pendiente")
+			.contains("Tienda A", "Remera", "comprobante", "No se distingue el importe",
+				"sigue pendiente")
 			.doesNotContain("pedido fue rechazado", "pedido rechazado");
 	}
 
@@ -94,6 +98,29 @@ class OutboxCustomerNotificationServiceTests {
 			eq("BANK_TRANSFER_RECEIPT_REJECTED"), eq(ORDER_ID), eq(20L), any());
 		verify(outbox).enqueue(eq("BANK_TRANSFER_RECEIPT_REJECTED:" + SECOND_PAYMENT_ID),
 			eq("BANK_TRANSFER_RECEIPT_REJECTED"), eq(ORDER_ID), eq(21L), any());
+	}
+
+	@Test
+	void eachEventSnapshotsOnlyTheBrandingOfItsCurrentTenant() {
+		StoreSettings storeA = store("Tienda A");
+		StoreSettings storeB = store("Tienda B");
+		when(stores.findCurrent()).thenReturn(Optional.of(storeA), Optional.of(storeB));
+		when(branding.resolve(storeA)).thenReturn(
+			new EmailBranding("Tienda A", "#112233", "#FFFFFF", null));
+		when(branding.resolve(storeB)).thenReturn(
+			new EmailBranding("Tienda B", "#F5E942", "#172033", null));
+		when(outbox.enqueue(any(), any(), any(), any(), any())).thenReturn(true);
+
+		service.orderConfirmed(order(), NOW);
+		service.orderConfirmed(order(), NOW);
+
+		ArgumentCaptor<TransactionalEmail> emails = ArgumentCaptor.forClass(TransactionalEmail.class);
+		verify(outbox, org.mockito.Mockito.times(2)).enqueue(any(), eq("ORDER_CONFIRMED"),
+			eq(ORDER_ID), eq(null), emails.capture());
+		assertThat(emails.getAllValues().get(0).htmlBody())
+			.contains("Tienda A", "background:#112233").doesNotContain("Tienda B", "#F5E942");
+		assertThat(emails.getAllValues().get(1).htmlBody())
+			.contains("Tienda B", "background:#F5E942").doesNotContain("Tienda A", "#112233");
 	}
 
 	@Test
@@ -131,8 +158,12 @@ class OutboxCustomerNotificationServiceTests {
 	}
 
 	private StoreSettings store() {
-		return new StoreSettings("Tienda A", "ARS", "America/Argentina/Buenos_Aires",
+		return store("Tienda A");
+	}
+
+	private StoreSettings store(String name) {
+		return new StoreSettings(name, "ARS", "America/Argentina/Buenos_Aires",
 			"1155550000", "store@example.com", "Av. Siempre Viva 123", "Traé tu DNI",
-			true, "Banco", "Tienda A", "TIENDA.A", null, null, null);
+			true, "Banco", name, "TIENDA.A", null, null, null);
 	}
 }

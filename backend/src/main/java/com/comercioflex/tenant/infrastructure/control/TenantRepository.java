@@ -30,6 +30,19 @@ public interface TenantRepository extends JpaRepository<TenantEntity, Long> {
 			tenant.databaseKey
 		)
 		FROM TenantEntity tenant
+		WHERE tenant.databaseKey = :databaseKey
+			AND tenant.status = com.comercioflex.tenant.infrastructure.control.TenantStatus.ACTIVE
+		""")
+	Optional<ActiveTenant> findActiveByDatabaseKey(@Param("databaseKey") String databaseKey);
+
+	@Query("""
+		SELECT new com.comercioflex.tenant.infrastructure.control.ActiveTenant(
+			tenant.id,
+			tenant.slug,
+			tenant.displayName,
+			tenant.databaseKey
+		)
+		FROM TenantEntity tenant
 		WHERE tenant.status = com.comercioflex.tenant.infrastructure.control.TenantStatus.ACTIVE
 		ORDER BY tenant.slug
 		""")

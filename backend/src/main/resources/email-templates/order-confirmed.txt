@@ -1,12 +1,19 @@
 {{storeName}}
 
-Hola {{customerName}},
+PEDIDO CONFIRMADO
 
-Tu pedido {{orderNumber}} fue confirmado.
+Hola, {{customerName}}.
 
-Productos:
+Tu pedido {{orderNumber}} fue confirmado correctamente.
+
+RESUMEN DEL PEDIDO
 {{itemsText}}
 
 Total: {{total}}
-Modalidad: {{fulfillment}}
-Fecha de confirmación: {{eventDate}}
+
+ENTREGA
+{{fulfillment}}
+
+Confirmado el {{eventDate}}.
+
+Este es un email transaccional de {{storeName}}.

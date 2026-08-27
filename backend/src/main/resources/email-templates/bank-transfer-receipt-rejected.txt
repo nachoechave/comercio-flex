@@ -1,11 +1,26 @@
 {{storeName}}
 
-Hola {{customerName}},
+NECESITAMOS QUE REVISES TU COMPROBANTE
 
-Necesitamos que revises el comprobante de tu pedido {{orderNumber}}.
-Motivo: {{rejectionReason}}
+Hola, {{customerName}}.
+
+No pudimos aprobar el comprobante del pedido {{orderNumber}}.
+
+MOTIVO
+{{rejectionReason}}
+
+RESUMEN DEL PEDIDO
+{{itemsText}}
+
 Total: {{total}}
-Reserva vigente hasta: {{reservationExpiresAt}}
 
-Podés enviar un nuevo comprobante mientras la reserva siga vigente.
+ENTREGA
+{{fulfillment}}
+
+Podés volver a enviar un comprobante mientras la reserva siga vigente.
+Reserva válida hasta: {{reservationExpiresAt}}
+
 Tu pedido sigue pendiente de confirmación.
+
+Este es un email transaccional de {{storeName}}.
+No adjuntamos comprobantes por email.

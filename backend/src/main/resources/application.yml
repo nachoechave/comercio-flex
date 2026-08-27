@@ -61,6 +61,7 @@ logging:
 app:
   email:
     enabled: ${EMAIL_ENABLED:false}
+    public-base-uri: ${PUBLIC_BACKEND_BASE_URI:}
     provider: ${EMAIL_PROVIDER:smtp}
     from-name: ${EMAIL_FROM_NAME:Comercio Flex}
     from-address: ${EMAIL_FROM_ADDRESS:no-reply@example.com}
