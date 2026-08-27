@@ -5,7 +5,9 @@
   aria-labelledby="product-title"
 >
   <nav class="breadcrumbs" aria-label="Migas de pan">
-    <a [routerLink]="['/tiendas', storeSlug()]">Productos</a>
+    <a [routerLink]="['/tiendas', storeSlug()]">Inicio</a>
+    <span aria-hidden="true">/</span>
+    <a [routerLink]="['/tiendas', storeSlug()]" fragment="catalog-products">Productos</a>
     @if (product(); as currentProduct) {
       <span aria-hidden="true">/</span>
       <span>{{ currentProduct.name }}</span>
@@ -32,107 +34,167 @@
       </div>
     </div>
   } @else if (product(); as currentProduct) {
-    <div class="product-hero">
-      <div class="visual" [attr.aria-hidden]="currentProduct.image ? null : 'true'">
-        @if (currentProduct.image; as image) {
-          <img [src]="image.url" [alt]="image.altText" />
-        } @else {
-          <span>{{ initial() }}</span>
-        }
+    <div class="product-layout">
+      <div class="product-media">
+        <div class="visual" [attr.aria-hidden]="currentProduct.image ? null : 'true'">
+          @if (currentProduct.image; as image) {
+            <img [src]="image.url" [alt]="image.altText" fetchpriority="high" />
+          } @else {
+            <span>{{ initial() }}</span>
+          }
+        </div>
       </div>
-      <div class="summary">
-        <p class="eyebrow">{{ currentProduct.category.name }}</p>
-        <h1 id="product-title">{{ currentProduct.name }}</h1>
-        @if (featuredPrice(); as price) {
-          <p class="featured-price">{{ price | storefrontMoney: context.currencyCode() }}</p>
-        }
-        <p class="availability" [class.availability--out]="!available()">
-          {{ available() ? 'Disponible' : 'Sin stock' }}
-        </p>
-        @if (currentProduct.description) {
-          <p class="description">{{ currentProduct.description }}</p>
-        } @else {
-          <p class="description">Consultá las opciones y precios disponibles.</p>
-        }
-      </div>
-    </div>
 
-    <section class="variants" aria-labelledby="variants-title">
-      <header>
-        <p class="eyebrow">Opciones</p>
-        <h2 id="variants-title">
-          {{
-            isStreetwear()
-              ? 'Elegí tu opción'
-              : currentProduct.variants.length === 1
-                ? 'Precio y disponibilidad'
-                : 'Elegí tu variante'
-          }}
-        </h2>
-        <p>
-          {{
-            isStreetwear()
-              ? 'Seleccioná la combinación que mejor va con vos.'
-              : 'El precio y la disponibilidad corresponden a cada combinación.'
-          }}
-        </p>
-      </header>
-      <div class="variant-grid">
-        @for (variant of currentProduct.variants; track variant.id) {
-          <label
-            class="variant-card"
-            [class.variant-card--out]="!variant.available"
-            [class.variant-card--selected]="selectedVariantId() === variant.id"
+      <div class="product-purchase">
+        <header class="summary">
+          <p class="eyebrow">{{ currentProduct.category.name }}</p>
+          <h1 id="product-title">{{ currentProduct.name }}</h1>
+          @if (featuredPrice(); as price) {
+            <p class="featured-price">{{ price | storefrontMoney: context.currencyCode() }}</p>
+          }
+          <p
+            class="availability"
+            [class.availability--out]="selectedVariant() && !selectedVariant()?.available"
+            [class.availability--pending]="!selectedVariant() && available()"
           >
-            <input
-              type="radio"
-              name="product-variant"
-              [value]="variant.id"
-              [checked]="selectedVariantId() === variant.id"
-              [disabled]="!variant.available"
-              (change)="selectVariant(variant)"
-            />
-            <div>
-              <h3>{{ variantLabel(variant) }}</h3>
-              <p>{{ variant.available ? 'Disponible' : 'Sin stock' }}</p>
-            </div>
-            <strong>{{ variant.price | storefrontMoney: context.currencyCode() }}</strong>
-          </label>
-        }
-      </div>
-      @if (available()) {
+            <span aria-hidden="true">{{ canAddToCart() ? '✓' : '•' }}</span>
+            {{ availabilityLabel() }}
+          </p>
+          @if (currentProduct.description) {
+            <p class="description">{{ currentProduct.description }}</p>
+          }
+        </header>
+
+        <section class="variants" aria-labelledby="variants-title">
+          <h2 id="variants-title" class="visually-hidden">Opciones del producto</h2>
+          @if (optionGroups().length) {
+            @for (group of optionGroups(); track group.key) {
+              <fieldset class="option-group">
+                <legend>{{ group.name }}</legend>
+                <div class="option-values">
+                  @for (value of group.values; track value) {
+                    <button
+                      type="button"
+                      class="option-chip"
+                      [class.option-chip--selected]="optionSelected(group, value)"
+                      [disabled]="!optionValueAvailable(group, value)"
+                      [attr.aria-pressed]="optionSelected(group, value)"
+                      (click)="selectOption(group, value)"
+                    >
+                      {{ value }}
+                    </button>
+                  }
+                </div>
+              </fieldset>
+            }
+          } @else if (!simpleProduct()) {
+            <fieldset class="option-group">
+              <legend>Variante</legend>
+              <div class="option-values option-values--variants">
+                @for (variant of currentProduct.variants; track variant.id) {
+                  <button
+                    type="button"
+                    class="option-chip option-chip--variant"
+                    [class.option-chip--selected]="selectedVariantId() === variant.id"
+                    [disabled]="!variant.available"
+                    [attr.aria-pressed]="selectedVariantId() === variant.id"
+                    (click)="selectVariant(variant)"
+                  >
+                    <span>{{ variantLabel(variant) }}</span>
+                    <small>{{ variant.price | storefrontMoney: context.currencyCode() }}</small>
+                  </button>
+                }
+              </div>
+            </fieldset>
+          } @else {
+            <p class="simple-variant">Opción estándar</p>
+          }
+        </section>
+
         <div class="purchase-panel">
-          <label>
-            Cantidad
-            <input
-              type="number"
-              min="1"
-              max="99"
-              step="1"
-              inputmode="numeric"
-              [value]="quantity()"
-              (input)="updateQuantity($event)"
-            />
-          </label>
-          <button type="button" [disabled]="!selectedVariant()" (click)="addToCart()">
+          <div class="quantity-field">
+            <span class="quantity-label">Cantidad</span>
+            <div class="quantity-control">
+              <button
+                type="button"
+                aria-label="Disminuir cantidad"
+                [disabled]="quantity() === 1 || !canAddToCart()"
+                (click)="decreaseQuantity()"
+              >
+                −
+              </button>
+              <input
+                aria-label="Cantidad"
+                type="number"
+                min="1"
+                max="99"
+                step="1"
+                inputmode="numeric"
+                [value]="quantity()"
+                [disabled]="!canAddToCart()"
+                (input)="updateQuantity($event)"
+              />
+              <button
+                type="button"
+                aria-label="Aumentar cantidad"
+                [disabled]="quantity() === 99 || !canAddToCart()"
+                (click)="increaseQuantity()"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <button
+            class="add-to-cart"
+            type="button"
+            [disabled]="!canAddToCart()"
+            (click)="addToCart()"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5.5 8.5h13l-1 11h-11z"></path>
+              <path d="M9 9V7a3 3 0 0 1 6 0v2"></path>
+            </svg>
             Agregar al carrito
           </button>
           <p class="cart-feedback" aria-live="polite">
             {{ cartMessage() }}
-            @if (cartMessage() && selectedVariant()) {
+            @if (cartMessage() && selectedVariant()?.available) {
               <a [routerLink]="['/tiendas', storeSlug(), 'carrito']">Ver carrito</a>
             }
           </p>
-          <small>La disponibilidad final se verificará al confirmar el pedido.</small>
+          <small>La disponibilidad final se verifica al confirmar el pedido.</small>
         </div>
-      }
-      @if (isStreetwear()) {
-        <ul class="purchase-benefits" aria-label="Beneficios de compra">
-          <li><span aria-hidden="true">↗</span><strong>Envíos a todo el país</strong></li>
-          <li><span aria-hidden="true">↻</span><strong>Cambios simples</strong></li>
-          <li><span aria-hidden="true">◇</span><strong>Compra segura</strong></li>
+
+        <ul class="purchase-benefits" aria-label="Información de compra">
+          <li>
+            <span class="benefit-icon" aria-hidden="true">✓</span>
+            <span><strong>Stock verificado</strong><small>Al confirmar tu pedido</small></span>
+          </li>
+          <li>
+            <span class="benefit-icon" aria-hidden="true">◇</span>
+            <span
+              ><strong>Compra segura</strong><small>Confirmación antes de finalizar</small></span
+            >
+          </li>
+          @if (context.settings()?.pickupAddress || context.settings()?.pickupInstructions) {
+            <li>
+              <span class="benefit-icon" aria-hidden="true">⌂</span>
+              <span
+                ><strong>Retiro coordinado</strong
+                ><small>Según lo informado por la tienda</small></span
+              >
+            </li>
+          }
         </ul>
-      }
-    </section>
+      </div>
+    </div>
+
+    @if (currentProduct.description) {
+      <section class="product-information" aria-labelledby="product-description-title">
+        <p class="eyebrow">Información del producto</p>
+        <h2 id="product-description-title">Descripción</h2>
+        <p>{{ currentProduct.description }}</p>
+      </section>
+    }
   }
 </section>
