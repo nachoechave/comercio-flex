@@ -15,6 +15,9 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
@@ -63,6 +66,24 @@ class TransactionalEmailOutboxDispatcherTests {
 
 		verify(outbox).markFailed(5L, 1, "SMTP caído", NOW.plusSeconds(60));
 		verify(outbox, never()).markSent(any(Long.class), any(Integer.class), any());
+	}
+
+	@Test
+	@ExtendWith(OutputCaptureExtension.class)
+	void smtpFailureLogsErrorTypeWithoutExposingSensitiveDetails(CapturedOutput output) {
+		NotificationOutboxRepository outbox = mock(NotificationOutboxRepository.class);
+		TransactionalEmailSender sender = mock(TransactionalEmailSender.class);
+		TransactionalEmail email = email();
+		doThrow(new IllegalStateException("credential-sensitive-detail"))
+			.when(sender).send(email);
+
+		new TransactionalEmailOutboxDispatcher(outbox, sender, properties(),
+			transactions(), Clock.fixed(NOW, ZoneOffset.UTC))
+			.deliver(new OutboxEmail(5L, "event", "ORDER_CONFIRMED", 1, email));
+
+		assertThat(output.getAll())
+			.contains("error_type=IllegalStateException")
+			.doesNotContain("credential-sensitive-detail");
 	}
 
 	@Test

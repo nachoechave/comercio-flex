@@ -26,7 +26,7 @@ final class SmtpTransactionalEmailSender implements TransactionalEmailSender {
 		try {
 			MimeMessage message = mailSender.createMimeMessage();
 			MimeMessageHelper helper = new MimeMessageHelper(
-				message, false, StandardCharsets.UTF_8.name());
+				message, true, StandardCharsets.UTF_8.name());
 			helper.setFrom(new InternetAddress(
 				properties.getFromAddress(), properties.getFromName(), StandardCharsets.UTF_8.name()));
 			helper.setTo(email.recipient());
