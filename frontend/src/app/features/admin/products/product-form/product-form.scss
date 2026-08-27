@@ -136,6 +136,30 @@ textarea:disabled {
 .bulk-price input {
   width: 10rem;
 }
+.bulk-receipt {
+  display: flex;
+  margin: 1rem 0;
+  padding: 1rem;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.65rem;
+  background: var(--color-surface);
+}
+.bulk-receipt > div:first-child {
+  margin-right: auto;
+}
+.bulk-receipt p {
+  margin: 0.25rem 0 0;
+  color: var(--color-muted);
+}
+.bulk-receipt label {
+  margin-top: 0;
+}
+.bulk-receipt input {
+  width: 10rem;
+}
 .variant-table {
   display: grid;
   gap: 0.75rem;
@@ -148,6 +172,12 @@ textarea:disabled {
     auto;
   gap: 0.75rem;
   align-items: start;
+}
+.variant-table.receiving .variant-table-header,
+.variant-table.receiving .variant-row {
+  grid-template-columns:
+    minmax(7rem, 1.2fr) minmax(7rem, 1fr) minmax(6.5rem, 0.8fr) minmax(7rem, 0.8fr)
+    minmax(8rem, 0.9fr) minmax(8rem, 1fr) minmax(7rem, auto);
 }
 .variant-table-header {
   padding: 0 1rem;
@@ -179,6 +209,39 @@ textarea:disabled {
 }
 .variant-stock p {
   margin: 0.75rem 0 0.35rem;
+}
+.variant-receipt label {
+  margin-top: 0;
+}
+.receipt-result {
+  display: grid;
+  min-height: 2.75rem;
+  padding-top: 0.75rem;
+  align-content: start;
+  gap: 0.35rem;
+  color: var(--color-muted);
+}
+.receipt-result strong {
+  color: var(--color-text);
+}
+.receipt-result small {
+  color: var(--color-success);
+}
+.receipt-result .receipt-error {
+  color: var(--color-danger);
+}
+.receiving-actions {
+  display: flex;
+  margin-top: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.receiving-actions p {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
 }
 .variant-row .variant-actions {
   align-self: center;
@@ -344,10 +407,21 @@ textarea:disabled {
     align-items: stretch;
     flex-direction: column;
   }
+  .bulk-receipt,
+  .receiving-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .bulk-receipt input {
+    width: 100%;
+  }
   .variant-table-header {
     display: none;
   }
   .variant-row {
+    grid-template-columns: 1fr;
+  }
+  .variant-table.receiving .variant-row {
     grid-template-columns: 1fr;
   }
   .variant-name {
@@ -362,6 +436,18 @@ textarea:disabled {
   }
   .initial-stock-field {
     width: 100%;
+  }
+}
+@media (min-width: 40.01rem) and (max-width: 72rem) {
+  .variant-table.receiving .variant-table-header {
+    display: none;
+  }
+  .variant-table.receiving .variant-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .variant-table.receiving .variant-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
   }
 }
 @media (max-width: 40rem) {

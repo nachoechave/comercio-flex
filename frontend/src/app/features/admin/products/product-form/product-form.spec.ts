@@ -532,6 +532,76 @@ describe('ProductForm tenant reuse', () => {
     expect(fixture.componentInstance.storeSlug()).toBe('tienda-b');
     expect(fixture.componentInstance.form.controls.name.value).toBe('Producto B');
   });
+
+  it('cancels an in-flight tenant A receipt and clears its state before loading tenant B', () => {
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/categories')
+      .flush([{ id: 'cat-a', name: 'Categoría A', active: true }]);
+    http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1').flush({
+      id: 'product-1',
+      name: 'Producto A',
+      slug: 'producto-a',
+      description: null,
+      status: 'DRAFT',
+      category: { id: 'cat-a', name: 'Categoría A', active: true },
+      variants: [
+        {
+          id: 'variant-a',
+          sku: 'SKU-A',
+          price: '10.00',
+          size: 'M',
+          color: null,
+          active: true,
+          version: 1,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      image: null,
+      version: 1,
+      createdAt: '',
+      updatedAt: '',
+    });
+    http.expectOne('/api/v1/stores/tienda-a/admin/inventory/variants/variant-a').flush({
+      variantId: 'variant-a',
+      productId: 'product-1',
+      productName: 'Producto A',
+      productStatus: 'DRAFT',
+      sku: 'SKU-A',
+      size: 'M',
+      color: null,
+      variantActive: true,
+      quantity: '2.000',
+      version: 1,
+      updatedAt: '',
+    });
+    fixture.componentInstance.variants.at(0).controls.receiptQuantity.setValue('5');
+    fixture.componentInstance.registerStockReceipts();
+    const tenantAReceipt = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-a/adjustments',
+    );
+
+    params.next(convertToParamMap({ storeSlug: 'tienda-b', productId: 'product-1' }));
+    fixture.detectChanges();
+
+    expect(tenantAReceipt.cancelled).toBe(true);
+    expect(fixture.componentInstance.stockReceiptFeedback()).toEqual({});
+    expect(fixture.componentInstance.bulkStockReceipt.value).toBe('');
+    http.expectOne('/api/v1/stores/tienda-b/admin/categories').flush([]);
+    http.expectOne('/api/v1/stores/tienda-b/admin/products/product-1').flush({
+      id: 'product-1',
+      name: 'Producto B',
+      slug: 'producto-b',
+      description: null,
+      status: 'DRAFT',
+      category: { id: 'cat-b', name: 'Categoría B', active: true },
+      variants: [],
+      image: null,
+      version: 1,
+      createdAt: '',
+      updatedAt: '',
+    });
+  });
 });
 
 describe('ProductForm image management', () => {
@@ -790,9 +860,105 @@ describe('ProductForm inventory editing', () => {
 
   it('shows current stock and routes adjustments through the audited inventory flow', () => {
     expect(fixture.nativeElement.textContent).toContain('Stock actual:');
-    expect(fixture.nativeElement.textContent).toContain('10.000');
+    expect(fixture.nativeElement.textContent).toContain('Stock actual: 10');
     const link: HTMLAnchorElement = fixture.nativeElement.querySelector('.variant-stock a');
     expect(link.getAttribute('href')).toBe('/tiendas/tienda-a/admin/inventario/variant-1/ajustar');
+  });
+
+  it('previews 2 + 5 as 7 and registers INCREASE 5 instead of a target stock', () => {
+    fixture.componentInstance.inventoryByVariant.update((current) => ({
+      ...current,
+      'variant-1': { ...current['variant-1'], quantity: '2.000' },
+    }));
+    const row = fixture.componentInstance.variants.at(0);
+    row.controls.receiptQuantity.setValue('5');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent.replace(/\s+/g, ' ')).toContain('2 + 5 → 7');
+
+    fixture.componentInstance.registerStockReceipts();
+    fixture.componentInstance.registerStockReceipts();
+    const requests = http.match(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-1/adjustments',
+    );
+    expect(requests).toHaveLength(1);
+    expect(requests[0].request.body).toEqual({
+      direction: 'INCREASE',
+      quantity: '5',
+      reason: 'RECEIPT',
+      note: 'Recepción de mercadería registrada desde la edición del producto.',
+    });
+    expect(requests[0].request.body.quantity).not.toBe('7');
+    expect(requests[0].request.headers.get('Idempotency-Key')).toBeTruthy();
+    requests[0].flush({
+      inventory: {
+        ...fixture.componentInstance.inventoryByVariant()['variant-1'],
+        quantity: '7.000',
+        version: 2,
+      },
+      movement: {},
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.inventoryFor('variant-1')?.quantity).toBe('7.000');
+    expect(row.controls.receiptQuantity.value).toBe('');
+    expect(fixture.nativeElement.textContent).toContain('Mercadería ingresada correctamente.');
+  });
+
+  it('adds 3 to stock 10 and leaves empty, zero and negative quantities without movements', () => {
+    const row = fixture.componentInstance.variants.at(0);
+
+    fixture.componentInstance.registerStockReceipts();
+    http.expectNone('/api/v1/stores/tienda-a/admin/inventory/variants/variant-1/adjustments');
+    row.controls.receiptQuantity.setValue('0');
+    fixture.componentInstance.registerStockReceipts();
+    http.expectNone('/api/v1/stores/tienda-a/admin/inventory/variants/variant-1/adjustments');
+    row.controls.receiptQuantity.setValue('-1');
+    fixture.componentInstance.registerStockReceipts();
+    expect(row.controls.receiptQuantity.invalid).toBe(true);
+    http.expectNone('/api/v1/stores/tienda-a/admin/inventory/variants/variant-1/adjustments');
+
+    row.controls.receiptQuantity.setValue('3');
+    fixture.componentInstance.registerStockReceipts();
+    const adjustment = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-1/adjustments',
+    );
+    expect(adjustment.request.body.quantity).toBe('3');
+    adjustment.flush({
+      inventory: {
+        ...fixture.componentInstance.inventoryByVariant()['variant-1'],
+        quantity: '13.000',
+      },
+      movement: {},
+    });
+    expect(fixture.componentInstance.inventoryFor('variant-1')?.quantity).toBe('13.000');
+  });
+
+  it('retries an uncertain receipt with the same idempotency key', () => {
+    const uuid = '11111111-1111-4111-8111-111111111111';
+    const randomUuid = vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(uuid);
+    fixture.componentInstance.variants.at(0).controls.receiptQuantity.setValue('3');
+
+    fixture.componentInstance.registerStockReceipts();
+    const first = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-1/adjustments',
+    );
+    expect(first.request.headers.get('Idempotency-Key')).toBe(uuid);
+    first.flush({}, { status: 0, statusText: 'Network error' });
+
+    fixture.componentInstance.registerStockReceipts();
+    const retry = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-1/adjustments',
+    );
+    expect(retry.request.headers.get('Idempotency-Key')).toBe(uuid);
+    retry.flush({
+      inventory: {
+        ...fixture.componentInstance.inventoryByVariant()['variant-1'],
+        quantity: '13.000',
+      },
+      movement: {},
+    });
+    randomUuid.mockRestore();
   });
 
   it('updates a variant price without replacing or dropping the variant', () => {
@@ -947,6 +1113,84 @@ describe('ProductForm generated variant editing', () => {
       .expectOne('/api/v1/stores/tienda-a/admin/inventory/variants/variant-m')
       .flush(inventoryResponse('variant-m', '8.000'));
     expect(fixture.componentInstance.variants.at(1).controls.id.value).toBe('variant-m');
+  });
+
+  it('applies one receipt quantity to all rows without moving stock until confirmation', () => {
+    fixture.componentInstance.bulkStockReceipt.setValue('5');
+    fixture.componentInstance.applyStockReceiptToAll();
+
+    expect(
+      fixture.componentInstance.variants.controls.map((row) => row.controls.receiptQuantity.value),
+    ).toEqual(['5', '5']);
+    http.expectNone((request) => request.url.endsWith('/adjustments'));
+
+    fixture.componentInstance.registerStockReceipts();
+    const first = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-s/adjustments',
+    );
+    expect(first.request.body).toMatchObject({
+      direction: 'INCREASE',
+      quantity: '5',
+      reason: 'RECEIPT',
+    });
+    first.flush({
+      inventory: { ...inventoryResponse('variant-s', '10.000'), version: 2 },
+      movement: {},
+    });
+    const second = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-m/adjustments',
+    );
+    expect(second.request.body.quantity).toBe('5');
+    expect(second.request.headers.get('Idempotency-Key')).not.toBe(
+      first.request.headers.get('Idempotency-Key'),
+    );
+    second.flush({
+      inventory: { ...inventoryResponse('variant-m', '13.000'), version: 2 },
+      movement: {},
+    });
+
+    expect(fixture.componentInstance.inventoryFor('variant-s')?.quantity).toBe('10.000');
+    expect(fixture.componentInstance.inventoryFor('variant-m')?.quantity).toBe('13.000');
+  });
+
+  it('keeps successful variants cleared and retries only a failed variant with the same key', () => {
+    const rows = fixture.componentInstance.variants.controls;
+    rows[0].controls.receiptQuantity.setValue('5');
+    rows[1].controls.receiptQuantity.setValue('3');
+
+    fixture.componentInstance.registerStockReceipts();
+    const success = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-s/adjustments',
+    );
+    success.flush({
+      inventory: { ...inventoryResponse('variant-s', '10.000'), version: 2 },
+      movement: {},
+    });
+    const failed = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-m/adjustments',
+    );
+    const failedKey = failed.request.headers.get('Idempotency-Key');
+    failed.flush({}, { status: 503, statusText: 'Unavailable' });
+    fixture.detectChanges();
+
+    expect(rows[0].controls.receiptQuantity.value).toBe('');
+    expect(rows[1].controls.receiptQuantity.value).toBe('3');
+    expect(fixture.componentInstance.stockReceiptFeedbackFor('variant-s')?.status).toBe('success');
+    expect(fixture.componentInstance.stockReceiptFeedbackFor('variant-m')?.status).toBe('error');
+    expect(fixture.componentInstance.stockReceivingMessage()).toBeNull();
+    expect(fixture.componentInstance.stockReceivingError()).toContain('Algunos ingresos');
+
+    fixture.componentInstance.registerStockReceipts();
+    http.expectNone('/api/v1/stores/tienda-a/admin/inventory/variants/variant-s/adjustments');
+    const retry = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-m/adjustments',
+    );
+    expect(retry.request.headers.get('Idempotency-Key')).toBe(failedKey);
+    retry.flush({
+      inventory: { ...inventoryResponse('variant-m', '11.000'), version: 2 },
+      movement: {},
+    });
+    expect(rows[1].controls.receiptQuantity.value).toBe('');
   });
 
   it('keeps a removed existing combination for safe deactivation instead of deleting it', () => {

@@ -37,7 +37,7 @@ export function formatQuantity(value: number | string | null | undefined): strin
   const isZero = whole === '0' && decimals.length === 0;
   const normalizedSign = isZero ? '' : sign;
 
-  return `${normalizedSign}${whole}${decimals ? `.${decimals}` : ''}`;
+  return `${normalizedSign}${whole}${decimals ? `,${decimals}` : ''}`;
 }
 
 @Pipe({

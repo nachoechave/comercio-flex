@@ -76,7 +76,7 @@ describe('AdminDashboard', () => {
     expect(text).toContain('Pedidos abiertos2');
     expect(text).toContain('Asado especial');
     expect(text).toContain('Umbral: 5');
-    expect(text).toContain('1.25');
+    expect(text).toContain('1,25');
     expect(text).toContain('Pedidos recientes');
     expect(text).toContain('Transferencias a revisar');
     expect(text).toContain('ORD-1');

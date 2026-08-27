@@ -15,8 +15,16 @@ describe('InventorySettings', () => {
     await TestBed.configureTestingModule({
       imports: [InventorySettings],
       providers: [
-        provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { pathFromRoot: [{ paramMap: params.asObservable() }], snapshot: { paramMap: convertToParamMap({}) } } },
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            pathFromRoot: [{ paramMap: params.asObservable() }],
+            snapshot: { paramMap: convertToParamMap({}) },
+          },
+        },
       ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
@@ -29,16 +37,17 @@ describe('InventorySettings', () => {
   it('loads and updates the real low-stock threshold endpoint', () => {
     http.expectOne('/api/v1/stores/tienda-a/admin/dashboard').flush({ lowStockThreshold: '5.000' });
     fixture.detectChanges();
-    expect(fixture.componentInstance.form.controls.threshold.value).toBe('5.000');
+    expect(fixture.componentInstance.form.controls.threshold.value).toBe('5');
 
-    fixture.componentInstance.form.controls.threshold.setValue('2.500');
+    fixture.componentInstance.form.controls.threshold.setValue('2,5');
     fixture.componentInstance.save();
     http.expectOne('/api/v1/auth/csrf').flush({ token: 'csrf' });
     const update = http.expectOne('/api/v1/stores/tienda-a/admin/dashboard/settings');
     expect(update.request.method).toBe('PUT');
-    expect(update.request.body).toEqual({ lowStockThreshold: '2.500' });
+    expect(update.request.body).toEqual({ lowStockThreshold: '2.5' });
     update.flush({ lowStockThreshold: '2.500' });
     fixture.detectChanges();
+    expect(fixture.componentInstance.form.controls.threshold.value).toBe('2,5');
     expect(fixture.nativeElement.textContent).toContain('Actualizamos el umbral');
   });
 });
