@@ -43,6 +43,71 @@ class EmailTemplateRendererTests {
 	}
 
 	@Test
+	void confirmedOrderRendersEquivalentLegacyAndGenericOptionsOnlyOnce() {
+		GuestOrderItem item = item("Remera térmica", "M", "Negro", List.of(
+			new VariantOptionValue("Talle", "M"),
+			new VariantOptionValue("Color", "Negro"),
+			new VariantOptionValue("Material", "Algodón")));
+		RenderedEmail result = renderer.orderConfirmed(order("Ignacio", List.of(item)), store(),
+			new EmailBranding("Ñandú Tienda", "#6D3CE7", "#FFFFFF",
+				"https://cdn.example.com/logo.png"), EVENT_AT);
+
+		assertThat(result.html())
+			.contains("Talle: M · Color: Negro · Material: Algodón", "Ñandú Tienda",
+				"background:#6D3CE7", "src=\"https://cdn.example.com/logo.png\"")
+			.containsOnlyOnce("Talle: M")
+			.containsOnlyOnce("Color: Negro");
+		assertThat(result.text())
+			.contains("Talle: M · Color: Negro · Material: Algodón", "Ñandú Tienda")
+			.containsOnlyOnce("Talle: M")
+			.containsOnlyOnce("Color: Negro");
+	}
+
+	@Test
+	void confirmedOrderSafelyDeduplicatesNormalizedPairsAndPreservesDifferentOptions() {
+		GuestOrderItem item = item("Café edición limitada", "M", null, List.of(
+			new VariantOptionValue(" Talle ", " M "),
+			new VariantOptionValue("talle", "m"),
+			new VariantOptionValue("Talle", "L"),
+			new VariantOptionValue("Presentación", "Cápsulas"),
+			new VariantOptionValue("Peso", "500 g")));
+		RenderedEmail result = renderer.orderConfirmed(order("María", List.of(item)), store(),
+			new EmailBranding("Ñandú Tienda", "#6D3CE7", "#FFFFFF", null), EVENT_AT);
+
+		assertThat(result.html())
+			.contains("Talle: M", "Talle: L", "Presentación: Cápsulas", "Peso: 500 g")
+			.containsOnlyOnce("Talle: M")
+			.doesNotContain("talle: m");
+		assertThat(result.text())
+			.contains("Café edición limitada", "Talle: M", "Talle: L",
+				"Presentación: Cápsulas", "Peso: 500 g")
+			.containsOnlyOnce("Talle: M")
+			.doesNotContain("talle: m");
+	}
+
+	@Test
+	void confirmedOrderSupportsProductsWithoutOptionsAndMultipleVariants() {
+		GuestOrderItem simple = item("Gift card", null, null, List.of());
+		GuestOrderItem variant = item("Buzo", "L", "Azul", List.of(
+			new VariantOptionValue("Talle", "L"),
+			new VariantOptionValue("Color", "Azul")));
+		RenderedEmail result = renderer.orderConfirmed(
+			order("Ana", List.of(simple, variant)), store(),
+			new EmailBranding("Tienda Sur", "#8B2F45", "#FFFFFF", null), EVENT_AT);
+
+		assertThat(result.html())
+			.contains("Gift card", "Buzo", "Talle: L · Color: Azul")
+			.containsOnlyOnce("Talle: L")
+			.containsOnlyOnce("Color: Azul")
+			.doesNotContain("Gift card</strong><br><span style=\"color:#64748B;font-size:13px;\">");
+		assertThat(result.text())
+			.contains("- Gift card" + System.lineSeparator() + "  Cantidad: 1",
+				"- Buzo · Talle: L · Color: Azul")
+			.containsOnlyOnce("Talle: L")
+			.containsOnlyOnce("Color: Azul");
+	}
+
+	@Test
 	void dynamicOrderAndStoreDataCannotInjectHtml() {
 		RenderedEmail result = renderer.orderConfirmed(
 			order("<img src=x onerror=alert(1)>", "<script>bad()</script>"),
@@ -72,14 +137,23 @@ class EmailTemplateRendererTests {
 	}
 
 	private AdminOrderDetail order(String customer, String product) {
+		return order(customer, List.of(item(product, "M", "Azul",
+			List.of(new VariantOptionValue("Material", "Algodón")))));
+	}
+
+	private AdminOrderDetail order(String customer, List<GuestOrderItem> items) {
 		return new AdminOrderDetail(ORDER_ID, 14L, OrderStatus.CONFIRMED,
 			FulfillmentType.PICKUP, customer, "1155551234", "cliente@example.com", null,
 			"ARS", new BigDecimal("19999.00"), Instant.parse("2026-08-28T12:56:00Z"),
-			EVENT_AT.minusSeconds(300), 2L, List.of(new GuestOrderItem(
-				UUID.randomUUID(), UUID.randomUUID(), product, "M", "Azul",
-				List.of(new VariantOptionValue("Material", "Algodón")), "UNIT",
+			EVENT_AT.minusSeconds(300), 2L, items, List.of());
+	}
+
+	private GuestOrderItem item(String product, String size, String color,
+			List<VariantOptionValue> options) {
+		return new GuestOrderItem(UUID.randomUUID(), UUID.randomUUID(), product, size, color,
+				options, "UNIT",
 				new BigDecimal("19999.00"), new BigDecimal("1.000"),
-				new BigDecimal("19999.00"))), List.of());
+				new BigDecimal("19999.00"));
 	}
 
 	private BankTransferPayment payment() {

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -13,10 +14,12 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+import com.comercioflex.catalog.domain.VariantOptionValue;
 import com.comercioflex.order.application.AdminOrderDetail;
 import com.comercioflex.order.domain.GuestOrderItem;
 import com.comercioflex.payment.application.BankTransferPayment;
@@ -101,18 +104,44 @@ class EmailTemplateRenderer {
 	}
 
 	private String itemOptionsHtml(GuestOrderItem item) {
-		String options = itemOptionsText(item);
+		String options = itemOptionsLabel(item);
 		return options.isEmpty() ? "" : "<br><span style=\"color:#64748B;font-size:13px;\">"
-			+ escapeHtml(options.substring(3)) + "</span>";
+			+ escapeHtml(options) + "</span>";
 	}
 
 	private String itemOptionsText(GuestOrderItem item) {
-		StringBuilder result = new StringBuilder();
-		if (item.size() != null && !item.size().isBlank()) result.append(" · Talle: ").append(item.size());
-		if (item.color() != null && !item.color().isBlank()) result.append(" · Color: ").append(item.color());
-		if (item.options() != null) item.options().forEach(option -> result.append(" · ")
-			.append(option.name()).append(": ").append(option.value()));
-		return result.toString();
+		String options = itemOptionsLabel(item);
+		return options.isEmpty() ? "" : " · " + options;
+	}
+
+	private String itemOptionsLabel(GuestOrderItem item) {
+		Map<String, VariantOptionValue> unique = new LinkedHashMap<>();
+		if (item.options() != null) {
+			item.options().forEach(option -> addOption(unique, option));
+		}
+		addOption(unique, new VariantOptionValue("Talle", item.size()));
+		addOption(unique, new VariantOptionValue("Color", item.color()));
+		return unique.values().stream()
+			.map(option -> option.name() + ": " + option.value())
+			.collect(Collectors.joining(" · "));
+	}
+
+	private void addOption(Map<String, VariantOptionValue> unique, VariantOptionValue option) {
+		if (option == null || option.name() == null || option.value() == null) return;
+		String name = cleanOptionPart(option.name());
+		String value = cleanOptionPart(option.value());
+		if (name.isEmpty() || value.isEmpty()) return;
+		String key = normalizeOptionPart(name) + '\u001f' + normalizeOptionPart(value);
+		unique.putIfAbsent(key, new VariantOptionValue(name, value));
+	}
+
+	private String cleanOptionPart(String value) {
+		return value.strip().replaceAll("\\s+", " ");
+	}
+
+	private String normalizeOptionPart(String value) {
+		return Normalizer.normalize(value, Normalizer.Form.NFKC)
+			.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
 	}
 
 	private String logoHtml(EmailBranding branding) {
