@@ -37,8 +37,10 @@ import {
 import { routeParam } from '../../../../core/auth/auth.guards';
 import { CsrfService } from '../../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
+import { QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pipe';
 import { VariantOptionValue } from '../../../../shared/variant-options';
 import { InventoryApiService } from '../../inventory/inventory-api.service';
+import { inventoryErrorMessage } from '../../inventory/inventory-errors';
 import { InventoryItem } from '../../inventory/inventory.models';
 import { ProductApiService } from '../product-api.service';
 import { productErrorMessage } from '../product-errors';
@@ -72,8 +74,29 @@ interface VariantDraft {
   price: string;
   options: VariantOptionValue[];
   initialStock: string;
+  receiptQuantity: string;
   active: boolean;
   version: number | null;
+}
+
+type StockReceiptStatus = 'success' | 'error';
+
+interface StockReceiptFeedback {
+  status: StockReceiptStatus;
+  message: string;
+}
+
+interface StockReceiptIntent {
+  quantity: string;
+  idempotencyKey: string;
+}
+
+interface StockReceiptOutcome {
+  index: number;
+  variantId: string;
+  status: StockReceiptStatus;
+  inventory?: InventoryItem;
+  error?: unknown;
 }
 
 class ProductSetupError {
@@ -114,9 +137,27 @@ function optionalInitialStock(control: AbstractControl<string>): ValidationError
   return !value || /^(?:0|[1-9][0-9]{0,11})$/.test(value) ? null : { initialStock: true };
 }
 
+function optionalStockReceipt(control: AbstractControl<string>): ValidationErrors | null {
+  const value = control.value.trim();
+  return !value || /^(?:0|[1-9][0-9]{0,11})$/.test(value) ? null : { stockReceipt: true };
+}
+
+function positiveStockReceipt(control: AbstractControl<string>): ValidationErrors | null {
+  return /^[1-9][0-9]{0,11}$/.test(control.value.trim()) ? null : { stockReceipt: true };
+}
+
+function toThousandths(value: string): bigint {
+  const [whole, fraction = ''] = value.split('.');
+  return BigInt(whole) * 1000n + BigInt(fraction.padEnd(3, '0').slice(0, 3));
+}
+
+function fromThousandths(value: bigint): string {
+  return `${value / 1000n}.${(value % 1000n).toString().padStart(3, '0')}`;
+}
+
 @Component({
   selector: 'app-product-form',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [QuantityFormatPipe, ReactiveFormsModule, RouterLink],
   templateUrl: './product-form.html',
   styleUrl: './product-form.scss',
 })
@@ -129,6 +170,7 @@ export class ProductForm implements OnDestroy {
   private readonly inventoryApi = inject(InventoryApiService);
   private readonly mutations: Subscription[] = [];
   private readonly variantDrafts = new Map<string, VariantDraft>();
+  private readonly stockReceiptIntents = new Map<string, StockReceiptIntent>();
   private readonly optionChanges: Subscription;
   private previewObjectUrl: string | null = null;
   private imageRemovalTrigger?: HTMLButtonElement;
@@ -163,6 +205,13 @@ export class ProductForm implements OnDestroy {
   readonly inventoryByVariant = signal<Record<string, InventoryItem>>({});
   readonly inventoryLoading = signal(false);
   readonly inventoryError = signal<string | null>(null);
+  readonly stockReceivingBusy = signal(false);
+  readonly stockReceivingMessage = signal<string | null>(null);
+  readonly stockReceivingError = signal<string | null>(null);
+  readonly stockReceiptFeedback = signal<Record<string, StockReceiptFeedback>>({});
+  readonly hasStockReceiptErrors = computed(() =>
+    Object.values(this.stockReceiptFeedback()).some((feedback) => feedback.status === 'error'),
+  );
   readonly optionError = signal<string | null>(null);
   readonly variantStructureCompatible = signal(true);
   readonly removedExistingVariants = signal<VariantDraft[]>([]);
@@ -181,6 +230,7 @@ export class ProductForm implements OnDestroy {
   readonly productOptions = new FormArray<ReturnType<ProductForm['newProductOptionForm']>>([]);
   readonly variants = new FormArray([this.newVariantForm()]);
   readonly bulkPrice = this.formBuilder.nonNullable.control('', [positiveDecimal]);
+  readonly bulkStockReceipt = this.formBuilder.nonNullable.control('', [positiveStockReceipt]);
 
   constructor() {
     this.optionChanges = this.productOptions.valueChanges.subscribe(() =>
@@ -250,6 +300,163 @@ export class ProductForm implements OnDestroy {
     if (this.bulkPrice.invalid || this.archived()) return;
     const price = this.bulkPrice.value.trim();
     for (const row of this.variants.controls) row.controls.price.setValue(price);
+  }
+
+  applyStockReceiptToAll(): void {
+    this.bulkStockReceipt.markAsTouched();
+    if (this.bulkStockReceipt.invalid || this.archived() || this.stockReceivingBusy()) return;
+    const quantity = this.bulkStockReceipt.value.trim();
+    for (const row of this.variants.controls) {
+      if (row.controls.id.value && this.inventoryFor(row.controls.id.value)) {
+        row.controls.receiptQuantity.setValue(quantity);
+        row.controls.receiptQuantity.markAsDirty();
+        this.clearStockReceiptFeedback(row.controls.id.value);
+      }
+    }
+  }
+
+  stockReceiptPreview(row: ReturnType<ProductForm['newVariantForm']>): {
+    current: string;
+    received: string;
+    result: string;
+  } | null {
+    const variantId = row.controls.id.value;
+    const inventory = this.inventoryFor(variantId);
+    const received = row.controls.receiptQuantity.value.trim();
+    if (!inventory || !/^[1-9][0-9]{0,11}$/.test(received)) return null;
+    return {
+      current: inventory.quantity,
+      received,
+      result: fromThousandths(toThousandths(inventory.quantity) + BigInt(received) * 1000n),
+    };
+  }
+
+  stockReceiptFeedbackFor(variantId: string | null): StockReceiptFeedback | null {
+    return variantId ? (this.stockReceiptFeedback()[variantId] ?? null) : null;
+  }
+
+  stockReceiptQuantityChanged(variantId: string | null): void {
+    if (!variantId) return;
+    this.clearStockReceiptFeedback(variantId);
+    this.stockReceivingMessage.set(null);
+    this.stockReceivingError.set(null);
+  }
+
+  registerStockReceipts(): void {
+    if (this.stockReceivingBusy() || this.archived()) return;
+    this.stockReceivingMessage.set(null);
+    this.stockReceivingError.set(null);
+
+    for (const row of this.variants.controls) row.controls.receiptQuantity.markAsTouched();
+    if (this.variants.controls.some((row) => row.controls.receiptQuantity.invalid)) {
+      this.stockReceivingError.set('Revisá las cantidades de mercadería ingresadas.');
+      return;
+    }
+
+    const entries = this.variants.controls
+      .map((row, index) => ({
+        index,
+        variantId: row.controls.id.value,
+        quantity: row.controls.receiptQuantity.value.trim(),
+      }))
+      .filter((entry): entry is { index: number; variantId: string; quantity: string } =>
+        Boolean(entry.variantId && entry.quantity && entry.quantity !== '0'),
+      );
+    if (!entries.length) {
+      this.stockReceivingError.set('Ingresá una cantidad mayor que cero en al menos una variante.');
+      return;
+    }
+
+    const slug = this.storeSlug();
+    if (!slug) return;
+    this.stockReceivingBusy.set(true);
+    const subscription = from(entries)
+      .pipe(
+        concatMap((entry) => {
+          const currentIntent = this.stockReceiptIntents.get(entry.variantId);
+          const intent =
+            currentIntent?.quantity === entry.quantity
+              ? currentIntent
+              : {
+                  quantity: entry.quantity,
+                  idempotencyKey: globalThis.crypto.randomUUID(),
+                };
+          this.stockReceiptIntents.set(entry.variantId, intent);
+          return this.inventoryApi
+            .adjust(slug, entry.variantId, intent.idempotencyKey, {
+              direction: 'INCREASE',
+              quantity: entry.quantity,
+              reason: 'RECEIPT',
+              note: 'Recepción de mercadería registrada desde la edición del producto.',
+            })
+            .pipe(
+              map((response): StockReceiptOutcome => ({
+                index: entry.index,
+                variantId: entry.variantId,
+                status: 'success',
+                inventory: response.inventory,
+              })),
+              catchError((error: unknown) =>
+                of<StockReceiptOutcome>({
+                  index: entry.index,
+                  variantId: entry.variantId,
+                  status: 'error',
+                  error,
+                }),
+              ),
+            );
+        }),
+        toArray(),
+        finalize(() => this.stockReceivingBusy.set(false)),
+      )
+      .subscribe((outcomes) => {
+        const feedback = { ...this.stockReceiptFeedback() };
+        let failures = 0;
+        for (const outcome of outcomes) {
+          const row = this.variants.at(outcome.index);
+          if (outcome.status === 'success' && outcome.inventory) {
+            this.inventoryByVariant.update((current) => ({
+              ...current,
+              [outcome.variantId]: outcome.inventory!,
+            }));
+            row.controls.receiptQuantity.reset('');
+            this.stockReceiptIntents.delete(outcome.variantId);
+            feedback[outcome.variantId] = {
+              status: 'success',
+              message: 'Ingreso registrado.',
+            };
+          } else {
+            failures += 1;
+            feedback[outcome.variantId] = {
+              status: 'error',
+              message: inventoryErrorMessage(
+                outcome.error,
+                'No pudimos registrar este ingreso. Podés reintentarlo.',
+              ),
+            };
+          }
+        }
+        this.stockReceiptFeedback.set(feedback);
+        if (failures === 0) {
+          this.stockReceivingMessage.set('Mercadería ingresada correctamente.');
+        } else {
+          this.stockReceivingError.set(
+            failures === outcomes.length
+              ? 'No pudimos registrar los ingresos. Podés reintentar las mismas cantidades.'
+              : 'Algunos ingresos no se registraron. Reintentá únicamente los que muestran error.',
+          );
+        }
+      });
+    this.mutations.push(subscription);
+  }
+
+  private clearStockReceiptFeedback(variantId: string): void {
+    this.stockReceiptFeedback.update((current) => {
+      const updated = { ...current };
+      delete updated[variantId];
+      return updated;
+    });
+    this.stockReceiptIntents.delete(variantId);
   }
 
   submitProduct(intent: CreationIntent = 'DRAFT'): void {
@@ -490,7 +697,15 @@ export class ProductForm implements OnDestroy {
     if (this.archived() || this.pendingVariantId()) return;
     const row = this.variants.at(index);
     row.markAllAsTouched();
-    if (row.invalid) return;
+    if (
+      row.controls.sku.invalid ||
+      row.controls.price.invalid ||
+      row.controls.size.invalid ||
+      row.controls.color.invalid ||
+      row.controls.options.invalid
+    ) {
+      return;
+    }
     if (!this.variantMatrixIsValid(false)) return;
     const slug = this.storeSlug();
     const productId = this.productId();
@@ -718,6 +933,9 @@ export class ProductForm implements OnDestroy {
       initialStock: this.formBuilder.nonNullable.control(draft?.initialStock ?? '', [
         optionalInitialStock,
       ]),
+      receiptQuantity: this.formBuilder.nonNullable.control(draft?.receiptQuantity ?? '', [
+        optionalStockReceipt,
+      ]),
       active: this.formBuilder.nonNullable.control(draft?.active ?? variant?.active ?? true),
       version: this.formBuilder.control<number | null>(draft?.version ?? variant?.version ?? null),
     });
@@ -921,6 +1139,7 @@ export class ProductForm implements OnDestroy {
         price: value.price,
         options,
         initialStock: value.initialStock,
+        receiptQuantity: value.receiptQuantity,
         active: value.active,
         version: value.version,
       });
@@ -997,6 +1216,7 @@ export class ProductForm implements OnDestroy {
     this.variants.clear();
     this.variants.push(this.newVariantForm());
     this.bulkPrice.reset('');
+    this.bulkStockReceipt.reset('');
     this.product.set(null);
     this.categories.set([]);
     this.loading.set(true);
@@ -1018,6 +1238,11 @@ export class ProductForm implements OnDestroy {
     this.inventoryByVariant.set({});
     this.inventoryLoading.set(false);
     this.inventoryError.set(null);
+    this.stockReceivingBusy.set(false);
+    this.stockReceivingMessage.set(null);
+    this.stockReceivingError.set(null);
+    this.stockReceiptFeedback.set({});
+    this.stockReceiptIntents.clear();
     this.optionError.set(null);
     this.variantStructureCompatible.set(true);
     this.removedExistingVariants.set([]);

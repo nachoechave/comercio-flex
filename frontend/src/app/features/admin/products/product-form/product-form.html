@@ -311,9 +311,55 @@
         <p class="error" role="alert">{{ inventoryError() }}</p>
       }
 
-      <div class="variant-table" [attr.aria-busy]="inventoryLoading()">
+      @if (editing()) {
+        <section class="bulk-receipt" aria-labelledby="bulk-receipt-title">
+          <div>
+            <strong id="bulk-receipt-title">Ingreso para todas</strong>
+            <p>Sólo completa los campos. Los movimientos se registran al confirmar.</p>
+          </div>
+          <div>
+            <label for="bulk-stock-receipt">Cantidad recibida</label>
+            <input
+              id="bulk-stock-receipt"
+              [formControl]="bulkStockReceipt"
+              inputmode="numeric"
+              placeholder="5"
+              [readonly]="stockReceivingBusy()"
+              [attr.aria-invalid]="bulkStockReceipt.touched && bulkStockReceipt.invalid"
+            />
+            @if (bulkStockReceipt.touched && bulkStockReceipt.invalid) {
+              <p class="field-error">Ingresá un entero mayor que cero.</p>
+            }
+          </div>
+          <button
+            type="button"
+            (click)="applyStockReceiptToAll()"
+            [disabled]="stockReceivingBusy() || archived()"
+          >
+            Aplicar a todas
+          </button>
+        </section>
+      }
+
+      @if (stockReceivingMessage()) {
+        <p class="success" role="status">{{ stockReceivingMessage() }}</p>
+      }
+      @if (stockReceivingError()) {
+        <p class="error" role="alert">{{ stockReceivingError() }}</p>
+      }
+
+      <div
+        class="variant-table"
+        [class.receiving]="editing()"
+        [attr.aria-busy]="inventoryLoading() || stockReceivingBusy()"
+      >
         <div class="variant-table-header" aria-hidden="true">
-          <span>Variante</span><span>SKU</span><span>Precio</span><span>Stock</span><span></span>
+          <span>Variante</span><span>SKU</span><span>Precio</span>
+          @if (editing()) {
+            <span>Stock actual</span><span>Ingreso</span><span>Luego</span><span></span>
+          } @else {
+            <span>Stock inicial</span><span></span>
+          }
         </div>
         @for (row of variants.controls; track row; let index = $index) {
           <fieldset class="variant-row" [formGroup]="row" [disabled]="archived()">
@@ -352,7 +398,7 @@
             <div class="variant-stock">
               @if (editing() && inventoryFor(row.controls.id.value); as inventory) {
                 <p>
-                  Stock actual: <strong>{{ inventory.quantity }}</strong>
+                  Stock actual: <strong>{{ inventory.quantity | quantityFormat }}</strong>
                 </p>
                 <a
                   [routerLink]="[
@@ -368,7 +414,9 @@
               } @else if (editing() && row.controls.id.value && inventoryLoading()) {
                 <p>Cargando stock actual…</p>
               } @else if (editing() && !row.controls.id.value) {
-                <p>Guardala para ajustar su stock de forma auditable.</p>
+                <p>Guardala para registrar inventario.</p>
+              } @else if (editing()) {
+                <p>Stock no disponible.</p>
               } @else {
                 <label [for]="'initial-stock-' + index">Stock inicial</label>
                 <input
@@ -385,6 +433,47 @@
                 }
               }
             </div>
+            @if (editing()) {
+              <div class="variant-receipt">
+                @if (inventoryFor(row.controls.id.value)) {
+                  <label [for]="'stock-receipt-' + index">Ingreso de mercadería</label>
+                  <input
+                    [id]="'stock-receipt-' + index"
+                    formControlName="receiptQuantity"
+                    inputmode="numeric"
+                    placeholder="0"
+                    [readonly]="stockReceivingBusy()"
+                    (input)="stockReceiptQuantityChanged(row.controls.id.value)"
+                    [attr.aria-invalid]="
+                      row.controls.receiptQuantity.touched && row.controls.receiptQuantity.invalid
+                    "
+                  />
+                  @if (
+                    row.controls.receiptQuantity.touched && row.controls.receiptQuantity.invalid
+                  ) {
+                    <p class="field-error">Ingresá un entero mayor o igual a cero.</p>
+                  }
+                } @else {
+                  <span aria-hidden="true">—</span>
+                }
+              </div>
+              <div class="receipt-result" aria-live="polite">
+                @if (stockReceiptPreview(row); as calculation) {
+                  <span>
+                    {{ calculation.current | quantityFormat }} +
+                    {{ calculation.received | quantityFormat }} →
+                    <strong>{{ calculation.result | quantityFormat }}</strong>
+                  </span>
+                } @else {
+                  <span aria-hidden="true">—</span>
+                }
+                @if (stockReceiptFeedbackFor(row.controls.id.value); as feedback) {
+                  <small [class.receipt-error]="feedback.status === 'error'">
+                    {{ feedback.message }}
+                  </small>
+                }
+              </div>
+            }
             @if (editing()) {
               <div class="variant-actions">
                 <span>{{ row.controls.active.value ? 'Activa' : 'Inactiva' }}</span>
@@ -409,6 +498,29 @@
           </fieldset>
         }
       </div>
+
+      @if (editing()) {
+        <div class="receiving-actions">
+          <p>
+            Cada ingreso genera un movimiento independiente de recepción. Las salidas y correcciones
+            siguen disponibles en “Ajustar stock”.
+          </p>
+          <button
+            type="button"
+            class="primary"
+            (click)="registerStockReceipts()"
+            [disabled]="stockReceivingBusy() || inventoryLoading() || archived()"
+          >
+            {{
+              stockReceivingBusy()
+                ? 'Registrando ingresos…'
+                : hasStockReceiptErrors()
+                  ? 'Reintentar ingresos con error'
+                  : 'Registrar ingresos'
+            }}
+          </button>
+        </div>
+      }
 
       @if (removedExistingVariants().length) {
         <section class="removed-variants" aria-labelledby="removed-variants-title">

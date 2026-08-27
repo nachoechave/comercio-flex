@@ -6,6 +6,7 @@ import { exhaustMap, finalize } from 'rxjs';
 
 import { CsrfService } from '../../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
+import { formatQuantity } from '../../../../shared/pipes/quantity-format.pipe';
 import { DashboardApiService } from '../../dashboard/dashboard-api.service';
 
 @Component({
@@ -26,7 +27,7 @@ export class InventorySettings {
   readonly errorMessage = signal<string | null>(null);
   readonly noticeMessage = signal<string | null>(null);
   readonly form = this.formBuilder.nonNullable.group({
-    threshold: ['', [Validators.required, Validators.pattern(/^\d{1,12}(?:\.\d{1,3})?$/)]],
+    threshold: ['', [Validators.required, Validators.pattern(/^\d{1,12}(?:[.,]\d{1,3})?$/)]],
   });
 
   constructor() {
@@ -39,7 +40,7 @@ export class InventorySettings {
       }
       const subscription = this.api.get(slug).subscribe({
         next: (summary) => {
-          this.form.controls.threshold.setValue(summary.lowStockThreshold);
+          this.form.controls.threshold.setValue(formatQuantity(summary.lowStockThreshold));
           this.loading.set(false);
         },
         error: () => {
@@ -61,15 +62,23 @@ export class InventorySettings {
     this.saving.set(true);
     this.errorMessage.set(null);
     this.noticeMessage.set(null);
-    this.csrf.ensureToken().pipe(
-      exhaustMap(() => this.api.updateThreshold(slug, this.form.controls.threshold.value)),
-      finalize(() => this.saving.set(false)),
-    ).subscribe({
-      next: (summary) => {
-        this.form.controls.threshold.setValue(summary.lowStockThreshold);
-        this.noticeMessage.set('Actualizamos el umbral de stock bajo.');
-      },
-      error: () => this.errorMessage.set('No pudimos actualizar el umbral. Intentá nuevamente.'),
-    });
+    this.csrf
+      .ensureToken()
+      .pipe(
+        exhaustMap(() =>
+          this.api.updateThreshold(
+            slug,
+            this.form.controls.threshold.value.trim().replace(',', '.'),
+          ),
+        ),
+        finalize(() => this.saving.set(false)),
+      )
+      .subscribe({
+        next: (summary) => {
+          this.form.controls.threshold.setValue(formatQuantity(summary.lowStockThreshold));
+          this.noticeMessage.set('Actualizamos el umbral de stock bajo.');
+        },
+        error: () => this.errorMessage.set('No pudimos actualizar el umbral. Intentá nuevamente.'),
+      });
   }
 }
