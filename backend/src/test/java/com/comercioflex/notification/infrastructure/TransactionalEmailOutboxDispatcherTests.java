@@ -74,7 +74,8 @@ class TransactionalEmailOutboxDispatcherTests {
 		NotificationOutboxRepository outbox = mock(NotificationOutboxRepository.class);
 		TransactionalEmailSender sender = mock(TransactionalEmailSender.class);
 		TransactionalEmail email = email();
-		doThrow(new IllegalStateException("credential-sensitive-detail"))
+		doThrow(new IllegalStateException(
+			"lookupToken=secret-value credential-sensitive-detail"))
 			.when(sender).send(email);
 
 		new TransactionalEmailOutboxDispatcher(outbox, sender, properties(),
@@ -83,7 +84,7 @@ class TransactionalEmailOutboxDispatcherTests {
 
 		assertThat(output.getAll())
 			.contains("error_type=IllegalStateException")
-			.doesNotContain("credential-sensitive-detail");
+			.doesNotContain("credential-sensitive-detail", "lookupToken", "secret-value");
 	}
 
 	@Test

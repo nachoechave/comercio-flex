@@ -12,6 +12,7 @@ public class EmailProperties {
 	private int port = 587;
 	private String username = "";
 	private String password = "";
+	private String publicBaseUri = "";
 	private boolean starttls = true;
 	private int smtpConnectTimeoutMs = 5_000;
 	private int smtpReadTimeoutMs = 10_000;
@@ -40,6 +41,8 @@ public class EmailProperties {
 	public void setUsername(String username) { this.username = username; }
 	public String getPassword() { return password; }
 	public void setPassword(String password) { this.password = password; }
+	public String getPublicBaseUri() { return publicBaseUri; }
+	public void setPublicBaseUri(String publicBaseUri) { this.publicBaseUri = publicBaseUri; }
 	public boolean isStarttls() { return starttls; }
 	public void setStarttls(boolean starttls) { this.starttls = starttls; }
 	public int getSmtpConnectTimeoutMs() { return smtpConnectTimeoutMs; }

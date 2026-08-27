@@ -12,6 +12,7 @@ import java.util.Currency;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -26,10 +27,12 @@ class EmailTemplateRenderer {
 	private static final Locale LOCALE = Locale.forLanguageTag("es-AR");
 	private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern(
 		"dd/MM/yyyy, HH:mm", LOCALE);
+	private static final Set<String> HTML_FRAGMENTS = Set.of("itemsHtml", "logoHtml");
 
-	RenderedEmail orderConfirmed(AdminOrderDetail order, StoreSettings store, Instant confirmedAt) {
+	RenderedEmail orderConfirmed(AdminOrderDetail order, StoreSettings store,
+			EmailBranding branding, Instant confirmedAt) {
 		String number = orderNumber(order.number());
-		Map<String, String> values = common(order, store);
+		Map<String, String> values = common(order, branding);
 		values.put("itemsHtml", itemsHtml(order, store.currencyCode()));
 		values.put("itemsText", itemsText(order, store.currencyCode()));
 		values.put("fulfillment", pickup(store));
@@ -38,18 +41,24 @@ class EmailTemplateRenderer {
 	}
 
 	RenderedEmail receiptRejected(AdminOrderDetail order, BankTransferPayment payment,
-			StoreSettings store) {
+			StoreSettings store, EmailBranding branding) {
 		String number = orderNumber(order.number());
-		Map<String, String> values = common(order, store);
+		Map<String, String> values = common(order, branding);
+		values.put("itemsHtml", itemsHtml(order, store.currencyCode()));
+		values.put("itemsText", itemsText(order, store.currencyCode()));
+		values.put("fulfillment", pickup(store));
 		values.put("rejectionReason", payment.rejectionReason());
 		values.put("reservationExpiresAt", date(payment.reservationExpiresAt(), store.timezone()));
 		return render("bank-transfer-receipt-rejected",
 			"Necesitamos que revises el comprobante de tu pedido %s".formatted(number), values);
 	}
 
-	private Map<String, String> common(AdminOrderDetail order, StoreSettings store) {
+	private Map<String, String> common(AdminOrderDetail order, EmailBranding branding) {
 		Map<String, String> values = new LinkedHashMap<>();
-		values.put("storeName", store.storeName());
+		values.put("storeName", branding.storeName());
+		values.put("headerColor", branding.headerColor());
+		values.put("headerTextColor", branding.headerTextColor());
+		values.put("logoHtml", logoHtml(branding));
 		values.put("customerName", order.customerName());
 		values.put("orderNumber", orderNumber(order.number()));
 		values.put("total", money(order.subtotal(), order.currencyCode()));
@@ -61,7 +70,7 @@ class EmailTemplateRenderer {
 		String text = resource("email-templates/" + name + ".txt");
 		for (Map.Entry<String, String> entry : values.entrySet()) {
 			html = html.replace("{{" + entry.getKey() + "}}",
-				"itemsHtml".equals(entry.getKey()) ? entry.getValue() : escapeHtml(entry.getValue()));
+				HTML_FRAGMENTS.contains(entry.getKey()) ? entry.getValue() : escapeHtml(entry.getValue()));
 			text = text.replace("{{" + entry.getKey() + "}}", entry.getValue());
 		}
 		return new RenderedEmail(subject, html, text);
@@ -70,17 +79,48 @@ class EmailTemplateRenderer {
 	private String itemsHtml(AdminOrderDetail order, String currency) {
 		StringBuilder result = new StringBuilder();
 		for (GuestOrderItem item : order.items()) {
-			result.append("<tr><td>").append(escapeHtml(item.productName()))
-				.append(" × ").append(quantity(item.quantity())).append("</td><td class=\"amount\">")
+			result.append("<tr><td style=\"padding:16px 0;border-bottom:1px solid #E5E7EB;"
+				+ "vertical-align:top;color:#172033;font-family:Arial,sans-serif;font-size:15px;line-height:22px;\">")
+				.append("<strong>").append(escapeHtml(item.productName())).append("</strong>")
+				.append(itemOptionsHtml(item))
+				.append("<br><span style=\"color:#64748B;font-size:14px;\">Cantidad: ")
+				.append(quantity(item.quantity())).append("</span></td>")
+				.append("<td align=\"right\" style=\"padding:16px 0 16px 12px;border-bottom:1px solid #E5E7EB;"
+					+ "vertical-align:top;white-space:nowrap;color:#172033;font-family:Arial,sans-serif;"
+					+ "font-size:15px;line-height:22px;font-weight:bold;\">")
 				.append(escapeHtml(money(item.lineTotal(), currency))).append("</td></tr>");
 		}
 		return result.toString();
 	}
 
 	private String itemsText(AdminOrderDetail order, String currency) {
-		return order.items().stream().map(item -> "- %s × %s — %s".formatted(
-			item.productName(), quantity(item.quantity()), money(item.lineTotal(), currency)))
+		return order.items().stream().map(item -> "- %s%s%n  Cantidad: %s%n  %s".formatted(
+			item.productName(), itemOptionsText(item), quantity(item.quantity()),
+			money(item.lineTotal(), currency)))
 			.reduce((left, right) -> left + System.lineSeparator() + right).orElse("-");
+	}
+
+	private String itemOptionsHtml(GuestOrderItem item) {
+		String options = itemOptionsText(item);
+		return options.isEmpty() ? "" : "<br><span style=\"color:#64748B;font-size:13px;\">"
+			+ escapeHtml(options.substring(3)) + "</span>";
+	}
+
+	private String itemOptionsText(GuestOrderItem item) {
+		StringBuilder result = new StringBuilder();
+		if (item.size() != null && !item.size().isBlank()) result.append(" · Talle: ").append(item.size());
+		if (item.color() != null && !item.color().isBlank()) result.append(" · Color: ").append(item.color());
+		if (item.options() != null) item.options().forEach(option -> result.append(" · ")
+			.append(option.name()).append(": ").append(option.value()));
+		return result.toString();
+	}
+
+	private String logoHtml(EmailBranding branding) {
+		if (branding.logoUrl() == null) return "";
+		return ("<div style=\"margin:0 0 14px;\"><img src=\"%s\" alt=\"Logo de %s\" width=\"180\" "
+			+ "style=\"display:inline-block;width:auto;max-width:180px;height:auto;max-height:72px;"
+			+ "padding:8px;background:#FFFFFF;border-radius:8px;border:0;\"></div>")
+			.formatted(escapeHtml(branding.logoUrl()), escapeHtml(branding.storeName()));
 	}
 
 	private String pickup(StoreSettings store) {
@@ -125,6 +165,7 @@ class EmailTemplateRenderer {
 	private String escapeHtml(String value) {
 		if (value == null) return "";
 		return value.replace("&", "&amp;").replace("<", "&lt;")
-			.replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+			.replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;")
+			.replace("\u00a0", "&nbsp;");
 	}
 }
