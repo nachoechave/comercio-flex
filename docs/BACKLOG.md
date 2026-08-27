@@ -1,6 +1,9 @@
 # Backlog inicial
 
-> Estimación relativa: XS, S, M, L, XL. Todas las tareas están en Fase 0 o pendientes.
+> Registro histórico del backlog inicial. Conserva estimaciones, estados y
+> exclusiones vigentes cuando se ejecutó cada historia; no representa por sí solo
+> el estado actual. Consultar `ROADMAP.md` y `ALCANCE_MVP.md` como fuentes vigentes.
+> Estimación relativa: XS, S, M, L, XL.
 
 | ID | Épica | Historia o tarea | Descripción | Prioridad | Estado | Dependencias | Responsable | Criterios de aceptación | Riesgos | Est. |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -28,7 +31,7 @@
 | DASH-01 | Dashboard | Métricas mínimas | Día, mes, pedidos abiertos y stock bajo | Media | Terminada | ORD-02 | Backend/Frontend | Datos por tenant, roles y definiciones documentadas | Métricas inconsistentes | M |
 | STORE-02 | Tienda | Configurar datos y tema | Nombre, contacto, retiro y cuatro temas por tenant | Alta | Terminada | STORE-01, CORE-02 | Frontend/Backend | OWNER/ADMIN editan; tienda refleja; STAFF no accede | Configuración incompleta | M |
 | CI-01 | Calidad | Automatizar regresión y build | Pruebas Angular/Maven y build Docker en GitHub Actions | Alta | Terminada | BT-02, BT-03 | Calidad/Infraestructura | Workflow verde en push/PR | Diferencias con entorno local | S |
-| DEPLOY-01 | Operación | Artefacto de mismo origen | Angular dentro de Spring, Docker no-root y Railway readiness | Alta | Terminada | CI-01 | Infraestructura | Imagen construye, SPA/API comparten HTTPS y readiness responde | Memoria/sesiones | M |
+| DEPLOY-01 | Operación | Artefacto de mismo origen | Angular dentro de Spring, Docker no-root y readiness (Railway fue la referencia original) | Alta | Terminada | CI-01 | Infraestructura | Imagen construye, SPA/API comparten HTTPS y readiness responde | Memoria/sesiones | M |
 | OPS-01 | Operación | Despliegue piloto | HTTPS, secretos, logs, backup y restore | Alta | En pruebas | PAY-01, DEPLOY-01 | Infraestructura/PO | Smoke, backup y restauración real probada | Recursos externos/costo/caída | L |
 | SEC-01 | Seguridad | Separar credenciales runtime por base | Usuario de mínimo privilegio para control y para cada tenant | Alta | En pruebas | CORE-01, OPS-01 | Datos/Infraestructura | Un usuario tenant no accede a control ni a otra base | Movimiento lateral | M |
 | AUTH-02 | Identidad | Evaluar Firebase Authentication | Analizarlo como proveedor externo para clientes y administradores sin trasladar membresías ni permisos | Baja | Pendiente | MVP validado | Arquitectura/Seguridad/PO | ADR de migración, costos, sesiones, revocación y coexistencia aprobado | Dependencia externa y migración de cuentas | L |
@@ -1030,7 +1033,7 @@ Evidencia automática e integrada:
 ### Evidencia y pendientes
 
 - Workflow, Dockerfile, fallback SPA, filtro de correlación, perfil `prod` y
-  configuración Railway están versionados.
+  configuración Railway legacy están versionados; el deployment actual usa Easypanel.
 - CI-01 y DEPLOY-01 quedan `Terminadas`: GitHub Actions #2 completó correctamente
   frontend (146 pruebas), backend (158 pruebas) y construcción del contenedor el
   2026-08-04. El smoke del proveedor corresponde a OPS-01 porque depende de

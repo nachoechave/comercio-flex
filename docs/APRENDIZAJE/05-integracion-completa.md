@@ -373,11 +373,11 @@ dirige a operación de pedidos y no recibe permiso para modificar settings.
 
 En producción Angular no se despliega en otro dominio: su build se copia al JAR y
 Spring sirve SPA y API bajo el mismo HTTPS. Eso conserva cookies/CSRF y simplifica
-el piloto. MySQL y S3/R2 siguen siendo servicios externos privados. La CI prueba
-las dos aplicaciones y construye Docker; Railway consulta readiness.
+el piloto. MySQL y R2 siguen siendo servicios privados. La CI prueba las dos
+aplicaciones y construye Docker; Easypanel opera el contenedor y readiness.
 
 Un recorrido manual completo debe cubrir catálogo con imagen, carrito, checkout
-`PICKUP`, Checkout Pro TEST, webhook, pedido administrativo, cambio de tema y una
-prueba negativa desde otro tenant/rol. Luego se valida backup y restore aislado.
-Sin infraestructura, credenciales y evidencia real, el código puede estar listo
-para desplegar pero el piloto todavía no está desplegado.
+`PICKUP`, Checkout Pro, transferencia, webhook, pedido administrativo, cambio de
+tema y una prueba negativa desde otro tenant/rol. El entorno productivo ya está
+desplegado; la madurez operacional todavía exige smoke tests y restores aislados
+con evidencia.

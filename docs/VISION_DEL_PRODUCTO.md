@@ -1,21 +1,21 @@
 # Visión del producto
 
-> Estado: visión inicial aprobada; alcance detallado sujeto al comercio piloto
+> Estado: visión inicial aprobada; producto desplegado en etapa piloto/precomercial
 > Fecha: 2026-07-23
 
 ## Visión
 
-Comercio Flex será una plataforma de ecommerce multiempresa para pequeños y
-medianos comercios. Un único producto permitirá operar varias tiendas sin copiar
-el código ni mezclar sus datos. Cada comercio tendrá catálogo, usuarios, pedidos,
-configuración visual y conexión de pagos propios.
+Comercio Flex es una plataforma de ecommerce multi-tenant para pequeños y
+medianos comercios. Un único producto permite operar varias tiendas sin copiar
+el código ni mezclar sus datos. Cada comercio tiene catálogo, usuarios, pedidos,
+configuración visual y medios de pago propios.
 
 ## Problema que resuelve
 
 Muchos comercios necesitan vender en línea, pero las soluciones genéricas resultan
-complejas o no contemplan particularidades como cantidades por peso, variantes de
-talle/color o retiro en el local. El producto buscará cubrir un núcleo común y
-activar capacidades acotadas por configuración.
+complejas o no contemplan particularidades como cantidades por peso, variantes
+genéricas o retiro en el local. El producto cubre un núcleo común y activa
+capacidades acotadas por configuración.
 
 ## Propuesta de valor
 
@@ -27,9 +27,9 @@ activar capacidades acotadas por configuración.
 
 ## Usuario objetivo inicial
 
-El vertical piloto aprobado es **indumentaria**. La primera experiencia validará
-productos con variantes de talle y color. Aún debe identificarse el comercio piloto
-concreto y entrevistarse a sus responsables para validar el flujo operativo.
+El vertical piloto aprobado es **indumentaria**. La aplicación soporta talle,
+color y opciones genéricas; la validación comercial con un primer cliente real
+continúa siendo el próximo paso del piloto.
 
 ## Principios
 
@@ -42,7 +42,7 @@ concreto y entrevistarse a sus responsables para validar el flujo operativo.
 ## Indicadores de validación del piloto
 
 - El comercio puede publicar un catálogo sin asistencia técnica cotidiana.
-- Un cliente completa catálogo → carrito → pedido → pago de prueba.
+- Un cliente completa catálogo → carrito → pedido → pago.
 - El administrador opera pedidos y stock.
 - Las pruebas demuestran que un comercio no accede a datos de otro.
-- El piloto puede desplegarse, respaldarse y restaurarse de forma documentada.
+- El entorno productivo puede respaldarse y restaurarse de forma documentada.

@@ -697,8 +697,9 @@ Mercado Pago si desea invalidarlo del lado del proveedor.
 
 ## Checkout Pro y confirmación — PAY-01C
 
-> Contrato implementado y cubierto por la regresión automática. El recorrido
-> integrado con Mercado Pago TEST sigue pendiente antes de cerrar la historia.
+> Contrato implementado y cubierto por regresión automática. La habilitación de
+> credenciales productivas se gestiona como un paso operacional controlado y no
+> cambia este contrato.
 
 ### Iniciar Checkout Pro
 
@@ -951,7 +952,7 @@ Content-Type: application/json
 
 La respuesta es el resumen recalculado. `STAFF` recibe `403`; un umbral negativo
 o con formato inválido recibe `400`.
-## Cierre del MVP: medios y configuración del comercio
+## Medios y configuración del comercio
 
 ### Imagen principal de producto (`MEDIA-01`)
 

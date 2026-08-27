@@ -1,59 +1,98 @@
-# ComercioFlexFrontend
+# Frontend de Comercio Flex
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.8.
+SPA Angular que contiene la tienda pública, la administración de cada comercio,
+la autenticación y la administración global de la plataforma.
 
-## Development server
+En producción el build se incorpora al JAR de Spring Boot y se sirve desde el
+mismo origen que la API. El frontend no se despliega como una aplicación
+productiva independiente.
 
-To start a local development server, run:
+## Estructura
 
-```bash
-ng serve
+`src/app/` se organiza por responsabilidad:
+
+- `core`: autenticación, routing y servicios transversales;
+- `features`: áreas funcionales cargadas por rutas;
+- `layouts`: shells de storefront, admin y superadmin;
+- `shared`: pipes, modelos, utilidades y componentes reutilizables.
+
+## Principales áreas
+
+### Storefront
+
+Tienda pública, catálogo, detalle de producto, carrito persistente, checkout,
+Mercado Pago, transferencia bancaria, confirmación e historial local de pedidos.
+El estado local se separa por `storeSlug` y los datos comerciales se revalidan
+contra backend.
+
+### Admin
+
+Dashboard, categorías, productos, variantes, imágenes, inventario, pedidos,
+transferencias, pagos y configuración del comercio. Las acciones visibles se
+adaptan al rol, aunque la autorización definitiva siempre corresponde al backend.
+
+### Auth y SuperAdmin
+
+Login/sesión global, selección de comercio y panel de plataforma para gestionar
+tenants, provisioning, usuarios, actividad, infraestructura sanitizada y branding.
+
+## Desarrollo local
+
+Requisitos: Node/npm compatibles con `package.json` y el backend disponible según
+`proxy.conf.json`.
+
+```powershell
+npm ci
+npm start
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+`npm start` ejecuta el script real `ng serve --proxy-config proxy.conf.json`. El
+servidor de desarrollo queda disponible normalmente en `http://localhost:4200`.
 
-## Code scaffolding
+Para una instalación exploratoria puede usarse `npm install`, pero CI y las
+validaciones reproducibles deben preferir `npm ci`.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Tests
 
-```bash
-ng generate component component-name
+```powershell
+# Modo interactivo según Angular CLI
+npm test
+
+# Ejecución única como CI
+npm test -- --watch=false
+
+# Spec focalizado
+npm test -- --watch=false --include=src/app/ruta/al-archivo.spec.ts
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+La suite usa el runner configurado por Angular (`Vitest` en la configuración
+actual). No hay un comando E2E configurado en `package.json`.
 
-```bash
-ng generate --help
+## Build
+
+```powershell
+npm run build
 ```
 
-## Building
+El comando ejecuta `ng build`. Para validación explícita de producción puede
+usarse:
 
-To build the project run:
-
-```bash
-ng build
+```powershell
+npm run build -- --configuration production
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+La salida se genera bajo `dist/comercio-flex-frontend/`; el `Dockerfile` copia la
+carpeta `browser` a los recursos estáticos del backend.
 
-## Running unit tests
+## Convenciones relevantes
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+- componentes standalone y rutas lazy;
+- signals para estado local y RxJS para operaciones HTTP;
+- contratos API tipados por feature;
+- estilos SCSS acotados por componente;
+- fechas comerciales en `es-AR` y zona `America/Argentina/Buenos_Aires` sólo en
+  presentación;
+- ninguna credencial, lookup token o dato financiero debe aparecer en UI/logs.
 
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+La guía integral de ejecución está en
+[`../docs/GUIA_DE_DESARROLLO.md`](../docs/GUIA_DE_DESARROLLO.md).

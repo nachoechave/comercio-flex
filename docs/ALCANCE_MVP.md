@@ -1,90 +1,102 @@
-# Alcance propuesto
+# Alcance original del MVP y estado actual
 
-> Estado: alcance base aprobado el 2026-07-23; sujeto a validación con el comercio piloto
+> Este archivo conserva el nombre histórico para no romper enlaces. El alcance
+> base fue aprobado el 2026-07-23; desde entonces varias capacidades inicialmente
+> posteriores al MVP fueron implementadas. El estado vigente se resume abajo.
 
-## MVP
+## Implementado
 
-### Tienda pública
+### Autenticación y tenants
 
-- Identificación del comercio y branding básico.
-- Inicio simple, catálogo paginado, categorías y búsqueda por texto.
-- Detalle de producto.
-- Producto con una o más variantes vendibles.
-- Talle y color como atributos iniciales para el piloto de indumentaria.
-- Carrito local separado por comercio.
-- Checkout invitado con datos mínimos, observaciones y retiro en el comercio
-  (`PICKUP`). Envío, tarifas, zonas y franjas quedan fuera del MVP.
-- Creación y consulta segura del pedido.
-- Mercado Pago Checkout Pro en pruebas: pedido previo al pago, medios online,
-  retorno informativo, webhook idempotente y confirmación automática verificada.
-- Diseño responsive y accesibilidad básica.
+- Login y cierre de sesión con sesión JDBC.
+- Roles tenant fijos `OWNER`, `ADMIN` y `STAFF`, más administración global
+  `SUPER_ADMIN` separada.
+- Routing seguro por slug, base de control y una base MySQL aislada por tenant.
+- Provisioning, migración y registro de pools para nuevos comercios.
+- Branding y configuración propios por tenant.
 
-### Administración
+### Catálogo y storefront
 
-- Inicio/cierre de sesión y roles mínimos `OWNER`, `ADMIN`, `STAFF`.
-- Gestión de categorías, productos, variantes base, precio y stock.
-- Listado, detalle y cambio válido de estado de pedidos.
-- Configuración básica del comercio: nombre, teléfono/correo, dirección e
-  instrucciones de retiro y tema visual.
-- Dashboard mínimo: ventas del día, ventas del mes, pedidos pendientes y stock bajo.
+- Categorías, búsqueda y catálogo público paginado.
+- Productos con ciclo borrador, publicado y archivado.
+- Variantes genéricas nombre/valor; `Talle` y `Color` continúan soportados por
+  compatibilidad, pero no son un modelo cerrado.
+- SKU, precio y disponibilidad por variante.
+- Una imagen principal procesada, con versión de exhibición y miniatura.
+- Detalle de producto, carrito persistente aislado por `storeSlug` y checkout
+  invitado con retiro (`PICKUP`).
+- Historial local “Mis pedidos”: el navegador conserva referencias y tokens por
+  comercio, pero cada consulta vuelve al backend como fuente autoritativa.
 
-### Plataforma y calidad
+### Inventario y pedidos
 
-- Base de control compartida y una base MySQL separada por comercio.
-- Enrutamiento de conexiones, provisión y migración consistente de las bases.
-- Migraciones Flyway, validación backend, errores centralizados y OpenAPI.
-- Secretos por variables de entorno; contraseñas hasheadas.
-- Pruebas unitarias, integración con MySQL real y pruebas negativas entre tenants.
-- Docker Compose para MySQL local y health checks.
-- Documentación y prueba manual por historia.
+- Balance de stock por variante y movimientos auditables de entrada, salida y
+  ajuste.
+- Stock inicial, recepción de mercadería y umbral configurable de stock bajo.
+- Reservas temporales al crear pedidos, consumo al confirmar y liberación al
+  cancelar o vencer.
+- Historial y transiciones administrativas de pedidos.
 
-## Segunda versión
+### Pagos
 
-- Variantes avanzadas de talle/color y filtros combinados.
-- Franjas horarias y cupos de entrega.
-- Gestión completa de clientes y usuarios/roles desde UI.
-- Reportes y gráficos ampliados.
-- Medios de pago offline, reservas de larga duración y configuración de cuotas.
-- Mejoras del onboarding OAuth de Mercado Pago y renovación operativa.
-- Recuperación de contraseña, auditoría ampliada y carrito en servidor.
-- Evaluación de Firebase Authentication como proveedor de identidad, manteniendo
-  roles, membresías y autorización multiempresa en Comercio Flex.
-- Dominios propios, promociones y cupones.
+- Mercado Pago Checkout Pro con cuenta vendedora por comercio, retorno acotado,
+  webhook, consulta server-to-server e idempotencia.
+- Transferencia bancaria como flujo separado: instrucciones privadas asociadas al
+  pedido, comprobante JPEG/PNG/PDF en storage privado, revisión administrativa,
+  aprobación, rechazo y nuevo intento cuando corresponde.
 
-## Futuro
+### Emails
 
-- Múltiples sucursales y depósitos.
-- POS y omnicanalidad.
-- Reembolsos automáticos, disputas y múltiples proveedores de pago.
-- Constructor visual, reseñas, PWA, i18n y notificaciones.
-- Analítica avanzada, API pública, aplicaciones móviles.
-- Aislamiento de base por tenant como plan premium.
-- Microservicios sólo si escala/equipos aportan evidencia.
+- Confirmación de pedido.
+- Aviso de comprobante de transferencia rechazado.
+- Branding por tenant en HTML y texto plano.
+- Outbox persistente, worker, lease, reintentos y backoff.
+- Un error SMTP no revierte pedido, pago ni inventario.
 
-## Exclusiones explícitas del MVP
+### Administración, plataforma y calidad
 
-- Motor genérico EAV/reglas para cualquier rubro.
-- Facturación fiscal, marketplace, comisiones por transacción y logística avanzada.
-- Búsqueda externa, colas distribuidas, Redis y Kubernetes.
-- Todos los indicadores de dashboard solicitados.
-- Envío a domicilio, zonas, tarifas, transportistas y franjas horarias.
+- Dashboard operativo, productos, categorías, inventario, pedidos,
+  transferencias, pagos y configuración del comercio.
+- Administración global de empresas, usuarios, provisioning, actividad,
+  infraestructura sanitizada y apariencia.
+- Flyway, tests unitarios y de integración, Testcontainers con MySQL 8.4, CI y
+  construcción de una imagen Docker de mismo origen.
+- Despliegue productivo en Cloudflare + DonWeb + Easypanel.
 
-## Cierre técnico preparado
+## Límites actuales
 
-- Una imagen principal por producto, JPEG/PNG de hasta 5 MiB, corregida según
-  orientación EXIF y recodificada por el backend. Se generan una imagen de hasta
-  1600 px y una miniatura de hasta 480 px.
-- Almacenamiento local para desarrollo y objeto privado S3/R2 en producción;
-  MySQL sólo conserva metadatos y claves.
-- Despliegue de un único origen: Angular se sirve desde Spring Boot para conservar
-  cookies y protección CSRF sin depender de CORS entre dominios.
-- Imagen Docker sin privilegios, CI, endpoints de liveness/readiness,
-  identificador de correlación y scripts de backup/restore.
+- El vertical inicial continúa orientado a indumentaria, aunque las opciones de
+  variante ya son genéricas.
+- El checkout ofrece retiro; no existe logística avanzada de envíos, tarifas,
+  zonas ni transportistas.
+- El carrito y el índice de pedidos recientes viven en el navegador; no existe
+  todavía una cuenta cliente cross-device.
+- Existe una sola imagen principal por producto.
+- No se implementaron facturación fiscal, marketplace, cupones, devoluciones,
+  reembolsos automáticos, reseñas, recomendaciones ni aplicaciones móviles.
+- No hay microservicios, Redis, Kubernetes ni una promesa de escalabilidad
+  ilimitada.
 
-Estos puntos están implementados o preparados en el repositorio. No significan
-que exista ya un entorno productivo contratado o validado.
+## Próxima versión
 
-## Condición previa restante
+- Identidad visual definitiva y landing comercial.
+- Validación con el primer comercio piloto real.
+- Habilitación y checklist controlado de Mercado Pago en producción.
+- Observabilidad operacional y documentación de incidentes.
+- Restore drill con evidencia sobre una base aislada.
+- Recuperación de contraseña y gestión ampliada de usuarios.
+- Envíos configurables y múltiples imágenes por producto.
 
-El vertical aprobado es indumentaria. Falta seleccionar y entrevistar un comercio
-piloto concreto para validar talles, colores, SKUs, stock, entrega y operación.
+## Futuro potencial
+
+- Clientes registrados y continuidad cross-device.
+- Cupones, descuentos y promociones.
+- Reportes avanzados y proyecciones históricas.
+- Devoluciones y reembolsos.
+- Productos relacionados y recomendaciones.
+- Múltiples sucursales, depósitos, POS y omnicanalidad.
+- API pública o aplicaciones móviles si existe una necesidad comercial validada.
+
+El aislamiento database-per-tenant no es una capacidad futura ni un plan premium:
+es el modelo actual para todos los comercios. Sus beneficios y costos están
+documentados en [`ARQUITECTURA.md`](ARQUITECTURA.md).

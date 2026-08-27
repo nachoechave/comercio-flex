@@ -4,6 +4,11 @@ Esta carpeta levanta MySQL para desarrollo sin instalar el servidor directamente
 en Windows. La imagen está fijada en MySQL `8.4.10`, versión LTS publicada por
 Oracle el 16 de junio de 2026.
 
+Este Compose no reproduce ni administra producción. El entorno vigente usa
+DonWeb + Easypanel y se documenta conceptualmente en
+[`../docs/GUIA_DE_DESPLIEGUE.md`](../docs/GUIA_DE_DESPLIEGUE.md). Los ejemplos
+productivos de variables no contienen secretos reales.
+
 ## Qué se crea
 
 - `comercio_flex_control`: registro y configuración global de comercios.
