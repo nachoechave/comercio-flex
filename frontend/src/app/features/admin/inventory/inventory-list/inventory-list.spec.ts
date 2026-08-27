@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
+import { AuthService } from '../../../../core/auth/auth.service';
 import { InventoryList } from './inventory-list';
 
 describe('InventoryList tenant reuse', () => {
@@ -19,6 +20,7 @@ describe('InventoryList tenant reuse', () => {
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: AuthService, useValue: { membershipFor: () => ({ role: 'OWNER' }) } },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -38,7 +40,12 @@ describe('InventoryList tenant reuse', () => {
 
   afterEach(() => http.verify());
 
+  function flushThreshold(slug: string, threshold = '5.000'): void {
+    http.expectOne(`/api/v1/stores/${slug}/admin/dashboard`).flush({ lowStockThreshold: threshold });
+  }
+
   it('renders stock without insignificant decimal zeros', () => {
+    flushThreshold('tienda-a');
     http
       .expectOne((request) => request.url.includes('/tienda-a/admin/inventory'))
       .flush({
@@ -65,9 +72,44 @@ describe('InventoryList tenant reuse', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.quantity').textContent.trim()).toBe('10');
+    expect(fixture.nativeElement.textContent).toContain('Normal');
+  });
+
+  it('does not infer a normal stock status when the tenant threshold is unavailable', () => {
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/dashboard')
+      .flush({}, { status: 503, statusText: 'Unavailable' });
+    http
+      .expectOne((request) => request.url.includes('/tienda-a/admin/inventory'))
+      .flush({
+        items: [
+          {
+            variantId: 'variant-1',
+            productId: 'product-1',
+            productName: 'Remera',
+            productStatus: 'PUBLISHED',
+            sku: 'REM-M',
+            size: 'M',
+            color: 'Negro',
+            variantActive: true,
+            quantity: '1.000',
+            version: 1,
+            updatedAt: '2026-08-13T12:00:00Z',
+          },
+        ],
+        page: 0,
+        size: 20,
+        totalItems: 1,
+        totalPages: 1,
+      });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Estado no disponible');
+    expect(fixture.nativeElement.textContent).not.toContain('Normal');
   });
 
   it('resets page and filters when navigating A to B', () => {
+    flushThreshold('tienda-a');
     http
       .expectOne((request) => request.url.includes('/tienda-a/admin/inventory'))
       .flush({ items: [], page: 0, size: 20, totalItems: 0, totalPages: 3 });
@@ -85,6 +127,7 @@ describe('InventoryList tenant reuse', () => {
 
     params.next(convertToParamMap({ storeSlug: 'tienda-b' }));
     fixture.detectChanges();
+    flushThreshold('tienda-b');
     const pageB = http.expectOne(
       (request) =>
         request.url.includes('/tienda-b/admin/inventory') &&

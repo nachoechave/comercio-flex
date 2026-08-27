@@ -1,4 +1,5 @@
 <section class="page" aria-labelledby="payment-connection-title" [attr.aria-busy]="busy()">
+  <nav aria-label="Migas de pan"><a routerLink="../../">Panel</a><span aria-hidden="true">/</span><span>Pagos</span></nav>
   <header>
     <p class="eyebrow">Configuración</p>
     <h1 id="payment-connection-title" tabindex="-1">Pagos</h1>
@@ -21,22 +22,20 @@
           <p class="eyebrow">Proveedor</p>
           <h2 id="mercado-pago-title">Mercado Pago</h2>
         </div>
-        <span class="status" [attr.data-status]="current.status">
-          @switch (current.status) {
-            @case ('CONNECTED') {
-              Conectada
-            }
-            @case ('AUTHORIZATION_PENDING') {
-              Autorización pendiente
-            }
-            @case ('REAUTHORIZATION_REQUIRED') {
-              Requiere autorización
-            }
-            @default {
-              No conectada
-            }
+        @switch (current.status) {
+          @case ('CONNECTED') {
+            <app-status-pill label="Conectada" tone="success" />
           }
-        </span>
+          @case ('AUTHORIZATION_PENDING') {
+            <app-status-pill label="Autorización pendiente" tone="warning" />
+          }
+          @case ('REAUTHORIZATION_REQUIRED') {
+            <app-status-pill label="Requiere autorización" tone="danger" />
+          }
+          @default {
+            <app-status-pill label="No conectada" />
+          }
+        }
       </div>
 
       <dl>
@@ -170,9 +169,7 @@
           <li>
             <div class="event-heading">
               <strong>Evento {{ event.eventId }}</strong>
-              <span class="status" [attr.data-status]="event.status">
-                Reintentos agotados
-              </span>
+              <app-status-pill label="Reintentos agotados" tone="danger" />
             </div>
             <dl>
               <div><dt>Intentos:</dt><dd>{{ event.attemptCount }}</dd></div>

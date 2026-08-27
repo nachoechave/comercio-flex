@@ -1,0 +1,17 @@
+<section class="page settings-page" aria-labelledby="inventory-settings-title">
+  <nav aria-label="Migas de pan"><a [routerLink]="['/tiendas', storeSlug(), 'admin']">Panel</a><span aria-hidden="true">/</span><a [routerLink]="['..']">Inventario</a><span aria-hidden="true">/</span><span>Configuración</span></nav>
+  <header><div><p class="eyebrow">Inventario</p><h1 id="inventory-settings-title">Configuración de inventario</h1><p>Definí cuándo una variante necesita atención.</p></div></header>
+
+  @if (loading()) { <p class="state" role="status">Cargando configuración…</p> }
+  @else {
+    @if (errorMessage()) { <p class="message error" role="alert">{{ errorMessage() }}</p> }
+    @if (noticeMessage()) { <p class="message notice" role="status">{{ noticeMessage() }}</p> }
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <div><p class="eyebrow">Alertas</p><h2>Umbral de stock bajo</h2><p>Una variante se muestra con stock bajo cuando su existencia es igual o menor a esta cantidad.</p></div>
+      <div class="field"><label for="low-stock-threshold">Cantidad</label><input id="low-stock-threshold" type="text" inputmode="decimal" formControlName="threshold" aria-describedby="threshold-help threshold-error" /><small id="threshold-help">Admite hasta tres decimales, por ejemplo 5.000.</small>
+        @if (form.controls.threshold.touched && form.controls.threshold.invalid) { <p id="threshold-error" class="field-error">Ingresá una cantidad válida mayor o igual a cero.</p> }
+      </div>
+      <div class="form-actions"><a [routerLink]="['..']">Cancelar</a><button type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar configuración' }}</button></div>
+    </form>
+  }
+</section>

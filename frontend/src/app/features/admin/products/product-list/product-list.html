@@ -69,9 +69,15 @@
         <tbody>
           @for (product of page().items; track product.id) {
             <tr>
-              <td><strong>{{ product.name }}</strong><small>{{ product.slug }}</small></td>
+              <td>
+                <span class="product-cell">
+                  @if (product.image; as image) { <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" /> }
+                  @else { <span class="product-placeholder" aria-hidden="true">{{ product.name.slice(0, 1) }}</span> }
+                  <span><strong>{{ product.name }}</strong><small>{{ product.slug }}</small></span>
+                </span>
+              </td>
               <td>{{ product.category.name }}</td>
-              <td><span class="status">{{ statusLabel(product.status) }}</span></td>
+              <td><span class="status" [attr.data-status]="product.status">{{ statusLabel(product.status) }}</span></td>
               <td>{{ product.activeVariantCount }} activas de {{ product.variantCount }}</td>
               <td>
                 @if (product.priceFrom === null || product.priceTo === null) {

@@ -1,23 +1,24 @@
 <section class="page" aria-labelledby="settings-title">
-  <header><p class="eyebrow">Identidad y contacto</p><h1 id="settings-title">Configuración del comercio</h1><p>Estos datos se muestran a tus clientes durante la compra.</p></header>
+  <nav aria-label="Migas de pan"><a routerLink="../../">Panel</a><span aria-hidden="true">/</span><span>Comercio</span></nav>
+  <header><div><p class="eyebrow">Tienda</p><h1 id="settings-title">Configuración del comercio</h1><p>Administrá los datos visibles para tus clientes y la operación de retiro.</p></div></header>
   @if (loading()) { <p role="status">Cargando configuración…</p> }
   @else {
     @if (errorMessage()) { <p class="message error" role="alert">{{ errorMessage() }}</p> }
     @if (noticeMessage()) { <p class="message notice" role="status">{{ noticeMessage() }}</p> }
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
-      <fieldset><legend>Comercio</legend>
+      <fieldset><legend>Datos del comercio</legend><p>Información principal que identifica a tu tienda.</p>
         <label>Nombre visible<input formControlName="storeName" maxlength="160" /></label>
       </fieldset>
       <fieldset><legend>Contacto</legend><p>Completá al menos una opción.</p>
         <label>Teléfono<input formControlName="contactPhone" autocomplete="tel" maxlength="40" /></label>
         <label>Correo electrónico<input formControlName="contactEmail" type="email" autocomplete="email" maxlength="254" /></label>
       </fieldset>
-      <fieldset><legend>Retiro</legend>
+      <fieldset><legend>Entrega y retiro</legend>
         <label>Dirección<input formControlName="pickupAddress" autocomplete="street-address" maxlength="240" /></label>
         <label>Indicaciones <span>(opcional)</span><textarea formControlName="pickupInstructions" rows="4" maxlength="500"></textarea></label>
       </fieldset>
       <fieldset>
-        <legend>Medios de pago</legend>
+        <legend>Transferencia bancaria</legend>
         <p>Mercado Pago se administra desde la sección Pagos.</p>
         <label class="switch-row">
           <input type="checkbox" formControlName="bankTransferEnabled" />
