@@ -5,7 +5,7 @@ import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
-import { variantOptionsLabel } from '../../../shared/variant-options';
+import { VariantOptionValue, variantOptionsLabel } from '../../../shared/variant-options';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { storefrontErrorMessage } from '../storefront-errors';
@@ -16,6 +16,12 @@ import {
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
 import { CartService } from '../cart/cart.service';
 import { CartPreviewService } from '../cart/cart-preview.service';
+
+interface ProductOptionGroup {
+  name: string;
+  key: string;
+  values: string[];
+}
 
 @Component({
   selector: 'app-public-product-detail',
@@ -44,10 +50,26 @@ export class PublicProductDetail {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly notFound = signal(false);
   protected readonly selectedVariantId = signal<string | null>(null);
+  protected readonly selectedOptions = signal<Record<string, string>>({});
   protected readonly quantity = signal(1);
   protected readonly cartMessage = signal('');
   protected readonly available = computed(
     () => this.product()?.variants.some((variant) => variant.available) ?? false,
+  );
+  protected readonly optionGroups = computed<ProductOptionGroup[]>(() => {
+    const groups = new Map<string, ProductOptionGroup>();
+    for (const variant of this.product()?.variants ?? []) {
+      for (const option of this.variantOptions(variant)) {
+        const key = this.optionKey(option.name);
+        const group = groups.get(key) ?? { name: option.name.trim(), key, values: [] };
+        if (!group.values.includes(option.value)) group.values.push(option.value);
+        groups.set(key, group);
+      }
+    }
+    return [...groups.values()];
+  });
+  protected readonly simpleProduct = computed(
+    () => (this.product()?.variants.length ?? 0) === 1 && this.optionGroups().length === 0,
   );
   protected readonly isStreetwear = computed(
     () => this.context.settings()?.branding?.template === 'MODERN',
@@ -68,6 +90,13 @@ export class PublicProductDetail {
   protected readonly selectedVariant = computed(() =>
     this.product()?.variants.find((variant) => variant.id === this.selectedVariantId()),
   );
+  protected readonly canAddToCart = computed(() => this.selectedVariant()?.available === true);
+  protected readonly availabilityLabel = computed(() => {
+    const selected = this.selectedVariant();
+    if (selected) return selected.available ? 'En stock' : 'Sin stock';
+    if (!this.available()) return 'Sin stock';
+    return this.optionGroups().length ? 'Seleccioná las opciones' : 'Elegí una variante';
+  });
 
   constructor() {
     effect((onCleanup) => {
@@ -78,6 +107,7 @@ export class PublicProductDetail {
       this.errorMessage.set(null);
       this.notFound.set(false);
       this.selectedVariantId.set(null);
+      this.selectedOptions.set({});
       this.quantity.set(1);
       this.cartMessage.set('');
       this.loading.set(true);
@@ -92,6 +122,10 @@ export class PublicProductDetail {
       const subscription = this.api.getProduct(storeSlug, productSlug).subscribe({
         next: (product) => {
           this.product.set(product);
+          const onlyVariant = product.variants.length === 1 ? product.variants[0] : null;
+          if (onlyVariant?.available && this.variantOptions(onlyVariant).length === 0) {
+            this.selectedVariantId.set(onlyVariant.id);
+          }
           this.loading.set(false);
         },
         error: (error: unknown) => {
@@ -133,6 +167,49 @@ export class PublicProductDetail {
     this.cartMessage.set('');
   }
 
+  protected optionSelected(group: ProductOptionGroup, value: string): boolean {
+    return this.selectedOptions()[group.key] === value;
+  }
+
+  protected optionValueAvailable(group: ProductOptionGroup, value: string): boolean {
+    return (
+      this.product()?.variants.some(
+        (variant) => variant.available && this.variantOptionMap(variant).get(group.key) === value,
+      ) ?? false
+    );
+  }
+
+  protected selectOption(group: ProductOptionGroup, value: string): void {
+    if (!this.optionValueAvailable(group, value)) return;
+    this.selectedOptions.update((current) => ({ ...current, [group.key]: value }));
+    const selection = this.selectedOptions();
+    const complete = this.optionGroups().every((optionGroup) => selection[optionGroup.key]);
+    const matchingVariant = complete
+      ? this.product()?.variants.find((variant) => {
+          const options = this.variantOptionMap(variant);
+          return this.optionGroups().every(
+            (optionGroup) => options.get(optionGroup.key) === selection[optionGroup.key],
+          );
+        })
+      : null;
+    this.selectedVariantId.set(matchingVariant?.id ?? null);
+    this.cartMessage.set('');
+  }
+
+  protected decreaseQuantity(): void {
+    if (this.quantity() > 1) {
+      this.quantity.update((value) => value - 1);
+      this.cartMessage.set('');
+    }
+  }
+
+  protected increaseQuantity(): void {
+    if (this.quantity() < 99) {
+      this.quantity.update((value) => value + 1);
+      this.cartMessage.set('');
+    }
+  }
+
   protected updateQuantity(event: Event): void {
     const input = event.target as HTMLInputElement;
     const value = input.valueAsNumber;
@@ -148,7 +225,7 @@ export class PublicProductDetail {
   protected addToCart(): void {
     const product = this.product();
     const variant = this.selectedVariant();
-    if (!product || !variant) {
+    if (!product || !variant?.available) {
       this.cartMessage.set('Elegí una variante disponible.');
       return;
     }
@@ -164,6 +241,24 @@ export class PublicProductDetail {
         : `Agregamos ${this.quantity()} ${this.quantity() === 1 ? 'unidad' : 'unidades'} al carrito.`,
     );
     this.cartPreview.open(this.storeSlug() ?? '');
+  }
+
+  private variantOptions(variant: PublicProductVariant): VariantOptionValue[] {
+    if (variant.options?.length) return variant.options;
+    return [
+      ...(variant.size ? [{ name: 'Talle', value: variant.size }] : []),
+      ...(variant.color ? [{ name: 'Color', value: variant.color }] : []),
+    ];
+  }
+
+  private variantOptionMap(variant: PublicProductVariant): Map<string, string> {
+    return new Map(
+      this.variantOptions(variant).map((option) => [this.optionKey(option.name), option.value]),
+    );
+  }
+
+  private optionKey(name: string): string {
+    return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
   }
 
   private updateMetadata(product: PublicProductDetailModel, storeName: string): void {

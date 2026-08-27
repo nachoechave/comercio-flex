@@ -90,7 +90,7 @@ describe('PublicProductDetail', () => {
     fixture.detectChanges();
   }
 
-  it('renders public variants and updates the document title', () => {
+  it('renders the responsive product layout, image, price and generic option selectors', () => {
     create();
     http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul').flush({
       id: 'product-1',
@@ -113,14 +113,23 @@ describe('PublicProductDetail', () => {
 
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Remera azul');
-    expect(text).toContain('Talle: M · Color: Azul');
-    expect(text).toContain('Talle: L · Color: Azul');
-    expect(text).toContain('Sin stock');
+    expect(text).toContain('Talle');
+    expect(text).toContain('Color');
+    expect(text).toContain('M');
+    expect(text).toContain('L');
+    expect(text).toContain('Algodón suave.');
     expect(TestBed.inject(Title).getTitle()).toBe('Remera azul | Tienda A');
     expect(fixture.nativeElement.querySelector('.product-page--streetwear')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.product-layout')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.product-media')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.product-purchase')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.quantity-control')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.featured-price').textContent).toContain('$');
-    expect(fixture.nativeElement.querySelectorAll('.purchase-benefits li')).toHaveLength(3);
-    const image: HTMLImageElement = fixture.nativeElement.querySelector('.product-hero img');
+    expect(fixture.nativeElement.querySelectorAll('.purchase-benefits li')).toHaveLength(2);
+    expect(text).not.toContain('Envíos a todo el país');
+    expect(text).not.toContain('Cambios simples');
+    expect(fixture.nativeElement.querySelector('.product-information')).not.toBeNull();
+    const image: HTMLImageElement = fixture.nativeElement.querySelector('.product-media img');
     expect(image.getAttribute('src')).toBe('/media/image-1');
     expect(image.alt).toBe('Remera azul sobre fondo claro');
   });
@@ -140,20 +149,35 @@ describe('PublicProductDetail', () => {
     });
     fixture.detectChanges();
 
-    const addButton: HTMLButtonElement =
-      fixture.nativeElement.querySelector('.purchase-panel button');
-    const radios: NodeListOf<HTMLInputElement> =
-      fixture.nativeElement.querySelectorAll('input[type="radio"]');
+    const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.add-to-cart');
+    const chips = Array.from<HTMLButtonElement>(
+      fixture.nativeElement.querySelectorAll('.option-chip'),
+    );
+    const sizeM = chips.find((button) => button.textContent?.trim() === 'M')!;
+    const sizeL = chips.find((button) => button.textContent?.trim() === 'L')!;
+    const colorBlue = chips.find((button) => button.textContent?.trim() === 'Azul')!;
     expect(addButton.disabled).toBe(true);
-    expect(radios[1].disabled).toBe(true);
+    expect(sizeL.disabled).toBe(true);
 
-    radios[0].dispatchEvent(new Event('change'));
+    sizeM.click();
+    colorBlue.click();
     fixture.detectChanges();
     expect(addButton.disabled).toBe(false);
 
-    const quantity: HTMLInputElement = fixture.nativeElement.querySelector(
-      '.purchase-panel input[type="number"]',
+    const increaseButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '[aria-label="Aumentar cantidad"]',
     );
+    const decreaseButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '[aria-label="Disminuir cantidad"]',
+    );
+    const quantity: HTMLInputElement =
+      fixture.nativeElement.querySelector('.quantity-control input');
+    increaseButton.click();
+    fixture.detectChanges();
+    expect(quantity.value).toBe('2');
+    decreaseButton.click();
+    fixture.detectChanges();
+    expect(quantity.value).toBe('1');
     quantity.value = '2';
     quantity.dispatchEvent(new Event('input'));
     fixture.detectChanges();
@@ -161,6 +185,7 @@ describe('PublicProductDetail', () => {
     fixture.detectChanges();
 
     expect(TestBed.inject(CartService).totalUnits('tienda-a')).toBe(2);
+    expect(TestBed.inject(CartService).totalUnits('tienda-b')).toBe(0);
     expect(TestBed.inject(CartPreviewService).storeSlug()).toBe('tienda-a');
     expect(fixture.nativeElement.textContent).toContain('Agregamos 2 unidades al carrito');
     expect(fixture.nativeElement.textContent).toContain('Ver carrito');
@@ -201,16 +226,21 @@ describe('PublicProductDetail', () => {
     });
     fixture.detectChanges();
 
-    const radios: NodeListOf<HTMLInputElement> =
-      fixture.nativeElement.querySelectorAll('input[type="radio"]');
-    expect(radios[0].disabled).toBe(true);
-    expect(radios[1].disabled).toBe(false);
-    radios[1].dispatchEvent(new Event('change'));
+    const chips = Array.from<HTMLButtonElement>(
+      fixture.nativeElement.querySelectorAll('.option-chip'),
+    );
+    const sizeM = chips.find((button) => button.textContent?.trim() === 'M')!;
+    const sizeL = chips.find((button) => button.textContent?.trim() === 'L')!;
+    const colorBlack = chips.find((button) => button.textContent?.trim() === 'Negro')!;
+    expect(sizeM.disabled).toBe(true);
+    expect(sizeL.disabled).toBe(false);
+    expect(colorBlack.disabled).toBe(false);
+    sizeL.click();
+    colorBlack.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.featured-price').textContent).toContain('2.700');
 
-    const addButton: HTMLButtonElement =
-      fixture.nativeElement.querySelector('.purchase-panel button');
+    const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.add-to-cart');
     addButton.click();
     expect(TestBed.inject(CartService).items('tienda-a')[0]).toMatchObject({
       variantId: 'variant-l-negro',
@@ -220,6 +250,34 @@ describe('PublicProductDetail', () => {
         { name: 'Color', value: 'Negro' },
       ],
     });
+  });
+
+  it('auto-selects a simple product and handles missing image and description without invented copy', () => {
+    create();
+    http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul').flush({
+      id: 'product-simple',
+      name: 'Producto simple',
+      slug: 'remera-azul',
+      description: null,
+      category: { id: 'category-1', name: 'General', slug: 'general' },
+      image: null,
+      variants: [
+        { id: 'variant-simple', price: '1250.00', size: null, color: null, available: true },
+      ],
+    });
+    fixture.detectChanges();
+
+    const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.add-to-cart');
+    expect(addButton.disabled).toBe(false);
+    expect(fixture.nativeElement.querySelector('.simple-variant').textContent).toContain(
+      'Opción estándar',
+    );
+    expect(fixture.nativeElement.querySelector('.visual img')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.visual span').textContent.trim()).toBe('P');
+    expect(fixture.nativeElement.querySelector('.product-information')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Consultá las opciones y precios disponibles',
+    );
   });
 
   it('renders a product-specific not-found state', () => {
