@@ -60,6 +60,8 @@ class MercadoPagoOAuthClientAdapterTests {
 	void exchangesTypedTokensAndReadsOnlyTheSellerPublicIdentity() {
 		oauthServer.expect(requestTo("https://api.mercadopago.test/oauth/token"))
 			.andExpect(method(POST))
+			.andExpect(header("Accept", MediaType.APPLICATION_JSON_VALUE))
+			.andExpect(header("Content-Type", MediaType.APPLICATION_JSON_VALUE))
 			.andRespond(withSuccess("""
 				{
 				  "access_token":"access-token",
@@ -73,6 +75,7 @@ class MercadoPagoOAuthClientAdapterTests {
 				""", MediaType.APPLICATION_JSON));
 		identityServer.expect(requestTo("https://api.mercadolibre.test/users/me"))
 			.andExpect(method(GET))
+			.andExpect(header("Accept", MediaType.APPLICATION_JSON_VALUE))
 			.andExpect(header("Authorization", "Bearer access-token"))
 			.andRespond(withSuccess("""
 				{"id":123456789,"nickname":"CARNES_DEL_SUR","email":"not-copied@example.test"}

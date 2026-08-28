@@ -174,6 +174,15 @@ public class MerchantPaymentConnectionService {
 		});
 	}
 
+	/** Reports whether this tenant can currently use its production OAuth credential. */
+	public boolean isConnected(long tenantId) {
+		requireEnabled();
+		return Boolean.TRUE.equals(transactions.execute(status -> repository
+			.findConnection(tenantId, environment(), false)
+			.map(connection -> connection.status() == MerchantConnectionStatus.CONNECTED)
+			.orElse(false)));
+	}
+
 	/** Returns a usable token to PAY-01C, refreshing both rotating tokens atomically. */
 	public String requireActiveAccessToken(long tenantId) {
 		return requireActiveCredential(tenantId).accessToken();

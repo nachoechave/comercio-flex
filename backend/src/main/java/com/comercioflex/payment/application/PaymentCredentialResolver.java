@@ -35,4 +35,17 @@ public class PaymentCredentialResolver {
 			PaymentEnvironment.TEST,
 			PaymentCredential.Source.CENTRAL_TEST);
 	}
+
+	public boolean isAvailable(long tenantId, String tenantSlug) {
+		if (oauthProperties.environment() == PaymentEnvironment.PRODUCTION) {
+			return connections.isConnected(tenantId);
+		}
+		return tenantSlug.equals(checkoutProperties.testDemoTenantSlug())
+			&& hasText(checkoutProperties.testAccessToken())
+			&& hasText(checkoutProperties.testSellerAccountId());
+	}
+
+	private boolean hasText(String value) {
+		return value != null && !value.isBlank();
+	}
 }

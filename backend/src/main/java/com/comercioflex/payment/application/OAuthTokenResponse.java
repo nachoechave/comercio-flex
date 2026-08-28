@@ -11,4 +11,11 @@ public record OAuthTokenResponse(
 	Set<String> scopes,
 	String sellerAccountId,
 	boolean liveMode) {
+
+	@Override
+	public String toString() {
+		return "OAuthTokenResponse[accessToken=<redacted>, refreshToken=<redacted>, tokenType="
+			+ tokenType + ", expiresIn=" + expiresIn + ", scopes=" + scopes
+			+ ", sellerAccountId=" + sellerAccountId + ", liveMode=" + liveMode + "]";
+	}
 }

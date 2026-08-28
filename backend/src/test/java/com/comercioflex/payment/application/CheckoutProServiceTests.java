@@ -92,6 +92,35 @@ class CheckoutProServiceTests {
 	}
 
 	@Test
+	void rejectsMismatchedAmountCurrencyPreferenceAndExternalReference() {
+		VerifiedProviderPayment[] mismatches = {
+			new VerifiedProviderPayment(
+				"payment-6", "seller-1", "pref-6", "external-6",
+				new BigDecimal("16900.76"), "ARS", true,
+				PaymentResultStatus.APPROVED, NOW),
+			new VerifiedProviderPayment(
+				"payment-6", "seller-1", "pref-6", "external-6",
+				new BigDecimal("16900.75"), "USD", true,
+				PaymentResultStatus.APPROVED, NOW),
+			new VerifiedProviderPayment(
+				"payment-6", "seller-1", "other-pref", "external-6",
+				new BigDecimal("16900.75"), "ARS", true,
+				PaymentResultStatus.APPROVED, NOW),
+			new VerifiedProviderPayment(
+				"payment-6", "seller-1", "pref-6", "other-reference",
+				new BigDecimal("16900.75"), "ARS", true,
+				PaymentResultStatus.APPROVED, NOW)
+		};
+
+		for (VerifiedProviderPayment mismatch : mismatches) {
+			assertThatThrownBy(() -> service.applyVerifiedPayment(ATTEMPT_ID, mismatch))
+				.isInstanceOf(CheckoutPaymentException.class)
+				.extracting(exception -> ((CheckoutPaymentException) exception).code())
+				.isEqualTo("PAYMENT_VALIDATION_FAILED");
+		}
+	}
+
+	@Test
 	void reconcilesReturnByFetchingAndValidatingTheProviderPayment() {
 		String token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
 		ResolvedTenant tenant = new ResolvedTenant(1L, "tienda-a", "Tienda A", "tenant_a");

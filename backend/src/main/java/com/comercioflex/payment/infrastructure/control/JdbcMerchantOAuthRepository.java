@@ -92,7 +92,7 @@ public class JdbcMerchantOAuthRepository implements MerchantOAuthRepository {
 				version = version + 1
 			WHERE tenant_id = ? AND initiated_by_user_id = ?
 				AND provider = 'MERCADO_PAGO' AND environment = ?
-				AND status = 'PENDING' AND expires_at <= ?
+				AND status IN ('PENDING', 'PROCESSING') AND expires_at <= ?
 			""",
 			Timestamp.from(now), tenantId, userId, environment.name(), Timestamp.from(now));
 		jdbcTemplate.update("""

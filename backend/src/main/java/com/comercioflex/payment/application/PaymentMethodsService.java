@@ -17,6 +17,7 @@ public class PaymentMethodsService {
 	private final BankTransferRepository bankTransferRepository;
 	private final CheckoutProProperties checkoutProperties;
 	private final PaymentOAuthProperties oauthProperties;
+	private final PaymentCredentialResolver credentials;
 	private final TransactionTemplate controlTransactions;
 	private final TransactionTemplate tenantTransactions;
 
@@ -26,6 +27,7 @@ public class PaymentMethodsService {
 			BankTransferRepository bankTransferRepository,
 			CheckoutProProperties checkoutProperties,
 			PaymentOAuthProperties oauthProperties,
+			PaymentCredentialResolver credentials,
 			@Qualifier("controlTransactionTemplate") TransactionTemplate controlTransactions,
 			@Qualifier("tenantTransactionTemplate") TransactionTemplate tenantTransactions) {
 		this.tenantResolver = tenantResolver;
@@ -33,15 +35,18 @@ public class PaymentMethodsService {
 		this.bankTransferRepository = bankTransferRepository;
 		this.checkoutProperties = checkoutProperties;
 		this.oauthProperties = oauthProperties;
+		this.credentials = credentials;
 		this.controlTransactions = controlTransactions;
 		this.tenantTransactions = tenantTransactions;
 	}
 
 	public PaymentMethodsAvailability find(String tenantSlug) {
 		ResolvedTenant tenant = tenantResolver.resolveActive(tenantSlug);
-		boolean mercadoPago = checkoutProperties.enabled() && Boolean.TRUE.equals(
-			controlTransactions.execute(status -> controlRepository.isCommerciallyEnabled(
-				tenant.id(), oauthProperties.environment())));
+		boolean mercadoPago = checkoutProperties.enabled()
+			&& Boolean.TRUE.equals(controlTransactions.execute(status ->
+				controlRepository.isCommerciallyEnabled(
+					tenant.id(), oauthProperties.environment())))
+			&& credentials.isAvailable(tenant.id(), tenant.slug());
 		boolean bankTransfer = Objects.requireNonNull(tenantTransactions.execute(status ->
 			bankTransferRepository.findConfiguration())).enabled();
 		return new PaymentMethodsAvailability(mercadoPago, bankTransfer);
