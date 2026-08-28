@@ -1,0 +1,32 @@
+@use '../landing-theme' as landing-theme;
+
+:host {
+  @include landing-theme.apply-brand-theme;
+
+  display: block;
+  min-width: 0;
+  color: var(--cf-brand-text);
+  background: var(--cf-brand-bg);
+  font-family: var(--cf-brand-font-body);
+  scroll-behavior: smooth;
+}
+
+main {
+  display: block;
+  overflow: clip;
+}
+
+app-landing-hero,
+app-landing-features,
+app-landing-before-after,
+app-landing-how-it-works,
+app-landing-industries,
+app-landing-cta {
+  scroll-margin-top: 5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host {
+    scroll-behavior: auto;
+  }
+}

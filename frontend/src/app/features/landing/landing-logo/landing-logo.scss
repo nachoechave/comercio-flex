@@ -1,0 +1,38 @@
+:host {
+  display: inline-flex;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--cf-brand-text);
+  font-family: var(--cf-brand-font-heading);
+  font-weight: 850;
+  letter-spacing: -0.025em;
+}
+
+.brand__symbol {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border-radius: var(--cf-brand-radius-sm);
+  color: var(--cf-brand-text-on-dark);
+  background: var(--cf-brand-primary);
+  font-size: 0.72rem;
+  letter-spacing: -0.04em;
+}
+
+.brand__wordmark {
+  font-size: 1.02rem;
+}
+
+.brand--inverse {
+  color: var(--cf-brand-text-on-dark);
+}
+
+.brand--inverse .brand__symbol {
+  color: var(--cf-brand-secondary);
+  background: var(--cf-brand-surface);
+}

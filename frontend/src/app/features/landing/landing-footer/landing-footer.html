@@ -1,0 +1,29 @@
+<footer class="footer">
+  <div class="footer__content" [class.footer__content--without-contact]="!config.contactHref">
+    <div class="footer__brand">
+      <a routerLink="/" aria-label="Comercio Flex, inicio"><app-landing-logo [inverse]="true" /></a>
+      <p>Ecommerce y gestión para comercios.</p>
+    </div>
+    <nav aria-label="Producto">
+      <strong>Producto</strong>
+      <a href="#solucion">Solución</a>
+      <a href="#beneficios">Beneficios</a>
+      <a href="#como-funciona">Cómo funciona</a>
+    </nav>
+    <nav aria-label="Acceso">
+      <strong>Acceso</strong>
+      <a routerLink="/admin/login">Iniciar sesión</a>
+      <a [routerLink]="config.demoStorePath">Tienda demo</a>
+    </nav>
+    @if (config.contactHref; as contactHref) {
+      <nav aria-label="Contacto">
+        <strong>Contacto</strong>
+        <a [href]="contactHref">Solicitar demo</a>
+      </nav>
+    }
+  </div>
+  <div class="footer__bottom">
+    <span>© {{ currentYear }} Comercio Flex</span>
+    <span>Todos los derechos reservados.</span>
+  </div>
+</footer>

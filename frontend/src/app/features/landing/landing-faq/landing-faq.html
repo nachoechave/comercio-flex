@@ -1,0 +1,15 @@
+<section class="section" aria-labelledby="faq-title">
+  <div class="section__heading">
+    <p class="eyebrow">Preguntas frecuentes</p>
+    <h2 id="faq-title">Lo esencial antes de empezar</h2>
+  </div>
+
+  <div class="faq-list">
+    @for (item of questions; track item.question) {
+      <details>
+        <summary>{{ item.question }}<span aria-hidden="true">+</span></summary>
+        <p>{{ item.answer }}</p>
+      </details>
+    }
+  </div>
+</section>

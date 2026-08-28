@@ -1,0 +1,46 @@
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="site-header__brand" routerLink="/" aria-label="Comercio Flex, inicio">
+      <app-landing-logo />
+    </a>
+
+    <nav class="desktop-nav" aria-label="Navegación principal">
+      @for (item of navigation; track item.href) {
+        <a [href]="item.href">{{ item.label }}</a>
+      }
+    </nav>
+
+    <div class="desktop-actions">
+      <a class="button button--quiet" routerLink="/admin/login">Iniciar sesión</a>
+      @if (config.contactHref; as contactHref) {
+        <a class="button button--primary" [href]="contactHref">Solicitar demo</a>
+      }
+    </div>
+
+    <button
+      #menuButton
+      class="menu-button"
+      type="button"
+      aria-controls="landing-mobile-menu"
+      [attr.aria-expanded]="menuOpen()"
+      [attr.aria-label]="menuOpen() ? 'Cerrar menú' : 'Abrir menú'"
+      (click)="toggleMenu()"
+    >
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  @if (menuOpen()) {
+    <nav id="landing-mobile-menu" class="mobile-nav" aria-label="Navegación móvil">
+      @for (item of navigation; track item.href; let first = $first) {
+        <a #firstMobileLink [href]="item.href" (click)="closeMenu()">{{ item.label }}</a>
+      }
+      <a routerLink="/admin/login" (click)="closeMenu()">Iniciar sesión</a>
+      @if (config.contactHref; as contactHref) {
+        <a class="button button--primary" [href]="contactHref" (click)="closeMenu()">
+          Solicitar demo
+        </a>
+      }
+    </nav>
+  }
+</header>

@@ -1,0 +1,23 @@
+<span id="contacto" class="anchor" aria-hidden="true"></span>
+<section class="cta" aria-labelledby="cta-title">
+  <div>
+    <p class="eyebrow">Demo del producto</p>
+    <h2 id="cta-title">¿Listo para llevar tu negocio al siguiente nivel?</h2>
+    <p>
+      Conocé Comercio Flex y descubrí cómo centralizar tu tienda, productos, inventario y pedidos.
+    </p>
+  </div>
+  <div class="cta__actions">
+    @if (config.contactHref; as contactHref) {
+      <a class="button button--light" [href]="contactHref">Solicitar demo</a>
+    }
+    <a
+      class="button"
+      [class.button--light]="!config.contactHref"
+      [class.button--outline]="config.contactHref"
+      [routerLink]="config.demoStorePath"
+    >
+      Ver tienda demo
+    </a>
+  </div>
+</section>

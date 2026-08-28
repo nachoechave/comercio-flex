@@ -1,0 +1,25 @@
+<span id="rubros" class="anchor" aria-hidden="true"></span>
+<section class="section" aria-labelledby="industries-title">
+  <div class="section__heading">
+    <p class="eyebrow">Catálogos flexibles</p>
+    <h2 id="industries-title">Diseñado para negocios como el tuyo</h2>
+    <p>
+      Comercio Flex se adapta a distintos catálogos y formas de organizar productos, variantes y
+      stock.
+    </p>
+  </div>
+
+  <div class="industry-grid">
+    @for (industry of industries; track industry; let index = $index) {
+      <article class="industry-card">
+        <div
+          class="industry-card__visual industry-card__visual--{{ index + 1 }}"
+          aria-hidden="true"
+        >
+          <span></span>
+        </div>
+        <h3>{{ industry }}</h3>
+      </article>
+    }
+  </div>
+</section>

@@ -1,8 +1,16 @@
 import { AdminLayout } from './layouts/admin-layout/admin-layout';
 import { StorefrontLayout } from './layouts/storefront-layout/storefront-layout';
+import { LandingPage } from './features/landing/landing-page/landing-page';
 import { routes } from './app.routes';
 
 describe('application routes', () => {
+  it('loads the commercial landing only at the public root', async () => {
+    const rootRoute = routes.find((route) => route.path === '');
+
+    expect(rootRoute?.pathMatch).toBe('full');
+    expect(await rootRoute?.loadComponent?.()).toBe(LandingPage);
+  });
+
   it('keeps the specific admin route ahead of the public storefront route', async () => {
     const adminIndex = routes.findIndex((route) => route.path === 'tiendas/:storeSlug/admin');
     const storefrontIndex = routes.findIndex((route) => route.path === 'tiendas/:storeSlug');
@@ -35,6 +43,12 @@ describe('application routes', () => {
 
     expect(returnRoute).toBeTruthy();
     expect(await returnRoute?.loadComponent?.()).toBeTruthy();
+  });
+
+  it('keeps login, storefront and tenant admin paths independent from the landing', () => {
+    expect(routes.find((route) => route.path === 'admin/login')).toBeTruthy();
+    expect(routes.find((route) => route.path === 'tiendas/:storeSlug')).toBeTruthy();
+    expect(routes.find((route) => route.path === 'tiendas/:storeSlug/admin')).toBeTruthy();
   });
 
   it('lazy-loads the isolated SuperAdmin area', async () => {

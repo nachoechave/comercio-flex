@@ -1,0 +1,50 @@
+// Rebranding entry point: replace the logo component and these brand tokens first.
+// Typography, radii, iconography and photography remain intentionally neutral and replaceable.
+@mixin apply-brand-theme {
+  --cf-brand-primary: #2563eb;
+  --cf-brand-primary-hover: #1d4ed8;
+  --cf-brand-secondary: #111827;
+  --cf-brand-accent: #dbeafe;
+  --cf-brand-bg: #ffffff;
+  --cf-brand-surface: #ffffff;
+  --cf-brand-surface-muted: #f6f8fb;
+  --cf-brand-text: #111827;
+  --cf-brand-text-muted: #5f6b7a;
+  --cf-brand-text-on-dark: #ffffff;
+  --cf-brand-text-muted-on-dark: #b9c1ce;
+  --cf-brand-border: #dfe4ea;
+  --cf-brand-border-hover: #b8c7e2;
+  --cf-brand-header-border: rgb(223 228 234 / 82%);
+  --cf-brand-header-bg: rgb(255 255 255 / 94%);
+  --cf-brand-primary-surface: #f0f6ff;
+  --cf-brand-primary-border: #bed0f2;
+  --cf-brand-primary-glow: rgb(37 99 235 / 11%);
+  --cf-brand-primary-shadow: rgb(37 99 235 / 18%);
+  --cf-brand-success: #16803c;
+  --cf-brand-success-surface: #eaf8ef;
+  --cf-brand-warning: #a15c00;
+  --cf-brand-danger: #b42318;
+  --cf-brand-neutral-050: #f9fafb;
+  --cf-brand-neutral-100: #edf0f3;
+  --cf-brand-neutral-200: #e5e9ef;
+  --cf-brand-neutral-300: #cad4df;
+  --cf-brand-neutral-400: #aeb8c7;
+  --cf-brand-neutral-500: #8f9bad;
+  --cf-brand-dark-surface: #182232;
+  --cf-brand-dark-border: #344052;
+  --cf-brand-dark-line: #526078;
+  --cf-brand-footer-border: #2c3747;
+  --cf-brand-industry-surface-a: #e8edf3;
+  --cf-brand-industry-surface-b: #e7eefb;
+  --cf-brand-industry-surface-c: #edf0f4;
+  --cf-brand-industry-ring: rgb(255 255 255 / 55%);
+  --cf-brand-radius-sm: 0.5rem;
+  --cf-brand-radius-md: 0.9rem;
+  --cf-brand-radius-lg: 1.4rem;
+  --cf-brand-shadow-sm: 0 0.5rem 1.5rem rgb(15 23 42 / 7%);
+  --cf-brand-shadow-md: 0 1.5rem 4rem rgb(15 23 42 / 12%);
+  --cf-brand-font-heading:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --cf-brand-font-body:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
