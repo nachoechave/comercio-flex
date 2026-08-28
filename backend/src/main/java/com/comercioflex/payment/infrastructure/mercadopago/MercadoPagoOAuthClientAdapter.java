@@ -82,6 +82,7 @@ public final class MercadoPagoOAuthClientAdapter implements MerchantOAuthClient 
 		try {
 			ProfileBody body = identityClient.get()
 				.uri("/users/me")
+				.accept(MediaType.APPLICATION_JSON)
 				.headers(headers -> headers.setBearerAuth(accessToken))
 				.retrieve()
 				.body(ProfileBody.class);
@@ -110,6 +111,7 @@ public final class MercadoPagoOAuthClientAdapter implements MerchantOAuthClient 
 		try {
 			TokenBody body = oauthClient.post()
 				.uri("/oauth/token")
+				.accept(MediaType.APPLICATION_JSON)
 				.contentType(MediaType.APPLICATION_JSON)
 				.body(request)
 				.retrieve()

@@ -112,6 +112,32 @@ class MerchantPaymentConnectionServiceTests {
 	}
 
 	@Test
+	void createsANewUnpredictableStateForEveryAuthorizationAttempt() {
+		when(repository.requireActiveTenant(1L, "tienda-a"))
+			.thenReturn(new OAuthTenantIdentity(1L, TENANT_PUBLIC_ID, "tienda-a"));
+		ArgumentCaptor<String> states = ArgumentCaptor.forClass(String.class);
+		when(client.authorizationUri(states.capture(), anyString()))
+			.thenReturn(URI.create("https://auth.mercadopago.com/authorization"));
+
+		service.start(1L, "tienda-a", principal());
+		service.start(1L, "tienda-a", principal());
+
+		assertThat(states.getAllValues()).hasSize(2).doesNotHaveDuplicates();
+	}
+
+	@Test
+	void rejectsAnInvalidOrAlreadyConsumedStateBeforeTokenExchange() {
+		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.TEST), eq(NOW)))
+			.thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> service.complete("unknown-state", "code", null, principal()))
+			.isInstanceOf(PaymentOAuthException.class)
+			.extracting(exception -> ((PaymentOAuthException) exception).code())
+			.isEqualTo("INVALID_STATE");
+		verify(client, never()).exchange(anyString(), anyString());
+	}
+
+	@Test
 	void consumesAndAuditsAProviderCancellationWithoutExchangingTokens() {
 		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.TEST), eq(NOW)))
 			.thenReturn(Optional.of(attempt()));
@@ -192,6 +218,70 @@ class MerchantPaymentConnectionServiceTests {
 			.extracting(exception -> ((PaymentOAuthException) exception).code())
 			.isEqualTo("REFRESH_REJECTED");
 		verify(repository).requireReauthorization(expiring, "REFRESH_REJECTED", NOW);
+	}
+
+	@Test
+	void returnsAValidTenantTokenWithoutRefreshingIt() {
+		StoredMerchantConnection active = connection(
+			MerchantConnectionStatus.CONNECTED, "123456789", "CARNES_DEL_SUR");
+		when(repository.findConnection(1L, PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.of(active));
+
+		PaymentCredential credential = service.requireActiveCredential(1L);
+
+		assertThat(credential.accessToken()).isEqualTo("access-token");
+		assertThat(credential.sellerAccountId()).isEqualTo("123456789");
+		assertThat(credential.source()).isEqualTo(PaymentCredential.Source.TENANT_OAUTH);
+		verify(client, never()).refresh(anyString());
+	}
+
+	@Test
+	void atomicallyPersistsBothRotatedTokensAfterRefresh() {
+		StoredMerchantConnection expiring = new StoredMerchantConnection(
+			10L,
+			UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+			1L,
+			TENANT_PUBLIC_ID,
+			PaymentEnvironment.TEST,
+			MerchantConnectionStatus.CONNECTED,
+			"123456789",
+			"CARNES_DEL_SUR",
+			new EncryptedSecret("plain", new byte[] {1}, bytes("old-access")),
+			new EncryptedSecret("plain", new byte[] {1}, bytes("old-refresh")),
+			NOW.plusSeconds(30),
+			NOW.minusSeconds(60),
+			1L);
+		when(repository.findConnection(1L, PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.of(expiring));
+		when(client.refresh("old-refresh")).thenReturn(token("123456789"));
+		when(client.fetchSellerProfile("access-token"))
+			.thenReturn(new SellerAccountProfile("123456789", "CARNES_DEL_SUR"));
+
+		PaymentCredential credential = service.requireActiveCredential(1L);
+
+		assertThat(credential.accessToken()).isEqualTo("access-token");
+		ArgumentCaptor<EncryptedSecret> access = ArgumentCaptor.forClass(EncryptedSecret.class);
+		ArgumentCaptor<EncryptedSecret> refresh = ArgumentCaptor.forClass(EncryptedSecret.class);
+		verify(repository).replaceRefreshedTokens(
+			eq(expiring), eq(Set.of("read", "write", "offline_access")),
+			access.capture(), refresh.capture(), eq(NOW.plusSeconds(3600)), eq(NOW));
+		assertThat(new String(access.getValue().ciphertext(), StandardCharsets.UTF_8))
+			.isEqualTo("access-token");
+		assertThat(new String(refresh.getValue().ciphertext(), StandardCharsets.UTF_8))
+			.isEqualTo("refresh-token");
+	}
+
+	@Test
+	void reportsAvailabilityOnlyForAConnectedTenant() {
+		when(repository.findConnection(1L, PaymentEnvironment.TEST, false))
+			.thenReturn(Optional.of(connection(
+				MerchantConnectionStatus.CONNECTED, "seller-a", "SELLER_A")));
+		when(repository.findConnection(2L, PaymentEnvironment.TEST, false))
+			.thenReturn(Optional.of(connection(
+				MerchantConnectionStatus.REAUTHORIZATION_REQUIRED, "seller-b", "SELLER_B")));
+
+		assertThat(service.isConnected(1L)).isTrue();
+		assertThat(service.isConnected(2L)).isFalse();
 	}
 
 	private PaymentOAuthProperties properties() {
