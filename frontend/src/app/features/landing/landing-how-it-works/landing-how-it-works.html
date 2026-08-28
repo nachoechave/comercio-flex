@@ -1,0 +1,18 @@
+<span id="como-funciona" class="anchor" aria-hidden="true"></span>
+<section class="section" aria-labelledby="how-title">
+  <div class="section__heading">
+    <p class="eyebrow">Paso a paso</p>
+    <h2 id="how-title">Cómo funciona Comercio Flex</h2>
+    <p>Te acompañamos desde la configuración inicial hasta la operación cotidiana.</p>
+  </div>
+
+  <ol class="steps">
+    @for (step of steps; track step.number) {
+      <li>
+        <span class="step__number">{{ step.number }}</span>
+        <h3>{{ step.title }}</h3>
+        <p>{{ step.text }}</p>
+      </li>
+    }
+  </ol>
+</section>

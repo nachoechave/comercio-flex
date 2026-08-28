@@ -1,0 +1,60 @@
+<span id="inicio" class="anchor" aria-hidden="true"></span>
+<section class="hero" aria-labelledby="landing-title">
+  <div class="hero__copy">
+    <p class="eyebrow">Plataforma todo en uno</p>
+    <h1 id="landing-title">
+      Tu negocio puede vender más.<br />Nosotros lo hacemos <span>más simple.</span>
+    </h1>
+    <p class="hero__summary">
+      Comercio Flex te permite crear tu tienda online y gestionar productos, inventario, pedidos y
+      pagos desde un solo lugar.
+    </p>
+    <div class="hero__actions">
+      @if (config.contactHref; as contactHref) {
+        <a class="button button--primary" [href]="contactHref">Solicitar demo</a>
+      }
+      <a class="button button--secondary" href="#como-funciona">Ver cómo funciona</a>
+    </div>
+    <ul class="hero__benefits" aria-label="Beneficios de Comercio Flex">
+      <li>Implementación acompañada</li>
+      <li>Gestión centralizada</li>
+      <li>Soporte en español</li>
+    </ul>
+  </div>
+
+  <div class="product-preview" aria-label="Vista conceptual del panel de Comercio Flex">
+    <div class="product-preview__bar">
+      <span class="product-preview__mark">CF</span>
+      <span>Panel de gestión</span>
+      <span class="product-preview__status">En línea</span>
+    </div>
+    <div class="product-preview__body">
+      <aside aria-label="Módulos disponibles">
+        <strong>Resumen</strong>
+        <span>Productos</span>
+        <span>Inventario</span>
+        <span>Pedidos</span>
+      </aside>
+      <div class="product-preview__content">
+        <div class="product-preview__heading">
+          <div>
+            <small>Tu comercio</small>
+            <strong>Todo en un solo lugar</strong>
+          </div>
+          <span class="preview-button">Nuevo producto</span>
+        </div>
+        <div class="preview-cards">
+          <article><small>Catálogo</small><strong>Productos y variantes</strong></article>
+          <article><small>Inventario</small><strong>Stock auditable</strong></article>
+          <article><small>Pedidos</small><strong>Ventas centralizadas</strong></article>
+        </div>
+        <div class="preview-table" aria-hidden="true">
+          <div class="preview-table__header"><span>Productos</span><span>Estado</span></div>
+          <div><i></i><span></span><b></b></div>
+          <div><i></i><span></span><b></b></div>
+          <div><i></i><span></span><b></b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

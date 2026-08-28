@@ -16,7 +16,7 @@ export const routes: Routes = [
     path: '',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/storefront/home/storefront-home').then((module) => module.StorefrontHome),
+      import('./features/landing/landing-page/landing-page').then((module) => module.LandingPage),
   },
   {
     path: 'admin/login',
