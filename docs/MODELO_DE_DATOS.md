@@ -251,23 +251,18 @@ orders
 ```
 
 PAY-01B agregó `merchant_payment_connections` y estado OAuth en la base de
-control. PAY-01C agregará preferencias reales en cada base tenant y el inbox
-global `payment_webhook_events` en control DB. El diseño de PAY-01C está aprobado
-y en desarrollo; estas nuevas tablas no deben considerarse implementadas hasta
-verificar su migración.
+control. PAY-01C agregó preferencias por tenant y el inbox global
+`payment_webhook_events` en control DB. El procesamiento soporta la evolución
+`PENDING → APPROVED` mediante eventos idempotentes y consulta autoritativa al
+proveedor.
 
-PAY-01A sólo acepta el primer resultado `CREATED → resultado`. La evolución
-externa `PENDING → APPROVED` se implementará en PAY-01C mediante eventos de
-webhook idempotentes; no se simula como un replay inmutable en esta entrega.
-
-El contrato `CredentialCipher` y su adaptador AES-256-GCM ya existen, pero todavía
-no persisten tokens. El ciphertext futuro deberá guardar además nonce, `key_id` y
-contexto autenticado. El AAD usa el identificador público e inmutable del tenant,
-proveedor, ambiente, sujeto, campo y `key_id`; las claves provendrán
-exclusivamente del entorno.
+Los tokens OAuth se persisten cifrados con AES-256-GCM, nonce, `key_id` y contexto
+autenticado. El AAD usa el identificador público e inmutable del tenant,
+proveedor, ambiente, sujeto, campo y `key_id`; las claves provienen exclusivamente
+del entorno y no de la base.
 - Un balance nunca es negativo y no puede exceder la capacidad del decimal.
-- La disponibilidad comercial futura no debe confundirse con existencia física:
-  INV-01 registra cantidad en mano y todavía no modela reservas.
+- La disponibilidad comercial no debe confundirse con existencia física:
+  inventario registra cantidad en mano y pedidos mantiene reservas separadas.
 
 ## Carrito local
 
@@ -474,6 +469,25 @@ referencias privadas para logo, favicon y hero (`storage_key`, MIME y SHA-256/ET
 Los bytes continúan fuera de MySQL mediante el mismo puerto local/S3 usado por
 imágenes de producto. El antiguo `brand_theme` se conserva sólo por compatibilidad
 y deja de formar parte de las escrituras `OWNER`/`ADMIN`.
+
+### Opciones genéricas (`product_options`, V015)
+
+Cada producto define nombres y valores normalizados; las variantes relacionan su
+combinación canónica sin limitar el modelo a talle/color. Las columnas legacy se
+conservan como compatibilidad derivada.
+
+### Transferencia bancaria (V016)
+
+Los intentos y sus estados viven en la base tenant. MySQL conserva metadata del
+comprobante y una clave privada; los bytes se almacenan fuera de la base. Un
+rechazo permanece auditable y un nuevo intento no sobrescribe el anterior.
+
+### Outbox de emails (`transactional_email_outbox`, V017/V018)
+
+La tabla conserva evento único, destinatario, contenido renderizado, estado,
+intentos, disponibilidad, lease y error sanitizado. La unicidad de la clave de
+evento evita encolados duplicados; V018 agrega los campos de recuperación del
+worker. No contiene credenciales SMTP.
 
 ### Credenciales y recuperación
 

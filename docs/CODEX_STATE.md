@@ -1,5 +1,9 @@
 # Estado Codex
 
+> Snapshot histórico del trabajo completado hasta las migraciones tenant V015.
+> Se conserva para trazabilidad de implementación, pero no es la fuente del
+> estado operativo actual. Consultar `README.md`, `ALCANCE_MVP.md` y `ROADMAP.md`.
+
 ## Completado
 
 - Fase 1 — SuperAdmin: rol global separado, `/api/v1/superadmin`, dashboard,
@@ -50,9 +54,10 @@
 ## Pendiente externo a las fases
 
 - La resolución efectiva de dominios sigue siendo responsabilidad de DNS, TLS y
-  routing del hosting; la app persiste y valida el metadato sin asumir despliegue.
-- El despliegue productivo, secretos reales, almacenamiento administrado y prueba
-  real de restore continúan sujetos a las decisiones operativas del piloto.
+  routing del hosting; la app persiste y valida el metadato.
+- Desde este snapshot se completó el despliegue productivo, R2, transferencias y
+  emails. Continúan como trabajo operacional el restore drill documentado y la
+  habilitación controlada de Mercado Pago producción.
 
 ## Archivos clave
 

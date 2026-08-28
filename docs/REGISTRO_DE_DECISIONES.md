@@ -1,5 +1,9 @@
 # Registro de decisiones
 
+> Las ADR preservan el contexto de cada fecha. Decisiones operativas posteriores
+> pueden reemplazar proveedores concretos sin invalidar la motivación original.
+> La infraestructura vigente está en `GUIA_DE_DESPLIEGUE.md`.
+
 > Las entradas siguientes son propuestas ADR pendientes. Responsable de aprobación:
 > Product Owner.
 
@@ -1878,8 +1882,9 @@
 - **Alternativas:** Cloudflare Pages + API separada; reverse proxy adicional;
   compilar Angular dentro del JAR Spring Boot.
 - **Decisión:** un Docker multi-stage empaqueta Angular en Spring Boot, corre Java
-  21 con usuario no-root y publica SPA/API bajo un único origen HTTPS. Railway es
-  la primera opción de demo; readiness determina recepción de tráfico.
+  21 con usuario no-root y publica SPA/API bajo un único origen HTTPS. Railway fue
+  la primera opción de demo; el deployment vigente usa DonWeb + Easypanel y
+  conserva readiness como criterio de recepción de tráfico.
 - **Consecuencias:** se simplifican cookies, CSRF y operación. La primera versión
   usa una réplica; escalar requiere resolver sesiones compartidas/sticky sessions.
 

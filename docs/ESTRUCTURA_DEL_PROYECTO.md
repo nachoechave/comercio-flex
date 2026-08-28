@@ -1,5 +1,8 @@
 # Estructura del proyecto
 
+> Documento evolutivo que explica cómo se incorporaron los módulos. Para la vista
+> canónica del sistema desplegado consultar `ARQUITECTURA.md`.
+
 > Actualizado durante DASH-01 el 2026-08-03. El monolito modular incluye
 > identidad, routing tenant, catálogo, inventario, pedidos, pagos y dashboard.
 
@@ -54,7 +57,7 @@ Reglas de dependencia:
 - `features` puede usar `core` y `shared`.
 - `shared` no conoce features ni reglas de negocio.
 - Una feature no importa detalles internos de otra.
-- Los guards futuros ayudan a la navegación; el backend aplica la seguridad real.
+- Los guards implementados ayudan a la navegación; el backend aplica la seguridad real.
 
 ## Backend
 
@@ -92,7 +95,7 @@ backend/src/main/
 │   │       ├── crypto/             # AES-GCM sin claves embebidas
 │   │       ├── fake/               # Proveedor determinista sólo para pruebas
 │   │       ├── jdbc/               # Intentos y transacciones en la base tenant
-│   │       └── mercadopago/        # OAuth remoto tipado; Checkout en evolución
+│   │       └── mercadopago/        # OAuth, Checkout Pro y confirmación verificada
 │   ├── dashboard/
 │   │   ├── api/                    # GET del resumen y PUT del umbral
 │   │   ├── application/            # Ventanas horarias y modelos agregados
@@ -114,10 +117,9 @@ backend/src/main/
 
 `catalog` contiene categorías, productos y variantes; `inventory` registra
 existencias y movimientos sin modificar publicación ni precio. `order` coordina
-reservas y operación; `payment` conserva intentos financieros sin exponerlos aún
-por HTTP. Los módulos `customer`, `delivery` y `reporting` se crearán al comenzar
-sus historias.
-No se agregan carpetas vacías sólo para simular avance.
+reservas y operación; `payment` expone los flujos controlados de Mercado Pago y
+transferencia. `media`, `notification`, `platformadmin` y `dashboard` completan
+la estructura actual. No se agregan carpetas vacías para simular avance.
 
 Dentro de un módulo de negocio se utilizarán, cuando hagan falta:
 
@@ -183,7 +185,7 @@ una excepción. `api` depende de `application`; `application` usa el puerto
 `TenantConnectionCatalog`; `infrastructure` implementa ese puerto. La capa de
 aplicación no conoce URLs JDBC ni contraseñas.
 
-## Flujo futuro completo
+## Flujo vertical de referencia
 
 ```text
 Componente Angular
@@ -521,7 +523,7 @@ Dependencias permitidas:
 comercio-flex/
 ├── .github/workflows/ci.yml       # pruebas y builds por push/PR
 ├── Dockerfile                     # Angular + Spring Boot en un solo contenedor
-├── railway.json                   # build Docker y readiness de Railway
+├── railway.json                   # configuración legacy; Easypanel es el deployment actual
 ├── backend/src/main/java/com/comercioflex/
 │   ├── media/                     # imagen principal de producto
 │   │   ├── api/                   # endpoints admin y públicos
