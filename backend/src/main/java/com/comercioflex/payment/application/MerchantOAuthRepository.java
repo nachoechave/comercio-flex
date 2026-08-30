@@ -45,7 +45,7 @@ public interface MerchantOAuthRepository {
 		PaymentEnvironment environment,
 		boolean forUpdate);
 
-	long upsertConnected(
+	default long upsertConnected(
 		UUID connectionId,
 		long tenantId,
 		PaymentEnvironment environment,
@@ -59,7 +59,30 @@ public interface MerchantOAuthRepository {
 		UUID connectedByUserPublicId,
 		UUID oauthAttemptId,
 		Instant now,
-		Optional<StoredMerchantConnection> existing);
+		Optional<StoredMerchantConnection> existing) {
+		return upsertConnected(
+			connectionId, tenantId, environment, sellerAccountId, sellerNickname,
+			scopes, accessToken, refreshToken, accessTokenExpiresAt,
+			connectedByUserId, connectedByUserPublicId, oauthAttemptId, now, existing,
+			() -> { });
+	}
+
+	long upsertConnected(
+			UUID connectionId,
+			long tenantId,
+			PaymentEnvironment environment,
+			String sellerAccountId,
+			String sellerNickname,
+			Set<String> scopes,
+			EncryptedSecret accessToken,
+			EncryptedSecret refreshToken,
+			Instant accessTokenExpiresAt,
+			long connectedByUserId,
+			UUID connectedByUserPublicId,
+			UUID oauthAttemptId,
+			Instant now,
+			Optional<StoredMerchantConnection> existing,
+			Runnable beforeConnectionEvent);
 
 	void disconnect(
 		StoredMerchantConnection connection,
