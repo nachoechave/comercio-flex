@@ -166,24 +166,42 @@ class JdbcMerchantOAuthRepositoryIntegrationTests {
 	}
 
 	@Test
-	void enforcesGrantedScopesLengthWithMySqlErrorDetails() {
-		Set<String> maximumScopes = Set.of("s".repeat(255));
+	void persistsLongGrantedScopesCompletelyWithTextColumn() {
+		Set<String> longScopes = scopesWithNormalizedLength(784);
+		String normalizedScopes = normalize(longScopes);
 		connect(
 			tenantA, userA, USER_A_PUBLIC_ID, "seller-scopes-fit",
-			PaymentEnvironment.PRODUCTION, maximumScopes,
+			PaymentEnvironment.PRODUCTION, longScopes,
 			encryptedBytes(32), encryptedBytes(32));
 
-		assertThat(jdbc.queryForObject("""
-			SELECT CHAR_LENGTH(granted_scopes)
+		var stored = jdbc.queryForMap("""
+			SELECT status, granted_scopes
 			FROM merchant_payment_connections
 			WHERE tenant_id = ? AND environment = 'PRODUCTION'
-			""", Integer.class, tenantA)).isEqualTo(255);
+			""", tenantA);
+		assertThat(stored.get("status")).isEqualTo("CONNECTED");
+		assertThat(stored.get("granted_scopes")).isEqualTo(normalizedScopes);
+		assertThat(normalizedScopes).hasSize(784);
+	}
 
-		clearConnections();
-		assertLengthViolation(() -> connect(
-			tenantA, userA, USER_A_PUBLIC_ID, "seller-scopes-overflow",
-			PaymentEnvironment.PRODUCTION, Set.of("s".repeat(256)),
-			encryptedBytes(32), encryptedBytes(32)));
+	@Test
+	void migratesGrantedScopesToNullableUnindexedText() {
+		var column = jdbc.queryForMap("""
+			SELECT DATA_TYPE, IS_NULLABLE
+			FROM information_schema.COLUMNS
+			WHERE TABLE_SCHEMA = DATABASE()
+			  AND TABLE_NAME = 'merchant_payment_connections'
+			  AND COLUMN_NAME = 'granted_scopes'
+			""");
+		assertThat(column.get("DATA_TYPE")).isEqualTo("text");
+		assertThat(column.get("IS_NULLABLE")).isEqualTo("YES");
+		assertThat(jdbc.queryForObject("""
+			SELECT COUNT(*)
+			FROM information_schema.STATISTICS
+			WHERE TABLE_SCHEMA = DATABASE()
+			  AND TABLE_NAME = 'merchant_payment_connections'
+			  AND COLUMN_NAME = 'granted_scopes'
+			""", Integer.class)).isZero();
 	}
 
 	@Test
@@ -290,6 +308,17 @@ class JdbcMerchantOAuthRepositoryIntegrationTests {
 
 	private EncryptedSecret encryptedBytes(int size) {
 		return new EncryptedSecret("v1", new byte[12], new byte[size]);
+	}
+
+	private Set<String> scopesWithNormalizedLength(int length) {
+		int requiredLength = normalize(Set.of("read", "write", "offline_access")).length();
+		return Set.of(
+			"read", "write", "offline_access",
+			"s".repeat(length - requiredLength - 1));
+	}
+
+	private String normalize(Set<String> scopes) {
+		return String.join(" ", scopes.stream().sorted().toList());
 	}
 
 	private byte[] sha256(String value) {

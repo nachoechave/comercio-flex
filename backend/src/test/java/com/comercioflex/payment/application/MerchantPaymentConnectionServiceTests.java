@@ -320,7 +320,8 @@ class MerchantPaymentConnectionServiceTests {
 			.contains("sellerAccountId=10/100")
 			.contains("sellerNickname=15/120")
 			.contains("grantedScopes="
-				+ String.join(" ", scopes.stream().sorted().toList()).length() + "/255")
+				+ bytes(String.join(" ", scopes.stream().sorted().toList())).length
+				+ "/65535")
 			.contains("accessTokenCiphertext=" + bytes(accessToken).length + "/4096")
 			.contains("refreshTokenCiphertext=" + bytes(refreshToken).length + "/4096")
 			.contains("accessTokenNonce=12/12")
@@ -338,7 +339,7 @@ class MerchantPaymentConnectionServiceTests {
 	@Test
 	void reportsOnlyOverflowFieldNamesWithoutLeakingOversizedContents(
 			CapturedOutput output) {
-		String oversizedScope = "scope-sensitive-" + "s".repeat(256);
+		String oversizedScope = "scope-sensitive-" + "s".repeat(65_536);
 		String oversizedAccessToken = "ciphertext-sensitive-" + "a".repeat(4096);
 		Set<String> scopes = Set.of(
 			"read", "write", "offline_access", oversizedScope);
@@ -368,7 +369,8 @@ class MerchantPaymentConnectionServiceTests {
 			.contains("sqlState=22001")
 			.contains("vendorCode=1406")
 			.contains("grantedScopes="
-				+ String.join(" ", scopes.stream().sorted().toList()).length() + "/255")
+				+ bytes(String.join(" ", scopes.stream().sorted().toList())).length
+				+ "/65535")
 			.contains("accessTokenCiphertext="
 				+ bytes(oversizedAccessToken).length + "/4096")
 			.contains("overflowFields=granted_scopes,access_token_ciphertext")
