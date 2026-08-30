@@ -4,15 +4,23 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -26,10 +34,14 @@ import com.comercioflex.payment.domain.PaymentEnvironment;
 @Service
 public class MerchantPaymentConnectionService {
 
+	private static final Logger LOGGER =
+		LoggerFactory.getLogger(MerchantPaymentConnectionService.class);
 	private static final String PROVIDER = "MERCADO_PAGO";
 	private static final Set<String> REQUIRED_SCOPES = Set.of("read", "write", "offline_access");
 	private static final Duration ATTEMPT_LIFETIME = Duration.ofMinutes(10);
 	private static final Duration REFRESH_WINDOW = Duration.ofMinutes(5);
+	private static final Pattern MYSQL_CONSTRAINT = Pattern.compile(
+		"(?i)(?:for\\s+key|constraint)\\s+[`']([A-Za-z0-9_.-]{1,128})[`']");
 
 	private final MerchantOAuthRepository repository;
 	private final MerchantOAuthClient client;
@@ -146,8 +158,11 @@ public class MerchantPaymentConnectionService {
 				context(attempt.tenantPublicId(), attempt.publicId(), "pkce_verifier"));
 			OAuthTokenResponse token = client.exchange(code, verifier);
 			ValidatedIdentity identity = validateIdentity(token);
+			AtomicReference<PersistenceStage> persistenceStage =
+				new AtomicReference<>(PersistenceStage.PRECHECK);
 			try {
-				transactions.executeWithoutResult(status -> connect(attempt, token, identity, now));
+				transactions.executeWithoutResult(status ->
+					connect(attempt, token, identity, now, persistenceStage));
 			}
 			catch (DataIntegrityViolationException exception) {
 				if (sellerIsConnectedToAnotherTenant(identity.accountId(), attempt.tenantId())) {
@@ -155,6 +170,7 @@ public class MerchantPaymentConnectionService {
 						"SELLER_ALREADY_CONNECTED",
 						"La cuenta ya está conectada a otro comercio.", exception);
 				}
+				logUnexpectedIntegrityFailure(attempt, persistenceStage.get(), exception);
 				throw exception;
 			}
 			return new OAuthCallbackResult(attempt.tenantSlug(), "connected");
@@ -249,7 +265,8 @@ public class MerchantPaymentConnectionService {
 			ClaimedOAuthAttempt attempt,
 			OAuthTokenResponse token,
 			ValidatedIdentity identity,
-			Instant now) {
+			Instant now,
+			AtomicReference<PersistenceStage> persistenceStage) {
 		Optional<StoredMerchantConnection> existing =
 			repository.findConnection(attempt.tenantId(), environment(), true);
 		if (existing.isPresent()
@@ -268,12 +285,69 @@ public class MerchantPaymentConnectionService {
 			context(attempt.tenantPublicId(), connectionId, "access_token"));
 		EncryptedSecret refresh = cipher.encrypt(token.refreshToken(),
 			context(attempt.tenantPublicId(), connectionId, "refresh_token"));
+		persistenceStage.set(PersistenceStage.CONNECTION_UPSERT);
 		repository.upsertConnected(
 			connectionId, attempt.tenantId(), environment(), identity.accountId(),
 			identity.nickname(), token.scopes(), access, refresh,
 			now.plus(token.expiresIn()), attempt.initiatedByUserId(),
-			attempt.initiatedByUserPublicId(), attempt.publicId(), now, existing);
+			attempt.initiatedByUserPublicId(), attempt.publicId(), now, existing,
+			() -> persistenceStage.set(PersistenceStage.CONNECTION_EVENT));
+		persistenceStage.set(PersistenceStage.ATTEMPT_SUCCESS);
 		repository.markAttemptSucceeded(attempt.internalId(), now);
+	}
+
+	private void logUnexpectedIntegrityFailure(
+			ClaimedOAuthAttempt attempt,
+			PersistenceStage stage,
+			DataIntegrityViolationException exception) {
+		SqlFailureDetails details = sqlFailureDetails(exception);
+		LOGGER.warn(
+			"event=payment_oauth_completion_integrity_failure tenant={} environment={} "
+				+ "stage={} sqlState={} vendorCode={} constraint={} rootException={}",
+			attempt.tenantPublicId(), attempt.environment(), stage,
+			details.sqlState(), details.vendorCode(), details.constraint(),
+			details.rootException());
+	}
+
+	private SqlFailureDetails sqlFailureDetails(Throwable exception) {
+		Throwable current = exception;
+		Throwable root = exception;
+		SQLException sqlException = null;
+		String constraint = "UNKNOWN";
+		Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+		while (current != null && visited.add(current)) {
+			root = current;
+			if (current instanceof SQLException candidate) {
+				sqlException = candidate;
+				String extracted = extractConstraint(candidate.getMessage());
+				if (!"UNKNOWN".equals(extracted)) {
+					constraint = extracted;
+				}
+			}
+			current = current.getCause();
+		}
+		String sqlState = sqlException == null
+			? "UNKNOWN" : safeDiagnosticValue(sqlException.getSQLState(), 5);
+		String vendorCode = sqlException == null
+			? "UNKNOWN" : Integer.toString(sqlException.getErrorCode());
+		return new SqlFailureDetails(
+			sqlState, vendorCode, constraint, root.getClass().getName());
+	}
+
+	private String extractConstraint(String message) {
+		if (message == null) {
+			return "UNKNOWN";
+		}
+		Matcher matcher = MYSQL_CONSTRAINT.matcher(message);
+		return matcher.find() ? matcher.group(1) : "UNKNOWN";
+	}
+
+	private String safeDiagnosticValue(String value, int maxLength) {
+		if (value == null || value.isBlank() || value.length() > maxLength
+				|| !value.matches("[A-Za-z0-9_.-]+")) {
+			return "UNKNOWN";
+		}
+		return value;
 	}
 
 	private boolean sellerIsConnectedToAnotherTenant(String sellerAccountId, long tenantId) {
@@ -375,5 +449,19 @@ public class MerchantPaymentConnectionService {
 	}
 
 	private record ValidatedIdentity(String accountId, String nickname) {
+	}
+
+	private enum PersistenceStage {
+		PRECHECK,
+		CONNECTION_UPSERT,
+		CONNECTION_EVENT,
+		ATTEMPT_SUCCESS
+	}
+
+	private record SqlFailureDetails(
+		String sqlState,
+		String vendorCode,
+		String constraint,
+		String rootException) {
 	}
 }

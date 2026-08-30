@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -26,7 +27,10 @@ import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
@@ -38,6 +42,7 @@ import com.comercioflex.identity.domain.UserStatus;
 import com.comercioflex.payment.domain.MerchantConnectionStatus;
 import com.comercioflex.payment.domain.PaymentEnvironment;
 
+@ExtendWith(OutputCaptureExtension.class)
 class MerchantPaymentConnectionServiceTests {
 
 	private static final Instant NOW = Instant.parse("2026-07-31T12:00:00Z");
@@ -189,7 +194,7 @@ class MerchantPaymentConnectionServiceTests {
 			any(), eq(1L), eq(PaymentEnvironment.TEST), eq("123456789"),
 			nickname.capture(), eq(Set.of("read", "write", "offline_access")),
 			any(), any(), eq(NOW.plusSeconds(3600)), eq(7L), eq(USER_PUBLIC_ID),
-			eq(attempt.publicId()), eq(NOW), eq(Optional.empty()));
+			eq(attempt.publicId()), eq(NOW), eq(Optional.empty()), any(Runnable.class));
 		assertThat(nickname.getValue()).isEqualTo("CARNES_DEL_SUR");
 		verify(repository).markAttemptSucceeded(50L, NOW);
 	}
@@ -215,7 +220,7 @@ class MerchantPaymentConnectionServiceTests {
 			any(), eq(1L), eq(PaymentEnvironment.PRODUCTION), eq("seller-a"), eq("SELLER_A"),
 			eq(Set.of("read", "write", "offline_access")), any(), any(),
 			eq(NOW.plusSeconds(3600)), eq(7L), eq(USER_PUBLIC_ID), eq(attempt.publicId()),
-			eq(NOW), eq(Optional.empty()));
+			eq(NOW), eq(Optional.empty()), any(Runnable.class));
 		verify(repository).markAttemptSucceeded(50L, NOW);
 	}
 
@@ -239,7 +244,8 @@ class MerchantPaymentConnectionServiceTests {
 	}
 
 	@Test
-	void mapsAConcurrentInsertConflictOnlyWhenTheSellerNowBelongsToAnotherTenant() {
+	void mapsAConcurrentInsertConflictOnlyWhenTheSellerNowBelongsToAnotherTenant(
+			CapturedOutput output) {
 		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.TEST), eq(NOW)))
 			.thenReturn(Optional.of(attempt()));
 		when(repository.findConnection(1L, PaymentEnvironment.TEST, true))
@@ -254,17 +260,19 @@ class MerchantPaymentConnectionServiceTests {
 		doThrow(new DataIntegrityViolationException("concurrent seller conflict"))
 			.when(repository).upsertConnected(
 				any(), any(Long.class), any(), anyString(), anyString(), any(), any(), any(),
-				any(), any(Long.class), any(), any(), any(), any());
+				any(), any(Long.class), any(), any(), any(), any(), any(Runnable.class));
 
 		assertThatThrownBy(() -> service.complete("state", "code", null, principal()))
 			.isInstanceOf(PaymentOAuthCallbackException.class)
 			.extracting(exception -> ((PaymentOAuthCallbackException) exception).code())
 			.isEqualTo("SELLER_ALREADY_CONNECTED");
 		verify(repository).markAttemptFailed(50L, "SELLER_ALREADY_CONNECTED", NOW);
+		assertThat(output).doesNotContain("payment_oauth_completion_integrity_failure");
 	}
 
 	@Test
-	void doesNotMisclassifyAnUnrelatedIntegrityFailureAsSellerConflict() {
+	void logsConnectionStageWithoutLeakingJdbcValuesForAnUnrelatedIntegrityFailure(
+			CapturedOutput output) {
 		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.TEST), eq(NOW)))
 			.thenReturn(Optional.of(attempt()));
 		when(repository.findConnection(1L, PaymentEnvironment.TEST, true))
@@ -276,16 +284,72 @@ class MerchantPaymentConnectionServiceTests {
 		when(client.exchange("code", "verifier")).thenReturn(token("seller-a"));
 		when(client.fetchSellerProfile("access-token"))
 			.thenReturn(new SellerAccountProfile("seller-a", "SELLER_A"));
-		doThrow(new DataIntegrityViolationException("unrelated constraint"))
+		SQLIntegrityConstraintViolationException sqlException =
+			new SQLIntegrityConstraintViolationException(
+				"Duplicate entry 'sensitive-fixture-value' for key 'ck_unrelated_constraint'",
+				"23000", 3819);
+		doThrow(new DataIntegrityViolationException("unrelated constraint", sqlException))
 			.when(repository).upsertConnected(
 				any(), any(Long.class), any(), anyString(), anyString(), any(), any(), any(),
-				any(), any(Long.class), any(), any(), any(), any());
+				any(), any(Long.class), any(), any(), any(), any(), any(Runnable.class));
 
 		assertThatThrownBy(() -> service.complete("state", "code", null, principal()))
 			.isInstanceOf(PaymentOAuthCallbackException.class)
 			.extracting(exception -> ((PaymentOAuthCallbackException) exception).code())
 			.isEqualTo("OAUTH_COMPLETION_FAILED");
 		verify(repository).markAttemptFailed(50L, "OAUTH_COMPLETION_FAILED", NOW);
+		assertThat(output)
+			.contains("event=payment_oauth_completion_integrity_failure")
+			.contains("tenant=" + TENANT_PUBLIC_ID)
+			.contains("environment=TEST")
+			.contains("stage=CONNECTION_UPSERT")
+			.contains("sqlState=23000")
+			.contains("vendorCode=3819")
+			.contains("constraint=ck_unrelated_constraint")
+			.contains("rootException=java.sql.SQLIntegrityConstraintViolationException")
+			.doesNotContain(
+				"sensitive-fixture-value", "state", "code", "verifier",
+				"access-token", "refresh-token");
+	}
+
+	@Test
+	void logsConnectionEventStageForAnUnexpectedIntegrityFailure(CapturedOutput output) {
+		prepareCompletableSeller();
+		DataIntegrityViolationException failure = integrityFailure(
+			"Cannot add child row for CONSTRAINT `fk_event_actor`", "23000", 1452);
+		doAnswer(invocation -> {
+			Runnable beforeConnectionEvent = invocation.getArgument(14);
+			beforeConnectionEvent.run();
+			throw failure;
+		}).when(repository).upsertConnected(
+			any(), any(Long.class), any(), anyString(), anyString(), any(), any(), any(),
+			any(), any(Long.class), any(), any(), any(), any(), any(Runnable.class));
+
+		assertThatThrownBy(() -> service.complete("state", "code", null, principal()))
+			.isInstanceOf(PaymentOAuthCallbackException.class)
+			.extracting(exception -> ((PaymentOAuthCallbackException) exception).code())
+			.isEqualTo("OAUTH_COMPLETION_FAILED");
+		assertThat(output)
+			.contains("stage=CONNECTION_EVENT")
+			.contains("constraint=fk_event_actor")
+			.doesNotContain("Cannot add child row");
+	}
+
+	@Test
+	void logsAttemptSuccessStageForAnUnexpectedIntegrityFailure(CapturedOutput output) {
+		prepareCompletableSeller();
+		doThrow(integrityFailure(
+			"Check constraint 'ck_attempt_success' is violated", "23000", 3819))
+			.when(repository).markAttemptSucceeded(50L, NOW);
+
+		assertThatThrownBy(() -> service.complete("state", "code", null, principal()))
+			.isInstanceOf(PaymentOAuthCallbackException.class)
+			.extracting(exception -> ((PaymentOAuthCallbackException) exception).code())
+			.isEqualTo("OAUTH_COMPLETION_FAILED");
+		assertThat(output)
+			.contains("stage=ATTEMPT_SUCCESS")
+			.contains("constraint=ck_attempt_success")
+			.doesNotContain("is violated");
 	}
 
 	@Test
@@ -404,6 +468,29 @@ class MerchantPaymentConnectionServiceTests {
 
 	private ClaimedOAuthAttempt attempt() {
 		return attempt(PaymentEnvironment.TEST);
+	}
+
+	private void prepareCompletableSeller() {
+		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.TEST), eq(NOW)))
+			.thenReturn(Optional.of(attempt()));
+		when(repository.findConnection(1L, PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.empty());
+		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.empty());
+		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, false))
+			.thenReturn(Optional.empty());
+		when(client.exchange("code", "verifier")).thenReturn(token("seller-a"));
+		when(client.fetchSellerProfile("access-token"))
+			.thenReturn(new SellerAccountProfile("seller-a", "SELLER_A"));
+	}
+
+	private DataIntegrityViolationException integrityFailure(
+			String message,
+			String sqlState,
+			int vendorCode) {
+		return new DataIntegrityViolationException(
+			"unexpected persistence failure",
+			new SQLIntegrityConstraintViolationException(message, sqlState, vendorCode));
 	}
 
 	private ClaimedOAuthAttempt attempt(PaymentEnvironment environment) {

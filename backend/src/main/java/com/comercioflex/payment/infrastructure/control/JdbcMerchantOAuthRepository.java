@@ -291,7 +291,8 @@ public class JdbcMerchantOAuthRepository implements MerchantOAuthRepository {
 			UUID connectedByUserPublicId,
 			UUID oauthAttemptId,
 			Instant now,
-			Optional<StoredMerchantConnection> existing) {
+			Optional<StoredMerchantConnection> existing,
+			Runnable beforeConnectionEvent) {
 		long internalId;
 		if (existing.isPresent()) {
 			StoredMerchantConnection stored = existing.get();
@@ -368,6 +369,7 @@ public class JdbcMerchantOAuthRepository implements MerchantOAuthRepository {
 			}
 			internalId = key.longValue();
 		}
+		beforeConnectionEvent.run();
 		insertEvent(tenantId, connectionId, oauthAttemptId, environment,
 			"CONNECTED", "USER", connectedByUserId, connectedByUserPublicId,
 			"OWNER", null);
