@@ -46,7 +46,7 @@ public class MerchantPaymentConnectionService {
 	private static final int STATUS_MAX_CHARS = 40;
 	private static final int SELLER_ACCOUNT_ID_MAX_CHARS = 100;
 	private static final int SELLER_NICKNAME_MAX_CHARS = 120;
-	private static final int GRANTED_SCOPES_MAX_CHARS = 255;
+	private static final int GRANTED_SCOPES_MAX_BYTES = 65_535;
 	private static final int TOKEN_CIPHERTEXT_MAX_BYTES = 4096;
 	private static final int TOKEN_NONCE_BYTES = 12;
 	private static final int TOKEN_KEY_ID_MAX_CHARS = 64;
@@ -492,8 +492,8 @@ public class MerchantPaymentConnectionService {
 					SELLER_ACCOUNT_ID_MAX_CHARS),
 				chars("sellerNickname", "seller_nickname", sellerNickname,
 					SELLER_NICKNAME_MAX_CHARS),
-				chars("grantedScopes", "granted_scopes", grantedScopes,
-					GRANTED_SCOPES_MAX_CHARS),
+				utf8Bytes("grantedScopes", "granted_scopes", grantedScopes,
+					GRANTED_SCOPES_MAX_BYTES),
 				bytes("accessTokenCiphertext", "access_token_ciphertext",
 					accessToken.ciphertext(), TOKEN_CIPHERTEXT_MAX_BYTES),
 				bytes("accessTokenNonce", "access_token_nonce",
@@ -538,6 +538,14 @@ public class MerchantPaymentConnectionService {
 		private static FieldLength bytes(
 				String logName, String columnName, byte[] value, int maximum) {
 			return new FieldLength(logName, columnName, value == null ? 0 : value.length, maximum);
+		}
+
+		private static FieldLength utf8Bytes(
+				String logName, String columnName, String value, int maximum) {
+			return new FieldLength(
+				logName, columnName,
+				value == null ? 0 : value.getBytes(StandardCharsets.UTF_8).length,
+				maximum);
 		}
 
 		private static int characters(String value) {
