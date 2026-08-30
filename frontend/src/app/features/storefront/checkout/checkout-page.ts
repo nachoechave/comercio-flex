@@ -10,7 +10,7 @@ import { inheritedRouteParam } from '../../../core/routing/inherited-route-param
 import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
 import { CartService } from '../cart/cart.service';
 import { GuestOrderHistoryService } from '../guest-orders/guest-order-history.service';
-import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
+import { CheckoutProHandoffService } from '../payment/checkout-pro-handoff.service';
 import { PaymentApiService } from '../payment/payment-api.service';
 import { PaymentMethods } from '../payment/payment.models';
 import { PaymentRecoveryService } from '../payment/payment-recovery.service';
@@ -34,7 +34,7 @@ export class CheckoutPage {
   private readonly csrf = inject(CsrfService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly paymentApi = inject(PaymentApiService);
-  private readonly paymentNavigation = inject(CheckoutProNavigationService);
+  private readonly paymentHandoff = inject(CheckoutProHandoffService);
   private readonly paymentRecovery = inject(PaymentRecoveryService);
   private readonly guestOrders = inject(GuestOrderHistoryService);
   private readonly route = inject(ActivatedRoute);
@@ -201,15 +201,8 @@ export class CheckoutPage {
             void this.navigateToOrder(storeSlug, order);
             return;
           }
-          void this.router
-            .navigate(this.orderRoute(storeSlug, order), this.orderNavigationExtras(order))
-            .then(() => {
-              try {
-                this.paymentNavigation.navigate(result.payment.checkoutUrl);
-              } catch {
-                void this.navigateToRecoverableOrder(storeSlug, order, 'failed');
-              }
-            });
+          this.paymentHandoff.remember(storeSlug, order.id, result.payment);
+          void this.navigateToOrder(storeSlug, order);
         },
         error: (error: unknown) => {
           if (createdOrder) {
@@ -273,9 +266,7 @@ export class CheckoutPage {
         next: (methods) => {
           this.paymentMethods.set(methods);
           if (methods.mercadoPago !== methods.bankTransfer) {
-            this.selectedPaymentMethod.set(
-              methods.mercadoPago ? 'MERCADO_PAGO' : 'BANK_TRANSFER',
-            );
+            this.selectedPaymentMethod.set(methods.mercadoPago ? 'MERCADO_PAGO' : 'BANK_TRANSFER');
           }
         },
         error: () => {

@@ -10,7 +10,11 @@
     </div>
   } @else if (order(); as currentOrder) {
     <header>
-      <div class="success-mark" [class.neutral]="currentOrder.status !== 'CONFIRMED'" aria-hidden="true">
+      <div
+        class="success-mark"
+        [class.neutral]="currentOrder.status !== 'CONFIRMED'"
+        aria-hidden="true"
+      >
         {{ currentOrder.status === 'CONFIRMED' ? '✓' : '•' }}
       </div>
       <p class="eyebrow">{{ statusLabel(currentOrder.status) }}</p>
@@ -48,13 +52,17 @@
       <aside>
         <h2>Retiro en el comercio</h2>
         @if (context.settings()?.pickupAddress; as address) {
-          <p><strong>{{ address }}</strong></p>
+          <p>
+            <strong>{{ address }}</strong>
+          </p>
         }
         @if (context.settings()?.pickupInstructions; as instructions) {
           <p>{{ instructions }}</p>
         }
         @if (context.settings()?.contactPhone; as phone) {
-          <p>Teléfono: <a [href]="'tel:' + phone">{{ phone }}</a></p>
+          <p>
+            Teléfono: <a [href]="'tel:' + phone">{{ phone }}</a>
+          </p>
         }
         <p>Conservá este enlace: es la llave privada para volver a consultar el pedido.</p>
         @if (currentOrder.status === 'PENDING_CONFIRMATION') {
@@ -63,6 +71,36 @@
             <strong>{{ currentOrder.reservationExpiresAt | commerceDate }}</strong
             >.
           </p>
+          @if (checkoutPro(); as checkout) {
+            <section class="checkout-pro" aria-labelledby="checkout-pro-title">
+              <h2 id="checkout-pro-title">Pagá con Mercado Pago</h2>
+              <p>Escaneá el código con la cámara de tu celular para continuar en Checkout Pro.</p>
+              @if (checkoutQrLoading()) {
+                <div class="qr-placeholder" role="status">Generando QR seguro…</div>
+              } @else if (checkoutQrDataUrl(); as qrDataUrl) {
+                <img
+                  class="checkout-qr"
+                  [src]="qrDataUrl"
+                  alt="Código QR para pagar con Mercado Pago"
+                  width="240"
+                  height="240"
+                />
+              }
+              @if (checkoutQrErrorMessage()) {
+                <p class="checkout-qr-error" role="alert">{{ checkoutQrErrorMessage() }}</p>
+              }
+              <p class="checkout-expiration">
+                Enlace disponible hasta el <strong>{{ checkout.expiresAt | commerceDate }}</strong
+                >.
+              </p>
+              <button type="button" (click)="openCheckoutPro()">
+                Abrir Mercado Pago en este dispositivo
+              </button>
+              <button type="button" class="secondary" (click)="chooseAnotherPaymentMethod()">
+                Elegir otro medio de pago
+              </button>
+            </section>
+          }
           @if (paymentMethodsLoading()) {
             <p role="status">Consultando medios de pago…</p>
           } @else if (paymentMethodsErrorMessage(); as methodsError) {
@@ -73,56 +111,78 @@
               </button>
             </div>
           } @else if (paymentMethods(); as methods) {
-            @if (!bankTransfer()) {
-            <section class="payment-methods" aria-labelledby="payment-methods-title">
-              <h2 id="payment-methods-title">¿Cómo querés pagar?</h2>
-              @if (methods.mercadoPago) {
-                <button type="button" (click)="startPayment()" [disabled]="paymentStarting()">
-                  <strong>{{ paymentErrorMessage() ? 'Reintentar con Mercado Pago' : 'Mercado Pago' }}</strong>
-                  <span>Tarjetas y dinero disponible</span>
-                </button>
-              }
-              @if (methods.bankTransfer && !bankTransfer()) {
-                <button
-                  type="button"
-                  class="secondary"
-                  (click)="startBankTransfer()"
-                  [disabled]="bankTransferStarting()"
-                >
-                  <strong>Transferencia bancaria</strong>
-                  <span>Transferí y enviá el comprobante</span>
-                </button>
-              }
-              @if (!methods.mercadoPago && !methods.bankTransfer && !bankTransfer()) {
-                <p>El comercio todavía no habilitó un medio de pago.</p>
-              }
-            </section>
+            @if (!bankTransfer() && !checkoutPro()) {
+              <section class="payment-methods" aria-labelledby="payment-methods-title">
+                <h2 id="payment-methods-title">¿Cómo querés pagar?</h2>
+                @if (methods.mercadoPago) {
+                  <button type="button" (click)="startPayment()" [disabled]="paymentStarting()">
+                    <strong>{{
+                      paymentErrorMessage() ? 'Reintentar con Mercado Pago' : 'Mercado Pago'
+                    }}</strong>
+                    <span>Tarjetas y dinero disponible</span>
+                  </button>
+                }
+                @if (methods.bankTransfer && !bankTransfer()) {
+                  <button
+                    type="button"
+                    class="secondary"
+                    (click)="startBankTransfer()"
+                    [disabled]="bankTransferStarting()"
+                  >
+                    <strong>Transferencia bancaria</strong>
+                    <span>Transferí y enviá el comprobante</span>
+                  </button>
+                }
+                @if (!methods.mercadoPago && !methods.bankTransfer && !bankTransfer()) {
+                  <p>El comercio todavía no habilitó un medio de pago.</p>
+                }
+              </section>
             }
           }
 
           @if (bankTransfer(); as transfer) {
             <section class="bank-transfer" aria-labelledby="bank-transfer-title">
               <h2 id="bank-transfer-title">Transferencia bancaria</h2>
-              @if (transfer.bankName) { <p><span>Banco</span><strong>{{ transfer.bankName }}</strong></p> }
-              <p><span>Titular</span><strong>{{ transfer.accountHolder }}</strong></p>
+              @if (transfer.bankName) {
+                <p>
+                  <span>Banco</span><strong>{{ transfer.bankName }}</strong>
+                </p>
+              }
+              <p>
+                <span>Titular</span><strong>{{ transfer.accountHolder }}</strong>
+              </p>
               @if (transfer.alias) {
-                <p><span>Alias</span><strong>{{ transfer.alias }}</strong></p>
-                <button type="button" class="copy" (click)="copy(transfer.alias)">Copiar alias</button>
+                <p>
+                  <span>Alias</span><strong>{{ transfer.alias }}</strong>
+                </p>
+                <button type="button" class="copy" (click)="copy(transfer.alias)">
+                  Copiar alias
+                </button>
               }
               @if (transfer.cbuCvu) {
-                <p><span>CBU/CVU</span><strong>{{ transfer.cbuCvu }}</strong></p>
-                <button type="button" class="copy" (click)="copy(transfer.cbuCvu)">Copiar CBU/CVU</button>
+                <p>
+                  <span>CBU/CVU</span><strong>{{ transfer.cbuCvu }}</strong>
+                </p>
+                <button type="button" class="copy" (click)="copy(transfer.cbuCvu)">
+                  Copiar CBU/CVU
+                </button>
               }
               <p>
                 <span>Total exacto</span>
                 <strong>{{ transfer.amount | storefrontMoney: transfer.currencyCode }}</strong>
               </p>
-              <p><span>Reserva hasta</span><strong>{{ transfer.reservationExpiresAt | commerceDate }}</strong></p>
+              <p>
+                <span>Reserva hasta</span
+                ><strong>{{ transfer.reservationExpiresAt | commerceDate }}</strong>
+              </p>
 
               @if (transfer.status === 'UNDER_REVIEW') {
                 <div class="receipt-status" role="status">
                   <strong>Comprobante enviado</strong>
-                  <span>El comercio está revisando tu transferencia.<br />Consultá nuevamente este pedido para ver el estado.</span>
+                  <span
+                    >El comercio está revisando tu transferencia.<br />Consultá nuevamente este
+                    pedido para ver el estado.</span
+                  >
                 </div>
               } @else if (transfer.status === 'REJECTED') {
                 <div class="receipt-status rejected" role="alert">

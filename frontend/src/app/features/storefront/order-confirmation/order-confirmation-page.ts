@@ -2,17 +2,29 @@ import { DOCUMENT } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, exhaustMap, finalize, map, of, Subscription, switchMap, takeWhile, timer } from 'rxjs';
+import {
+  catchError,
+  exhaustMap,
+  finalize,
+  map,
+  of,
+  Subscription,
+  switchMap,
+  takeWhile,
+  timer,
+} from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
 import { CommerceDatePipe } from '../../../shared/pipes/commerce-date.pipe';
 import { variantOptionsLabel } from '../../../shared/variant-options';
+import { CheckoutProHandoffService } from '../payment/checkout-pro-handoff.service';
 import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
+import { CheckoutProQrService } from '../payment/checkout-pro-qr.service';
 import { GuestOrderHistoryService } from '../guest-orders/guest-order-history.service';
 import { PaymentApiService } from '../payment/payment-api.service';
-import { BankTransferPayment, PaymentMethods } from '../payment/payment.models';
+import { BankTransferPayment, CheckoutProStart, PaymentMethods } from '../payment/payment.models';
 import { paymentErrorMessage } from '../payment/payment-errors';
 import { PaymentRecoveryService } from '../payment/payment-recovery.service';
 import { StorefrontApiService } from '../storefront-api.service';
@@ -31,7 +43,9 @@ export class OrderConfirmationPage {
   private readonly api = inject(StorefrontApiService);
   private readonly csrf = inject(CsrfService);
   private readonly paymentApi = inject(PaymentApiService);
+  private readonly paymentHandoff = inject(CheckoutProHandoffService);
   private readonly paymentNavigation = inject(CheckoutProNavigationService);
+  private readonly paymentQr = inject(CheckoutProQrService);
   private readonly paymentRecovery = inject(PaymentRecoveryService);
   private readonly guestOrders = inject(GuestOrderHistoryService);
   private readonly route = inject(ActivatedRoute);
@@ -47,10 +61,11 @@ export class OrderConfirmationPage {
     this.route.queryParamMap.pipe(map((params) => params.get('token') ?? '')),
     { initialValue: this.route.snapshot.queryParamMap.get('token') ?? '' },
   );
-  protected readonly token = computed(() =>
-    this.queryToken() ||
-    this.guestOrders.find(this.storeSlug() ?? '', this.orderId() ?? '')?.lookupToken ||
-    '',
+  protected readonly token = computed(
+    () =>
+      this.queryToken() ||
+      this.guestOrders.find(this.storeSlug() ?? '', this.orderId() ?? '')?.lookupToken ||
+      '',
   );
   protected readonly paymentResult = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('payment') ?? '')),
@@ -61,6 +76,10 @@ export class OrderConfirmationPage {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly paymentStarting = signal(false);
   protected readonly paymentErrorMessage = signal<string | null>(null);
+  protected readonly checkoutPro = signal<CheckoutProStart | null>(null);
+  protected readonly checkoutQrDataUrl = signal<string | null>(null);
+  protected readonly checkoutQrLoading = signal(false);
+  protected readonly checkoutQrErrorMessage = signal<string | null>(null);
   protected readonly paymentsUnavailable = signal(false);
   protected readonly paymentMethods = signal<PaymentMethods | null>(null);
   protected readonly paymentMethodsLoading = signal(false);
@@ -76,6 +95,10 @@ export class OrderConfirmationPage {
       const orderId = this.orderId();
       const token = this.token();
       this.order.set(null);
+      this.checkoutPro.set(null);
+      this.checkoutQrDataUrl.set(null);
+      this.checkoutQrLoading.set(false);
+      this.checkoutQrErrorMessage.set(null);
       this.errorMessage.set(null);
       this.paymentErrorMessage.set(null);
       this.paymentsUnavailable.set(this.paymentResult() === 'not-enabled');
@@ -89,31 +112,37 @@ export class OrderConfirmationPage {
       if (!recovery || recovery.lookupToken !== token) {
         this.paymentRecovery.remember(storeSlug, orderId, token);
       }
+      const pendingCheckout = this.paymentHandoff.find(storeSlug, orderId);
+      if (pendingCheckout) this.presentCheckout(pendingCheckout);
       const subscriptions = new Subscription();
-      subscriptions.add(this.api.getOrder(storeSlug, orderId, token).subscribe({
-        next: (order) => {
-          this.applyOrder(storeSlug, order);
-          this.loading.set(false);
-          this.loadPaymentMethods(storeSlug, orderId, token);
-          if (order.status === 'PENDING_CONFIRMATION') {
-            subscriptions.add(this.pollOrder(storeSlug, orderId, token));
-          }
-          if (this.paymentResult() === 'failed') {
-            this.paymentErrorMessage.set(
-              'Tu pedido quedó guardado, pero no pudimos abrir Mercado Pago. Podés intentarlo nuevamente.',
+      subscriptions.add(
+        this.api.getOrder(storeSlug, orderId, token).subscribe({
+          next: (order) => {
+            this.applyOrder(storeSlug, order);
+            this.loading.set(false);
+            this.loadPaymentMethods(storeSlug, orderId, token);
+            if (order.status === 'PENDING_CONFIRMATION') {
+              subscriptions.add(this.pollOrder(storeSlug, orderId, token));
+            }
+            if (this.paymentResult() === 'failed') {
+              this.paymentErrorMessage.set(
+                'Tu pedido quedó guardado, pero no pudimos abrir Mercado Pago. Podés intentarlo nuevamente.',
+              );
+            } else if (this.paymentResult() === 'not-enabled') {
+              this.paymentErrorMessage.set(
+                'El pago en línea no está habilitado para esta tienda. El comercio podrá coordinar el pedido con vos.',
+              );
+            }
+          },
+          error: (error: unknown) => {
+            this.loading.set(false);
+            if (this.isInvalidPrivateOrder(error)) this.guestOrders.remove(storeSlug, orderId);
+            this.errorMessage.set(
+              storefrontErrorMessage(error, 'No pudimos recuperar este pedido.'),
             );
-          } else if (this.paymentResult() === 'not-enabled') {
-            this.paymentErrorMessage.set(
-              'El pago en línea no está habilitado para esta tienda. El comercio podrá coordinar el pedido con vos.',
-            );
-          }
-        },
-        error: (error: unknown) => {
-          this.loading.set(false);
-          if (this.isInvalidPrivateOrder(error)) this.guestOrders.remove(storeSlug, orderId);
-          this.errorMessage.set(storefrontErrorMessage(error, 'No pudimos recuperar este pedido.'));
-        },
-      }));
+          },
+        }),
+      );
       onCleanup(() => subscriptions.unsubscribe());
     });
   }
@@ -149,10 +178,12 @@ export class OrderConfirmationPage {
         this.token() ?? '',
         file,
       )
-      .pipe(finalize(() => {
-        this.receiptUploading.set(false);
-        input.value = '';
-      }))
+      .pipe(
+        finalize(() => {
+          this.receiptUploading.set(false);
+          input.value = '';
+        }),
+      )
       .subscribe({
         next: (updated) => {
           this.bankTransfer.set(updated);
@@ -201,38 +232,52 @@ export class OrderConfirmationPage {
   }
 
   private pollOrder(storeSlug: string, orderId: string, token: string): Subscription {
-    return timer(12_000, 12_000).pipe(
-      exhaustMap(() => {
-        if (this.document.visibilityState === 'hidden') return of(null);
-        return this.api.getOrder(storeSlug, orderId, token).pipe(
-          switchMap((order) => {
-            this.applyOrder(storeSlug, order);
-            if (order.status !== 'PENDING_CONFIRMATION') return of({ order, transfer: null });
-            return this.paymentApi.getCurrentBankTransfer(storeSlug, orderId, token).pipe(
-              map((transfer) => ({ order, transfer })),
-              catchError(() => of({ order, transfer: null })),
-            );
-          }),
-          catchError((error: unknown) => {
-            if (this.isInvalidPrivateOrder(error)) this.guestOrders.remove(storeSlug, orderId);
-            return of(null);
-          }),
-        );
-      }),
-      takeWhile((result) => result === null || result.order.status === 'PENDING_CONFIRMATION', true),
-    ).subscribe((result) => {
-      if (result?.transfer) this.bankTransfer.set(result.transfer);
-    });
+    return timer(12_000, 12_000)
+      .pipe(
+        exhaustMap(() => {
+          if (this.document.visibilityState === 'hidden') return of(null);
+          return this.api.getOrder(storeSlug, orderId, token).pipe(
+            switchMap((order) => {
+              this.applyOrder(storeSlug, order);
+              if (order.status !== 'PENDING_CONFIRMATION') return of({ order, transfer: null });
+              return this.paymentApi.getCurrentBankTransfer(storeSlug, orderId, token).pipe(
+                map((transfer) => ({ order, transfer })),
+                catchError(() => of({ order, transfer: null })),
+              );
+            }),
+            catchError((error: unknown) => {
+              if (this.isInvalidPrivateOrder(error)) this.guestOrders.remove(storeSlug, orderId);
+              return of(null);
+            }),
+          );
+        }),
+        takeWhile(
+          (result) => result === null || result.order.status === 'PENDING_CONFIRMATION',
+          true,
+        ),
+      )
+      .subscribe((result) => {
+        if (result?.transfer) this.bankTransfer.set(result.transfer);
+      });
   }
 
   private applyOrder(storeSlug: string, order: GuestOrder): void {
     this.order.set(order);
     this.guestOrders.update(storeSlug, order);
+    if (order.status !== 'PENDING_CONFIRMATION') {
+      this.checkoutPro.set(null);
+      this.checkoutQrDataUrl.set(null);
+      this.paymentHandoff.forget(storeSlug, order.id);
+    }
   }
 
   private isInvalidPrivateOrder(error: unknown): boolean {
-    return typeof error === 'object' && error !== null && 'status' in error &&
-      [401, 403, 404].includes(Number(error.status));
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'status' in error &&
+      [401, 403, 404].includes(Number(error.status))
+    );
   }
 
   protected startPayment(): void {
@@ -264,15 +309,7 @@ export class OrderConfirmationPage {
         finalize(() => this.paymentStarting.set(false)),
       )
       .subscribe({
-        next: (payment) => {
-          try {
-            this.paymentNavigation.navigate(payment.checkoutUrl);
-          } catch {
-            this.paymentErrorMessage.set(
-              'No pudimos abrir el destino seguro de Mercado Pago. Tu pedido sigue guardado.',
-            );
-          }
-        },
+        next: (payment) => this.presentCheckout(payment),
         error: (error: unknown) => {
           if (
             typeof error === 'object' &&
@@ -290,6 +327,52 @@ export class OrderConfirmationPage {
           );
         },
       });
+  }
+
+  protected openCheckoutPro(): void {
+    const checkout = this.checkoutPro();
+    if (!checkout) return;
+    try {
+      this.paymentNavigation.navigate(checkout.checkoutUrl);
+    } catch {
+      this.checkoutQrErrorMessage.set(
+        'No pudimos abrir el destino seguro de Mercado Pago. Tu pedido sigue guardado.',
+      );
+    }
+  }
+
+  protected chooseAnotherPaymentMethod(): void {
+    const storeSlug = this.storeSlug();
+    const orderId = this.orderId();
+    if (storeSlug && orderId) this.paymentHandoff.forget(storeSlug, orderId);
+    this.checkoutPro.set(null);
+    this.checkoutQrDataUrl.set(null);
+    this.checkoutQrLoading.set(false);
+    this.checkoutQrErrorMessage.set(null);
+  }
+
+  private presentCheckout(checkout: CheckoutProStart): void {
+    const storeSlug = this.storeSlug();
+    const orderId = this.orderId();
+    if (storeSlug && orderId) this.paymentHandoff.remember(storeSlug, orderId, checkout);
+    this.checkoutPro.set(checkout);
+    this.checkoutQrDataUrl.set(null);
+    this.checkoutQrErrorMessage.set(null);
+    this.checkoutQrLoading.set(true);
+    void this.paymentQr.create(checkout.checkoutUrl).then(
+      (dataUrl) => {
+        if (this.checkoutPro() !== checkout) return;
+        this.checkoutQrDataUrl.set(dataUrl);
+        this.checkoutQrLoading.set(false);
+      },
+      () => {
+        if (this.checkoutPro() !== checkout) return;
+        this.checkoutQrLoading.set(false);
+        this.checkoutQrErrorMessage.set(
+          'No pudimos generar el QR. Podés abrir Mercado Pago en este dispositivo.',
+        );
+      },
+    );
   }
 
   protected statusLabel(status: GuestOrderStatus): string {
