@@ -7,7 +7,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { CartService } from '../cart/cart.service';
-import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
+import { CheckoutProHandoffService } from '../payment/checkout-pro-handoff.service';
 import { BankTransferPayment, PaymentMethods } from '../payment/payment.models';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
@@ -40,7 +40,7 @@ describe('CheckoutPage', () => {
   let http: HttpTestingController;
   let cart: CartService;
   let router: Router;
-  const paymentNavigation = { navigate: vi.fn() };
+  let paymentHandoff: CheckoutProHandoffService;
   const params = new BehaviorSubject(convertToParamMap({ storeSlug: 'tienda-a' }));
   const settings = signal<StoreSettings | null>({
     slug: 'tienda-a',
@@ -69,13 +69,11 @@ describe('CheckoutPage', () => {
   beforeEach(async () => {
     localStorage.clear();
     sessionStorage.clear();
-    paymentNavigation.navigate.mockReset();
     await TestBed.configureTestingModule({
       imports: [CheckoutPage],
       providers: [
         StorefrontApiService,
         CsrfService,
-        { provide: CheckoutProNavigationService, useValue: paymentNavigation },
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -100,6 +98,7 @@ describe('CheckoutPage', () => {
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     cart = TestBed.inject(CartService);
+    paymentHandoff = TestBed.inject(CheckoutProHandoffService);
     router = TestBed.inject(Router);
     cart.add('tienda-a', { product, variant: product.variants[0], quantity: 2 });
     fixture = TestBed.createComponent(CheckoutPage);
@@ -146,9 +145,7 @@ describe('CheckoutPage', () => {
     expect(radios[0].value).toBe('BANK_TRANSFER');
     expect(radios[0].checked).toBe(true);
     expect(fixture.nativeElement.textContent).not.toContain('Mercado Pago');
-    expect(submitButton().textContent).toContain(
-      'Confirmar pedido y pagar por transferencia',
-    );
+    expect(submitButton().textContent).toContain('Confirmar pedido y pagar por transferencia');
     expect(submitButton().disabled).toBe(false);
   });
 
@@ -237,9 +234,12 @@ describe('CheckoutPage', () => {
       queryParams: { token: 'private-token' },
       replaceUrl: true,
     });
-    expect(paymentNavigation.navigate).toHaveBeenCalledWith(
-      'https://www.mercadopago.com.ar/checkout/v1/redirect',
-    );
+    expect(paymentHandoff.find('tienda-a', 'order-1')).toEqual({
+      checkoutUrl: 'https://www.mercadopago.com.ar/checkout/v1/redirect',
+      paymentAttemptId: 'attempt-1',
+      expiresAt: '2026-08-01T12:00:00Z',
+      replayed: false,
+    });
   });
 
   it('creates the order and starts bank transfer without redirecting to Mercado Pago', async () => {
@@ -247,9 +247,7 @@ describe('CheckoutPage', () => {
     component().selectPaymentMethod('BANK_TRANSFER');
     fillValidForm();
     fixture.detectChanges();
-    expect(submitButton().textContent).toContain(
-      'Confirmar pedido y pagar por transferencia',
-    );
+    expect(submitButton().textContent).toContain('Confirmar pedido y pagar por transferencia');
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     component().submit();
@@ -280,7 +278,7 @@ describe('CheckoutPage', () => {
       queryParams: { token: 'private-token' },
       replaceUrl: true,
     });
-    expect(paymentNavigation.navigate).not.toHaveBeenCalled();
+    expect(paymentHandoff.find('tienda-a', 'order-1')).toBeNull();
   });
 
   it('requires the customer name and a valid email before creating the order', () => {

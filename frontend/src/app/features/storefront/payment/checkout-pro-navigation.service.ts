@@ -9,7 +9,7 @@ const CHECKOUT_PRO_HOSTS = new Set([
 
 @Injectable({ providedIn: 'root' })
 export class CheckoutProNavigationService {
-  navigate(checkoutUrl: string): void {
+  trustedUrl(checkoutUrl: string): string {
     const destination = new URL(checkoutUrl);
     if (
       destination.protocol !== 'https:' ||
@@ -17,6 +17,10 @@ export class CheckoutProNavigationService {
     ) {
       throw new Error('Unexpected Checkout Pro destination.');
     }
-    globalThis.location.assign(destination.toString());
+    return destination.toString();
+  }
+
+  navigate(checkoutUrl: string): void {
+    globalThis.location.assign(this.trustedUrl(checkoutUrl));
   }
 }

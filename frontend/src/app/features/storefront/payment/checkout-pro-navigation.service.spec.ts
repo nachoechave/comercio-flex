@@ -5,6 +5,12 @@ import { CheckoutProNavigationService } from './checkout-pro-navigation.service'
 describe('CheckoutProNavigationService', () => {
   const service = TestBed.inject(CheckoutProNavigationService);
 
+  it('accepts and normalizes official HTTPS Checkout Pro destinations', () => {
+    expect(service.trustedUrl('https://www.mercadopago.com.ar/checkout?v=1')).toBe(
+      'https://www.mercadopago.com.ar/checkout?v=1',
+    );
+  });
+
   it('rejects non-HTTPS checkout destinations', () => {
     expect(() => service.navigate('http://www.mercadopago.com.ar/checkout')).toThrow();
   });

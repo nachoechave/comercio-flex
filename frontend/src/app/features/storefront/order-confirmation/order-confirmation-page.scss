@@ -137,7 +137,8 @@ button:disabled {
 }
 
 .payment-methods,
-.bank-transfer {
+.bank-transfer,
+.checkout-pro {
   display: grid;
   gap: 0.75rem;
   margin: 1rem 0;
@@ -146,9 +147,46 @@ button:disabled {
 }
 
 .payment-methods h2,
-.bank-transfer h2 {
+.bank-transfer h2,
+.checkout-pro h2 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.checkout-pro > p {
+  margin: 0;
+}
+
+.checkout-qr,
+.qr-placeholder {
+  width: min(100%, 15rem);
+  aspect-ratio: 1;
+  justify-self: center;
+  border: 1px solid var(--color-border);
+  border-radius: 0.85rem;
+  background: #fff;
+}
+
+.checkout-qr {
+  height: auto;
+}
+
+.qr-placeholder {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.checkout-pro .checkout-expiration {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.checkout-pro .checkout-qr-error {
+  color: #9d1d14;
 }
 
 .payment-methods button {

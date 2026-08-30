@@ -7,6 +7,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
+import { CheckoutProQrService } from '../payment/checkout-pro-qr.service';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { GuestOrder, StoreSettings } from '../storefront.models';
@@ -16,9 +17,7 @@ describe('OrderConfirmationPage', () => {
   let fixture: ComponentFixture<OrderConfirmationPage>;
   let http: HttpTestingController;
   const orderId = '11111111-1111-4111-8111-111111111111';
-  const params = new BehaviorSubject(
-    convertToParamMap({ storeSlug: 'tienda-a', orderId }),
-  );
+  const params = new BehaviorSubject(convertToParamMap({ storeSlug: 'tienda-a', orderId }));
   const queryParams = new BehaviorSubject(
     convertToParamMap({ token: 'private-token', payment: 'not-enabled' }),
   );
@@ -29,6 +28,7 @@ describe('OrderConfirmationPage', () => {
     timezone: 'America/Argentina/Buenos_Aires',
   });
   const paymentNavigation = { navigate: vi.fn() };
+  const paymentQr = { create: vi.fn() };
   const order: GuestOrder = {
     id: orderId,
     number: 'ORD-000004',
@@ -60,12 +60,15 @@ describe('OrderConfirmationPage', () => {
     sessionStorage.clear();
     localStorage.clear();
     paymentNavigation.navigate.mockReset();
+    paymentQr.create.mockReset();
+    paymentQr.create.mockResolvedValue('data:image/png;base64,checkout-qr');
     await TestBed.configureTestingModule({
       imports: [OrderConfirmationPage],
       providers: [
         StorefrontApiService,
         CsrfService,
         { provide: CheckoutProNavigationService, useValue: paymentNavigation },
+        { provide: CheckoutProQrService, useValue: paymentQr },
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -106,7 +109,7 @@ describe('OrderConfirmationPage', () => {
     vi.useRealTimers();
   });
 
-  it('allows retrying when the previous attempt reported payments not enabled', () => {
+  it('shows a QR for the exact Checkout Pro URL and keeps same-device navigation', async () => {
     http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush({
       mercadoPago: true,
       bankTransfer: false,
@@ -114,8 +117,7 @@ describe('OrderConfirmationPage', () => {
     http
       .expectOne(
         (request) =>
-          request.url ===
-            `/api/v1/stores/tienda-a/orders/${orderId}/payments/bank-transfer` &&
+          request.url === `/api/v1/stores/tienda-a/orders/${orderId}/payments/bank-transfer` &&
           request.params.get('token') === 'private-token',
       )
       .flush({}, { status: 404, statusText: 'Not Found' });
@@ -132,8 +134,7 @@ describe('OrderConfirmationPage', () => {
     http.expectOne('/api/v1/auth/csrf').flush({});
     const payment = http.expectOne(
       (request) =>
-        request.url ===
-          `/api/v1/stores/tienda-a/orders/${orderId}/payments/checkout-pro` &&
+        request.url === `/api/v1/stores/tienda-a/orders/${orderId}/payments/checkout-pro` &&
         request.params.get('token') === 'private-token',
     );
     expect(payment.request.headers.get('Idempotency-Key')).toMatch(
@@ -145,17 +146,74 @@ describe('OrderConfirmationPage', () => {
       expiresAt: '2026-08-17T03:31:00Z',
       replayed: false,
     });
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(paymentQr.create).toHaveBeenCalledWith(
+      'https://www.mercadopago.com.ar/checkout/v1/redirect',
+    );
+    expect(paymentQr.create).not.toHaveBeenCalledWith(expect.stringContaining('private-token'));
+    const qr = fixture.nativeElement.querySelector('.checkout-qr') as HTMLImageElement;
+    expect(qr.src).toContain('data:image/png;base64,checkout-qr');
+    expect(qr.alt).toBe('Código QR para pagar con Mercado Pago');
+    expect(paymentNavigation.navigate).not.toHaveBeenCalled();
+
+    const open = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((candidate) => candidate.textContent?.includes('Abrir Mercado Pago'));
+    open?.click();
 
     expect(paymentNavigation.navigate).toHaveBeenCalledWith(
       'https://www.mercadopago.com.ar/checkout/v1/redirect',
     );
   });
 
+  it('removes the QR when polling confirms the order', async () => {
+    http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush({
+      mercadoPago: true,
+      bankTransfer: false,
+    });
+    http
+      .expectOne(
+        (request) =>
+          request.url ===
+            `/api/v1/stores/tienda-a/orders/${orderId}/payments/bank-transfer` &&
+          request.params.get('token') === 'private-token',
+      )
+      .flush({}, { status: 404, statusText: 'Not Found' });
+    fixture.detectChanges();
+
+    const mercadoPago = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((candidate) => candidate.textContent?.includes('Mercado Pago'));
+    mercadoPago?.click();
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    http
+      .expectOne((request) => request.url.endsWith('/payments/checkout-pro'))
+      .flush({
+        checkoutUrl: 'https://www.mercadopago.com.ar/checkout/v1/redirect',
+        paymentAttemptId: 'attempt-1',
+        expiresAt: '2026-08-17T03:31:00Z',
+        replayed: true,
+      });
+    await Promise.resolve();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.checkout-qr')).not.toBeNull();
+
+    await vi.advanceTimersByTimeAsync(12_000);
+    http
+      .expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
+      .flush({ ...order, status: 'CONFIRMED' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Pedido confirmado');
+    expect(fixture.nativeElement.querySelector('.checkout-qr')).toBeNull();
+  });
+
   it('fails closed and allows retrying when payment methods cannot be loaded', () => {
-    http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush(
-      {},
-      { status: 503, statusText: 'Service Unavailable' },
-    );
+    http
+      .expectOne('/api/v1/stores/tienda-a/payment-methods')
+      .flush({}, { status: 503, statusText: 'Service Unavailable' });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain(
@@ -180,8 +238,7 @@ describe('OrderConfirmationPage', () => {
     http
       .expectOne(
         (request) =>
-          request.url ===
-            `/api/v1/stores/tienda-a/orders/${orderId}/payments/bank-transfer` &&
+          request.url === `/api/v1/stores/tienda-a/orders/${orderId}/payments/bank-transfer` &&
           request.params.get('token') === 'private-token',
       )
       .flush({}, { status: 404, statusText: 'Not Found' });
@@ -202,8 +259,7 @@ describe('OrderConfirmationPage', () => {
     http
       .expectOne(
         (request) =>
-          request.url ===
-            `/api/v1/stores/tienda-a/orders/${orderId}/payments/bank-transfer` &&
+          request.url === `/api/v1/stores/tienda-a/orders/${orderId}/payments/bank-transfer` &&
           request.params.get('token') === 'private-token',
       )
       .flush({
@@ -237,7 +293,8 @@ describe('OrderConfirmationPage', () => {
     flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
 
     await vi.advanceTimersByTimeAsync(12_000);
-    http.expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
+    http
+      .expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
       .flush({ ...order, status: 'CONFIRMED' });
     fixture.detectChanges();
 
@@ -249,9 +306,11 @@ describe('OrderConfirmationPage', () => {
     flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
 
     await vi.advanceTimersByTimeAsync(12_000);
-    http.expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
+    http
+      .expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
       .flush(order);
-    http.expectOne((request) => request.url.endsWith('/payments/bank-transfer'))
+    http
+      .expectOne((request) => request.url.endsWith('/payments/bank-transfer'))
       .flush(bankTransfer('REJECTED'));
     fixture.detectChanges();
 
@@ -270,7 +329,8 @@ describe('OrderConfirmationPage', () => {
     await vi.advanceTimersByTimeAsync(24_000);
     http.expectNone((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`);
     slow.flush(order);
-    http.expectOne((request) => request.url.endsWith('/payments/bank-transfer'))
+    http
+      .expectOne((request) => request.url.endsWith('/payments/bank-transfer'))
       .flush(bankTransfer('UNDER_REVIEW'));
 
     fixture.destroy();
@@ -285,7 +345,9 @@ describe('OrderConfirmationPage', () => {
     Object.defineProperty(input, 'files', { value: [file] });
     input.dispatchEvent(new Event('change'));
 
-    http.expectOne((request) => request.url.endsWith('/receipt')).flush(bankTransfer('UNDER_REVIEW'));
+    http
+      .expectOne((request) => request.url.endsWith('/receipt'))
+      .flush(bankTransfer('UNDER_REVIEW'));
     fixture.detectChanges();
 
     expect((fixture.nativeElement.textContent.match(/Comprobante enviado/g) ?? []).length).toBe(1);
@@ -305,13 +367,22 @@ describe('OrderConfirmationPage', () => {
 
   function bankTransfer(status: 'AWAITING_RECEIPT' | 'UNDER_REVIEW' | 'REJECTED') {
     return {
-      id: '22222222-2222-4222-8222-222222222222', orderId,
-      orderNumber: 'ORD-000004', attemptNumber: 1, status,
-      bankName: 'Banco Demo', accountHolder: 'Tienda A SA', alias: 'TIENDA.A', cbuCvu: null,
-      amount: '12333.00', currencyCode: 'ARS', reservationExpiresAt: '2026-08-25T18:31:00Z',
+      id: '22222222-2222-4222-8222-222222222222',
+      orderId,
+      orderNumber: 'ORD-000004',
+      attemptNumber: 1,
+      status,
+      bankName: 'Banco Demo',
+      accountHolder: 'Tienda A SA',
+      alias: 'TIENDA.A',
+      cbuCvu: null,
+      amount: '12333.00',
+      currencyCode: 'ARS',
+      reservationExpiresAt: '2026-08-25T18:31:00Z',
       receiptUploadedAt: status === 'AWAITING_RECEIPT' ? null : '2026-08-25T15:00:00Z',
       rejectionReason: status === 'REJECTED' ? 'No se distingue el importe' : null,
-      canUpload: status !== 'UNDER_REVIEW', updatedAt: '2026-08-25T15:00:00Z',
+      canUpload: status !== 'UNDER_REVIEW',
+      updatedAt: '2026-08-25T15:00:00Z',
     };
   }
 });
