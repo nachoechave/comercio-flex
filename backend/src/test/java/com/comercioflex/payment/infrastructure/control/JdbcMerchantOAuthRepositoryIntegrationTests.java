@@ -1,11 +1,13 @@
 package com.comercioflex.payment.infrastructure.control;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.sql.DataSource;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -27,6 +30,8 @@ import org.testcontainers.utility.DockerImageName;
 import com.comercioflex.payment.application.ClaimedOAuthAttempt;
 import com.comercioflex.payment.application.EncryptedSecret;
 import com.comercioflex.payment.application.MerchantOAuthRepository;
+import com.comercioflex.payment.application.StoredMerchantConnection;
+import com.comercioflex.payment.domain.MerchantConnectionStatus;
 import com.comercioflex.payment.domain.PaymentEnvironment;
 
 @Testcontainers
@@ -49,6 +54,7 @@ class JdbcMerchantOAuthRepositoryIntegrationTests {
 
 	private JdbcTemplate jdbc;
 	private long tenantA;
+	private long tenantB;
 	private long userA;
 	private long userB;
 
@@ -79,8 +85,36 @@ class JdbcMerchantOAuthRepositoryIntegrationTests {
 		insertUser(USER_A_PUBLIC_ID, "owner-a@example.test", "tienda-a");
 		insertUser(USER_B_PUBLIC_ID, "owner-b@example.test", "tienda-b");
 		tenantA = id("SELECT id FROM tenants WHERE slug = 'tienda-a'");
+		tenantB = id("SELECT id FROM tenants WHERE slug = 'tienda-b'");
 		userA = id("SELECT id FROM platform_users WHERE email_normalized = 'owner-a@example.test'");
 		userB = id("SELECT id FROM platform_users WHERE email_normalized = 'owner-b@example.test'");
+	}
+
+	@Test
+	void emptyConnectionTableAllowsFirstSellerAndIsolatesSellerByTenantAndEnvironment() {
+		assertThat(jdbc.queryForObject(
+			"SELECT COUNT(*) FROM merchant_payment_connections", Integer.class)).isZero();
+
+		connect(tenantA, userA, USER_A_PUBLIC_ID, "seller-a", PaymentEnvironment.PRODUCTION);
+
+		StoredMerchantConnection first = repository
+			.findConnection(tenantA, PaymentEnvironment.PRODUCTION, false)
+			.orElseThrow();
+		assertThat(first.status()).isEqualTo(MerchantConnectionStatus.CONNECTED);
+		assertThat(first.sellerAccountId()).isEqualTo("seller-a");
+
+		assertThatThrownBy(() -> connect(
+			tenantB, userB, USER_B_PUBLIC_ID, "seller-a", PaymentEnvironment.PRODUCTION))
+			.isInstanceOf(DataIntegrityViolationException.class);
+
+		connect(tenantB, userB, USER_B_PUBLIC_ID, "seller-b", PaymentEnvironment.PRODUCTION);
+		assertThat(repository.findConnection(tenantB, PaymentEnvironment.PRODUCTION, false))
+			.get()
+			.extracting(StoredMerchantConnection::sellerAccountId)
+			.isEqualTo("seller-b");
+
+		assertThat(repository.findActiveBySeller(
+			"seller-a", PaymentEnvironment.TEST, false)).isEmpty();
 	}
 
 	@Test
@@ -134,6 +168,19 @@ class JdbcMerchantOAuthRepositoryIntegrationTests {
 			byte[] stateHash, long userId, PaymentEnvironment environment) {
 		return transactions.execute(status ->
 			repository.claimAttempt(stateHash, userId, environment, NOW));
+	}
+
+	private void connect(
+			long tenantId,
+			long userId,
+			UUID userPublicId,
+			String sellerAccountId,
+			PaymentEnvironment environment) {
+		repository.upsertConnected(
+			UUID.randomUUID(), tenantId, environment, sellerAccountId, "SELLER",
+			Set.of("read", "write", "offline_access"), encrypted("access-token"),
+			encrypted("refresh-token"), NOW.plusSeconds(3600), userId, userPublicId,
+			UUID.randomUUID(), NOW, Optional.empty());
 	}
 
 	private void insertUser(UUID publicId, String email, String tenantSlug) {
