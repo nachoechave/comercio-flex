@@ -146,7 +146,17 @@ public class MerchantPaymentConnectionService {
 				context(attempt.tenantPublicId(), attempt.publicId(), "pkce_verifier"));
 			OAuthTokenResponse token = client.exchange(code, verifier);
 			ValidatedIdentity identity = validateIdentity(token);
-			transactions.executeWithoutResult(status -> connect(attempt, token, identity, now));
+			try {
+				transactions.executeWithoutResult(status -> connect(attempt, token, identity, now));
+			}
+			catch (DataIntegrityViolationException exception) {
+				if (sellerIsConnectedToAnotherTenant(identity.accountId(), attempt.tenantId())) {
+					throw new PaymentOAuthException(
+						"SELLER_ALREADY_CONNECTED",
+						"La cuenta ya está conectada a otro comercio.", exception);
+				}
+				throw exception;
+			}
 			return new OAuthCallbackResult(attempt.tenantSlug(), "connected");
 		}
 		catch (RuntimeException exception) {
@@ -258,18 +268,19 @@ public class MerchantPaymentConnectionService {
 			context(attempt.tenantPublicId(), connectionId, "access_token"));
 		EncryptedSecret refresh = cipher.encrypt(token.refreshToken(),
 			context(attempt.tenantPublicId(), connectionId, "refresh_token"));
-		try {
-			repository.upsertConnected(
-				connectionId, attempt.tenantId(), environment(), identity.accountId(),
-				identity.nickname(), token.scopes(), access, refresh,
-				now.plus(token.expiresIn()), attempt.initiatedByUserId(),
-				attempt.initiatedByUserPublicId(), attempt.publicId(), now, existing);
-			repository.markAttemptSucceeded(attempt.internalId(), now);
-		}
-		catch (DataIntegrityViolationException exception) {
-			throw new PaymentOAuthException(
-				"SELLER_ALREADY_CONNECTED", "La cuenta ya está conectada a otro comercio.", exception);
-		}
+		repository.upsertConnected(
+			connectionId, attempt.tenantId(), environment(), identity.accountId(),
+			identity.nickname(), token.scopes(), access, refresh,
+			now.plus(token.expiresIn()), attempt.initiatedByUserId(),
+			attempt.initiatedByUserPublicId(), attempt.publicId(), now, existing);
+		repository.markAttemptSucceeded(attempt.internalId(), now);
+	}
+
+	private boolean sellerIsConnectedToAnotherTenant(String sellerAccountId, long tenantId) {
+		return Boolean.TRUE.equals(transactions.execute(status -> repository
+			.findActiveBySeller(sellerAccountId, environment(), false)
+			.filter(connection -> connection.tenantId() != tenantId)
+			.isPresent()));
 	}
 
 	private ValidatedIdentity validateIdentity(OAuthTokenResponse token) {

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -26,6 +27,7 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -193,6 +195,100 @@ class MerchantPaymentConnectionServiceTests {
 	}
 
 	@Test
+	void connectsTheFirstProductionSellerWhenNoConnectionExists() {
+		when(client.environment()).thenReturn(PaymentEnvironment.PRODUCTION);
+		ClaimedOAuthAttempt attempt = attempt(PaymentEnvironment.PRODUCTION);
+		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.PRODUCTION), eq(NOW)))
+			.thenReturn(Optional.of(attempt));
+		when(repository.findConnection(1L, PaymentEnvironment.PRODUCTION, true))
+			.thenReturn(Optional.empty());
+		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.PRODUCTION, true))
+			.thenReturn(Optional.empty());
+		when(client.exchange("code", "verifier")).thenReturn(token("seller-a", true));
+		when(client.fetchSellerProfile("access-token"))
+			.thenReturn(new SellerAccountProfile("seller-a", "SELLER_A"));
+
+		OAuthCallbackResult result = service.complete("state", "code", null, principal());
+
+		assertThat(result).isEqualTo(new OAuthCallbackResult("tienda-a", "connected"));
+		verify(repository).upsertConnected(
+			any(), eq(1L), eq(PaymentEnvironment.PRODUCTION), eq("seller-a"), eq("SELLER_A"),
+			eq(Set.of("read", "write", "offline_access")), any(), any(),
+			eq(NOW.plusSeconds(3600)), eq(7L), eq(USER_PUBLIC_ID), eq(attempt.publicId()),
+			eq(NOW), eq(Optional.empty()));
+		verify(repository).markAttemptSucceeded(50L, NOW);
+	}
+
+	@Test
+	void rejectsASellerThatIsAlreadyConnectedToAnotherTenant() {
+		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.TEST), eq(NOW)))
+			.thenReturn(Optional.of(attempt()));
+		when(repository.findConnection(1L, PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.empty());
+		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.of(connectionForTenant(2L, "seller-a")));
+		when(client.exchange("code", "verifier")).thenReturn(token("seller-a"));
+		when(client.fetchSellerProfile("access-token"))
+			.thenReturn(new SellerAccountProfile("seller-a", "SELLER_A"));
+
+		assertThatThrownBy(() -> service.complete("state", "code", null, principal()))
+			.isInstanceOf(PaymentOAuthCallbackException.class)
+			.extracting(exception -> ((PaymentOAuthCallbackException) exception).code())
+			.isEqualTo("SELLER_ALREADY_CONNECTED");
+		verify(repository).markAttemptFailed(50L, "SELLER_ALREADY_CONNECTED", NOW);
+	}
+
+	@Test
+	void mapsAConcurrentInsertConflictOnlyWhenTheSellerNowBelongsToAnotherTenant() {
+		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.TEST), eq(NOW)))
+			.thenReturn(Optional.of(attempt()));
+		when(repository.findConnection(1L, PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.empty());
+		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.empty());
+		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, false))
+			.thenReturn(Optional.of(connectionForTenant(2L, "seller-a")));
+		when(client.exchange("code", "verifier")).thenReturn(token("seller-a"));
+		when(client.fetchSellerProfile("access-token"))
+			.thenReturn(new SellerAccountProfile("seller-a", "SELLER_A"));
+		doThrow(new DataIntegrityViolationException("concurrent seller conflict"))
+			.when(repository).upsertConnected(
+				any(), any(Long.class), any(), anyString(), anyString(), any(), any(), any(),
+				any(), any(Long.class), any(), any(), any(), any());
+
+		assertThatThrownBy(() -> service.complete("state", "code", null, principal()))
+			.isInstanceOf(PaymentOAuthCallbackException.class)
+			.extracting(exception -> ((PaymentOAuthCallbackException) exception).code())
+			.isEqualTo("SELLER_ALREADY_CONNECTED");
+		verify(repository).markAttemptFailed(50L, "SELLER_ALREADY_CONNECTED", NOW);
+	}
+
+	@Test
+	void doesNotMisclassifyAnUnrelatedIntegrityFailureAsSellerConflict() {
+		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.TEST), eq(NOW)))
+			.thenReturn(Optional.of(attempt()));
+		when(repository.findConnection(1L, PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.empty());
+		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.empty());
+		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, false))
+			.thenReturn(Optional.empty());
+		when(client.exchange("code", "verifier")).thenReturn(token("seller-a"));
+		when(client.fetchSellerProfile("access-token"))
+			.thenReturn(new SellerAccountProfile("seller-a", "SELLER_A"));
+		doThrow(new DataIntegrityViolationException("unrelated constraint"))
+			.when(repository).upsertConnected(
+				any(), any(Long.class), any(), anyString(), anyString(), any(), any(), any(),
+				any(), any(Long.class), any(), any(), any(), any());
+
+		assertThatThrownBy(() -> service.complete("state", "code", null, principal()))
+			.isInstanceOf(PaymentOAuthCallbackException.class)
+			.extracting(exception -> ((PaymentOAuthCallbackException) exception).code())
+			.isEqualTo("OAUTH_COMPLETION_FAILED");
+		verify(repository).markAttemptFailed(50L, "OAUTH_COMPLETION_FAILED", NOW);
+	}
+
+	@Test
 	void persistsReauthorizationInASeparateTransactionAfterARejectedRefresh() {
 		StoredMerchantConnection expiring = new StoredMerchantConnection(
 			10L,
@@ -307,6 +403,10 @@ class MerchantPaymentConnectionServiceTests {
 	}
 
 	private ClaimedOAuthAttempt attempt() {
+		return attempt(PaymentEnvironment.TEST);
+	}
+
+	private ClaimedOAuthAttempt attempt(PaymentEnvironment environment) {
 		return new ClaimedOAuthAttempt(
 			50L,
 			UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc"),
@@ -315,16 +415,20 @@ class MerchantPaymentConnectionServiceTests {
 			"tienda-a",
 			7L,
 			USER_PUBLIC_ID,
-			PaymentEnvironment.TEST,
+			environment,
 			new EncryptedSecret("plain", new byte[] {1}, bytes("verifier")),
 			NOW.plusSeconds(600),
 			1L);
 	}
 
 	private OAuthTokenResponse token(String sellerId) {
+		return token(sellerId, false);
+	}
+
+	private OAuthTokenResponse token(String sellerId, boolean liveMode) {
 		return new OAuthTokenResponse(
 			"access-token", "refresh-token", "Bearer", Duration.ofHours(1),
-			Set.of("read", "write", "offline_access"), sellerId, false);
+			Set.of("read", "write", "offline_access"), sellerId, liveMode);
 	}
 
 	private StoredMerchantConnection connection(
@@ -340,6 +444,23 @@ class MerchantPaymentConnectionServiceTests {
 			status,
 			sellerId,
 			nickname,
+			new EncryptedSecret("plain", new byte[] {1}, bytes("access-token")),
+			new EncryptedSecret("plain", new byte[] {1}, bytes("refresh-token")),
+			NOW.plusSeconds(3600),
+			NOW.minusSeconds(60),
+			1L);
+	}
+
+	private StoredMerchantConnection connectionForTenant(long tenantId, String sellerId) {
+		return new StoredMerchantConnection(
+			10L,
+			UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+			tenantId,
+			TENANT_PUBLIC_ID,
+			PaymentEnvironment.TEST,
+			MerchantConnectionStatus.CONNECTED,
+			sellerId,
+			"SELLER",
 			new EncryptedSecret("plain", new byte[] {1}, bytes("access-token")),
 			new EncryptedSecret("plain", new byte[] {1}, bytes("refresh-token")),
 			NOW.plusSeconds(3600),
