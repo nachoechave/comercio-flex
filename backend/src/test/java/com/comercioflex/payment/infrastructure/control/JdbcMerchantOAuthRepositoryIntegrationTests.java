@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
@@ -164,6 +165,47 @@ class JdbcMerchantOAuthRepositoryIntegrationTests {
 			""", Integer.class, tenantA)).isEqualTo(1);
 	}
 
+	@Test
+	void enforcesGrantedScopesLengthWithMySqlErrorDetails() {
+		Set<String> maximumScopes = Set.of("s".repeat(255));
+		connect(
+			tenantA, userA, USER_A_PUBLIC_ID, "seller-scopes-fit",
+			PaymentEnvironment.PRODUCTION, maximumScopes,
+			encryptedBytes(32), encryptedBytes(32));
+
+		assertThat(jdbc.queryForObject("""
+			SELECT CHAR_LENGTH(granted_scopes)
+			FROM merchant_payment_connections
+			WHERE tenant_id = ? AND environment = 'PRODUCTION'
+			""", Integer.class, tenantA)).isEqualTo(255);
+
+		clearConnections();
+		assertLengthViolation(() -> connect(
+			tenantA, userA, USER_A_PUBLIC_ID, "seller-scopes-overflow",
+			PaymentEnvironment.PRODUCTION, Set.of("s".repeat(256)),
+			encryptedBytes(32), encryptedBytes(32)));
+	}
+
+	@Test
+	void enforcesCiphertextLengthWithMySqlErrorDetails() {
+		connect(
+			tenantA, userA, USER_A_PUBLIC_ID, "seller-ciphertext-fit",
+			PaymentEnvironment.PRODUCTION, Set.of("read", "write", "offline_access"),
+			encryptedBytes(4096), encryptedBytes(4096));
+
+		assertThat(jdbc.queryForObject("""
+			SELECT OCTET_LENGTH(access_token_ciphertext)
+			FROM merchant_payment_connections
+			WHERE tenant_id = ? AND environment = 'PRODUCTION'
+			""", Integer.class, tenantA)).isEqualTo(4096);
+
+		clearConnections();
+		assertLengthViolation(() -> connect(
+			tenantA, userA, USER_A_PUBLIC_ID, "seller-ciphertext-overflow",
+			PaymentEnvironment.PRODUCTION, Set.of("read", "write", "offline_access"),
+			encryptedBytes(4097), encryptedBytes(32)));
+	}
+
 	private Optional<ClaimedOAuthAttempt> claim(
 			byte[] stateHash, long userId, PaymentEnvironment environment) {
 		return transactions.execute(status ->
@@ -176,11 +218,51 @@ class JdbcMerchantOAuthRepositoryIntegrationTests {
 			UUID userPublicId,
 			String sellerAccountId,
 			PaymentEnvironment environment) {
+		connect(
+			tenantId, userId, userPublicId, sellerAccountId, environment,
+			Set.of("read", "write", "offline_access"),
+			encrypted("access-token"), encrypted("refresh-token"));
+	}
+
+	private void connect(
+			long tenantId,
+			long userId,
+			UUID userPublicId,
+			String sellerAccountId,
+			PaymentEnvironment environment,
+			Set<String> scopes,
+			EncryptedSecret accessToken,
+			EncryptedSecret refreshToken) {
 		repository.upsertConnected(
 			UUID.randomUUID(), tenantId, environment, sellerAccountId, "SELLER",
-			Set.of("read", "write", "offline_access"), encrypted("access-token"),
-			encrypted("refresh-token"), NOW.plusSeconds(3600), userId, userPublicId,
+			scopes, accessToken, refreshToken, NOW.plusSeconds(3600), userId, userPublicId,
 			UUID.randomUUID(), NOW, Optional.empty());
+	}
+
+	private void clearConnections() {
+		jdbc.update("DELETE FROM merchant_payment_connection_events");
+		jdbc.update("DELETE FROM merchant_payment_connections");
+	}
+
+	private void assertLengthViolation(Runnable operation) {
+		assertThatThrownBy(operation::run)
+			.isInstanceOf(DataIntegrityViolationException.class)
+			.satisfies(exception -> {
+				SQLException sqlException = sqlException(exception);
+				assertThat(sqlException.getSQLState()).isEqualTo("22001");
+				assertThat(sqlException.getErrorCode()).isEqualTo(1406);
+			});
+	}
+
+	private SQLException sqlException(Throwable failure) {
+		Throwable current = failure;
+		while (current != null) {
+			if (current instanceof SQLException sqlException) {
+				return sqlException;
+			}
+			current = current.getCause();
+		}
+		throw new AssertionError("Expected an SQLException cause");
 	}
 
 	private void insertUser(UUID publicId, String email, String tenantSlug) {
@@ -204,6 +286,10 @@ class JdbcMerchantOAuthRepositoryIntegrationTests {
 	private EncryptedSecret encrypted(String value) {
 		return new EncryptedSecret(
 			"v1", new byte[12], value.getBytes(StandardCharsets.UTF_8));
+	}
+
+	private EncryptedSecret encryptedBytes(int size) {
+		return new EncryptedSecret("v1", new byte[12], new byte[size]);
 	}
 
 	private byte[] sha256(String value) {

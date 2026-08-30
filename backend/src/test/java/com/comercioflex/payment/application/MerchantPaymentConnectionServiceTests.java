@@ -273,17 +273,24 @@ class MerchantPaymentConnectionServiceTests {
 	@Test
 	void logsConnectionStageWithoutLeakingJdbcValuesForAnUnrelatedIntegrityFailure(
 			CapturedOutput output) {
+		String accessToken = "access-secret-fixture";
+		String refreshToken = "refresh-secret-fixture";
+		String additionalScope = "scope-secret-fixture";
+		Set<String> scopes = Set.of(
+			"read", "write", "offline_access", additionalScope);
 		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.TEST), eq(NOW)))
 			.thenReturn(Optional.of(attempt()));
 		when(repository.findConnection(1L, PaymentEnvironment.TEST, true))
 			.thenReturn(Optional.empty());
-		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, true))
+		when(repository.findActiveBySeller("seller-123", PaymentEnvironment.TEST, true))
 			.thenReturn(Optional.empty());
-		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, false))
+		when(repository.findActiveBySeller("seller-123", PaymentEnvironment.TEST, false))
 			.thenReturn(Optional.empty());
-		when(client.exchange("code", "verifier")).thenReturn(token("seller-a"));
-		when(client.fetchSellerProfile("access-token"))
-			.thenReturn(new SellerAccountProfile("seller-a", "SELLER_A"));
+		when(client.exchange("code", "verifier")).thenReturn(new OAuthTokenResponse(
+			accessToken, refreshToken, "Bearer", Duration.ofHours(1), scopes,
+			"seller-123", false));
+		when(client.fetchSellerProfile(accessToken))
+			.thenReturn(new SellerAccountProfile("seller-123", "NICKNAME_SECRET"));
 		SQLIntegrityConstraintViolationException sqlException =
 			new SQLIntegrityConstraintViolationException(
 				"Duplicate entry 'sensitive-fixture-value' for key 'ck_unrelated_constraint'",
@@ -305,11 +312,68 @@ class MerchantPaymentConnectionServiceTests {
 			.contains("stage=CONNECTION_UPSERT")
 			.contains("sqlState=23000")
 			.contains("vendorCode=3819")
-			.contains("constraint=ck_unrelated_constraint")
+			.contains("constraint=UNKNOWN")
 			.contains("rootException=java.sql.SQLIntegrityConstraintViolationException")
+			.contains("provider=12/30")
+			.contains("environment=4/20")
+			.contains("status=9/40")
+			.contains("sellerAccountId=10/100")
+			.contains("sellerNickname=15/120")
+			.contains("grantedScopes="
+				+ String.join(" ", scopes.stream().sorted().toList()).length() + "/255")
+			.contains("accessTokenCiphertext=" + bytes(accessToken).length + "/4096")
+			.contains("refreshTokenCiphertext=" + bytes(refreshToken).length + "/4096")
+			.contains("accessTokenNonce=12/12")
+			.contains("refreshTokenNonce=12/12")
+			.contains("accessTokenKeyId=5/64")
+			.contains("refreshTokenKeyId=5/64")
+			.contains("connectedByRole=5/30")
+			.contains("overflowFields=NONE")
 			.doesNotContain(
 				"sensitive-fixture-value", "state", "code", "verifier",
-				"access-token", "refresh-token");
+				accessToken, refreshToken, additionalScope,
+				"client-secret", "unused-by-test-cipher");
+	}
+
+	@Test
+	void reportsOnlyOverflowFieldNamesWithoutLeakingOversizedContents(
+			CapturedOutput output) {
+		String oversizedScope = "scope-sensitive-" + "s".repeat(256);
+		String oversizedAccessToken = "ciphertext-sensitive-" + "a".repeat(4096);
+		Set<String> scopes = Set.of(
+			"read", "write", "offline_access", oversizedScope);
+		when(repository.claimAttempt(any(), eq(7L), eq(PaymentEnvironment.TEST), eq(NOW)))
+			.thenReturn(Optional.of(attempt()));
+		when(repository.findConnection(1L, PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.empty());
+		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, true))
+			.thenReturn(Optional.empty());
+		when(repository.findActiveBySeller("seller-a", PaymentEnvironment.TEST, false))
+			.thenReturn(Optional.empty());
+		when(client.exchange("code", "verifier")).thenReturn(new OAuthTokenResponse(
+			oversizedAccessToken, "safe-refresh", "Bearer", Duration.ofHours(1),
+			scopes, "seller-a", false));
+		when(client.fetchSellerProfile(oversizedAccessToken))
+			.thenReturn(new SellerAccountProfile("seller-a", "SELLER_A"));
+		doThrow(integrityFailure("synthetic overflow", "22001", 1406))
+			.when(repository).upsertConnected(
+				any(), any(Long.class), any(), anyString(), anyString(), any(), any(), any(),
+				any(), any(Long.class), any(), any(), any(), any(), any(Runnable.class));
+
+		assertThatThrownBy(() -> service.complete("state", "code", null, principal()))
+			.isInstanceOf(PaymentOAuthCallbackException.class)
+			.extracting(exception -> ((PaymentOAuthCallbackException) exception).code())
+			.isEqualTo("OAUTH_COMPLETION_FAILED");
+		assertThat(output)
+			.contains("sqlState=22001")
+			.contains("vendorCode=1406")
+			.contains("grantedScopes="
+				+ String.join(" ", scopes.stream().sorted().toList()).length() + "/255")
+			.contains("accessTokenCiphertext="
+				+ bytes(oversizedAccessToken).length + "/4096")
+			.contains("overflowFields=granted_scopes,access_token_ciphertext")
+			.doesNotContain(
+				oversizedScope, oversizedAccessToken, "safe-refresh", "synthetic overflow");
 	}
 
 	@Test
@@ -331,7 +395,8 @@ class MerchantPaymentConnectionServiceTests {
 			.isEqualTo("OAUTH_COMPLETION_FAILED");
 		assertThat(output)
 			.contains("stage=CONNECTION_EVENT")
-			.contains("constraint=fk_event_actor")
+			.contains("constraint=UNKNOWN")
+			.doesNotContain("fk_event_actor")
 			.doesNotContain("Cannot add child row");
 	}
 
@@ -348,7 +413,8 @@ class MerchantPaymentConnectionServiceTests {
 			.isEqualTo("OAUTH_COMPLETION_FAILED");
 		assertThat(output)
 			.contains("stage=ATTEMPT_SUCCESS")
-			.contains("constraint=ck_attempt_success")
+			.contains("constraint=UNKNOWN")
+			.doesNotContain("ck_attempt_success")
 			.doesNotContain("is violated");
 	}
 
@@ -562,7 +628,7 @@ class MerchantPaymentConnectionServiceTests {
 	private static final class PlainTestCipher implements CredentialCipher {
 		@Override
 		public EncryptedSecret encrypt(String plaintext, EncryptionContext context) {
-			return new EncryptedSecret("plain", new byte[] {1}, bytes(plaintext));
+			return new EncryptedSecret("plain", new byte[12], bytes(plaintext));
 		}
 
 		@Override

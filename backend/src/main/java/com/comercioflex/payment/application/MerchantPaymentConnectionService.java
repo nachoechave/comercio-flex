@@ -11,13 +11,12 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,11 +36,21 @@ public class MerchantPaymentConnectionService {
 	private static final Logger LOGGER =
 		LoggerFactory.getLogger(MerchantPaymentConnectionService.class);
 	private static final String PROVIDER = "MERCADO_PAGO";
+	private static final String CONNECTED_STATUS = "CONNECTED";
+	private static final String CONNECTED_BY_ROLE = "OWNER";
 	private static final Set<String> REQUIRED_SCOPES = Set.of("read", "write", "offline_access");
 	private static final Duration ATTEMPT_LIFETIME = Duration.ofMinutes(10);
 	private static final Duration REFRESH_WINDOW = Duration.ofMinutes(5);
-	private static final Pattern MYSQL_CONSTRAINT = Pattern.compile(
-		"(?i)(?:for\\s+key|constraint)\\s+[`']([A-Za-z0-9_.-]{1,128})[`']");
+	private static final int PROVIDER_MAX_CHARS = 30;
+	private static final int ENVIRONMENT_MAX_CHARS = 20;
+	private static final int STATUS_MAX_CHARS = 40;
+	private static final int SELLER_ACCOUNT_ID_MAX_CHARS = 100;
+	private static final int SELLER_NICKNAME_MAX_CHARS = 120;
+	private static final int GRANTED_SCOPES_MAX_CHARS = 255;
+	private static final int TOKEN_CIPHERTEXT_MAX_BYTES = 4096;
+	private static final int TOKEN_NONCE_BYTES = 12;
+	private static final int TOKEN_KEY_ID_MAX_CHARS = 64;
+	private static final int CONNECTED_BY_ROLE_MAX_CHARS = 30;
 
 	private final MerchantOAuthRepository repository;
 	private final MerchantOAuthClient client;
@@ -160,9 +169,11 @@ public class MerchantPaymentConnectionService {
 			ValidatedIdentity identity = validateIdentity(token);
 			AtomicReference<PersistenceStage> persistenceStage =
 				new AtomicReference<>(PersistenceStage.PRECHECK);
+			AtomicReference<ConnectionFieldLengths> fieldLengths =
+				new AtomicReference<>(ConnectionFieldLengths.unavailable());
 			try {
 				transactions.executeWithoutResult(status ->
-					connect(attempt, token, identity, now, persistenceStage));
+					connect(attempt, token, identity, now, persistenceStage, fieldLengths));
 			}
 			catch (DataIntegrityViolationException exception) {
 				if (sellerIsConnectedToAnotherTenant(identity.accountId(), attempt.tenantId())) {
@@ -170,7 +181,8 @@ public class MerchantPaymentConnectionService {
 						"SELLER_ALREADY_CONNECTED",
 						"La cuenta ya está conectada a otro comercio.", exception);
 				}
-				logUnexpectedIntegrityFailure(attempt, persistenceStage.get(), exception);
+				logUnexpectedIntegrityFailure(
+					attempt, persistenceStage.get(), fieldLengths.get(), exception);
 				throw exception;
 			}
 			return new OAuthCallbackResult(attempt.tenantSlug(), "connected");
@@ -266,7 +278,8 @@ public class MerchantPaymentConnectionService {
 			OAuthTokenResponse token,
 			ValidatedIdentity identity,
 			Instant now,
-			AtomicReference<PersistenceStage> persistenceStage) {
+			AtomicReference<PersistenceStage> persistenceStage,
+			AtomicReference<ConnectionFieldLengths> fieldLengths) {
 		Optional<StoredMerchantConnection> existing =
 			repository.findConnection(attempt.tenantId(), environment(), true);
 		if (existing.isPresent()
@@ -285,6 +298,9 @@ public class MerchantPaymentConnectionService {
 			context(attempt.tenantPublicId(), connectionId, "access_token"));
 		EncryptedSecret refresh = cipher.encrypt(token.refreshToken(),
 			context(attempt.tenantPublicId(), connectionId, "refresh_token"));
+		fieldLengths.set(ConnectionFieldLengths.capture(
+			environment(), identity.accountId(), identity.nickname(), token.scopes(),
+			access, refresh));
 		persistenceStage.set(PersistenceStage.CONNECTION_UPSERT);
 		repository.upsertConnected(
 			connectionId, attempt.tenantId(), environment(), identity.accountId(),
@@ -299,30 +315,27 @@ public class MerchantPaymentConnectionService {
 	private void logUnexpectedIntegrityFailure(
 			ClaimedOAuthAttempt attempt,
 			PersistenceStage stage,
+			ConnectionFieldLengths fieldLengths,
 			DataIntegrityViolationException exception) {
 		SqlFailureDetails details = sqlFailureDetails(exception);
 		LOGGER.warn(
 			"event=payment_oauth_completion_integrity_failure tenant={} environment={} "
-				+ "stage={} sqlState={} vendorCode={} constraint={} rootException={}",
+				+ "stage={} sqlState={} vendorCode={} constraint={} rootException={} "
+				+ "fieldLengths={} overflowFields={}",
 			attempt.tenantPublicId(), attempt.environment(), stage,
 			details.sqlState(), details.vendorCode(), details.constraint(),
-			details.rootException());
+			details.rootException(), fieldLengths.format(), fieldLengths.overflowFields());
 	}
 
 	private SqlFailureDetails sqlFailureDetails(Throwable exception) {
 		Throwable current = exception;
 		Throwable root = exception;
 		SQLException sqlException = null;
-		String constraint = "UNKNOWN";
 		Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
 		while (current != null && visited.add(current)) {
 			root = current;
 			if (current instanceof SQLException candidate) {
 				sqlException = candidate;
-				String extracted = extractConstraint(candidate.getMessage());
-				if (!"UNKNOWN".equals(extracted)) {
-					constraint = extracted;
-				}
 			}
 			current = current.getCause();
 		}
@@ -331,15 +344,7 @@ public class MerchantPaymentConnectionService {
 		String vendorCode = sqlException == null
 			? "UNKNOWN" : Integer.toString(sqlException.getErrorCode());
 		return new SqlFailureDetails(
-			sqlState, vendorCode, constraint, root.getClass().getName());
-	}
-
-	private String extractConstraint(String message) {
-		if (message == null) {
-			return "UNKNOWN";
-		}
-		Matcher matcher = MYSQL_CONSTRAINT.matcher(message);
-		return matcher.find() ? matcher.group(1) : "UNKNOWN";
+			sqlState, vendorCode, "UNKNOWN", root.getClass().getName());
 	}
 
 	private String safeDiagnosticValue(String value, int maxLength) {
@@ -463,5 +468,95 @@ public class MerchantPaymentConnectionService {
 		String vendorCode,
 		String constraint,
 		String rootException) {
+	}
+
+	private record ConnectionFieldLengths(List<FieldLength> fields) {
+
+		private static ConnectionFieldLengths unavailable() {
+			return new ConnectionFieldLengths(List.of());
+		}
+
+		private static ConnectionFieldLengths capture(
+				PaymentEnvironment environment,
+				String sellerAccountId,
+				String sellerNickname,
+				Set<String> scopes,
+				EncryptedSecret accessToken,
+				EncryptedSecret refreshToken) {
+			String grantedScopes = String.join(" ", scopes.stream().sorted().toList());
+			return new ConnectionFieldLengths(List.of(
+				chars("provider", "provider", PROVIDER, PROVIDER_MAX_CHARS),
+				chars("environment", "environment", environment.name(), ENVIRONMENT_MAX_CHARS),
+				chars("status", "status", CONNECTED_STATUS, STATUS_MAX_CHARS),
+				chars("sellerAccountId", "seller_account_id", sellerAccountId,
+					SELLER_ACCOUNT_ID_MAX_CHARS),
+				chars("sellerNickname", "seller_nickname", sellerNickname,
+					SELLER_NICKNAME_MAX_CHARS),
+				chars("grantedScopes", "granted_scopes", grantedScopes,
+					GRANTED_SCOPES_MAX_CHARS),
+				bytes("accessTokenCiphertext", "access_token_ciphertext",
+					accessToken.ciphertext(), TOKEN_CIPHERTEXT_MAX_BYTES),
+				bytes("accessTokenNonce", "access_token_nonce",
+					accessToken.nonce(), TOKEN_NONCE_BYTES),
+				chars("accessTokenKeyId", "access_token_key_id", accessToken.keyId(),
+					TOKEN_KEY_ID_MAX_CHARS),
+				bytes("refreshTokenCiphertext", "refresh_token_ciphertext",
+					refreshToken.ciphertext(), TOKEN_CIPHERTEXT_MAX_BYTES),
+				bytes("refreshTokenNonce", "refresh_token_nonce",
+					refreshToken.nonce(), TOKEN_NONCE_BYTES),
+				chars("refreshTokenKeyId", "refresh_token_key_id", refreshToken.keyId(),
+					TOKEN_KEY_ID_MAX_CHARS),
+				chars("connectedByRole", "connected_by_role", CONNECTED_BY_ROLE,
+					CONNECTED_BY_ROLE_MAX_CHARS)));
+		}
+
+		private String format() {
+			if (fields.isEmpty()) {
+				return "UNAVAILABLE";
+			}
+			return fields.stream()
+				.map(FieldLength::format)
+				.collect(java.util.stream.Collectors.joining(",", "{", "}"));
+		}
+
+		private String overflowFields() {
+			if (fields.isEmpty()) {
+				return "UNAVAILABLE";
+			}
+			List<String> overflow = fields.stream()
+				.filter(FieldLength::overflow)
+				.map(FieldLength::columnName)
+				.toList();
+			return overflow.isEmpty() ? "NONE" : String.join(",", overflow);
+		}
+
+		private static FieldLength chars(
+				String logName, String columnName, String value, int maximum) {
+			return new FieldLength(logName, columnName, characters(value), maximum);
+		}
+
+		private static FieldLength bytes(
+				String logName, String columnName, byte[] value, int maximum) {
+			return new FieldLength(logName, columnName, value == null ? 0 : value.length, maximum);
+		}
+
+		private static int characters(String value) {
+			return value == null ? 0 : value.codePointCount(0, value.length());
+		}
+	}
+
+	private record FieldLength(
+		String logName,
+		String columnName,
+		int actual,
+		int maximum) {
+
+		private String format() {
+			return logName + "=" + actual + "/" + maximum;
+		}
+
+		private boolean overflow() {
+			return actual > maximum;
+		}
 	}
 }
