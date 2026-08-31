@@ -174,6 +174,59 @@ class CheckoutProServiceTests {
 				org.mockito.ArgumentMatchers.anyBoolean(), any());
 	}
 
+	@Test
+	void reconcilesPendingPrivateOrderByDiscoveringItsProviderPayment() {
+		String lookupToken = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+		ResolvedTenant tenant = new ResolvedTenant(1L, "tienda-a", "Tienda A", "tenant_a");
+		PaymentCredential credential = new PaymentCredential(
+			"access-token", "seller-1", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+		VerifiedProviderPayment payment = payment("seller-1", true);
+		when(tenantResolver.resolveActive("tienda-a")).thenReturn(tenant);
+		when(repository.findPendingByOrder(
+			org.mockito.ArgumentMatchers.eq(storedAttempt.orderId()), any()))
+			.thenReturn(Optional.of(storedAttempt));
+		when(credentials.resolve(tenant.id(), tenant.slug())).thenReturn(credential);
+		when(gateway.findPaymentForPreference(
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference()))
+			.thenReturn(Optional.of(payment));
+
+		boolean reconciled = service.reconcilePendingOrder(
+			"tienda-a", storedAttempt.orderId(), lookupToken);
+
+		assertThat(reconciled).isTrue();
+		verify(gateway).findPaymentForPreference(
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference());
+		verify(orderConfirmer).confirmWithinCurrentTransaction(
+			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey());
+	}
+
+	@Test
+	void leavesPendingPrivateOrderUntouchedWhenProviderHasNoPayment() {
+		String lookupToken = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+		ResolvedTenant tenant = new ResolvedTenant(1L, "tienda-a", "Tienda A", "tenant_a");
+		PaymentCredential credential = new PaymentCredential(
+			"access-token", "seller-1", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+		when(tenantResolver.resolveActive("tienda-a")).thenReturn(tenant);
+		when(repository.findPendingByOrder(
+			org.mockito.ArgumentMatchers.eq(storedAttempt.orderId()), any()))
+			.thenReturn(Optional.of(storedAttempt));
+		when(credentials.resolve(tenant.id(), tenant.slug())).thenReturn(credential);
+		when(gateway.findPaymentForPreference(
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference()))
+			.thenReturn(Optional.empty());
+
+		boolean reconciled = service.reconcilePendingOrder(
+			"tienda-a", storedAttempt.orderId(), lookupToken);
+
+		assertThat(reconciled).isFalse();
+		org.mockito.Mockito.verifyNoInteractions(orderConfirmer);
+		verify(repository, org.mockito.Mockito.never()).applyVerifiedPayment(
+			any(), any(), org.mockito.ArgumentMatchers.anyBoolean(),
+			org.mockito.ArgumentMatchers.anyBoolean(), any());
+	}
+
 	private StoredCheckoutAttempt attempt() {
 		return new StoredCheckoutAttempt(
 			2L, ATTEMPT_ID, 6L,

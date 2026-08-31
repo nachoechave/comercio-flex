@@ -201,6 +201,10 @@ describe('OrderConfirmationPage', () => {
     expect(fixture.nativeElement.querySelector('.checkout-qr')).not.toBeNull();
 
     await vi.advanceTimersByTimeAsync(12_000);
+    http.expectOne((request) => request.url.endsWith('/checkout-pro/reconcile')).flush(null, {
+      status: 204,
+      statusText: 'No Content',
+    });
     http
       .expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
       .flush({ ...order, status: 'CONFIRMED' });
@@ -293,6 +297,10 @@ describe('OrderConfirmationPage', () => {
     flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
 
     await vi.advanceTimersByTimeAsync(12_000);
+    http.expectOne((request) => request.url.endsWith('/checkout-pro/reconcile')).flush(null, {
+      status: 204,
+      statusText: 'No Content',
+    });
     http
       .expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
       .flush({ ...order, status: 'CONFIRMED' });
@@ -306,6 +314,10 @@ describe('OrderConfirmationPage', () => {
     flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
 
     await vi.advanceTimersByTimeAsync(12_000);
+    http.expectOne((request) => request.url.endsWith('/checkout-pro/reconcile')).flush(null, {
+      status: 204,
+      statusText: 'No Content',
+    });
     http
       .expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
       .flush(order);
@@ -323,6 +335,10 @@ describe('OrderConfirmationPage', () => {
     flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
 
     await vi.advanceTimersByTimeAsync(12_000);
+    http.expectOne((request) => request.url.endsWith('/checkout-pro/reconcile')).flush(null, {
+      status: 204,
+      statusText: 'No Content',
+    });
     const slow = http.expectOne(
       (request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`,
     );

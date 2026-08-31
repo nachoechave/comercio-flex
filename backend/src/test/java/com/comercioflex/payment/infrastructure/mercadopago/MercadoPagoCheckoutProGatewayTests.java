@@ -24,12 +24,16 @@ import com.mercadopago.resources.preference.Preference;
 import com.mercadopago.net.MPElementsResourcesPage;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.merchantorder.MerchantOrderCollector;
+import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
+import com.mercadopago.resources.payment.Payment;
+import com.mercadopago.resources.payment.PaymentOrder;
 
 import com.comercioflex.payment.application.CheckoutPreferenceCommand;
 import com.comercioflex.payment.application.CheckoutProProperties;
 import com.comercioflex.payment.application.CreatedCheckoutPreference;
 import com.comercioflex.payment.application.PaymentCredential;
 import com.comercioflex.payment.application.ProviderCheckoutState;
+import com.comercioflex.payment.application.VerifiedProviderPayment;
 import com.comercioflex.payment.domain.PaymentEnvironment;
 
 class MercadoPagoCheckoutProGatewayTests {
@@ -102,6 +106,53 @@ class MercadoPagoCheckoutProGatewayTests {
 			.extracting(type -> type.getId()).containsExactly("ticket");
 		assertThat(request.getValue().getExternalReference())
 			.isEqualTo("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+	}
+
+	@Test
+	void discoversAndVerifiesAnApprovedPaymentFromItsPreference() throws Exception {
+		PreferenceClient preferences = mock(PreferenceClient.class);
+		PaymentClient payments = mock(PaymentClient.class);
+		MerchantOrderClient merchantOrders = mock(MerchantOrderClient.class);
+		@SuppressWarnings("unchecked")
+		MPElementsResourcesPage<MerchantOrder> page = mock(MPElementsResourcesPage.class);
+		MerchantOrder order = mock(MerchantOrder.class);
+		MerchantOrderCollector collector = mock(MerchantOrderCollector.class);
+		MerchantOrderPayment summary = mock(MerchantOrderPayment.class);
+		Payment payment = mock(Payment.class);
+		PaymentOrder paymentOrder = mock(PaymentOrder.class);
+		when(page.getElements()).thenReturn(List.of(order));
+		when(order.getPreferenceId()).thenReturn("pref-123");
+		when(order.getExternalReference()).thenReturn("external-123");
+		when(order.getCollector()).thenReturn(collector);
+		when(collector.getId()).thenReturn(123456L);
+		when(order.getPayments()).thenReturn(List.of(summary));
+		when(summary.getId()).thenReturn(998877L);
+		when(merchantOrders.search(any(), any(MPRequestOptions.class))).thenReturn(page);
+		when(merchantOrders.get(org.mockito.ArgumentMatchers.eq(77L), any(MPRequestOptions.class)))
+			.thenReturn(order);
+		when(payment.getId()).thenReturn(998877L);
+		when(payment.getCollectorId()).thenReturn(123456L);
+		when(payment.getOrder()).thenReturn(paymentOrder);
+		when(paymentOrder.getId()).thenReturn(77L);
+		when(payment.getExternalReference()).thenReturn("external-123");
+		when(payment.getTransactionAmount()).thenReturn(new BigDecimal("5.00"));
+		when(payment.getCurrencyId()).thenReturn("ARS");
+		when(payment.isLiveMode()).thenReturn(true);
+		when(payment.getStatus()).thenReturn("approved");
+		when(payments.get(org.mockito.ArgumentMatchers.eq(998877L), any(MPRequestOptions.class)))
+			.thenReturn(payment);
+		MercadoPagoCheckoutProGateway gateway = new MercadoPagoCheckoutProGateway(
+			preferences, payments, merchantOrders, properties());
+		PaymentCredential credential = new PaymentCredential(
+			"TEST-secret-token", "123456", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+
+		VerifiedProviderPayment result = gateway.findPaymentForPreference(
+			credential, "pref-123", "external-123").orElseThrow();
+
+		assertThat(result.providerPaymentId()).isEqualTo("998877");
+		assertThat(result.preferenceId()).isEqualTo("pref-123");
+		assertThat(result.status().name()).isEqualTo("APPROVED");
 	}
 
 	private CheckoutProProperties properties() {

@@ -236,7 +236,9 @@ export class OrderConfirmationPage {
       .pipe(
         exhaustMap(() => {
           if (this.document.visibilityState === 'hidden') return of(null);
-          return this.api.getOrder(storeSlug, orderId, token).pipe(
+          return this.paymentApi.reconcilePendingCheckout(storeSlug, orderId, token).pipe(
+            catchError(() => of(undefined)),
+            switchMap(() => this.api.getOrder(storeSlug, orderId, token)),
             switchMap((order) => {
               this.applyOrder(storeSlug, order);
               if (order.status !== 'PENDING_CONFIRMATION') return of({ order, transfer: null });

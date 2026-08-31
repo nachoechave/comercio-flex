@@ -90,6 +90,19 @@ public class JdbcCheckoutRepository implements CheckoutRepository {
 	}
 
 	@Override
+	public Optional<StoredCheckoutAttempt> findPendingByOrder(
+			UUID orderId, byte[] lookupTokenHash) {
+		return queryAttempt(ATTEMPT_SELECT + """
+			 WHERE order_record.public_id = UUID_TO_BIN(?)
+				AND order_record.lookup_token_hash = ?
+				AND intent.provider = 'MERCADO_PAGO'
+				AND intent.status = 'PENDING'
+			 ORDER BY intent.attempt_number DESC
+			 LIMIT 1
+			""", orderId.toString(), lookupTokenHash);
+	}
+
+	@Override
 	public boolean hasBlockingIntent(long orderInternalId) {
 		Integer count = jdbcTemplate.queryForObject("""
 			SELECT (

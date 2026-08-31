@@ -222,6 +222,27 @@ public class CheckoutProService {
 		return findReturn(returnToken);
 	}
 
+	public boolean reconcilePendingOrder(
+			String tenantSlug, UUID orderId, String lookupToken) {
+		requireEnabled();
+		validateUuidV4(orderId, "El pedido no es válido.");
+		if (lookupToken == null || !lookupToken.matches("^[A-Za-z0-9_-]{43}$")) {
+			throw notFound();
+		}
+		ResolvedTenant tenant = tenantResolver.resolveActive(tenantSlug);
+		StoredCheckoutAttempt attempt = tenantTransactions.execute(status ->
+			repository.findPendingByOrder(orderId, sha256(lookupToken)).orElse(null));
+		if (attempt == null) return false;
+
+		PaymentCredential credential = credentials.resolve(tenant.id(), tenant.slug());
+		validateCredential(attempt, credential);
+		var payment = gateway.findPaymentForPreference(
+			credential, attempt.preferenceId(), attempt.externalReference());
+		if (payment.isEmpty()) return false;
+		applyVerifiedPayment(attempt.id(), payment.get());
+		return true;
+	}
+
 	public void applyVerifiedPayment(
 			UUID paymentAttemptId, VerifiedProviderPayment payment) {
 		try {
@@ -334,7 +355,9 @@ public class CheckoutProService {
 				|| !attempt.preferenceId().equals(payment.preferenceId())
 				|| !attempt.externalReference().equals(payment.externalReference())
 				|| attempt.amount().compareTo(payment.amount()) != 0
-				|| !attempt.currencyCode().equals(payment.currencyCode())) {
+				|| !attempt.currencyCode().equals(payment.currencyCode())
+				|| (attempt.environment() == PaymentEnvironment.PRODUCTION
+					&& !payment.liveMode())) {
 			throw new CheckoutPaymentException(
 				"PAYMENT_VALIDATION_FAILED", "El pago verificado no coincide con el pedido.");
 		}
