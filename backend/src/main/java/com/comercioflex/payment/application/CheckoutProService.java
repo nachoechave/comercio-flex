@@ -318,11 +318,14 @@ public class CheckoutProService {
 			status -> repository.findPendingForReconciliation(RECONCILIATION_BATCH_SIZE)));
 		int processed = 0;
 		for (StoredCheckoutAttempt attempt : attempts) {
+			String stage = "CREDENTIAL_RESOLUTION";
 			try {
 				validateCredential(attempt, credential);
+				stage = "PROVIDER_SEARCH";
 				var payment = gateway.findPaymentForPreference(
 					credential, attempt.preferenceId(), attempt.externalReference());
 				if (payment.isPresent()) {
+					stage = "PAYMENT_APPLICATION";
 					applyVerifiedPayment(attempt.id(), payment.get());
 					processed++;
 					if (payment.get().status() == PaymentResultStatus.PENDING
@@ -336,9 +339,7 @@ public class CheckoutProService {
 				}
 			}
 			catch (RuntimeException exception) {
-				LOGGER.warn(
-					"payment_reconciliation_failed tenant={} attempt={} error_type={}",
-					tenantSlug, attempt.id(), exception.getClass().getSimpleName());
+				logReconciliationFailure(tenantSlug, attempt.id(), stage, exception);
 			}
 		}
 		return processed;
@@ -491,17 +492,33 @@ public class CheckoutProService {
 
 	private void validatePayment(
 			StoredCheckoutAttempt attempt, VerifiedProviderPayment payment) {
-		if (payment == null
-				|| !attempt.sellerAccountId().equals(payment.sellerAccountId())
-				|| !attempt.preferenceId().equals(payment.preferenceId())
-				|| !attempt.externalReference().equals(payment.externalReference())
-				|| attempt.amount().compareTo(payment.amount()) != 0
-				|| !attempt.currencyCode().equals(payment.currencyCode())
-				|| (attempt.environment() == PaymentEnvironment.PRODUCTION
-					&& !payment.liveMode())) {
-			throw new CheckoutPaymentException(
-				"PAYMENT_VALIDATION_FAILED", "El pago verificado no coincide con el pedido.");
+		if (payment == null) {
+			throw paymentValidationFailure("PAYMENT_SELECTION", "INVALID_PROVIDER_RESPONSE");
 		}
+		if (!attempt.sellerAccountId().equals(payment.sellerAccountId())) {
+			throw paymentValidationFailure("SELLER_VALIDATION", "SELLER_MISMATCH");
+		}
+		if (attempt.environment() == PaymentEnvironment.PRODUCTION && !payment.liveMode()) {
+			throw paymentValidationFailure("ENVIRONMENT_VALIDATION", "ENVIRONMENT_MISMATCH");
+		}
+		if (!attempt.preferenceId().equals(payment.preferenceId())) {
+			throw paymentValidationFailure("PREFERENCE_VALIDATION", "PREFERENCE_MISMATCH");
+		}
+		if (!attempt.externalReference().equals(payment.externalReference())) {
+			throw paymentValidationFailure("REFERENCE_VALIDATION", "REFERENCE_MISMATCH");
+		}
+		if (attempt.amount().compareTo(payment.amount()) != 0) {
+			throw paymentValidationFailure("AMOUNT_VALIDATION", "AMOUNT_MISMATCH");
+		}
+		if (!attempt.currencyCode().equals(payment.currencyCode())) {
+			throw paymentValidationFailure("CURRENCY_VALIDATION", "CURRENCY_MISMATCH");
+		}
+	}
+
+	private CheckoutPaymentException paymentValidationFailure(String stage, String reason) {
+		return new CheckoutPaymentException(
+			"PAYMENT_VALIDATION_FAILED", "El pago verificado no coincide con el pedido.")
+			.withReconciliationDiagnostics(stage, reason, null, null, null);
 	}
 
 	private void markCreationForReview(
@@ -574,12 +591,42 @@ public class CheckoutProService {
 
 	private void validateCredential(
 			StoredCheckoutAttempt attempt, PaymentCredential credential) {
-		if (!attempt.sellerAccountId().equals(credential.sellerAccountId())
-				|| attempt.environment() != credential.environment()
-				|| credential.environment() != environment()) {
-			throw new CheckoutPaymentException(
-				"PAYMENT_CREDENTIAL_MISMATCH", "La credencial no coincide con el pago.");
+		if (!attempt.sellerAccountId().equals(credential.sellerAccountId())) {
+			throw credentialMismatch("SELLER_VALIDATION", "SELLER_MISMATCH");
 		}
+		if (attempt.environment() != credential.environment()
+				|| credential.environment() != environment()) {
+			throw credentialMismatch("ENVIRONMENT_VALIDATION", "ENVIRONMENT_MISMATCH");
+		}
+	}
+
+	private CheckoutPaymentException credentialMismatch(String stage, String reason) {
+		return new CheckoutPaymentException(
+			"PAYMENT_CREDENTIAL_MISMATCH", "La credencial no coincide con el pago.")
+			.withReconciliationDiagnostics(stage, reason, null, null, null);
+	}
+
+	private void logReconciliationFailure(
+			String tenantSlug, UUID attemptId, String fallbackStage,
+			RuntimeException exception) {
+		CheckoutPaymentException paymentException = exception instanceof CheckoutPaymentException current
+			? current : null;
+		CheckoutPaymentException.ReconciliationDiagnostics diagnostics = paymentException == null
+			? null : paymentException.reconciliationDiagnostics();
+		String stage = diagnostics == null ? fallbackStage : diagnostics.stage();
+		String reason = diagnostics == null
+			? (paymentException == null ? "APPLICATION_FAILED" : paymentException.code())
+			: diagnostics.reason();
+		Integer providerHttpStatus = diagnostics == null
+			? null : diagnostics.providerHttpStatus();
+		String providerErrorCode = diagnostics == null
+			? null : diagnostics.providerErrorCode();
+		Integer resultCount = diagnostics == null ? null : diagnostics.resultCount();
+		LOGGER.warn(
+			"event=payment_reconciliation_failed tenant={} attempt={} stage={} reason={} "
+				+ "providerHttpStatus={} providerErrorCode={} resultCount={}",
+			tenantSlug, attemptId, stage, reason, providerHttpStatus,
+			providerErrorCode, resultCount);
 	}
 
 	private StoredCheckoutAttempt requireReturnAttempt(String returnToken) {

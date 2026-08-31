@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -34,6 +35,10 @@ import com.comercioflex.payment.domain.PaymentIntentStatus;
 import com.comercioflex.payment.domain.PaymentResultStatus;
 import com.comercioflex.tenant.application.ResolvedTenant;
 import com.comercioflex.tenant.application.TenantResolver;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 class CheckoutProServiceTests {
 
@@ -95,8 +100,14 @@ class CheckoutProServiceTests {
 
 		assertThatThrownBy(() -> service.applyVerifiedPayment(ATTEMPT_ID, payment))
 			.isInstanceOf(CheckoutPaymentException.class)
-			.extracting(exception -> ((CheckoutPaymentException) exception).code())
-			.isEqualTo("PAYMENT_VALIDATION_FAILED");
+			.satisfies(exception -> {
+				CheckoutPaymentException failure = (CheckoutPaymentException) exception;
+				assertThat(failure.code()).isEqualTo("PAYMENT_VALIDATION_FAILED");
+				assertThat(failure.reconciliationDiagnostics().stage())
+					.isEqualTo("SELLER_VALIDATION");
+				assertThat(failure.reconciliationDiagnostics().reason())
+					.isEqualTo("SELLER_MISMATCH");
+			});
 	}
 
 	@Test
@@ -120,12 +131,48 @@ class CheckoutProServiceTests {
 				PaymentResultStatus.APPROVED, NOW)
 		};
 
-		for (VerifiedProviderPayment mismatch : mismatches) {
+		String[] expectedReasons = {
+			"AMOUNT_MISMATCH", "CURRENCY_MISMATCH",
+			"PREFERENCE_MISMATCH", "REFERENCE_MISMATCH"
+		};
+		for (int index = 0; index < mismatches.length; index++) {
+			VerifiedProviderPayment mismatch = mismatches[index];
+			String expectedReason = expectedReasons[index];
 			assertThatThrownBy(() -> service.applyVerifiedPayment(ATTEMPT_ID, mismatch))
 				.isInstanceOf(CheckoutPaymentException.class)
-				.extracting(exception -> ((CheckoutPaymentException) exception).code())
-				.isEqualTo("PAYMENT_VALIDATION_FAILED");
+				.satisfies(exception -> {
+					CheckoutPaymentException failure = (CheckoutPaymentException) exception;
+					assertThat(failure.code()).isEqualTo("PAYMENT_VALIDATION_FAILED");
+					assertThat(failure.reconciliationDiagnostics().reason())
+						.isEqualTo(expectedReason);
+				});
 		}
+	}
+
+	@Test
+	void reportsEnvironmentMismatchWithoutChangingThePublicErrorCode() {
+		StoredCheckoutAttempt productionAttempt = new StoredCheckoutAttempt(
+			storedAttempt.internalId(), storedAttempt.id(), storedAttempt.orderInternalId(),
+			storedAttempt.orderId(), storedAttempt.orderNumber(), storedAttempt.orderStatus(),
+			storedAttempt.reservationExpiresAt(), storedAttempt.idempotencyKey(),
+			storedAttempt.requestFingerprint(), storedAttempt.transitionIdempotencyKey(),
+			storedAttempt.status(), storedAttempt.amount(), storedAttempt.currencyCode(),
+			storedAttempt.externalReference(), storedAttempt.returnTokenExpiresAt(),
+			storedAttempt.preferenceId(), storedAttempt.checkoutUri(), storedAttempt.checkoutExpiresAt(),
+			storedAttempt.sellerAccountId(), PaymentEnvironment.PRODUCTION,
+			storedAttempt.updatedAt(), storedAttempt.version());
+		when(repository.findByPublicId(ATTEMPT_ID, true)).thenReturn(Optional.of(productionAttempt));
+
+		assertThatThrownBy(() -> service.applyVerifiedPayment(ATTEMPT_ID, payment("seller-1", false)))
+			.isInstanceOf(CheckoutPaymentException.class)
+			.satisfies(exception -> {
+				CheckoutPaymentException failure = (CheckoutPaymentException) exception;
+				assertThat(failure.code()).isEqualTo("PAYMENT_VALIDATION_FAILED");
+				assertThat(failure.reconciliationDiagnostics().stage())
+					.isEqualTo("ENVIRONMENT_VALIDATION");
+				assertThat(failure.reconciliationDiagnostics().reason())
+					.isEqualTo("ENVIRONMENT_MISMATCH");
+			});
 	}
 
 	@Test
@@ -217,6 +264,46 @@ class CheckoutProServiceTests {
 		assertThat(processed).isEqualTo(1);
 		verify(orderConfirmer).confirmWithinCurrentTransaction(
 			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey(), "Mercado Pago");
+	}
+
+	@Test
+	void logsOnlySafeStructuredReconciliationDiagnostics() {
+		PaymentCredential credential = new PaymentCredential(
+			"sensitive-access-token", "seller-1", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+		CheckoutPaymentException providerFailure = new CheckoutPaymentException(
+			"PREFERENCE_LOOKUP_FAILED", "No se pudo consultar el proveedor.")
+			.withReconciliationDiagnostics(
+				"PROVIDER_SEARCH", "PREFERENCE_LOOKUP_FAILED", 503, "bad_request", 0);
+		when(credentials.resolve(1L, "tienda-a")).thenReturn(credential);
+		when(repository.findPendingForReconciliation(20)).thenReturn(List.of(storedAttempt));
+		when(gateway.findPaymentForPreference(
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference()))
+			.thenThrow(providerFailure);
+		Logger logger = (Logger) LoggerFactory.getLogger(CheckoutProService.class);
+		ListAppender<ILoggingEvent> appender = new ListAppender<>();
+		appender.start();
+		logger.addAppender(appender);
+		try {
+			assertThat(service.reconcilePendingTenant(1L, "tienda-a")).isZero();
+		}
+		finally {
+			logger.detachAppender(appender);
+		}
+
+		assertThat(appender.list).hasSize(1);
+		String message = appender.list.getFirst().getFormattedMessage();
+		assertThat(message)
+			.contains("event=payment_reconciliation_failed")
+			.contains("tenant=tienda-a")
+			.contains("attempt=" + ATTEMPT_ID)
+			.contains("stage=PROVIDER_SEARCH")
+			.contains("reason=PREFERENCE_LOOKUP_FAILED")
+			.contains("providerHttpStatus=503")
+			.contains("providerErrorCode=bad_request")
+			.contains("resultCount=0")
+			.doesNotContain("sensitive-access-token")
+			.doesNotContain("No se pudo consultar el proveedor.");
 	}
 
 	@Test
