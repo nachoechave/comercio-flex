@@ -97,6 +97,25 @@ class MercadoPagoWebhookReceiverTests {
 	}
 
 	@Test
+	void acceptsAnAuthenticDelayedRetryBecausePersistenceIsIdempotent() throws Exception {
+		String dataId = "998877";
+		String requestId = "request-delayed";
+		String timestamp = Long.toString(NOW.minusSeconds(3_600).getEpochSecond());
+		String signature = "ts=" + timestamp + ",v1=" + signature(
+			"id:" + dataId + ";request-id:" + requestId + ";ts:" + timestamp + ";");
+		when(repository.findRoute(any(), any())).thenReturn(Optional.of(route()));
+		when(repository.insertWebhook(any(), any(), any())).thenReturn(true);
+
+		boolean inserted = receiver.receive(ROUTE, dataId, signature, requestId, """
+			{"id":"notification-delayed","type":"payment","action":"payment.updated",
+			 "user_id":"123456","live_mode":false,"data":{"id":"998877"}}
+			""");
+
+		assertThat(inserted).isTrue();
+		verify(repository).insertWebhook(any(), any(ReceivedWebhook.class), any());
+	}
+
+	@Test
 	void rejectsInvalidSignatureBeforeLookingUpRoute() {
 		assertThatThrownBy(() -> receiver.receive(
 			ROUTE, "998877", "ts=1785513600,v1=" + "0".repeat(64),

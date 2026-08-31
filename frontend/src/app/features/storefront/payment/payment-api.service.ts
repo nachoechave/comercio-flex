@@ -28,6 +28,19 @@ export class PaymentApiService {
     );
   }
 
+  reconcilePendingCheckout(
+    storeSlug: string,
+    orderId: string,
+    lookupToken: string,
+  ): Observable<void> {
+    const params = new HttpParams().set('token', lookupToken);
+    return this.http.post<void>(
+      `${this.ordersUrl(storeSlug)}/${encodeURIComponent(orderId)}/payments/checkout-pro/reconcile`,
+      {},
+      { params },
+    );
+  }
+
   getMethods(storeSlug: string): Observable<PaymentMethods> {
     return this.http.get<PaymentMethods>(
       `/api/v1/stores/${encodeURIComponent(storeSlug)}/payment-methods`,

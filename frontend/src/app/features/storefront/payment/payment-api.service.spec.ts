@@ -54,6 +54,20 @@ describe('PaymentApiService', () => {
     });
   });
 
+  it('reconciles a pending checkout using the private order token', () => {
+    api.reconcilePendingCheckout('tienda a', 'order/1', 'private token').subscribe();
+
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url ===
+          '/api/v1/stores/tienda%20a/orders/order%2F1/payments/checkout-pro/reconcile' &&
+        candidate.params.get('token') === 'private token',
+    );
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
   it('queries enabled methods and starts a private bank transfer', () => {
     api.getMethods('tienda a').subscribe();
     const methods = http.expectOne('/api/v1/stores/tienda%20a/payment-methods');

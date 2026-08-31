@@ -3,7 +3,6 @@ package com.comercioflex.payment.application;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Objects;
@@ -15,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,7 +25,8 @@ import com.comercioflex.payment.domain.PaymentEnvironment;
 @Service
 public class MercadoPagoWebhookReceiver {
 
-	private static final Duration SIGNATURE_TOLERANCE = Duration.ofMinutes(5);
+	private static final Logger LOGGER = LoggerFactory.getLogger(
+		MercadoPagoWebhookReceiver.class);
 
 	private final CheckoutControlRepository repository;
 	private final CheckoutProProperties properties;
@@ -64,6 +66,21 @@ public class MercadoPagoWebhookReceiver {
 	}
 
 	public boolean receive(
+			String routeToken,
+			String signedDataId,
+			String signature,
+			String requestId,
+			String rawBody) {
+		try {
+			return receiveVerified(routeToken, signedDataId, signature, requestId, rawBody);
+		}
+		catch (CheckoutPaymentException exception) {
+			LOGGER.warn("payment_webhook_rejected code={}", exception.code());
+			throw exception;
+		}
+	}
+
+	private boolean receiveVerified(
 			String routeToken,
 			String signedDataId,
 			String signature,
@@ -121,17 +138,8 @@ public class MercadoPagoWebhookReceiver {
 		if (timestamp == null || supplied == null || !supplied.matches("[0-9a-f]{64}")) {
 			throw invalid("INVALID_WEBHOOK_SIGNATURE", "La firma no es válida.");
 		}
-		Instant signedAt;
-		try {
-			long raw = Long.parseLong(timestamp);
-			signedAt = timestamp.length() > 10
-				? Instant.ofEpochMilli(raw) : Instant.ofEpochSecond(raw);
-		}
-		catch (RuntimeException exception) {
+		if (!timestamp.matches("^[0-9]{10,17}$")) {
 			throw invalid("INVALID_WEBHOOK_SIGNATURE", "La firma no es válida.");
-		}
-		if (Duration.between(signedAt, clock.instant()).abs().compareTo(SIGNATURE_TOLERANCE) > 0) {
-			throw invalid("EXPIRED_WEBHOOK_SIGNATURE", "La firma está vencida.");
 		}
 		String manifest = "id:" + dataId.toLowerCase(java.util.Locale.ROOT)
 			+ ";request-id:" + requestId + ";ts:" + timestamp + ";";

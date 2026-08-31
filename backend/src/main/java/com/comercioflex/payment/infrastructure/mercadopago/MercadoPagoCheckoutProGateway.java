@@ -6,6 +6,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 import com.mercadopago.client.merchantorder.MerchantOrderClient;
 import com.mercadopago.client.payment.PaymentClient;
@@ -19,6 +20,7 @@ import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
+import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import com.mercadopago.net.MPElementsResourcesPage;
@@ -139,16 +141,48 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 	}
 
 	@Override
+	public Optional<VerifiedProviderPayment> findPaymentForPreference(
+			PaymentCredential credential, String preferenceId,
+			String externalReference) {
+		try {
+			MPElementsResourcesPage<MerchantOrder> page = searchMerchantOrders(
+				credential, preferenceId);
+			if (page == null || page.getElements() == null) {
+				throw invalidProviderResponse();
+			}
+			VerifiedProviderPayment candidate = null;
+			for (MerchantOrder order : page.getElements()) {
+				if (order == null || !preferenceId.equals(order.getPreferenceId())) {
+					continue;
+				}
+				validateMerchantOrder(order, credential, externalReference);
+				for (MerchantOrderPayment summary : order.getPayments()) {
+					if (summary == null || summary.getId() == null) {
+						throw invalidProviderResponse();
+					}
+					VerifiedProviderPayment payment = findPayment(
+						credential, summary.getId().toString());
+					if (payment.status() == PaymentResultStatus.APPROVED) {
+						return Optional.of(payment);
+					}
+					if (candidate == null || newer(payment, candidate)) {
+						candidate = payment;
+					}
+				}
+			}
+			return Optional.ofNullable(candidate);
+		}
+		catch (MPApiException | MPException exception) {
+			throw gatewayFailure("PREFERENCE_LOOKUP_FAILED", exception);
+		}
+	}
+
+	@Override
 	public ProviderCheckoutState inspectPreference(
 			PaymentCredential credential, String preferenceId, String externalReference) {
 		try {
-			MPSearchRequest request = MPSearchRequest.builder()
-				.limit(10)
-				.offset(0)
-				.filters(Map.of("preference_id", preferenceId))
-				.build();
-			MPElementsResourcesPage<MerchantOrder> page = merchantOrders.search(
-				request, options(credential));
+			MPElementsResourcesPage<MerchantOrder> page = searchMerchantOrders(
+				credential, preferenceId);
 			if (page == null || page.getElements() == null || page.getElements().isEmpty()) {
 				return ProviderCheckoutState.INCONCLUSIVE;
 			}
@@ -158,12 +192,7 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 					continue;
 				}
 				matched = true;
-				if (!externalReference.equals(order.getExternalReference())
-						|| order.getCollector() == null || order.getCollector().getId() == null
-						|| !credential.sellerAccountId().equals(order.getCollector().getId().toString())
-						|| order.getPayments() == null) {
-					throw invalidProviderResponse();
-				}
+				validateMerchantOrder(order, credential, externalReference);
 				if (!order.getPayments().isEmpty()) {
 					return ProviderCheckoutState.PAYMENT_RECORDED;
 				}
@@ -175,6 +204,35 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 		catch (MPApiException | MPException exception) {
 			throw gatewayFailure("PREFERENCE_LOOKUP_FAILED", exception);
 		}
+	}
+
+	private MPElementsResourcesPage<MerchantOrder> searchMerchantOrders(
+			PaymentCredential credential, String preferenceId)
+			throws MPException, MPApiException {
+		MPSearchRequest request = MPSearchRequest.builder()
+			.limit(10)
+			.offset(0)
+			.filters(Map.of("preference_id", preferenceId))
+			.build();
+		return merchantOrders.search(request, options(credential));
+	}
+
+	private void validateMerchantOrder(
+			MerchantOrder order, PaymentCredential credential,
+			String externalReference) {
+		if (!externalReference.equals(order.getExternalReference())
+				|| order.getCollector() == null || order.getCollector().getId() == null
+				|| !credential.sellerAccountId().equals(order.getCollector().getId().toString())
+				|| order.getPayments() == null) {
+			throw invalidProviderResponse();
+		}
+	}
+
+	private boolean newer(
+			VerifiedProviderPayment candidate, VerifiedProviderPayment current) {
+		if (candidate.providerUpdatedAt() == null) return false;
+		return current.providerUpdatedAt() == null
+			|| candidate.providerUpdatedAt().isAfter(current.providerUpdatedAt());
 	}
 
 	private MPRequestOptions options(PaymentCredential credential) {

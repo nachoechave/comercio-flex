@@ -57,6 +57,7 @@ public class SecurityConfig {
 				.ignoringRequestMatchers(
 					postMatcher("/api/v1/stores/*/orders"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/checkout-pro"),
+					postMatcher("/api/v1/stores/*/orders/*/payments/checkout-pro/reconcile"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/bank-transfer"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/bank-transfer/*/receipt"),
 					postMatcher("/api/v1/stores/*/payment-returns/*/reconcile"),
@@ -98,7 +99,8 @@ public class SecurityConfig {
 				.permitAll()
 				.requestMatchers(
 					HttpMethod.POST,
-					"/api/v1/stores/*/orders/*/payments/checkout-pro")
+					"/api/v1/stores/*/orders/*/payments/checkout-pro",
+					"/api/v1/stores/*/orders/*/payments/checkout-pro/reconcile")
 				.permitAll()
 				.requestMatchers(
 					"/api/v1/stores/*/orders/*/payments/bank-transfer",

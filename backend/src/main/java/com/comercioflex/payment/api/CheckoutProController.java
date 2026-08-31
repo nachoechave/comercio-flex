@@ -46,6 +46,17 @@ public class CheckoutProController {
 			.body(CheckoutInitiationResponse.from(initiation));
 	}
 
+	@PostMapping("/orders/{orderId}/payments/checkout-pro/reconcile")
+	ResponseEntity<Void> reconcilePendingOrder(
+			@PathVariable String storeSlug,
+			@PathVariable UUID orderId,
+			@RequestParam @Pattern(regexp = TOKEN) String token) {
+		service.reconcilePendingOrder(storeSlug, orderId, token);
+		return ResponseEntity.noContent()
+			.cacheControl(CacheControl.noStore())
+			.build();
+	}
+
 	@GetMapping("/payment-returns/{returnToken}")
 	ResponseEntity<PaymentReturnResponse> findReturn(
 			@PathVariable @Pattern(regexp = TOKEN) String returnToken) {

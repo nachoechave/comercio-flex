@@ -17,6 +17,9 @@ public interface CheckoutRepository {
 
 	Optional<StoredCheckoutAttempt> findByReturnTokenHash(byte[] returnTokenHash);
 
+	Optional<StoredCheckoutAttempt> findPendingByOrder(
+		UUID orderId, byte[] lookupTokenHash);
+
 	boolean hasBlockingIntent(long orderInternalId);
 
 	int nextAttemptNumber(long orderInternalId);
