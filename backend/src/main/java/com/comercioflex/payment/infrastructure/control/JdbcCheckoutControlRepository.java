@@ -109,6 +109,20 @@ public class JdbcCheckoutControlRepository implements CheckoutControlRepository 
 	}
 
 	@Override
+	public Optional<Boolean> routePreferenceMatches(
+			long tenantId, UUID paymentAttemptId,
+			PaymentEnvironment environment, String preferenceId) {
+		return jdbcTemplate.query("""
+			SELECT provider_preference_id = ?
+			FROM payment_webhook_routes
+			WHERE tenant_id = ? AND payment_intent_public_id = UUID_TO_BIN(?)
+				AND environment = ?
+			""", (resultSet, rowNumber) -> resultSet.getBoolean(1),
+			preferenceId, tenantId, paymentAttemptId.toString(), environment.name())
+			.stream().findFirst();
+	}
+
+	@Override
 	public void expireRoute(UUID paymentAttemptId, PaymentEnvironment environment) {
 		jdbcTemplate.update("""
 			UPDATE payment_webhook_routes SET status = 'EXPIRED'

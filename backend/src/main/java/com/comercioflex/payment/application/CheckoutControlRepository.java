@@ -24,6 +24,10 @@ public interface CheckoutControlRepository {
 
 	void activateRoute(UUID paymentAttemptId, PaymentEnvironment environment, String preferenceId);
 
+	Optional<Boolean> routePreferenceMatches(
+		long tenantId, UUID paymentAttemptId,
+		PaymentEnvironment environment, String preferenceId);
+
 	void expireRoute(UUID paymentAttemptId, PaymentEnvironment environment);
 
 	Optional<CheckoutRoute> findRoute(byte[] routeTokenHash, PaymentEnvironment environment);
