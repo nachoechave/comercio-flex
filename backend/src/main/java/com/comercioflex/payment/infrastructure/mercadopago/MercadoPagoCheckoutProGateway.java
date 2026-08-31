@@ -25,6 +25,7 @@ import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
 import com.mercadopago.resources.payment.Payment;
+import com.mercadopago.resources.payment.PaymentOrder;
 import com.mercadopago.resources.preference.Preference;
 import com.mercadopago.net.MPElementsResourcesPage;
 import com.mercadopago.net.MPResultsResourcesPage;
@@ -117,34 +118,85 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 	@Override
 	public VerifiedProviderPayment findPayment(
 			PaymentCredential credential, String providerPaymentId) {
+		return loadPayment(credential, providerPaymentId, null).payment();
+	}
+
+	private ResolvedProviderPayment loadPayment(
+			PaymentCredential credential, String providerPaymentId,
+			String expectedPreferenceId) {
+		long numericId;
 		try {
-			long numericId = Long.parseLong(providerPaymentId);
-			MPRequestOptions options = options(credential);
-			Payment payment = payments.get(numericId, options);
-			if (payment == null || payment.getId() == null || payment.getOrder() == null
-					|| payment.getOrder().getId() == null) {
-				throw invalidProviderResponse();
-			}
-			MerchantOrder merchantOrder = merchantOrders.get(payment.getOrder().getId(), options);
-			if (merchantOrder == null || blank(merchantOrder.getPreferenceId())) {
-				throw invalidProviderResponse();
-			}
-			return new VerifiedProviderPayment(
+			numericId = Long.parseLong(providerPaymentId);
+		}
+		catch (NumberFormatException exception) {
+			throw new CheckoutPaymentException(
+				"INVALID_PROVIDER_RESOURCE", "El identificador de pago no es válido.", exception);
+		}
+
+		MPRequestOptions options = options(credential);
+		Payment payment;
+		try {
+			payment = payments.get(numericId, options);
+		}
+		catch (MPApiException | MPException exception) {
+			throw gatewayFailure("PAYMENT_LOOKUP_FAILED", exception);
+		}
+		if (payment == null || payment.getId() == null) {
+			throw invalidProviderResponse().withPreferenceLinkDiagnostics(
+				preferenceLinkDiagnostics(
+					null, null, null, false, false, false, null, null, null));
+		}
+
+		PaymentOrder paymentOrder = payment.getOrder();
+		boolean paymentOrderPresent = paymentOrder != null;
+		boolean paymentOrderIdPresent = paymentOrderPresent && paymentOrder.getId() != null;
+		boolean paymentOrderTypePresent = paymentOrderPresent && !blank(paymentOrder.getType());
+		if (!paymentOrderPresent || !paymentOrderIdPresent) {
+			throw invalidProviderResponse().withPreferenceLinkDiagnostics(
+				preferenceLinkDiagnostics(
+					paymentOrderPresent, paymentOrderIdPresent, paymentOrderTypePresent,
+					false, false, false, null, null, null));
+		}
+
+		MerchantOrder merchantOrder;
+		try {
+			merchantOrder = merchantOrders.get(paymentOrder.getId(), options);
+		}
+		catch (MPApiException | MPException exception) {
+			throw gatewayFailure("PAYMENT_LOOKUP_FAILED", exception)
+				.withPreferenceLinkDiagnostics(preferenceLinkDiagnostics(
+					paymentOrderPresent, paymentOrderIdPresent, paymentOrderTypePresent,
+					true, false, false, null, providerHttpStatus(exception),
+					providerErrorCode(exception)));
+		}
+		if (merchantOrder == null) {
+			throw invalidProviderResponse().withPreferenceLinkDiagnostics(
+				preferenceLinkDiagnostics(
+					paymentOrderPresent, paymentOrderIdPresent, paymentOrderTypePresent,
+					true, false, false, null, null, null));
+		}
+
+		boolean preferencePresent = !blank(merchantOrder.getPreferenceId());
+		Boolean preferenceMatches = expectedPreferenceId == null || !preferencePresent
+			? null : expectedPreferenceId.equals(merchantOrder.getPreferenceId());
+		CheckoutPaymentException.PreferenceLinkDiagnostics linkDiagnostics =
+			preferenceLinkDiagnostics(
+				paymentOrderPresent, paymentOrderIdPresent, paymentOrderTypePresent,
+				true, true, preferencePresent, preferenceMatches, null, null);
+		if (!preferencePresent) {
+			throw invalidProviderResponse().withPreferenceLinkDiagnostics(linkDiagnostics);
+		}
+
+		return new ResolvedProviderPayment(
+			new VerifiedProviderPayment(
 				payment.getId().toString(),
 				payment.getCollectorId() == null ? null : payment.getCollectorId().toString(),
 				merchantOrder.getPreferenceId(), payment.getExternalReference(),
 				payment.getTransactionAmount(), payment.getCurrencyId(), payment.isLiveMode(),
 				mapStatus(payment.getStatus()),
 				payment.getDateLastUpdated() == null ? null
-					: payment.getDateLastUpdated().toInstant());
-		}
-		catch (NumberFormatException exception) {
-			throw new CheckoutPaymentException(
-				"INVALID_PROVIDER_RESOURCE", "El identificador de pago no es válido.", exception);
-		}
-		catch (MPApiException | MPException exception) {
-			throw gatewayFailure("PAYMENT_LOOKUP_FAILED", exception);
-		}
+					: payment.getDateLastUpdated().toInstant()),
+			linkDiagnostics);
 	}
 
 	@Override
@@ -312,9 +364,10 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 					}
 					continue;
 				}
-				VerifiedProviderPayment payment;
+				ResolvedProviderPayment resolvedPayment;
 				try {
-					payment = findPayment(credential, summary.getId().toString());
+					resolvedPayment = loadPayment(
+						credential, summary.getId().toString(), preferenceId);
 				}
 				catch (CheckoutPaymentException exception) {
 					if ("INVALID_PROVIDER_RESPONSE".equals(exception.code())) {
@@ -335,10 +388,11 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 					}
 					throw enrichSelectionFailure(exception, resultCount);
 				}
+				VerifiedProviderPayment payment = resolvedPayment.payment();
 
 				CheckoutPaymentException rejection = validateFallbackCandidate(
 					credential, preferenceId, externalReference, amount,
-					currencyCode, payment, resultCount);
+					currencyCode, resolvedPayment, resultCount);
 				if (rejection != null) {
 					if (firstRejectedCandidate == null) {
 						firstRejectedCandidate = rejection;
@@ -368,42 +422,66 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 	private CheckoutPaymentException validateFallbackCandidate(
 			PaymentCredential credential, String preferenceId,
 			String externalReference, BigDecimal amount,
-			String currencyCode, VerifiedProviderPayment payment,
+			String currencyCode, ResolvedProviderPayment resolvedPayment,
 			int resultCount) {
+		VerifiedProviderPayment payment = resolvedPayment.payment();
+		CheckoutPaymentException.PreferenceLinkDiagnostics linkDiagnostics =
+			resolvedPayment.preferenceLinkDiagnostics();
 		if (!credential.sellerAccountId().equals(payment.sellerAccountId())) {
-			return candidateRejection("SELLER_VALIDATION", "SELLER_MISMATCH", resultCount);
+			return candidateRejection(
+				"SELLER_VALIDATION", "SELLER_MISMATCH", resultCount, linkDiagnostics);
 		}
 		if (credential.environment() == PaymentEnvironment.PRODUCTION
 				&& !payment.liveMode()) {
 			return candidateRejection(
-				"ENVIRONMENT_VALIDATION", "ENVIRONMENT_MISMATCH", resultCount);
+				"ENVIRONMENT_VALIDATION", "ENVIRONMENT_MISMATCH", resultCount,
+				linkDiagnostics);
 		}
 		if (!preferenceId.equals(payment.preferenceId())) {
 			return candidateRejection(
-				"PREFERENCE_VALIDATION", "PREFERENCE_NOT_VERIFIABLE", resultCount);
+				"PREFERENCE_VALIDATION", "PREFERENCE_NOT_VERIFIABLE", resultCount,
+				linkDiagnostics);
 		}
 		if (!externalReference.equals(payment.externalReference())) {
 			return candidateRejection(
-				"REFERENCE_VALIDATION", "REFERENCE_MISMATCH", resultCount);
+				"REFERENCE_VALIDATION", "REFERENCE_MISMATCH", resultCount,
+				linkDiagnostics);
 		}
 		if (amount == null || payment.amount() == null
 				|| amount.compareTo(payment.amount()) != 0) {
-			return candidateRejection("AMOUNT_VALIDATION", "AMOUNT_MISMATCH", resultCount);
+			return candidateRejection(
+				"AMOUNT_VALIDATION", "AMOUNT_MISMATCH", resultCount, linkDiagnostics);
 		}
 		if (!currencyCode.equals(payment.currencyCode())) {
 			return candidateRejection(
-				"CURRENCY_VALIDATION", "CURRENCY_MISMATCH", resultCount);
+				"CURRENCY_VALIDATION", "CURRENCY_MISMATCH", resultCount,
+				linkDiagnostics);
 		}
 		return null;
 	}
 
 	private CheckoutPaymentException candidateRejection(
-			String stage, String reason, int resultCount) {
+			String stage, String reason, int resultCount,
+			CheckoutPaymentException.PreferenceLinkDiagnostics linkDiagnostics) {
 		return diagnosticFailure(
 			new CheckoutPaymentException(
 				"PAYMENT_VALIDATION_FAILED",
-				"El pago verificado no coincide con el pedido."),
+				"El pago verificado no coincide con el pedido.")
+				.withPreferenceLinkDiagnostics(linkDiagnostics),
 			stage, reason, null, resultCount);
+	}
+
+	private CheckoutPaymentException.PreferenceLinkDiagnostics preferenceLinkDiagnostics(
+			Boolean paymentOrderPresent, Boolean paymentOrderIdPresent,
+			Boolean paymentOrderTypePresent, Boolean merchantOrderLookupAttempted,
+			Boolean merchantOrderResponsePresent, Boolean merchantOrderPreferencePresent,
+			Boolean merchantOrderPreferenceMatches, Integer merchantOrderHttpStatus,
+			String merchantOrderProviderErrorCode) {
+		return new CheckoutPaymentException.PreferenceLinkDiagnostics(
+			paymentOrderPresent, paymentOrderIdPresent, paymentOrderTypePresent,
+			merchantOrderLookupAttempted, merchantOrderResponsePresent,
+			merchantOrderPreferencePresent, merchantOrderPreferenceMatches,
+			merchantOrderHttpStatus, merchantOrderProviderErrorCode);
 	}
 
 	private boolean preferredFallbackPayment(
@@ -462,7 +540,7 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 			CheckoutPaymentException exception, int resultCount) {
 		CheckoutPaymentException.ReconciliationDiagnostics diagnostics =
 			exception.reconciliationDiagnostics();
-		if (diagnostics != null) {
+		if (diagnostics != null && diagnostics.stage() != null) {
 			return exception.withReconciliationDiagnostics(
 				diagnostics.stage(), diagnostics.reason(), diagnostics.providerHttpStatus(),
 				diagnostics.providerErrorCode(), resultCount);
@@ -485,6 +563,11 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 		return invalidProviderResponse().withReconciliationDiagnostics(
 			"PROVIDER_SEARCH", "INVALID_PROVIDER_RESPONSE", null, null, null,
 			providerResponseNull, merchantOrdersCollectionNull, null, false);
+	}
+
+	private record ResolvedProviderPayment(
+		VerifiedProviderPayment payment,
+		CheckoutPaymentException.PreferenceLinkDiagnostics preferenceLinkDiagnostics) {
 	}
 
 	private Integer providerHttpStatus(Exception exception) {

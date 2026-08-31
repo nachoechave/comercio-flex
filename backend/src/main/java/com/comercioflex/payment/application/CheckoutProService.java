@@ -633,14 +633,42 @@ public class CheckoutProService {
 		Integer merchantOrdersCount = diagnostics == null
 			? null : diagnostics.merchantOrdersCount();
 		Boolean pagingPresent = diagnostics == null ? null : diagnostics.pagingPresent();
+		CheckoutPaymentException.PreferenceLinkDiagnostics preferenceLink = diagnostics == null
+			? null : diagnostics.preferenceLinkDiagnostics();
+		Boolean paymentOrderPresent = preferenceLink == null
+			? null : preferenceLink.paymentOrderPresent();
+		Boolean paymentOrderIdPresent = preferenceLink == null
+			? null : preferenceLink.paymentOrderIdPresent();
+		Boolean paymentOrderTypePresent = preferenceLink == null
+			? null : preferenceLink.paymentOrderTypePresent();
+		Boolean merchantOrderLookupAttempted = preferenceLink == null
+			? null : preferenceLink.merchantOrderLookupAttempted();
+		Boolean merchantOrderResponsePresent = preferenceLink == null
+			? null : preferenceLink.merchantOrderResponsePresent();
+		Boolean merchantOrderPreferencePresent = preferenceLink == null
+			? null : preferenceLink.merchantOrderPreferencePresent();
+		Boolean merchantOrderPreferenceMatches = preferenceLink == null
+			? null : preferenceLink.merchantOrderPreferenceMatches();
+		Integer merchantOrderHttpStatus = preferenceLink == null
+			? null : preferenceLink.merchantOrderHttpStatus();
+		String merchantOrderProviderErrorCode = preferenceLink == null
+			? null : preferenceLink.merchantOrderProviderErrorCode();
 		LOGGER.warn(
 			"event=payment_reconciliation_failed tenant={} attempt={} stage={} reason={} "
 				+ "providerHttpStatus={} providerErrorCode={} resultCount={} "
 				+ "providerResponseNull={} merchantOrdersCollectionNull={} "
-				+ "merchantOrdersCount={} pagingPresent={}",
+				+ "merchantOrdersCount={} pagingPresent={} paymentOrderPresent={} "
+				+ "paymentOrderIdPresent={} paymentOrderTypePresent={} "
+				+ "merchantOrderLookupAttempted={} merchantOrderResponsePresent={} "
+				+ "merchantOrderPreferencePresent={} merchantOrderPreferenceMatches={} "
+				+ "merchantOrderHttpStatus={} merchantOrderProviderErrorCode={}",
 			tenantSlug, attemptId, stage, reason, providerHttpStatus,
 			providerErrorCode, resultCount, providerResponseNull,
-			merchantOrdersCollectionNull, merchantOrdersCount, pagingPresent);
+			merchantOrdersCollectionNull, merchantOrdersCount, pagingPresent,
+			paymentOrderPresent, paymentOrderIdPresent, paymentOrderTypePresent,
+			merchantOrderLookupAttempted, merchantOrderResponsePresent,
+			merchantOrderPreferencePresent, merchantOrderPreferenceMatches,
+			merchantOrderHttpStatus, merchantOrderProviderErrorCode);
 	}
 
 	private StoredCheckoutAttempt requireReturnAttempt(String returnToken) {
