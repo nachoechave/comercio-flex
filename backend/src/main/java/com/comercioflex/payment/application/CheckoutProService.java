@@ -343,7 +343,7 @@ public class CheckoutProService {
 				}
 			}
 			catch (RuntimeException exception) {
-				logReconciliationFailure(tenantSlug, attempt.id(), stage, exception);
+				logReconciliationFailure(tenantId, tenantSlug, attempt, stage, exception);
 			}
 		}
 		return processed;
@@ -611,7 +611,8 @@ public class CheckoutProService {
 	}
 
 	private void logReconciliationFailure(
-			String tenantSlug, UUID attemptId, String fallbackStage,
+			long tenantId, String tenantSlug, StoredCheckoutAttempt attempt,
+			String fallbackStage,
 			RuntimeException exception) {
 		CheckoutPaymentException paymentException = exception instanceof CheckoutPaymentException current
 			? current : null;
@@ -653,6 +654,22 @@ public class CheckoutProService {
 			? null : preferenceLink.merchantOrderHttpStatus();
 		String merchantOrderProviderErrorCode = preferenceLink == null
 			? null : preferenceLink.merchantOrderProviderErrorCode();
+		PreferenceSearchDiagnostics preferenceSearch = diagnostics == null
+			? null : diagnostics.preferenceSearchDiagnostics();
+		Integer preferenceCreationCount = preferenceSearch == null
+			? null : preferenceSearch.preferenceCreationCount();
+		Boolean storedPreferenceFound = preferenceSearch == null
+			? null : preferenceSearch.storedPreferenceFound();
+		Boolean actualPaymentPreferenceFound = preferenceSearch == null
+			? null : preferenceSearch.actualPaymentPreferenceFound();
+		Boolean storedPreferenceMatchesActual = preferenceSearch == null
+			? null : preferenceSearch.storedPreferenceMatchesActual();
+		Boolean multiplePreferencesFound = preferenceSearch == null
+			? null : preferenceSearch.multiplePreferencesFound();
+		Boolean storedPreferenceAmongSearchResults = preferenceSearch == null
+			? null : preferenceSearch.storedPreferenceAmongSearchResults();
+		Boolean tenantRoutePreferenceMatches = preferenceSearch == null
+			? null : routePreferenceMatches(tenantId, attempt);
 		LOGGER.warn(
 			"event=payment_reconciliation_failed tenant={} attempt={} stage={} reason={} "
 				+ "providerHttpStatus={} providerErrorCode={} resultCount={} "
@@ -661,14 +678,32 @@ public class CheckoutProService {
 				+ "paymentOrderIdPresent={} paymentOrderTypePresent={} "
 				+ "merchantOrderLookupAttempted={} merchantOrderResponsePresent={} "
 				+ "merchantOrderPreferencePresent={} merchantOrderPreferenceMatches={} "
-				+ "merchantOrderHttpStatus={} merchantOrderProviderErrorCode={}",
-			tenantSlug, attemptId, stage, reason, providerHttpStatus,
+				+ "merchantOrderHttpStatus={} merchantOrderProviderErrorCode={} "
+				+ "preferenceCreationCount={} storedPreferenceFound={} "
+				+ "actualPaymentPreferenceFound={} storedPreferenceMatchesActual={} "
+				+ "multiplePreferencesFound={} storedPreferenceAmongSearchResults={} "
+				+ "tenantRoutePreferenceMatches={}",
+			tenantSlug, attempt.id(), stage, reason, providerHttpStatus,
 			providerErrorCode, resultCount, providerResponseNull,
 			merchantOrdersCollectionNull, merchantOrdersCount, pagingPresent,
 			paymentOrderPresent, paymentOrderIdPresent, paymentOrderTypePresent,
 			merchantOrderLookupAttempted, merchantOrderResponsePresent,
 			merchantOrderPreferencePresent, merchantOrderPreferenceMatches,
-			merchantOrderHttpStatus, merchantOrderProviderErrorCode);
+			merchantOrderHttpStatus, merchantOrderProviderErrorCode,
+			preferenceCreationCount, storedPreferenceFound,
+			actualPaymentPreferenceFound, storedPreferenceMatchesActual,
+			multiplePreferencesFound, storedPreferenceAmongSearchResults,
+			tenantRoutePreferenceMatches);
+	}
+
+	private Boolean routePreferenceMatches(long tenantId, StoredCheckoutAttempt attempt) {
+		try {
+			return controlTransactions.execute(status -> controlRepository.routePreferenceMatches(
+				tenantId, attempt.id(), attempt.environment(), attempt.preferenceId()).orElse(null));
+		}
+		catch (RuntimeException ignored) {
+			return null;
+		}
 	}
 
 	private StoredCheckoutAttempt requireReturnAttempt(String returnToken) {

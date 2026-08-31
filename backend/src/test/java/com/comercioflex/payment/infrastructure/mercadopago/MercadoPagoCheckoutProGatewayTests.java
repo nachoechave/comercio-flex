@@ -28,7 +28,9 @@ import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceRequest;
 import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.exceptions.MPApiException;
+import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.preference.Preference;
+import com.mercadopago.resources.preference.PreferenceSearch;
 import com.mercadopago.net.MPElementsResourcesPage;
 import com.mercadopago.net.MPResponse;
 import com.mercadopago.net.MPResultsResourcesPage;
@@ -45,6 +47,7 @@ import com.comercioflex.payment.application.CheckoutPaymentException;
 import com.comercioflex.payment.application.CheckoutProProperties;
 import com.comercioflex.payment.application.CreatedCheckoutPreference;
 import com.comercioflex.payment.application.PaymentCredential;
+import com.comercioflex.payment.application.PreferenceSearchDiagnostics;
 import com.comercioflex.payment.application.ProviderCheckoutState;
 import com.comercioflex.payment.application.VerifiedProviderPayment;
 import com.comercioflex.payment.domain.PaymentEnvironment;
@@ -383,9 +386,13 @@ class MercadoPagoCheckoutProGatewayTests {
 		Payment payment = providerPayment(1001L, "approved");
 		FallbackFixture fixture = fallbackFixture(payment);
 		MerchantOrder wrongPreference = linkedOrder("pref-other");
+		MPElementsResourcesPage<PreferenceSearch> preferencePage =
+			preferenceSearchPage("pref-123", "pref-other");
 		when(fixture.merchantOrders().get(
 			org.mockito.ArgumentMatchers.eq(77L), any(MPRequestOptions.class)))
 			.thenReturn(wrongPreference);
+		when(fixture.preferences().search(any(), any(MPRequestOptions.class)))
+			.thenReturn(preferencePage);
 
 		CheckoutPaymentException failure = fallbackFailure(fixture.gateway(), credential());
 
@@ -397,6 +404,9 @@ class MercadoPagoCheckoutProGatewayTests {
 				assertThat(diagnostics.merchantOrderPreferencePresent()).isTrue();
 				assertThat(diagnostics.merchantOrderPreferenceMatches()).isFalse();
 			});
+		assertThat(failure.reconciliationDiagnostics().preferenceSearchDiagnostics())
+			.isEqualTo(new PreferenceSearchDiagnostics(
+				2, true, true, false, true, true));
 	}
 
 	@Test
@@ -629,6 +639,152 @@ class MercadoPagoCheckoutProGatewayTests {
 		assertThat(result.status().name()).isEqualTo("APPROVED");
 	}
 
+	@Test
+	void diagnosesOneStoredPreferenceThatMatchesTheActualPaymentPreference()
+			throws Exception {
+		PreferenceClient preferences = mock(PreferenceClient.class);
+		MPElementsResourcesPage<PreferenceSearch> page =
+			preferenceSearchPage("pref-stored");
+		when(preferences.search(any(), any(MPRequestOptions.class)))
+			.thenReturn(page);
+		MercadoPagoCheckoutProGateway gateway = new MercadoPagoCheckoutProGateway(
+			preferences, mock(PaymentClient.class), mock(MerchantOrderClient.class), properties());
+		PaymentCredential production = new PaymentCredential(
+			"synthetic-production-token", "123456", PaymentEnvironment.PRODUCTION,
+			PaymentCredential.Source.TENANT_OAUTH);
+
+		PreferenceSearchDiagnostics diagnostics = gateway.diagnosePreferenceHistory(
+			production, "external-123", "pref-stored", "pref-stored");
+
+		assertThat(diagnostics).isEqualTo(new PreferenceSearchDiagnostics(
+			1, true, true, true, false, true));
+		ArgumentCaptor<MPSearchRequest> request = ArgumentCaptor.forClass(MPSearchRequest.class);
+		ArgumentCaptor<MPRequestOptions> options =
+			ArgumentCaptor.forClass(MPRequestOptions.class);
+		verify(preferences).search(request.capture(), options.capture());
+		assertThat(request.getValue().getFilters())
+			.containsOnlyKeys("external_reference")
+			.containsEntry("external_reference", "external-123");
+		assertThat(options.getValue().getAccessToken()).isEqualTo("synthetic-production-token");
+	}
+
+	@Test
+	void diagnosesTwoDistinctStoredAndActualPaymentPreferences() throws Exception {
+		PreferenceClient preferences = mock(PreferenceClient.class);
+		MPElementsResourcesPage<PreferenceSearch> page =
+			preferenceSearchPage("pref-stored", "pref-actual");
+		when(preferences.search(any(), any(MPRequestOptions.class)))
+			.thenReturn(page);
+		MercadoPagoCheckoutProGateway gateway = new MercadoPagoCheckoutProGateway(
+			preferences, mock(PaymentClient.class), mock(MerchantOrderClient.class), properties());
+
+		PreferenceSearchDiagnostics diagnostics = gateway.diagnosePreferenceHistory(
+			credential(), "external-123", "pref-stored", "pref-actual");
+
+		assertThat(diagnostics).isEqualTo(new PreferenceSearchDiagnostics(
+			2, true, true, false, true, true));
+	}
+
+	@Test
+	void diagnosesWhenTheStoredPreferenceIsAbsent() throws Exception {
+		PreferenceClient preferences = mock(PreferenceClient.class);
+		MPElementsResourcesPage<PreferenceSearch> page =
+			preferenceSearchPage("pref-actual");
+		when(preferences.search(any(), any(MPRequestOptions.class)))
+			.thenReturn(page);
+		MercadoPagoCheckoutProGateway gateway = new MercadoPagoCheckoutProGateway(
+			preferences, mock(PaymentClient.class), mock(MerchantOrderClient.class), properties());
+
+		PreferenceSearchDiagnostics diagnostics = gateway.diagnosePreferenceHistory(
+			credential(), "external-123", "pref-stored", "pref-actual");
+
+		assertThat(diagnostics).isEqualTo(new PreferenceSearchDiagnostics(
+			1, false, true, false, false, false));
+	}
+
+	@Test
+	void diagnosesWhenTheActualPaymentPreferenceIsAbsent() throws Exception {
+		PreferenceClient preferences = mock(PreferenceClient.class);
+		MPElementsResourcesPage<PreferenceSearch> page =
+			preferenceSearchPage("pref-stored");
+		when(preferences.search(any(), any(MPRequestOptions.class)))
+			.thenReturn(page);
+		MercadoPagoCheckoutProGateway gateway = new MercadoPagoCheckoutProGateway(
+			preferences, mock(PaymentClient.class), mock(MerchantOrderClient.class), properties());
+
+		PreferenceSearchDiagnostics diagnostics = gateway.diagnosePreferenceHistory(
+			credential(), "external-123", "pref-stored", "pref-actual");
+
+		assertThat(diagnostics).isEqualTo(new PreferenceSearchDiagnostics(
+			1, true, false, false, false, true));
+	}
+
+	@Test
+	void diagnosesWhenThePaymentDoesNotExposeAnActualPreference() throws Exception {
+		PreferenceClient preferences = mock(PreferenceClient.class);
+		MPElementsResourcesPage<PreferenceSearch> page =
+			preferenceSearchPage("pref-stored");
+		when(preferences.search(any(), any(MPRequestOptions.class)))
+			.thenReturn(page);
+		MercadoPagoCheckoutProGateway gateway = new MercadoPagoCheckoutProGateway(
+			preferences, mock(PaymentClient.class), mock(MerchantOrderClient.class), properties());
+
+		PreferenceSearchDiagnostics diagnostics = gateway.diagnosePreferenceHistory(
+			credential(), "external-123", "pref-stored", null);
+
+		assertThat(diagnostics).isEqualTo(new PreferenceSearchDiagnostics(
+			1, true, false, false, false, true));
+	}
+
+	@Test
+	void diagnosesAnEmptyPreferenceSearchResponse() throws Exception {
+		PreferenceClient preferences = mock(PreferenceClient.class);
+		MPElementsResourcesPage<PreferenceSearch> page = preferenceSearchPage();
+		when(preferences.search(any(), any(MPRequestOptions.class)))
+			.thenReturn(page);
+		MercadoPagoCheckoutProGateway gateway = new MercadoPagoCheckoutProGateway(
+			preferences, mock(PaymentClient.class), mock(MerchantOrderClient.class), properties());
+
+		PreferenceSearchDiagnostics diagnostics = gateway.diagnosePreferenceHistory(
+			credential(), "external-123", "pref-stored", "pref-actual");
+
+		assertThat(diagnostics).isEqualTo(new PreferenceSearchDiagnostics(
+			0, false, false, false, false, false));
+	}
+
+	@Test
+	void keepsPreferenceValidationUnchangedWhenPreferenceSearchFails() throws Exception {
+		PreferenceClient preferences = mock(PreferenceClient.class);
+		when(preferences.search(any(), any(MPRequestOptions.class)))
+			.thenThrow(new MPException("synthetic provider failure"));
+		MercadoPagoCheckoutProGateway gateway = new MercadoPagoCheckoutProGateway(
+			preferences, mock(PaymentClient.class), mock(MerchantOrderClient.class), properties());
+
+		PreferenceSearchDiagnostics diagnostics = gateway.diagnosePreferenceHistory(
+			credential(), "external-123", "pref-stored", "pref-actual");
+
+		assertThat(diagnostics).isEqualTo(PreferenceSearchDiagnostics.unavailable(false));
+	}
+
+	@Test
+	void keepsTheOriginalMismatchWhenDiagnosticPreferenceSearchFails() throws Exception {
+		Payment payment = providerPayment(1001L, "approved");
+		FallbackFixture fixture = fallbackFixture(payment);
+		MerchantOrder mismatchedOrder = linkedOrder("pref-other");
+		when(fixture.merchantOrders().get(
+			org.mockito.ArgumentMatchers.eq(77L), any(MPRequestOptions.class)))
+			.thenReturn(mismatchedOrder);
+		when(fixture.preferences().search(any(), any(MPRequestOptions.class)))
+			.thenThrow(new MPException("synthetic provider failure"));
+
+		CheckoutPaymentException failure = fallbackFailure(fixture.gateway(), credential());
+
+		assertThat(failure.reconciliationDiagnostics().reason())
+			.isEqualTo("PREFERENCE_NOT_VERIFIABLE");
+		assertThat(failure.reconciliationDiagnostics().preferenceSearchDiagnostics())
+			.isEqualTo(PreferenceSearchDiagnostics.unavailable(false));
+	}
+
 	private Payment providerPayment(long id, String status) {
 		Payment payment = mock(Payment.class);
 		PaymentOrder paymentOrder = mock(PaymentOrder.class);
@@ -645,6 +801,23 @@ class MercadoPagoCheckoutProGatewayTests {
 		when(payment.getDateLastUpdated())
 			.thenReturn(OffsetDateTime.parse("2026-08-01T10:00:00Z"));
 		return payment;
+	}
+
+	@SuppressWarnings("unchecked")
+	private MPElementsResourcesPage<PreferenceSearch> preferenceSearchPage(String... ids) {
+		MPElementsResourcesPage<PreferenceSearch> page = mock(MPElementsResourcesPage.class);
+		List<PreferenceSearch> elements = java.util.Arrays.stream(ids)
+			.map(id -> {
+				PreferenceSearch preference = mock(PreferenceSearch.class);
+				when(preference.getId()).thenReturn(id);
+				when(preference.getExternalReference()).thenReturn("external-123");
+				return preference;
+			})
+			.toList();
+		when(page.getElements()).thenReturn(elements);
+		when(page.getTotal()).thenReturn(elements.size());
+		when(page.getNextOffset()).thenReturn(elements.size());
+		return page;
 	}
 
 	private MerchantOrder linkedOrder(String preferenceId) {
@@ -684,7 +857,7 @@ class MercadoPagoCheckoutProGatewayTests {
 		return new FallbackFixture(
 			new MercadoPagoCheckoutProGateway(
 				preferences, payments, merchantOrders, properties()),
-			payments, merchantOrders);
+			preferences, payments, merchantOrders);
 	}
 
 	private void assertFallbackFailure(
@@ -726,6 +899,7 @@ class MercadoPagoCheckoutProGatewayTests {
 
 	private record FallbackFixture(
 		MercadoPagoCheckoutProGateway gateway,
+		PreferenceClient preferences,
 		PaymentClient payments,
 		MerchantOrderClient merchantOrders) {
 	}

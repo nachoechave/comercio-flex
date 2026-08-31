@@ -7,6 +7,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +28,7 @@ import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.payment.PaymentOrder;
 import com.mercadopago.resources.preference.Preference;
+import com.mercadopago.resources.preference.PreferenceSearch;
 import com.mercadopago.net.MPElementsResourcesPage;
 import com.mercadopago.net.MPResultsResourcesPage;
 import com.mercadopago.net.MPSearchRequest;
@@ -37,6 +39,7 @@ import com.comercioflex.payment.application.CheckoutProGateway;
 import com.comercioflex.payment.application.CheckoutProProperties;
 import com.comercioflex.payment.application.CreatedCheckoutPreference;
 import com.comercioflex.payment.application.PaymentCredential;
+import com.comercioflex.payment.application.PreferenceSearchDiagnostics;
 import com.comercioflex.payment.application.ProviderCheckoutState;
 import com.comercioflex.payment.application.VerifiedProviderPayment;
 import com.comercioflex.payment.domain.PaymentEnvironment;
@@ -255,6 +258,51 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 	}
 
 	@Override
+	public PreferenceSearchDiagnostics diagnosePreferenceHistory(
+			PaymentCredential credential, String externalReference,
+			String storedPreferenceId, String actualPaymentPreferenceId) {
+		boolean storedMatchesActual = Objects.equals(storedPreferenceId, actualPaymentPreferenceId);
+		int offset = 0;
+		int count = 0;
+		boolean storedFound = false;
+		boolean actualFound = false;
+		try {
+			while (true) {
+				MPElementsResourcesPage<PreferenceSearch> page = searchPreferences(
+					credential, externalReference, offset);
+				if (page == null || page.getElements() == null) {
+					return PreferenceSearchDiagnostics.unavailable(storedMatchesActual);
+				}
+				List<PreferenceSearch> elements = page.getElements();
+				for (PreferenceSearch preference : elements) {
+					if (preference == null
+							|| !externalReference.equals(preference.getExternalReference())) {
+						continue;
+					}
+					count++;
+					storedFound = storedFound || Objects.equals(storedPreferenceId, preference.getId());
+					actualFound = actualFound
+						|| Objects.equals(actualPaymentPreferenceId, preference.getId());
+				}
+				if (elements.isEmpty()) {
+					break;
+				}
+				int nextOffset = page.getNextOffset();
+				if (nextOffset <= offset || nextOffset >= page.getTotal()) {
+					break;
+				}
+				offset = nextOffset;
+			}
+		}
+		catch (MPApiException | MPException exception) {
+			return PreferenceSearchDiagnostics.unavailable(storedMatchesActual);
+		}
+		return new PreferenceSearchDiagnostics(
+			count, storedFound, actualFound, storedMatchesActual,
+			count > 1, storedFound);
+	}
+
+	@Override
 	public ProviderCheckoutState inspectPreference(
 			PaymentCredential credential, String preferenceId, String externalReference) {
 		try {
@@ -307,6 +355,17 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 				"criteria", "desc"))
 			.build();
 		return payments.search(request, options(credential));
+	}
+
+	private MPElementsResourcesPage<PreferenceSearch> searchPreferences(
+			PaymentCredential credential, String externalReference, int offset)
+			throws MPException, MPApiException {
+		MPSearchRequest request = MPSearchRequest.builder()
+			.limit(50)
+			.offset(offset)
+			.filters(Map.of("external_reference", externalReference))
+			.build();
+		return preferences.search(request, options(credential));
 	}
 
 	private void validateMerchantOrder(
@@ -440,7 +499,9 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 		if (!preferenceId.equals(payment.preferenceId())) {
 			return candidateRejection(
 				"PREFERENCE_VALIDATION", "PREFERENCE_NOT_VERIFIABLE", resultCount,
-				linkDiagnostics);
+				linkDiagnostics)
+				.withPreferenceSearchDiagnostics(diagnosePreferenceHistory(
+					credential, externalReference, preferenceId, payment.preferenceId()));
 		}
 		if (!externalReference.equals(payment.externalReference())) {
 			return candidateRejection(

@@ -103,6 +103,35 @@ class PaymentWebhookOperationsIntegrationTests {
 	}
 
 	@Test
+	void comparesTheStoredWebhookRoutePreferenceWithoutReturningItsValue() {
+		UUID paymentAttemptId = UUID.fromString("018f0000-0000-7000-8000-000000000201");
+		Long tenantId = jdbc.queryForObject(
+			"SELECT id FROM tenants WHERE slug = 'tienda-a'", Long.class);
+		jdbc.update("""
+			INSERT INTO payment_webhook_routes (
+				public_id, route_token_hash, tenant_id, environment,
+				payment_intent_public_id, expected_seller_account_id,
+				provider_preference_id, status, expires_at)
+			VALUES (UUID_TO_BIN(UUID()), UNHEX(SHA2(UUID(), 256)), ?, 'PRODUCTION',
+				UUID_TO_BIN(?), 'seller', 'stored-preference', 'ACTIVE', ?)
+			""", tenantId, paymentAttemptId.toString(),
+			java.sql.Timestamp.from(Instant.now().plusSeconds(3600)));
+
+		assertThat(repository.routePreferenceMatches(
+			tenantId, paymentAttemptId,
+			com.comercioflex.payment.domain.PaymentEnvironment.PRODUCTION,
+			"stored-preference")).contains(true);
+		assertThat(repository.routePreferenceMatches(
+			tenantId, paymentAttemptId,
+			com.comercioflex.payment.domain.PaymentEnvironment.PRODUCTION,
+			"different-preference")).contains(false);
+		assertThat(repository.routePreferenceMatches(
+			tenantId + 1, paymentAttemptId,
+			com.comercioflex.payment.domain.PaymentEnvironment.PRODUCTION,
+			"stored-preference")).isEmpty();
+	}
+
+	@Test
 	void securesIsolatesAndIdempotentlyAuditsManualRecovery() throws Exception {
 		String path = "/api/v1/stores/tienda-a/admin/payment-webhooks";
 		mockMvc.perform(get(path)).andExpect(status().isUnauthorized());

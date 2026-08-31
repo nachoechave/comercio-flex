@@ -47,6 +47,7 @@ class CheckoutProServiceTests {
 	private static final UUID ATTEMPT_ID = UUID.fromString(
 		"11111111-1111-4111-8111-111111111111");
 	private final CheckoutRepository repository = mock(CheckoutRepository.class);
+	private final CheckoutControlRepository controlRepository = mock(CheckoutControlRepository.class);
 	private final PaidOrderConfirmer orderConfirmer = mock(PaidOrderConfirmer.class);
 	private final RejectedPaymentNotifier rejectedPaymentNotifier = mock(RejectedPaymentNotifier.class);
 	private final AdminOrderRepository adminOrders = mock(AdminOrderRepository.class);
@@ -62,7 +63,7 @@ class CheckoutProServiceTests {
 	void setUp() {
 		service = new CheckoutProService(
 			repository,
-			mock(CheckoutControlRepository.class),
+			controlRepository,
 			credentials,
 			gateway,
 			orderConfirmer,
@@ -299,9 +300,14 @@ class CheckoutProServiceTests {
 				false, true, null, false)
 			.withPreferenceLinkDiagnostics(
 				new CheckoutPaymentException.PreferenceLinkDiagnostics(
-					true, true, true, true, false, false, null, 404, "not_found"));
+					true, true, true, true, false, false, null, 404, "not_found"))
+			.withPreferenceSearchDiagnostics(new PreferenceSearchDiagnostics(
+				2, true, true, false, true, true));
 		when(credentials.resolve(1L, "tienda-a")).thenReturn(credential);
 		when(repository.findPendingForReconciliation(20)).thenReturn(List.of(storedAttempt));
+		when(controlRepository.routePreferenceMatches(
+			1L, storedAttempt.id(), storedAttempt.environment(), storedAttempt.preferenceId()))
+			.thenReturn(Optional.of(true));
 		when(gateway.findPaymentForPreference(
 			credential, storedAttempt.preferenceId(), storedAttempt.externalReference(),
 			storedAttempt.amount(), storedAttempt.currencyCode()))
@@ -341,7 +347,16 @@ class CheckoutProServiceTests {
 			.contains("merchantOrderPreferenceMatches=null")
 			.contains("merchantOrderHttpStatus=404")
 			.contains("merchantOrderProviderErrorCode=not_found")
+			.contains("preferenceCreationCount=2")
+			.contains("storedPreferenceFound=true")
+			.contains("actualPaymentPreferenceFound=true")
+			.contains("storedPreferenceMatchesActual=false")
+			.contains("multiplePreferencesFound=true")
+			.contains("storedPreferenceAmongSearchResults=true")
+			.contains("tenantRoutePreferenceMatches=true")
 			.doesNotContain("sensitive-access-token")
+			.doesNotContain(storedAttempt.preferenceId())
+			.doesNotContain(storedAttempt.externalReference())
 			.doesNotContain("No se pudo consultar el proveedor.");
 	}
 

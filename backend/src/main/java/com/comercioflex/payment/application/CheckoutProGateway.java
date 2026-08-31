@@ -20,6 +20,12 @@ public interface CheckoutProGateway {
 		BigDecimal amount,
 		String currencyCode);
 
+	PreferenceSearchDiagnostics diagnosePreferenceHistory(
+		PaymentCredential credential,
+		String externalReference,
+		String storedPreferenceId,
+		String actualPaymentPreferenceId);
+
 	ProviderCheckoutState inspectPreference(
 		PaymentCredential credential,
 		String preferenceId,
