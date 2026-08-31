@@ -32,9 +32,9 @@ export class PaymentApiService {
     storeSlug: string,
     orderId: string,
     lookupToken: string,
-  ): Observable<void> {
+  ): Observable<PaymentReturnStatus | null> {
     const params = new HttpParams().set('token', lookupToken);
-    return this.http.post<void>(
+    return this.http.post<PaymentReturnStatus | null>(
       `${this.ordersUrl(storeSlug)}/${encodeURIComponent(orderId)}/payments/checkout-pro/reconcile`,
       {},
       { params },
@@ -98,13 +98,10 @@ export class PaymentApiService {
   reconcileReturn(
     storeSlug: string,
     returnToken: string,
-    providerPaymentId: string,
   ): Observable<PaymentReturnStatus> {
-    const params = new HttpParams().set('paymentId', providerPaymentId);
     return this.http.post<PaymentReturnStatus>(
       `/api/v1/stores/${encodeURIComponent(storeSlug)}/payment-returns/${encodeURIComponent(returnToken)}/reconcile`,
       {},
-      { params },
     );
   }
 

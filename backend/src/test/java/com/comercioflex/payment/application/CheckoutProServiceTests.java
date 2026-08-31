@@ -3,10 +3,12 @@ package com.comercioflex.payment.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.same;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 import java.math.BigDecimal;
 import java.net.URI;
@@ -14,6 +16,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -25,6 +28,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.comercioflex.order.application.OrderTransitionExecution;
 import com.comercioflex.order.application.PaidOrderConfirmer;
+import com.comercioflex.order.application.AdminOrderRepository;
 import com.comercioflex.payment.domain.PaymentEnvironment;
 import com.comercioflex.payment.domain.PaymentIntentStatus;
 import com.comercioflex.payment.domain.PaymentResultStatus;
@@ -38,6 +42,8 @@ class CheckoutProServiceTests {
 		"11111111-1111-4111-8111-111111111111");
 	private final CheckoutRepository repository = mock(CheckoutRepository.class);
 	private final PaidOrderConfirmer orderConfirmer = mock(PaidOrderConfirmer.class);
+	private final RejectedPaymentNotifier rejectedPaymentNotifier = mock(RejectedPaymentNotifier.class);
+	private final AdminOrderRepository adminOrders = mock(AdminOrderRepository.class);
 	private final PaymentCredentialResolver credentials = mock(PaymentCredentialResolver.class);
 	private final CheckoutProGateway gateway = mock(CheckoutProGateway.class);
 	private final TenantResolver tenantResolver = mock(TenantResolver.class);
@@ -54,6 +60,8 @@ class CheckoutProServiceTests {
 			credentials,
 			gateway,
 			orderConfirmer,
+			rejectedPaymentNotifier,
+			adminOrders,
 			tenantResolver,
 			checkoutProperties,
 			oauthProperties,
@@ -62,7 +70,7 @@ class CheckoutProServiceTests {
 			Clock.fixed(NOW, ZoneOffset.UTC));
 		when(repository.findByPublicId(ATTEMPT_ID, true))
 			.thenReturn(Optional.of(storedAttempt));
-		when(orderConfirmer.confirmWithinCurrentTransaction(any(), any()))
+		when(orderConfirmer.confirmWithinCurrentTransaction(any(), any(), anyString()))
 			.thenReturn(OrderTransitionExecution.completed(null));
 		when(oauthProperties.environment()).thenReturn(PaymentEnvironment.TEST);
 		when(checkoutProperties.enabled()).thenReturn(true);
@@ -139,13 +147,96 @@ class CheckoutProServiceTests {
 
 		verify(gateway).findPayment(credential, "171652320068");
 		verify(orderConfirmer).confirmWithinCurrentTransaction(
-			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey());
+			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey(), "Mercado Pago");
 		verify(repository).applyVerifiedPayment(
 			same(storedAttempt), same(payment),
 			org.mockito.ArgumentMatchers.eq(true),
 			org.mockito.ArgumentMatchers.eq(false),
 			org.mockito.ArgumentMatchers.eq(NOW));
 		assertThat(result.paymentStatus()).isEqualTo("APPROVED");
+	}
+
+	@Test
+	void reconcilesReturnByPreferenceWithoutTrustingBrowserQueryParameters() {
+		String token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+		ResolvedTenant tenant = new ResolvedTenant(1L, "tienda-a", "Tienda A", "tenant_a");
+		PaymentCredential credential = new PaymentCredential(
+			"access-token", "seller-1", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+		VerifiedProviderPayment payment = payment("seller-1", true);
+		when(tenantResolver.resolveActive("tienda-a")).thenReturn(tenant);
+		when(repository.findByReturnTokenHash(any())).thenReturn(Optional.of(storedAttempt));
+		when(credentials.resolve(tenant.id(), tenant.slug())).thenReturn(credential);
+		when(gateway.findPaymentForPreference(
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference()))
+			.thenReturn(Optional.of(payment));
+		when(repository.latestProviderStatus(storedAttempt.internalId())).thenReturn("APPROVED");
+
+		PaymentReturnView result = service.reconcileReturn("tienda-a", token);
+
+		assertThat(result.paymentStatus()).isEqualTo("APPROVED");
+		verify(gateway).findPaymentForPreference(
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference());
+		verify(orderConfirmer).confirmWithinCurrentTransaction(
+			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey(), "Mercado Pago");
+	}
+
+	@Test
+	void verifiedRejectedPaymentBecomesRetryableAndCreatesOneOutboxEvent() {
+		VerifiedProviderPayment rejected = new VerifiedProviderPayment(
+			"payment-6", "seller-1", "pref-6", "external-6",
+			new BigDecimal("16900.75"), "ARS", true,
+			PaymentResultStatus.REJECTED, NOW);
+
+		service.applyVerifiedPayment(ATTEMPT_ID, rejected);
+
+		verify(repository).applyVerifiedPayment(
+			same(storedAttempt), same(rejected),
+			org.mockito.ArgumentMatchers.eq(false),
+			org.mockito.ArgumentMatchers.eq(false),
+			org.mockito.ArgumentMatchers.eq(NOW));
+		verify(rejectedPaymentNotifier).notifyWithinCurrentTransaction(
+			storedAttempt.orderId(), storedAttempt.id(), NOW);
+		verify(orderConfirmer, never()).confirmWithinCurrentTransaction(any(), any(), anyString());
+	}
+
+	@Test
+	void backendReconciliationConfirmsWithoutAFrontendRequest() {
+		PaymentCredential credential = new PaymentCredential(
+			"access-token", "seller-1", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+		VerifiedProviderPayment payment = payment("seller-1", true);
+		when(credentials.resolve(1L, "tienda-a")).thenReturn(credential);
+		when(repository.findPendingForReconciliation(20)).thenReturn(List.of(storedAttempt));
+		when(gateway.findPaymentForPreference(
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference()))
+			.thenReturn(Optional.of(payment));
+
+		int processed = service.reconcilePendingTenant(1L, "tienda-a");
+
+		assertThat(processed).isEqualTo(1);
+		verify(orderConfirmer).confirmWithinCurrentTransaction(
+			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey(), "Mercado Pago");
+	}
+
+	@Test
+	void backendReconciliationExpiresAnUnpaidCheckoutAfterTheGraceWindow() {
+		StoredCheckoutAttempt expired = expiredAttempt();
+		PaymentCredential credential = new PaymentCredential(
+			"access-token", "seller-1", PaymentEnvironment.TEST,
+			PaymentCredential.Source.CENTRAL_TEST);
+		when(credentials.resolve(1L, "tienda-a")).thenReturn(credential);
+		when(repository.findPendingForReconciliation(20)).thenReturn(List.of(expired));
+		when(repository.findByPublicId(expired.id(), true)).thenReturn(Optional.of(expired));
+		when(gateway.findPaymentForPreference(
+			credential, expired.preferenceId(), expired.externalReference()))
+			.thenReturn(Optional.empty());
+
+		int processed = service.reconcilePendingTenant(1L, "tienda-a");
+
+		assertThat(processed).isEqualTo(1);
+		verify(repository).markExpired(expired, NOW);
+		verify(adminOrders).expireOrder(expired.orderInternalId());
 	}
 
 	@Test
@@ -198,7 +289,7 @@ class CheckoutProServiceTests {
 		verify(gateway).findPaymentForPreference(
 			credential, storedAttempt.preferenceId(), storedAttempt.externalReference());
 		verify(orderConfirmer).confirmWithinCurrentTransaction(
-			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey());
+			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey(), "Mercado Pago");
 	}
 
 	@Test
@@ -246,6 +337,18 @@ class CheckoutProServiceTests {
 			"payment-6", sellerAccountId, "pref-6", "external-6",
 			new BigDecimal("16900.75"), "ARS", liveMode,
 			PaymentResultStatus.APPROVED, NOW);
+	}
+
+	private StoredCheckoutAttempt expiredAttempt() {
+		StoredCheckoutAttempt current = attempt();
+		return new StoredCheckoutAttempt(
+			current.internalId(), current.id(), current.orderInternalId(), current.orderId(),
+			current.orderNumber(), current.orderStatus(), NOW.minusSeconds(600),
+			current.idempotencyKey(), current.requestFingerprint(),
+			current.transitionIdempotencyKey(), current.status(), current.amount(),
+			current.currencyCode(), current.externalReference(), current.returnTokenExpiresAt(),
+			current.preferenceId(), current.checkoutUri(), NOW.minusSeconds(301),
+			current.sellerAccountId(), current.environment(), current.updatedAt(), current.version());
 	}
 
 	private TransactionTemplate immediateTransactions() {

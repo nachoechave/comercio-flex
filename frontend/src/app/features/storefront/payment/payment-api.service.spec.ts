@@ -107,12 +107,12 @@ describe('PaymentApiService', () => {
   });
 
   it('asks the backend to reconcile a provider payment securely', () => {
-    api.reconcileReturn('tienda a', 'return/token', '171652320068').subscribe();
+    api.reconcileReturn('tienda a', 'return/token').subscribe();
 
     const request = http.expectOne(
       (candidate) =>
         candidate.url === '/api/v1/stores/tienda%20a/payment-returns/return%2Ftoken/reconcile' &&
-        candidate.params.get('paymentId') === '171652320068',
+        candidate.params.keys().length === 0,
     );
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({});

@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -103,6 +104,29 @@ public class JdbcCheckoutRepository implements CheckoutRepository {
 	}
 
 	@Override
+	public Optional<StoredCheckoutAttempt> findLatestByOrder(
+			UUID orderId, byte[] lookupTokenHash) {
+		return queryAttempt(ATTEMPT_SELECT + """
+			 WHERE order_record.public_id = UUID_TO_BIN(?)
+				AND order_record.lookup_token_hash = ?
+				AND intent.provider = 'MERCADO_PAGO'
+			 ORDER BY intent.attempt_number DESC
+			 LIMIT 1
+			""", orderId.toString(), lookupTokenHash);
+	}
+
+	@Override
+	public List<StoredCheckoutAttempt> findPendingForReconciliation(int limit) {
+		return jdbcTemplate.query(ATTEMPT_SELECT + """
+			 WHERE intent.provider = 'MERCADO_PAGO'
+				AND intent.status = 'PENDING'
+				AND intent.provider_preference_id IS NOT NULL
+			 ORDER BY intent.updated_at, intent.id
+			 LIMIT ?
+			""", this::mapAttempt, limit);
+	}
+
+	@Override
 	public boolean hasBlockingIntent(long orderInternalId) {
 		Integer count = jdbcTemplate.queryForObject("""
 			SELECT (
@@ -172,6 +196,16 @@ public class JdbcCheckoutRepository implements CheckoutRepository {
 			UPDATE payment_intents SET status = 'REQUIRES_REVIEW', version = version + 1
 			WHERE id = ? AND version = ? AND status = 'CREATED'
 			""", attempt.internalId(), attempt.version());
+		requireChanged(changed);
+	}
+
+	@Override
+	public void markExpired(StoredCheckoutAttempt attempt, Instant now) {
+		int changed = jdbcTemplate.update("""
+			UPDATE payment_intents
+			SET status = 'EXPIRED', updated_at = ?, version = version + 1
+			WHERE id = ? AND version = ? AND status = 'PENDING'
+			""", Timestamp.from(now), attempt.internalId(), attempt.version());
 		requireChanged(changed);
 	}
 
@@ -258,8 +292,11 @@ public class JdbcCheckoutRepository implements CheckoutRepository {
 			}
 		}
 
-		if (effectiveApplied || effectiveReview) {
-			String target = effectiveApplied ? "APPROVED" : "REQUIRES_REVIEW";
+		boolean rejected = payment.status()
+			== com.comercioflex.payment.domain.PaymentResultStatus.REJECTED;
+		if (effectiveApplied || effectiveReview || rejected) {
+			String target = effectiveApplied ? "APPROVED"
+				: effectiveReview ? "REQUIRES_REVIEW" : "REJECTED";
 			int changed = jdbcTemplate.update("""
 				UPDATE payment_intents SET status = ?, version = version + 1
 				WHERE id = ? AND version = ? AND status = 'PENDING'

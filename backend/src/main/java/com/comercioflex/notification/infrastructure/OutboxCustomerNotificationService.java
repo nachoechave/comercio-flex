@@ -1,6 +1,7 @@
 package com.comercioflex.notification.infrastructure;
 
 import java.time.Instant;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
@@ -32,13 +33,31 @@ class OutboxCustomerNotificationService implements CustomerNotificationPublisher
 	}
 
 	@Override
-	public void orderConfirmed(AdminOrderDetail order, Instant confirmedAt) {
+	public void orderConfirmed(
+			AdminOrderDetail order, Instant confirmedAt, String paymentMethod) {
 		if (!hasRecipient(order)) return;
 		var store = stores.findCurrent().orElseThrow();
 		RenderedEmail rendered = templates.orderConfirmed(
-			order, store, branding.resolve(store), confirmedAt);
+			order, store, branding.resolve(store), confirmedAt, paymentMethod);
 		String eventKey = "ORDER_CONFIRMED:" + order.id();
 		outbox.enqueue(eventKey, "ORDER_CONFIRMED", order.id(), null,
+			new TransactionalEmail(order.customerEmail(), rendered.subject(),
+				rendered.html(), rendered.text()));
+	}
+
+	public void orderConfirmed(AdminOrderDetail order, Instant confirmedAt) {
+		orderConfirmed(order, confirmedAt, "Pago registrado");
+	}
+
+	@Override
+	public void mercadoPagoPaymentRejected(
+			AdminOrderDetail order, UUID paymentIntentId, Instant rejectedAt) {
+		if (!hasRecipient(order)) return;
+		var store = stores.findCurrent().orElseThrow();
+		RenderedEmail rendered = templates.mercadoPagoPaymentRejected(
+			order, store, branding.resolve(store), rejectedAt);
+		String eventKey = "MERCADO_PAGO_PAYMENT_REJECTED:" + paymentIntentId;
+		outbox.enqueue(eventKey, "MERCADO_PAGO_PAYMENT_REJECTED", order.id(), null,
 			new TransactionalEmail(order.customerEmail(), rendered.subject(),
 				rendered.html(), rendered.text()));
 	}

@@ -57,8 +57,8 @@ class OutboxCustomerNotificationServiceTests {
 		when(outbox.enqueue(any(), any(), any(), any(), any()))
 			.thenReturn(true).thenReturn(false);
 
-		service.orderConfirmed(order(), NOW);
-		service.orderConfirmed(order(), NOW);
+		service.orderConfirmed(order(), NOW, "Mercado Pago");
+		service.orderConfirmed(order(), NOW, "Mercado Pago");
 
 		ArgumentCaptor<TransactionalEmail> email = ArgumentCaptor.forClass(TransactionalEmail.class);
 		verify(outbox, org.mockito.Mockito.times(2)).enqueue(
@@ -66,8 +66,33 @@ class OutboxCustomerNotificationServiceTests {
 			eq(null), email.capture());
 		assertThat(email.getValue().subject()).isEqualTo("Tu pedido ORD-000011 fue confirmado");
 		assertThat(email.getValue().htmlBody())
-			.contains("Tienda A", "Ana Pérez", "Remera", "25/08/2026, 12:05")
+			.contains("Tienda A", "Ana Pérez", "Remera", "25/08/2026, 12:05",
+				"Pago aprobado", "Mercado Pago")
 			.doesNotContain("lookup", "token", ORDER_ID.toString());
+	}
+
+	@Test
+	void rejectedMercadoPagoAttemptCreatesOneSafeIdempotentEvent() {
+		when(outbox.enqueue(any(), any(), any(), any(), any()))
+			.thenReturn(true).thenReturn(false);
+
+		service.mercadoPagoPaymentRejected(order(), PAYMENT_ID, NOW);
+		service.mercadoPagoPaymentRejected(order(), PAYMENT_ID, NOW);
+
+		ArgumentCaptor<TransactionalEmail> email = ArgumentCaptor.forClass(TransactionalEmail.class);
+		verify(outbox, org.mockito.Mockito.times(2)).enqueue(
+			eq("MERCADO_PAGO_PAYMENT_REJECTED:" + PAYMENT_ID),
+			eq("MERCADO_PAGO_PAYMENT_REJECTED"), eq(ORDER_ID), eq(null), email.capture());
+		assertThat(email.getValue().htmlBody())
+			.contains("Tienda A", "ORD-000011", "Mercado Pago", "$&nbsp;19.999,00",
+				"El pago no pudo completarse")
+			.doesNotContain("lookup", "access token", "refresh token", "tarjeta",
+				PAYMENT_ID.toString(), ORDER_ID.toString());
+		assertThat(email.getValue().textBody())
+			.contains("Tienda A", "ORD-000011", "Mercado Pago", "$ 19.999,00",
+				"EL PAGO NO PUDO COMPLETARSE")
+			.doesNotContain("lookup", "access token", "refresh token", "tarjeta",
+				PAYMENT_ID.toString(), ORDER_ID.toString());
 	}
 
 	@Test

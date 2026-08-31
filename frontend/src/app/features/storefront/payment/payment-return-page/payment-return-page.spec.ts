@@ -105,8 +105,7 @@ describe('PaymentReturnPage', () => {
     ).refresh();
     const reconciliation = http.expectOne(
       (request) =>
-        request.url === `${statusUrl}/reconcile` &&
-        request.params.get('paymentId') === '171652320068',
+        request.url === `${statusUrl}/reconcile` && request.params.keys().length === 0,
     );
     expect(reconciliation.request.method).toBe('POST');
     reconciliation.flush(approved);
@@ -134,7 +133,10 @@ describe('PaymentReturnPage', () => {
         request.url.endsWith('/orders/order-1/payments/checkout-pro') &&
         request.params.get('token') === 'private-token',
     );
-    expect(payment.request.headers.get('Idempotency-Key')).toBe('idem-1');
+    expect(payment.request.headers.get('Idempotency-Key')).not.toBe('idem-1');
+    expect(payment.request.headers.get('Idempotency-Key')).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
     payment.flush({
       checkoutUrl: 'https://www.mercadopago.com.ar/checkout',
       paymentAttemptId: 'attempt-1',
@@ -174,8 +176,7 @@ describe('PaymentReturnPage', () => {
     http.expectOne('/api/v1/auth/csrf').flush({});
     const request = http.expectOne(
       (candidate) =>
-        candidate.url === `${statusUrl}/reconcile` &&
-        candidate.params.get('paymentId') === '171652320068',
+        candidate.url === `${statusUrl}/reconcile` && candidate.params.keys().length === 0,
     );
     expect(request.request.method).toBe('POST');
     return request;

@@ -191,7 +191,8 @@ public class BankTransferPaymentService {
 					"El comprobante no está pendiente de revisión.");
 			}
 			OrderTransitionExecution confirmation = orderConfirmer
-				.confirmWithinCurrentTransaction(payment.orderId(), approvalKey(payment.id()));
+				.confirmWithinCurrentTransaction(
+					payment.orderId(), approvalKey(payment.id()), "Transferencia bancaria");
 			if (confirmation.expired()) {
 				return new ApprovalResult(payment, true);
 			}

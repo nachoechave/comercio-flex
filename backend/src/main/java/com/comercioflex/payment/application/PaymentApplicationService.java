@@ -221,7 +221,9 @@ public class PaymentApplicationService {
 			OrderTransitionExecution confirmation =
 				orderConfirmer.confirmWithinCurrentTransaction(
 					intent.orderId(),
-					intent.transitionIdempotencyKey());
+					intent.transitionIdempotencyKey(),
+					intent.provider() == com.comercioflex.payment.domain.PaymentProvider.MERCADO_PAGO
+						? "Mercado Pago" : "Pago en línea");
 			if (confirmation.expired()) {
 				repository.updateIntentStatus(
 					intent.internalId(), intent.version(), intent.status(),

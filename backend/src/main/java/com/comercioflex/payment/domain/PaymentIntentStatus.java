@@ -5,5 +5,6 @@ public enum PaymentIntentStatus {
 	PENDING,
 	APPROVED,
 	REJECTED,
+	EXPIRED,
 	REQUIRES_REVIEW
 }

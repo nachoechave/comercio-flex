@@ -34,13 +34,29 @@ class EmailTemplateRenderer {
 
 	RenderedEmail orderConfirmed(AdminOrderDetail order, StoreSettings store,
 			EmailBranding branding, Instant confirmedAt) {
+		return orderConfirmed(order, store, branding, confirmedAt, "Pago registrado");
+	}
+
+	RenderedEmail orderConfirmed(AdminOrderDetail order, StoreSettings store,
+			EmailBranding branding, Instant confirmedAt, String paymentMethod) {
 		String number = orderNumber(order.number());
 		Map<String, String> values = common(order, branding);
 		values.put("itemsHtml", itemsHtml(order, store.currencyCode()));
 		values.put("itemsText", itemsText(order, store.currencyCode()));
 		values.put("fulfillment", pickup(store));
 		values.put("eventDate", date(confirmedAt, store.timezone()));
+		values.put("paymentMethod", paymentMethod);
 		return render("order-confirmed", "Tu pedido %s fue confirmado".formatted(number), values);
+	}
+
+	RenderedEmail mercadoPagoPaymentRejected(AdminOrderDetail order, StoreSettings store,
+			EmailBranding branding, Instant rejectedAt) {
+		String number = orderNumber(order.number());
+		Map<String, String> values = common(order, branding);
+		values.put("eventDate", date(rejectedAt, store.timezone()));
+		values.put("reservationExpiresAt", date(order.reservationExpiresAt(), store.timezone()));
+		return render("mercado-pago-payment-rejected",
+			"El pago de tu pedido %s no pudo completarse".formatted(number), values);
 	}
 
 	RenderedEmail receiptRejected(AdminOrderDetail order, BankTransferPayment payment,

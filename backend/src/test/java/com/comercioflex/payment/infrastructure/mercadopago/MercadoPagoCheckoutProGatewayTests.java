@@ -106,6 +106,15 @@ class MercadoPagoCheckoutProGatewayTests {
 			.extracting(type -> type.getId()).containsExactly("ticket");
 		assertThat(request.getValue().getExternalReference())
 			.isEqualTo("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+		assertThat(request.getValue().getBackUrls().getSuccess())
+			.isEqualTo("https://shop.example.test/return/token");
+		assertThat(request.getValue().getBackUrls().getFailure())
+			.isEqualTo("https://shop.example.test/return/token");
+		assertThat(request.getValue().getBackUrls().getPending())
+			.isEqualTo("https://shop.example.test/return/token");
+		assertThat(request.getValue().getAutoReturn()).isEqualTo("approved");
+		assertThat(request.getValue().getNotificationUrl())
+			.isEqualTo("https://api.example.test/webhooks?route=token");
 	}
 
 	@Test
