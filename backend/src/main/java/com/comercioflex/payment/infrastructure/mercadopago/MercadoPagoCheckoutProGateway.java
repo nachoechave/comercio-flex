@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.mercadopago.client.merchantorder.MerchantOrderClient;
 import com.mercadopago.client.payment.PaymentClient;
@@ -37,6 +39,8 @@ import com.comercioflex.payment.application.VerifiedProviderPayment;
 import com.comercioflex.payment.domain.PaymentResultStatus;
 
 public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
+	private static final Pattern PROVIDER_ERROR_CODE = Pattern.compile(
+		"\\\"error\\\"\\s*:\\s*\\\"([A-Za-z0-9_.-]{1,64})\\\"");
 
 	private final PreferenceClient preferences;
 	private final PaymentClient payments;
@@ -144,24 +148,35 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 	public Optional<VerifiedProviderPayment> findPaymentForPreference(
 			PaymentCredential credential, String preferenceId,
 			String externalReference) {
+		Integer resultCount = null;
 		try {
 			MPElementsResourcesPage<MerchantOrder> page = searchMerchantOrders(
 				credential, preferenceId);
 			if (page == null || page.getElements() == null) {
-				throw invalidProviderResponse();
+				throw diagnosticFailure(
+					invalidProviderResponse(), "PROVIDER_SEARCH",
+					"INVALID_PROVIDER_RESPONSE", null, null);
 			}
+			resultCount = page.getElements().size();
 			VerifiedProviderPayment candidate = null;
 			for (MerchantOrder order : page.getElements()) {
 				if (order == null || !preferenceId.equals(order.getPreferenceId())) {
 					continue;
 				}
-				validateMerchantOrder(order, credential, externalReference);
+				validateMerchantOrder(order, credential, externalReference, resultCount);
 				for (MerchantOrderPayment summary : order.getPayments()) {
 					if (summary == null || summary.getId() == null) {
-						throw invalidProviderResponse();
+						throw diagnosticFailure(
+							invalidProviderResponse(), "PAYMENT_SELECTION",
+							"INVALID_PROVIDER_RESPONSE", null, resultCount);
 					}
-					VerifiedProviderPayment payment = findPayment(
-						credential, summary.getId().toString());
+					VerifiedProviderPayment payment;
+					try {
+						payment = findPayment(credential, summary.getId().toString());
+					}
+					catch (CheckoutPaymentException exception) {
+						throw enrichSelectionFailure(exception, resultCount);
+					}
 					if (payment.status() == PaymentResultStatus.APPROVED) {
 						return Optional.of(payment);
 					}
@@ -173,7 +188,10 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 			return Optional.ofNullable(candidate);
 		}
 		catch (MPApiException | MPException exception) {
-			throw gatewayFailure("PREFERENCE_LOOKUP_FAILED", exception);
+			throw diagnosticFailure(
+				gatewayFailure("PREFERENCE_LOOKUP_FAILED", exception),
+				"PROVIDER_SEARCH", "PREFERENCE_LOOKUP_FAILED",
+				providerHttpStatus(exception), resultCount);
 		}
 	}
 
@@ -192,7 +210,8 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 					continue;
 				}
 				matched = true;
-				validateMerchantOrder(order, credential, externalReference);
+				validateMerchantOrder(
+					order, credential, externalReference, page.getElements().size());
 				if (!order.getPayments().isEmpty()) {
 					return ProviderCheckoutState.PAYMENT_RECORDED;
 				}
@@ -219,12 +238,26 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 
 	private void validateMerchantOrder(
 			MerchantOrder order, PaymentCredential credential,
-			String externalReference) {
-		if (!externalReference.equals(order.getExternalReference())
-				|| order.getCollector() == null || order.getCollector().getId() == null
-				|| !credential.sellerAccountId().equals(order.getCollector().getId().toString())
-				|| order.getPayments() == null) {
-			throw invalidProviderResponse();
+			String externalReference, int resultCount) {
+		if (!externalReference.equals(order.getExternalReference())) {
+			throw diagnosticFailure(
+				invalidProviderResponse(), "REFERENCE_VALIDATION",
+				"REFERENCE_MISMATCH", null, resultCount);
+		}
+		if (order.getCollector() == null || order.getCollector().getId() == null) {
+			throw diagnosticFailure(
+				invalidProviderResponse(), "SELLER_VALIDATION",
+				"INVALID_PROVIDER_RESPONSE", null, resultCount);
+		}
+		if (!credential.sellerAccountId().equals(order.getCollector().getId().toString())) {
+			throw diagnosticFailure(
+				invalidProviderResponse(), "SELLER_VALIDATION",
+				"SELLER_MISMATCH", null, resultCount);
+		}
+		if (order.getPayments() == null) {
+			throw diagnosticFailure(
+				invalidProviderResponse(), "PAYMENT_SELECTION",
+				"INVALID_PROVIDER_RESPONSE", null, resultCount);
 		}
 	}
 
@@ -265,6 +298,54 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 	private CheckoutPaymentException gatewayFailure(String code, Exception cause) {
 		return new CheckoutPaymentException(
 			code, "No se pudo completar la operación con Mercado Pago.", cause);
+	}
+
+	private CheckoutPaymentException enrichSelectionFailure(
+			CheckoutPaymentException exception, int resultCount) {
+		CheckoutPaymentException.ReconciliationDiagnostics diagnostics =
+			exception.reconciliationDiagnostics();
+		if (diagnostics != null) {
+			return exception.withReconciliationDiagnostics(
+				diagnostics.stage(), diagnostics.reason(), diagnostics.providerHttpStatus(),
+				diagnostics.providerErrorCode(), resultCount);
+		}
+		String stage = exception.code().equals("UNSUPPORTED_PAYMENT_STATUS")
+			? "STATUS_VALIDATION" : "PAYMENT_SELECTION";
+		return diagnosticFailure(
+			exception, stage, exception.code(), providerHttpStatus(exception), resultCount);
+	}
+
+	private CheckoutPaymentException diagnosticFailure(
+			CheckoutPaymentException exception, String stage, String reason,
+			Integer providerHttpStatus, Integer resultCount) {
+		return exception.withReconciliationDiagnostics(
+			stage, reason, providerHttpStatus, providerErrorCode(exception), resultCount);
+	}
+
+	private Integer providerHttpStatus(Exception exception) {
+		Throwable current = exception;
+		while (current != null) {
+			if (current instanceof MPApiException apiException) {
+				return apiException.getStatusCode();
+			}
+			current = current.getCause();
+		}
+		return null;
+	}
+
+	private String providerErrorCode(Exception exception) {
+		Throwable current = exception;
+		while (current != null) {
+			if (current instanceof MPApiException apiException
+					&& apiException.getApiResponse() != null
+					&& apiException.getApiResponse().getContent() != null) {
+				Matcher matcher = PROVIDER_ERROR_CODE.matcher(
+					apiException.getApiResponse().getContent());
+				return matcher.find() ? matcher.group(1) : null;
+			}
+			current = current.getCause();
+		}
+		return null;
 	}
 
 	private boolean blank(String value) {
