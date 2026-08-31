@@ -1,5 +1,6 @@
 package com.comercioflex.payment.application;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public interface CheckoutProGateway {
@@ -15,7 +16,9 @@ public interface CheckoutProGateway {
 	Optional<VerifiedProviderPayment> findPaymentForPreference(
 		PaymentCredential credential,
 		String preferenceId,
-		String externalReference);
+		String externalReference,
+		BigDecimal amount,
+		String currencyCode);
 
 	ProviderCheckoutState inspectPreference(
 		PaymentCredential credential,

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.same;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
@@ -215,7 +216,8 @@ class CheckoutProServiceTests {
 		when(repository.findByReturnTokenHash(any())).thenReturn(Optional.of(storedAttempt));
 		when(credentials.resolve(tenant.id(), tenant.slug())).thenReturn(credential);
 		when(gateway.findPaymentForPreference(
-			credential, storedAttempt.preferenceId(), storedAttempt.externalReference()))
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference(),
+			storedAttempt.amount(), storedAttempt.currencyCode()))
 			.thenReturn(Optional.of(payment));
 		when(repository.latestProviderStatus(storedAttempt.internalId())).thenReturn("APPROVED");
 
@@ -223,7 +225,8 @@ class CheckoutProServiceTests {
 
 		assertThat(result.paymentStatus()).isEqualTo("APPROVED");
 		verify(gateway).findPaymentForPreference(
-			credential, storedAttempt.preferenceId(), storedAttempt.externalReference());
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference(),
+			storedAttempt.amount(), storedAttempt.currencyCode());
 		verify(orderConfirmer).confirmWithinCurrentTransaction(
 			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey(), "Mercado Pago");
 	}
@@ -248,6 +251,23 @@ class CheckoutProServiceTests {
 	}
 
 	@Test
+	void webhookAndFallbackApplicationsConfirmTheOrderOnlyOnce() {
+		VerifiedProviderPayment approved = payment("seller-1", true);
+		StoredCheckoutAttempt alreadyApproved = attemptWithStatus(PaymentIntentStatus.APPROVED);
+		when(repository.findByPublicId(ATTEMPT_ID, true))
+			.thenReturn(Optional.of(storedAttempt), Optional.of(alreadyApproved));
+
+		service.applyVerifiedPayment(ATTEMPT_ID, approved);
+		service.applyVerifiedPayment(ATTEMPT_ID, approved);
+
+		verify(orderConfirmer, times(1)).confirmWithinCurrentTransaction(
+			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey(), "Mercado Pago");
+		verify(repository, times(2)).applyVerifiedPayment(
+			any(), same(approved), org.mockito.ArgumentMatchers.eq(true),
+			org.mockito.ArgumentMatchers.eq(false), org.mockito.ArgumentMatchers.eq(NOW));
+	}
+
+	@Test
 	void backendReconciliationConfirmsWithoutAFrontendRequest() {
 		PaymentCredential credential = new PaymentCredential(
 			"access-token", "seller-1", PaymentEnvironment.TEST,
@@ -256,7 +276,8 @@ class CheckoutProServiceTests {
 		when(credentials.resolve(1L, "tienda-a")).thenReturn(credential);
 		when(repository.findPendingForReconciliation(20)).thenReturn(List.of(storedAttempt));
 		when(gateway.findPaymentForPreference(
-			credential, storedAttempt.preferenceId(), storedAttempt.externalReference()))
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference(),
+			storedAttempt.amount(), storedAttempt.currencyCode()))
 			.thenReturn(Optional.of(payment));
 
 		int processed = service.reconcilePendingTenant(1L, "tienda-a");
@@ -274,11 +295,13 @@ class CheckoutProServiceTests {
 		CheckoutPaymentException providerFailure = new CheckoutPaymentException(
 			"PREFERENCE_LOOKUP_FAILED", "No se pudo consultar el proveedor.")
 			.withReconciliationDiagnostics(
-				"PROVIDER_SEARCH", "PREFERENCE_LOOKUP_FAILED", 503, "bad_request", 0);
+				"PROVIDER_SEARCH", "PREFERENCE_LOOKUP_FAILED", 503, "bad_request", 0,
+				false, true, null, false);
 		when(credentials.resolve(1L, "tienda-a")).thenReturn(credential);
 		when(repository.findPendingForReconciliation(20)).thenReturn(List.of(storedAttempt));
 		when(gateway.findPaymentForPreference(
-			credential, storedAttempt.preferenceId(), storedAttempt.externalReference()))
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference(),
+			storedAttempt.amount(), storedAttempt.currencyCode()))
 			.thenThrow(providerFailure);
 		Logger logger = (Logger) LoggerFactory.getLogger(CheckoutProService.class);
 		ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -302,6 +325,10 @@ class CheckoutProServiceTests {
 			.contains("providerHttpStatus=503")
 			.contains("providerErrorCode=bad_request")
 			.contains("resultCount=0")
+			.contains("providerResponseNull=false")
+			.contains("merchantOrdersCollectionNull=true")
+			.contains("merchantOrdersCount=null")
+			.contains("pagingPresent=false")
 			.doesNotContain("sensitive-access-token")
 			.doesNotContain("No se pudo consultar el proveedor.");
 	}
@@ -316,7 +343,8 @@ class CheckoutProServiceTests {
 		when(repository.findPendingForReconciliation(20)).thenReturn(List.of(expired));
 		when(repository.findByPublicId(expired.id(), true)).thenReturn(Optional.of(expired));
 		when(gateway.findPaymentForPreference(
-			credential, expired.preferenceId(), expired.externalReference()))
+			credential, expired.preferenceId(), expired.externalReference(),
+			expired.amount(), expired.currencyCode()))
 			.thenReturn(Optional.empty());
 
 		int processed = service.reconcilePendingTenant(1L, "tienda-a");
@@ -366,7 +394,8 @@ class CheckoutProServiceTests {
 			.thenReturn(Optional.of(storedAttempt));
 		when(credentials.resolve(tenant.id(), tenant.slug())).thenReturn(credential);
 		when(gateway.findPaymentForPreference(
-			credential, storedAttempt.preferenceId(), storedAttempt.externalReference()))
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference(),
+			storedAttempt.amount(), storedAttempt.currencyCode()))
 			.thenReturn(Optional.of(payment));
 
 		boolean reconciled = service.reconcilePendingOrder(
@@ -374,7 +403,8 @@ class CheckoutProServiceTests {
 
 		assertThat(reconciled).isTrue();
 		verify(gateway).findPaymentForPreference(
-			credential, storedAttempt.preferenceId(), storedAttempt.externalReference());
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference(),
+			storedAttempt.amount(), storedAttempt.currencyCode());
 		verify(orderConfirmer).confirmWithinCurrentTransaction(
 			storedAttempt.orderId(), storedAttempt.transitionIdempotencyKey(), "Mercado Pago");
 	}
@@ -392,7 +422,8 @@ class CheckoutProServiceTests {
 			.thenReturn(Optional.of(storedAttempt));
 		when(credentials.resolve(tenant.id(), tenant.slug())).thenReturn(credential);
 		when(gateway.findPaymentForPreference(
-			credential, storedAttempt.preferenceId(), storedAttempt.externalReference()))
+			credential, storedAttempt.preferenceId(), storedAttempt.externalReference(),
+			storedAttempt.amount(), storedAttempt.currencyCode()))
 			.thenReturn(Optional.empty());
 
 		boolean reconciled = service.reconcilePendingOrder(
@@ -436,6 +467,20 @@ class CheckoutProServiceTests {
 			current.currencyCode(), current.externalReference(), current.returnTokenExpiresAt(),
 			current.preferenceId(), current.checkoutUri(), NOW.minusSeconds(301),
 			current.sellerAccountId(), current.environment(), current.updatedAt(), current.version());
+	}
+
+	private StoredCheckoutAttempt attemptWithStatus(PaymentIntentStatus status) {
+		StoredCheckoutAttempt current = attempt();
+		return new StoredCheckoutAttempt(
+			current.internalId(), current.id(), current.orderInternalId(), current.orderId(),
+			current.orderNumber(), status == PaymentIntentStatus.APPROVED
+				? "CONFIRMED" : current.orderStatus(),
+			current.reservationExpiresAt(), current.idempotencyKey(),
+			current.requestFingerprint(), current.transitionIdempotencyKey(), status,
+			current.amount(), current.currencyCode(), current.externalReference(),
+			current.returnTokenExpiresAt(), current.preferenceId(), current.checkoutUri(),
+			current.checkoutExpiresAt(), current.sellerAccountId(), current.environment(),
+			current.updatedAt(), current.version() + 1);
 	}
 
 	private TransactionTemplate immediateTransactions() {

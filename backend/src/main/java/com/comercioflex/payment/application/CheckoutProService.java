@@ -255,7 +255,8 @@ public class CheckoutProService {
 		PaymentCredential credential = credentials.resolve(tenant.id(), tenant.slug());
 		validateCredential(attempt, credential);
 		var payment = gateway.findPaymentForPreference(
-			credential, attempt.preferenceId(), attempt.externalReference());
+			credential, attempt.preferenceId(), attempt.externalReference(),
+			attempt.amount(), attempt.currencyCode());
 		if (payment.isPresent()) {
 			applyVerifiedPayment(attempt.id(), payment.get());
 			return findReturn(returnToken);
@@ -282,7 +283,8 @@ public class CheckoutProService {
 		PaymentCredential credential = credentials.resolve(tenant.id(), tenant.slug());
 		validateCredential(attempt, credential);
 		var payment = gateway.findPaymentForPreference(
-			credential, attempt.preferenceId(), attempt.externalReference());
+			credential, attempt.preferenceId(), attempt.externalReference(),
+			attempt.amount(), attempt.currencyCode());
 		if (payment.isEmpty()) return false;
 		applyVerifiedPayment(attempt.id(), payment.get());
 		return true;
@@ -303,7 +305,8 @@ public class CheckoutProService {
 			PaymentCredential credential = credentials.resolve(tenant.id(), tenant.slug());
 			validateCredential(attempt, credential);
 			gateway.findPaymentForPreference(
-				credential, attempt.preferenceId(), attempt.externalReference())
+				credential, attempt.preferenceId(), attempt.externalReference(),
+				attempt.amount(), attempt.currencyCode())
 				.ifPresent(payment -> applyVerifiedPayment(attempt.id(), payment));
 		}
 		StoredCheckoutAttempt current = Objects.requireNonNull(tenantTransactions.execute(status ->
@@ -323,7 +326,8 @@ public class CheckoutProService {
 				validateCredential(attempt, credential);
 				stage = "PROVIDER_SEARCH";
 				var payment = gateway.findPaymentForPreference(
-					credential, attempt.preferenceId(), attempt.externalReference());
+					credential, attempt.preferenceId(), attempt.externalReference(),
+					attempt.amount(), attempt.currencyCode());
 				if (payment.isPresent()) {
 					stage = "PAYMENT_APPLICATION";
 					applyVerifiedPayment(attempt.id(), payment.get());
@@ -622,11 +626,21 @@ public class CheckoutProService {
 		String providerErrorCode = diagnostics == null
 			? null : diagnostics.providerErrorCode();
 		Integer resultCount = diagnostics == null ? null : diagnostics.resultCount();
+		Boolean providerResponseNull = diagnostics == null
+			? null : diagnostics.providerResponseNull();
+		Boolean merchantOrdersCollectionNull = diagnostics == null
+			? null : diagnostics.merchantOrdersCollectionNull();
+		Integer merchantOrdersCount = diagnostics == null
+			? null : diagnostics.merchantOrdersCount();
+		Boolean pagingPresent = diagnostics == null ? null : diagnostics.pagingPresent();
 		LOGGER.warn(
 			"event=payment_reconciliation_failed tenant={} attempt={} stage={} reason={} "
-				+ "providerHttpStatus={} providerErrorCode={} resultCount={}",
+				+ "providerHttpStatus={} providerErrorCode={} resultCount={} "
+				+ "providerResponseNull={} merchantOrdersCollectionNull={} "
+				+ "merchantOrdersCount={} pagingPresent={}",
 			tenantSlug, attemptId, stage, reason, providerHttpStatus,
-			providerErrorCode, resultCount);
+			providerErrorCode, resultCount, providerResponseNull,
+			merchantOrdersCollectionNull, merchantOrdersCount, pagingPresent);
 	}
 
 	private StoredCheckoutAttempt requireReturnAttempt(String returnToken) {

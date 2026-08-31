@@ -1,5 +1,6 @@
 package com.comercioflex.payment.infrastructure.mercadopago;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -26,6 +27,7 @@ import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import com.mercadopago.net.MPElementsResourcesPage;
+import com.mercadopago.net.MPResultsResourcesPage;
 import com.mercadopago.net.MPSearchRequest;
 
 import com.comercioflex.payment.application.CheckoutPaymentException;
@@ -36,6 +38,7 @@ import com.comercioflex.payment.application.CreatedCheckoutPreference;
 import com.comercioflex.payment.application.PaymentCredential;
 import com.comercioflex.payment.application.ProviderCheckoutState;
 import com.comercioflex.payment.application.VerifiedProviderPayment;
+import com.comercioflex.payment.domain.PaymentEnvironment;
 import com.comercioflex.payment.domain.PaymentResultStatus;
 
 public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
@@ -147,19 +150,23 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 	@Override
 	public Optional<VerifiedProviderPayment> findPaymentForPreference(
 			PaymentCredential credential, String preferenceId,
-			String externalReference) {
+			String externalReference, BigDecimal amount,
+			String currencyCode) {
 		Integer resultCount = null;
 		try {
 			MPElementsResourcesPage<MerchantOrder> page = searchMerchantOrders(
 				credential, preferenceId);
-			if (page == null || page.getElements() == null) {
-				throw diagnosticFailure(
-					invalidProviderResponse(), "PROVIDER_SEARCH",
-					"INVALID_PROVIDER_RESPONSE", null, null);
+			if (page == null) {
+				throw invalidProviderSearchShape(true, null);
 			}
-			resultCount = page.getElements().size();
+			List<MerchantOrder> merchantOrderElements = page.getElements();
+			if (merchantOrderElements == null || merchantOrderElements.isEmpty()) {
+				return findPaymentByExternalReference(
+					credential, preferenceId, externalReference, amount, currencyCode);
+			}
+			resultCount = merchantOrderElements.size();
 			VerifiedProviderPayment candidate = null;
-			for (MerchantOrder order : page.getElements()) {
+			for (MerchantOrder order : merchantOrderElements) {
 				if (order == null || !preferenceId.equals(order.getPreferenceId())) {
 					continue;
 				}
@@ -236,6 +243,20 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 		return merchantOrders.search(request, options(credential));
 	}
 
+	private MPResultsResourcesPage<Payment> searchPayments(
+			PaymentCredential credential, String externalReference)
+			throws MPException, MPApiException {
+		MPSearchRequest request = MPSearchRequest.builder()
+			.limit(50)
+			.offset(0)
+			.filters(Map.of(
+				"external_reference", externalReference,
+				"sort", "date_created",
+				"criteria", "desc"))
+			.build();
+		return payments.search(request, options(credential));
+	}
+
 	private void validateMerchantOrder(
 			MerchantOrder order, PaymentCredential credential,
 			String externalReference, int resultCount) {
@@ -259,6 +280,143 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 				invalidProviderResponse(), "PAYMENT_SELECTION",
 				"INVALID_PROVIDER_RESPONSE", null, resultCount);
 		}
+	}
+
+	private Optional<VerifiedProviderPayment> findPaymentByExternalReference(
+			PaymentCredential credential, String preferenceId,
+			String externalReference, BigDecimal amount,
+			String currencyCode) {
+		Integer resultCount = null;
+		try {
+			MPResultsResourcesPage<Payment> page = searchPayments(
+				credential, externalReference);
+			if (page == null || page.getResults() == null) {
+				throw diagnosticFailure(
+					invalidProviderResponse(), "PROVIDER_SEARCH",
+					"INVALID_PROVIDER_RESPONSE", null, null);
+			}
+			List<Payment> results = page.getResults();
+			resultCount = results.size();
+			if (results.isEmpty()) {
+				return Optional.empty();
+			}
+
+			VerifiedProviderPayment selected = null;
+			CheckoutPaymentException firstRejectedCandidate = null;
+			for (Payment summary : results) {
+				if (summary == null || summary.getId() == null) {
+					if (firstRejectedCandidate == null) {
+						firstRejectedCandidate = diagnosticFailure(
+							invalidProviderResponse(), "PAYMENT_SELECTION",
+							"INVALID_PROVIDER_RESPONSE", null, resultCount);
+					}
+					continue;
+				}
+				VerifiedProviderPayment payment;
+				try {
+					payment = findPayment(credential, summary.getId().toString());
+				}
+				catch (CheckoutPaymentException exception) {
+					if ("INVALID_PROVIDER_RESPONSE".equals(exception.code())) {
+						if (firstRejectedCandidate == null) {
+							firstRejectedCandidate = diagnosticFailure(
+								exception, "PREFERENCE_VALIDATION",
+								"PREFERENCE_NOT_VERIFIABLE", null, resultCount);
+						}
+						continue;
+					}
+					if ("UNSUPPORTED_PAYMENT_STATUS".equals(exception.code())) {
+						if (firstRejectedCandidate == null) {
+							firstRejectedCandidate = diagnosticFailure(
+								exception, "STATUS_VALIDATION",
+								"UNSUPPORTED_PAYMENT_STATUS", null, resultCount);
+						}
+						continue;
+					}
+					throw enrichSelectionFailure(exception, resultCount);
+				}
+
+				CheckoutPaymentException rejection = validateFallbackCandidate(
+					credential, preferenceId, externalReference, amount,
+					currencyCode, payment, resultCount);
+				if (rejection != null) {
+					if (firstRejectedCandidate == null) {
+						firstRejectedCandidate = rejection;
+					}
+					continue;
+				}
+				if (selected == null || preferredFallbackPayment(payment, selected)) {
+					selected = payment;
+				}
+			}
+			if (selected != null) {
+				return Optional.of(selected);
+			}
+			if (firstRejectedCandidate != null) {
+				throw firstRejectedCandidate;
+			}
+			return Optional.empty();
+		}
+		catch (MPApiException | MPException exception) {
+			throw diagnosticFailure(
+				gatewayFailure("PAYMENT_SEARCH_FAILED", exception),
+				"PROVIDER_SEARCH", "PAYMENT_SEARCH_FAILED",
+				providerHttpStatus(exception), resultCount);
+		}
+	}
+
+	private CheckoutPaymentException validateFallbackCandidate(
+			PaymentCredential credential, String preferenceId,
+			String externalReference, BigDecimal amount,
+			String currencyCode, VerifiedProviderPayment payment,
+			int resultCount) {
+		if (!credential.sellerAccountId().equals(payment.sellerAccountId())) {
+			return candidateRejection("SELLER_VALIDATION", "SELLER_MISMATCH", resultCount);
+		}
+		if (credential.environment() == PaymentEnvironment.PRODUCTION
+				&& !payment.liveMode()) {
+			return candidateRejection(
+				"ENVIRONMENT_VALIDATION", "ENVIRONMENT_MISMATCH", resultCount);
+		}
+		if (!preferenceId.equals(payment.preferenceId())) {
+			return candidateRejection(
+				"PREFERENCE_VALIDATION", "PREFERENCE_NOT_VERIFIABLE", resultCount);
+		}
+		if (!externalReference.equals(payment.externalReference())) {
+			return candidateRejection(
+				"REFERENCE_VALIDATION", "REFERENCE_MISMATCH", resultCount);
+		}
+		if (amount == null || payment.amount() == null
+				|| amount.compareTo(payment.amount()) != 0) {
+			return candidateRejection("AMOUNT_VALIDATION", "AMOUNT_MISMATCH", resultCount);
+		}
+		if (!currencyCode.equals(payment.currencyCode())) {
+			return candidateRejection(
+				"CURRENCY_VALIDATION", "CURRENCY_MISMATCH", resultCount);
+		}
+		return null;
+	}
+
+	private CheckoutPaymentException candidateRejection(
+			String stage, String reason, int resultCount) {
+		return diagnosticFailure(
+			new CheckoutPaymentException(
+				"PAYMENT_VALIDATION_FAILED",
+				"El pago verificado no coincide con el pedido."),
+			stage, reason, null, resultCount);
+	}
+
+	private boolean preferredFallbackPayment(
+			VerifiedProviderPayment candidate, VerifiedProviderPayment current) {
+		if (candidate.status() == PaymentResultStatus.APPROVED
+				&& current.status() != PaymentResultStatus.APPROVED) {
+			return true;
+		}
+		if (candidate.status() != PaymentResultStatus.APPROVED
+				&& current.status() == PaymentResultStatus.APPROVED) {
+			return false;
+		}
+		return newer(candidate, current);
 	}
 
 	private boolean newer(
@@ -320,6 +478,13 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 			Integer providerHttpStatus, Integer resultCount) {
 		return exception.withReconciliationDiagnostics(
 			stage, reason, providerHttpStatus, providerErrorCode(exception), resultCount);
+	}
+
+	private CheckoutPaymentException invalidProviderSearchShape(
+			boolean providerResponseNull, Boolean merchantOrdersCollectionNull) {
+		return invalidProviderResponse().withReconciliationDiagnostics(
+			"PROVIDER_SEARCH", "INVALID_PROVIDER_RESPONSE", null, null, null,
+			providerResponseNull, merchantOrdersCollectionNull, null, false);
 	}
 
 	private Integer providerHttpStatus(Exception exception) {
