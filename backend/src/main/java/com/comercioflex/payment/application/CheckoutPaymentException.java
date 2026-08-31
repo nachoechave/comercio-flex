@@ -32,10 +32,22 @@ public class CheckoutPaymentException extends RuntimeException {
 	public CheckoutPaymentException withReconciliationDiagnostics(
 			String stage, String reason, Integer providerHttpStatus,
 			String providerErrorCode, Integer resultCount) {
+		return withReconciliationDiagnostics(
+			stage, reason, providerHttpStatus, providerErrorCode, resultCount,
+			null, null, null, null);
+	}
+
+	public CheckoutPaymentException withReconciliationDiagnostics(
+			String stage, String reason, Integer providerHttpStatus,
+			String providerErrorCode, Integer resultCount,
+			Boolean providerResponseNull, Boolean merchantOrdersCollectionNull,
+			Integer merchantOrdersCount, Boolean pagingPresent) {
 		return new CheckoutPaymentException(
 			code, getMessage(), getCause(),
 			new ReconciliationDiagnostics(
-				stage, reason, providerHttpStatus, providerErrorCode, resultCount));
+				stage, reason, providerHttpStatus, providerErrorCode, resultCount,
+				providerResponseNull, merchantOrdersCollectionNull,
+				merchantOrdersCount, pagingPresent));
 	}
 
 	public record ReconciliationDiagnostics(
@@ -43,6 +55,10 @@ public class CheckoutPaymentException extends RuntimeException {
 		String reason,
 		Integer providerHttpStatus,
 		String providerErrorCode,
-		Integer resultCount) {
+		Integer resultCount,
+		Boolean providerResponseNull,
+		Boolean merchantOrdersCollectionNull,
+		Integer merchantOrdersCount,
+		Boolean pagingPresent) {
 	}
 }
