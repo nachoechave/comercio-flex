@@ -304,6 +304,55 @@ class GuestOrderIntegrationTests {
 	}
 
 	@Test
+	void activeMercadoPagoAttemptDefersClockExpiryButDoesNotHoldStockIndefinitely()
+			throws Exception {
+		JsonNode created = create(UUID.randomUUID(), "1", 201);
+		UUID orderId = UUID.fromString(created.at("/order/id").asText());
+		String token = created.at("/lookupToken").asText();
+		try (var scope = tenantContext.open("tenant-a")) {
+			paymentService(PaymentResultStatus.PENDING)
+				.initiate(new PaymentCommand(orderId, UUID.randomUUID()));
+		}
+		execute(TENANT_A_DATABASE, """
+			UPDATE payment_intents
+			SET provider = 'MERCADO_PAGO',
+				return_token_hash = UNHEX(SHA2(UUID(), 256)),
+				return_token_expires_at = UTC_TIMESTAMP(6) + INTERVAL 1 DAY,
+				provider_preference_id = CONCAT('pref-', UUID()),
+				checkout_url = 'https://www.mercadopago.com.ar/checkout',
+				checkout_expires_at = UTC_TIMESTAMP(6) + INTERVAL 1 HOUR,
+				credential_seller_account_id = 'seller-123',
+				payment_environment = 'PRODUCTION',
+				preference_created_at = UTC_TIMESTAMP(6)
+			""");
+		execute(TENANT_A_DATABASE, """
+			UPDATE payment_transactions SET provider = 'MERCADO_PAGO'
+			""");
+		execute(TENANT_A_DATABASE, """
+			UPDATE orders SET reservation_expires_at = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND
+			""");
+		execute(TENANT_A_DATABASE, """
+			UPDATE inventory_reservations SET expires_at = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND
+			""");
+
+		mockMvc.perform(get(order("tienda-a", orderId.toString())).param("token", token))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("PENDING_CONFIRMATION"));
+		assertThat(text(TENANT_A_DATABASE,
+			"SELECT status FROM inventory_reservations")).isEqualTo("ACTIVE");
+
+		execute(TENANT_A_DATABASE, """
+			UPDATE payment_intents
+			SET checkout_expires_at = UTC_TIMESTAMP(6) - INTERVAL 25 HOUR
+			""");
+		mockMvc.perform(get(order("tienda-a", orderId.toString())).param("token", token))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("EXPIRED"));
+		assertThat(text(TENANT_A_DATABASE,
+			"SELECT status FROM inventory_reservations")).isEqualTo("EXPIRED");
+	}
+
+	@Test
 	void operatesOrderLifecycleAndRestoresStockOnCancellation() throws Exception {
 		JsonNode created = create(UUID.randomUUID(), "2", 201);
 		UUID orderId = UUID.fromString(created.at("/order/id").asText());
@@ -596,7 +645,7 @@ class GuestOrderIntegrationTests {
 	}
 
 	@Test
-	void lateApprovalRequiresReviewAndPaymentDataRemainsTenantIsolated()
+	void verifiedLateApprovalConsumesAnActiveReservationAndRemainsTenantIsolated()
 			throws Exception {
 		UUID orderId = UUID.fromString(
 			create(UUID.randomUUID(), "1", 201).at("/order/id").asText());
@@ -630,7 +679,7 @@ class GuestOrderIntegrationTests {
 			var result = paymentService(lateApproval)
 				.initiate(new PaymentCommand(orderId, UUID.randomUUID()));
 			assertThat(result.paymentIntent().status())
-				.isEqualTo(PaymentIntentStatus.REQUIRES_REVIEW);
+				.isEqualTo(PaymentIntentStatus.APPROVED);
 		}
 		try (var scope = tenantContext.open("tenant-b")) {
 			assertThatThrownBy(() -> paymentService(PaymentResultStatus.APPROVED)
@@ -639,14 +688,16 @@ class GuestOrderIntegrationTests {
 		}
 
 		assertThat(text(TENANT_A_DATABASE, "SELECT status FROM orders"))
-			.isEqualTo("EXPIRED");
+			.isEqualTo("CONFIRMED");
 		assertThat(count(TENANT_A_DATABASE, """
 			SELECT COUNT(*) FROM payment_transactions WHERE review_required = TRUE
-			""")).isEqualTo(1);
+			""")).isZero();
+		assertThat(text(TENANT_A_DATABASE,
+			"SELECT status FROM inventory_reservations")).isEqualTo("CONSUMED");
 		assertThat(count(TENANT_B_DATABASE,
 			"SELECT COUNT(*) FROM payment_intents")).isZero();
 		assertThat(decimal(TENANT_A_DATABASE,
-			"SELECT quantity FROM inventory_balances")).isEqualTo("5.000");
+			"SELECT quantity FROM inventory_balances")).isEqualTo("4.000");
 	}
 
 	@RepeatedTest(3)

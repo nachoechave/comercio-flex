@@ -4,7 +4,9 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -16,10 +18,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.comercioflex.order.application.OrderTransitionExecution;
 import com.comercioflex.order.application.PaidOrderConfirmer;
 import com.comercioflex.order.application.InvalidOrderTransitionException;
+import com.comercioflex.order.application.AdminOrderRepository;
 import com.comercioflex.order.domain.OrderStatus;
 import com.comercioflex.payment.domain.PaymentEnvironment;
 import com.comercioflex.payment.domain.PaymentIntentStatus;
@@ -29,6 +34,10 @@ import com.comercioflex.tenant.application.TenantResolver;
 
 @Service
 public class CheckoutProService {
+	private static final Logger LOGGER = LoggerFactory.getLogger(CheckoutProService.class);
+	private static final int RECONCILIATION_BATCH_SIZE = 20;
+	private static final Duration UNPAID_GRACE = Duration.ofMinutes(5);
+	private static final Duration PENDING_SETTLEMENT_LIMIT = Duration.ofHours(24);
 
 	private static final String RETURN_NAMESPACE = "checkout-return:v1:";
 	private static final String ROUTE_NAMESPACE = "checkout-webhook-route:v1:";
@@ -38,6 +47,8 @@ public class CheckoutProService {
 	private final PaymentCredentialResolver credentials;
 	private final CheckoutProGateway gateway;
 	private final PaidOrderConfirmer orderConfirmer;
+	private final RejectedPaymentNotifier rejectedPaymentNotifier;
+	private final AdminOrderRepository orders;
 	private final TenantResolver tenantResolver;
 	private final CheckoutProProperties properties;
 	private final PaymentOAuthProperties oauthProperties;
@@ -52,12 +63,15 @@ public class CheckoutProService {
 			PaymentCredentialResolver credentials,
 			CheckoutProGateway gateway,
 			PaidOrderConfirmer orderConfirmer,
+			RejectedPaymentNotifier rejectedPaymentNotifier,
+			AdminOrderRepository orders,
 			TenantResolver tenantResolver,
 			CheckoutProProperties properties,
 			PaymentOAuthProperties oauthProperties,
 			@Qualifier("tenantTransactionTemplate") TransactionTemplate tenantTransactions,
 			@Qualifier("controlTransactionTemplate") TransactionTemplate controlTransactions) {
 		this(repository, controlRepository, credentials, gateway, orderConfirmer,
+			rejectedPaymentNotifier, orders,
 			tenantResolver, properties, oauthProperties, tenantTransactions,
 			controlTransactions, Clock.systemUTC());
 	}
@@ -68,6 +82,8 @@ public class CheckoutProService {
 			PaymentCredentialResolver credentials,
 			CheckoutProGateway gateway,
 			PaidOrderConfirmer orderConfirmer,
+			RejectedPaymentNotifier rejectedPaymentNotifier,
+			AdminOrderRepository orders,
 			TenantResolver tenantResolver,
 			CheckoutProProperties properties,
 			PaymentOAuthProperties oauthProperties,
@@ -79,6 +95,8 @@ public class CheckoutProService {
 		this.credentials = credentials;
 		this.gateway = gateway;
 		this.orderConfirmer = orderConfirmer;
+		this.rejectedPaymentNotifier = rejectedPaymentNotifier;
+		this.orders = orders;
 		this.tenantResolver = tenantResolver;
 		this.properties = properties;
 		this.oauthProperties = oauthProperties;
@@ -165,9 +183,11 @@ public class CheckoutProService {
 				case APPROVED -> "APPROVED";
 				case REQUIRES_REVIEW -> "REQUIRES_REVIEW";
 				case REJECTED -> "REJECTED";
+				case EXPIRED -> "EXPIRED";
 				default -> latest == null ? attempt.status().name() : latest;
 			};
-			boolean canRetry = attempt.status() == PaymentIntentStatus.PENDING
+			boolean canRetry = (attempt.status() == PaymentIntentStatus.PENDING
+					|| attempt.status() == PaymentIntentStatus.REJECTED)
 				&& attempt.orderStatus().equals(OrderStatus.PENDING_CONFIRMATION.name())
 				&& attempt.reservationExpiresAt().isAfter(clock.instant());
 			return new PaymentReturnView(
@@ -212,6 +232,7 @@ public class CheckoutProService {
 			status -> requireReturnAttempt(returnToken)));
 		if (attempt.status() == PaymentIntentStatus.APPROVED
 				|| attempt.status() == PaymentIntentStatus.REJECTED
+				|| attempt.status() == PaymentIntentStatus.EXPIRED
 				|| attempt.status() == PaymentIntentStatus.REQUIRES_REVIEW) {
 			return findReturn(returnToken);
 		}
@@ -220,6 +241,30 @@ public class CheckoutProService {
 		VerifiedProviderPayment payment = gateway.findPayment(credential, providerPaymentId);
 		applyVerifiedPayment(attempt.id(), payment);
 		return findReturn(returnToken);
+	}
+
+	public PaymentReturnView reconcileReturn(String tenantSlug, String returnToken) {
+		requireEnabled();
+		validateReturnToken(returnToken);
+		ResolvedTenant tenant = tenantResolver.resolveActive(tenantSlug);
+		StoredCheckoutAttempt attempt = Objects.requireNonNull(tenantTransactions.execute(
+			status -> requireReturnAttempt(returnToken)));
+		if (attempt.status() != PaymentIntentStatus.PENDING) {
+			return findReturn(returnToken);
+		}
+		PaymentCredential credential = credentials.resolve(tenant.id(), tenant.slug());
+		validateCredential(attempt, credential);
+		var payment = gateway.findPaymentForPreference(
+			credential, attempt.preferenceId(), attempt.externalReference());
+		if (payment.isPresent()) {
+			applyVerifiedPayment(attempt.id(), payment.get());
+			return findReturn(returnToken);
+		}
+		PaymentReturnView current = findReturn(returnToken);
+		return new PaymentReturnView(
+			current.orderId(), current.orderNumber(), current.orderStatus(),
+			current.paymentStatus(), PaymentReturnOutcome.PAYMENT_NOT_RECORDED,
+			current.canRetry(), current.updatedAt());
 	}
 
 	public boolean reconcilePendingOrder(
@@ -241,6 +286,62 @@ public class CheckoutProService {
 		if (payment.isEmpty()) return false;
 		applyVerifiedPayment(attempt.id(), payment.get());
 		return true;
+	}
+
+	public PaymentReturnView reconcilePrivateOrder(
+			String tenantSlug, UUID orderId, String lookupToken) {
+		requireEnabled();
+		validateUuidV4(orderId, "El pedido no es válido.");
+		if (lookupToken == null || !lookupToken.matches("^[A-Za-z0-9_-]{43}$")) {
+			throw notFound();
+		}
+		ResolvedTenant tenant = tenantResolver.resolveActive(tenantSlug);
+		StoredCheckoutAttempt attempt = tenantTransactions.execute(status ->
+			repository.findLatestByOrder(orderId, sha256(lookupToken)).orElse(null));
+		if (attempt == null) return null;
+		if (attempt.status() == PaymentIntentStatus.PENDING) {
+			PaymentCredential credential = credentials.resolve(tenant.id(), tenant.slug());
+			validateCredential(attempt, credential);
+			gateway.findPaymentForPreference(
+				credential, attempt.preferenceId(), attempt.externalReference())
+				.ifPresent(payment -> applyVerifiedPayment(attempt.id(), payment));
+		}
+		StoredCheckoutAttempt current = Objects.requireNonNull(tenantTransactions.execute(status ->
+			repository.findByPublicId(attempt.id(), false).orElseThrow(this::notFound)));
+		return Objects.requireNonNull(tenantTransactions.execute(status -> view(current)));
+	}
+
+	public int reconcilePendingTenant(long tenantId, String tenantSlug) {
+		if (!properties.enabled()) return 0;
+		PaymentCredential credential = credentials.resolve(tenantId, tenantSlug);
+		List<StoredCheckoutAttempt> attempts = Objects.requireNonNull(tenantTransactions.execute(
+			status -> repository.findPendingForReconciliation(RECONCILIATION_BATCH_SIZE)));
+		int processed = 0;
+		for (StoredCheckoutAttempt attempt : attempts) {
+			try {
+				validateCredential(attempt, credential);
+				var payment = gateway.findPaymentForPreference(
+					credential, attempt.preferenceId(), attempt.externalReference());
+				if (payment.isPresent()) {
+					applyVerifiedPayment(attempt.id(), payment.get());
+					processed++;
+					if (payment.get().status() == PaymentResultStatus.PENDING
+							&& expiredBeyond(attempt, PENDING_SETTLEMENT_LIMIT)) {
+						expirePendingAttempt(attempt.id());
+					}
+				}
+				else if (expiredBeyond(attempt, UNPAID_GRACE)) {
+					expirePendingAttempt(attempt.id());
+					processed++;
+				}
+			}
+			catch (RuntimeException exception) {
+				LOGGER.warn(
+					"payment_reconciliation_failed tenant={} attempt={} error_type={}",
+					tenantSlug, attempt.id(), exception.getClass().getSimpleName());
+			}
+		}
+		return processed;
 	}
 
 	public void applyVerifiedPayment(
@@ -271,7 +372,7 @@ public class CheckoutProService {
 				else if (attempt.status() == PaymentIntentStatus.PENDING) {
 					OrderTransitionExecution confirmation = orderConfirmer
 						.confirmWithinCurrentTransaction(
-							attempt.orderId(), attempt.transitionIdempotencyKey());
+							attempt.orderId(), attempt.transitionIdempotencyKey(), "Mercado Pago");
 					applied = !confirmation.expired();
 					review = confirmation.expired();
 				}
@@ -279,7 +380,47 @@ public class CheckoutProService {
 					review = true;
 				}
 			}
-			repository.applyVerifiedPayment(attempt, payment, applied, review, clock.instant());
+			Instant now = clock.instant();
+			repository.applyVerifiedPayment(attempt, payment, applied, review, now);
+			if (payment.status() == PaymentResultStatus.REJECTED) {
+				rejectedPaymentNotifier.notifyWithinCurrentTransaction(
+					attempt.orderId(), attempt.id(), now);
+				if (!attempt.reservationExpiresAt().isAfter(now)) {
+					orders.expireOrder(attempt.orderInternalId());
+				}
+			}
+	}
+
+	private void expirePendingAttempt(UUID paymentAttemptId) {
+		tenantTransactions.executeWithoutResult(status -> {
+			StoredCheckoutAttempt attempt = repository.findByPublicId(paymentAttemptId, true)
+				.orElseThrow(this::notFound);
+			if (attempt.status() != PaymentIntentStatus.PENDING) return;
+			repository.markExpired(attempt, clock.instant());
+			orders.expireOrder(attempt.orderInternalId());
+		});
+	}
+
+	private boolean expiredBeyond(StoredCheckoutAttempt attempt, Duration delay) {
+		return !attempt.checkoutExpiresAt().plus(delay).isAfter(clock.instant());
+	}
+
+	private PaymentReturnView view(StoredCheckoutAttempt attempt) {
+		String latest = repository.latestProviderStatus(attempt.internalId());
+		String paymentStatus = switch (attempt.status()) {
+			case APPROVED -> "APPROVED";
+			case REJECTED -> "REJECTED";
+			case EXPIRED -> "EXPIRED";
+			case REQUIRES_REVIEW -> "REQUIRES_REVIEW";
+			default -> latest == null ? attempt.status().name() : latest;
+		};
+		boolean canRetry = (attempt.status() == PaymentIntentStatus.PENDING
+				|| attempt.status() == PaymentIntentStatus.REJECTED)
+			&& attempt.orderStatus().equals(OrderStatus.PENDING_CONFIRMATION.name())
+			&& attempt.reservationExpiresAt().isAfter(clock.instant());
+		return new PaymentReturnView(
+			attempt.orderId(), attempt.orderNumber(), attempt.orderStatus(),
+			paymentStatus, null, canRetry, attempt.updatedAt());
 	}
 
 	private PreparedAttempt prepare(

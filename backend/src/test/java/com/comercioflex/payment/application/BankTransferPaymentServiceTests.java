@@ -186,12 +186,14 @@ class BankTransferPaymentServiceTests {
 		BankTransferPayment approved = payment(BankTransferStatus.APPROVED, 1);
 		when(repository.findById(PAYMENT_ID, true)).thenReturn(Optional.of(reviewing));
 		when(repository.findById(PAYMENT_ID, false)).thenReturn(Optional.of(approved));
-		when(confirmer.confirmWithinCurrentTransaction(eq(ORDER_ID), any()))
+		when(confirmer.confirmWithinCurrentTransaction(
+				eq(ORDER_ID), any(), eq("Transferencia bancaria")))
 			.thenReturn(OrderTransitionExecution.completed(null));
 
 		assertThat(service.approve(PAYMENT_ID, 7L).status())
 			.isEqualTo(BankTransferStatus.APPROVED);
-		verify(confirmer).confirmWithinCurrentTransaction(eq(ORDER_ID), any());
+		verify(confirmer).confirmWithinCurrentTransaction(
+			eq(ORDER_ID), any(), eq("Transferencia bancaria"));
 		verify(repository).approve(reviewing, 7L, NOW);
 	}
 
@@ -201,7 +203,7 @@ class BankTransferPaymentServiceTests {
 		when(repository.findById(PAYMENT_ID, true)).thenReturn(Optional.of(approved));
 
 		assertThat(service.approve(PAYMENT_ID, 7L)).isSameAs(approved);
-		verify(confirmer, never()).confirmWithinCurrentTransaction(any(), any());
+		verify(confirmer, never()).confirmWithinCurrentTransaction(any(), any(), any());
 		verify(repository, never()).approve(any(), anyLong(), any());
 	}
 
@@ -216,7 +218,7 @@ class BankTransferPaymentServiceTests {
 			.isEqualTo(BankTransferStatus.REJECTED);
 		verify(repository).reject(reviewing, 7L, "No se distingue el importe", NOW);
 		verify(notifications).bankTransferReceiptRejected(rejected, NOW);
-		verify(confirmer, never()).confirmWithinCurrentTransaction(any(), any());
+		verify(confirmer, never()).confirmWithinCurrentTransaction(any(), any(), any());
 	}
 
 	@Test
@@ -233,7 +235,8 @@ class BankTransferPaymentServiceTests {
 	void anExpiredReservationCannotBeApproved() {
 		BankTransferPayment reviewing = payment(BankTransferStatus.UNDER_REVIEW, 1);
 		when(repository.findById(PAYMENT_ID, true)).thenReturn(Optional.of(reviewing));
-		when(confirmer.confirmWithinCurrentTransaction(eq(ORDER_ID), any()))
+		when(confirmer.confirmWithinCurrentTransaction(
+				eq(ORDER_ID), any(), eq("Transferencia bancaria")))
 			.thenReturn(OrderTransitionExecution.expiration());
 
 		assertThatThrownBy(() -> service.approve(PAYMENT_ID, 7L))

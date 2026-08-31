@@ -24,7 +24,13 @@ import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation
 import { CheckoutProQrService } from '../payment/checkout-pro-qr.service';
 import { GuestOrderHistoryService } from '../guest-orders/guest-order-history.service';
 import { PaymentApiService } from '../payment/payment-api.service';
-import { BankTransferPayment, CheckoutProStart, PaymentMethods } from '../payment/payment.models';
+import {
+  BankTransferPayment,
+  CheckoutProStart,
+  PaymentMethods,
+  PaymentReturnStatus,
+  PublicPaymentStatus,
+} from '../payment/payment.models';
 import { paymentErrorMessage } from '../payment/payment-errors';
 import { PaymentRecoveryService } from '../payment/payment-recovery.service';
 import { StorefrontApiService } from '../storefront-api.service';
@@ -76,6 +82,7 @@ export class OrderConfirmationPage {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly paymentStarting = signal(false);
   protected readonly paymentErrorMessage = signal<string | null>(null);
+  protected readonly checkoutPaymentStatus = signal<PublicPaymentStatus | null>(null);
   protected readonly checkoutPro = signal<CheckoutProStart | null>(null);
   protected readonly checkoutQrDataUrl = signal<string | null>(null);
   protected readonly checkoutQrLoading = signal(false);
@@ -101,6 +108,7 @@ export class OrderConfirmationPage {
       this.checkoutQrErrorMessage.set(null);
       this.errorMessage.set(null);
       this.paymentErrorMessage.set(null);
+      this.checkoutPaymentStatus.set(null);
       this.paymentsUnavailable.set(this.paymentResult() === 'not-enabled');
       if (!storeSlug || !orderId || !token) {
         this.loading.set(false);
@@ -237,14 +245,21 @@ export class OrderConfirmationPage {
         exhaustMap(() => {
           if (this.document.visibilityState === 'hidden') return of(null);
           return this.paymentApi.reconcilePendingCheckout(storeSlug, orderId, token).pipe(
-            catchError(() => of(undefined)),
-            switchMap(() => this.api.getOrder(storeSlug, orderId, token)),
-            switchMap((order) => {
+            catchError(() => of(null)),
+            switchMap((payment) =>
+              this.api.getOrder(storeSlug, orderId, token).pipe(
+                map((order) => ({ order, payment })),
+              ),
+            ),
+            switchMap(({ order, payment }) => {
               this.applyOrder(storeSlug, order);
-              if (order.status !== 'PENDING_CONFIRMATION') return of({ order, transfer: null });
+              this.applyCheckoutPayment(storeSlug, orderId, payment);
+              if (order.status !== 'PENDING_CONFIRMATION' || this.isTerminalPayment(payment)) {
+                return of({ order, payment, transfer: null });
+              }
               return this.paymentApi.getCurrentBankTransfer(storeSlug, orderId, token).pipe(
-                map((transfer) => ({ order, transfer })),
-                catchError(() => of({ order, transfer: null })),
+                map((transfer) => ({ order, payment, transfer })),
+                catchError(() => of({ order, payment, transfer: null })),
               );
             }),
             catchError((error: unknown) => {
@@ -254,13 +269,45 @@ export class OrderConfirmationPage {
           );
         }),
         takeWhile(
-          (result) => result === null || result.order.status === 'PENDING_CONFIRMATION',
+          (result) =>
+            result === null ||
+            (result.order.status === 'PENDING_CONFIRMATION' &&
+              !this.isTerminalPayment(result.payment)),
           true,
         ),
       )
       .subscribe((result) => {
         if (result?.transfer) this.bankTransfer.set(result.transfer);
       });
+  }
+
+  private applyCheckoutPayment(
+    storeSlug: string,
+    orderId: string,
+    payment: PaymentReturnStatus | null,
+  ): void {
+    const status = payment?.paymentStatus ?? null;
+    this.checkoutPaymentStatus.set(status);
+    if (status === 'REJECTED') {
+      this.paymentErrorMessage.set(
+        'El pago no pudo completarse. Podés volver a intentar mientras la reserva siga vigente.',
+      );
+      this.paymentHandoff.forget(storeSlug, orderId);
+      this.checkoutPro.set(null);
+      this.checkoutQrDataUrl.set(null);
+      this.paymentRecovery.rotateAttempt(storeSlug, orderId);
+    } else if (status === 'REQUIRES_REVIEW') {
+      this.paymentErrorMessage.set(
+        'Recibimos información del pago y el comercio debe revisarla. No vuelvas a pagar.',
+      );
+      this.checkoutPro.set(null);
+      this.checkoutQrDataUrl.set(null);
+    }
+  }
+
+  private isTerminalPayment(payment: PaymentReturnStatus | null): boolean {
+    return payment !== null && ['APPROVED', 'REJECTED', 'EXPIRED', 'REQUIRES_REVIEW']
+      .includes(payment.paymentStatus);
   }
 
   private applyOrder(storeSlug: string, order: GuestOrder): void {
@@ -394,7 +441,9 @@ export class OrderConfirmationPage {
     const messages: Record<GuestOrderStatus, string> = {
       PENDING_CONFIRMATION: this.paymentsUnavailable()
         ? `Guardamos el pedido de ${order.customerName}. El comercio podrá contactarte por ${order.contactHint}.`
-        : `Guardamos el pedido de ${order.customerName}. Completá el pago para confirmarlo.`,
+        : this.checkoutPaymentStatus() === 'PENDING'
+          ? `Guardamos el pedido de ${order.customerName}. Estamos verificando tu pago.`
+          : `Guardamos el pedido de ${order.customerName}. Completá el pago para confirmarlo.`,
       CONFIRMED: 'El pedido está confirmado. El comercio preparará tu compra.',
       READY_FOR_PICKUP: 'Tu compra está preparada y lista para retirar en el comercio.',
       COMPLETED: 'El pedido fue entregado y quedó completado.',

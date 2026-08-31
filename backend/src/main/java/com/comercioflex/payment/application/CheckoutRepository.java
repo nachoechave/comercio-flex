@@ -3,6 +3,7 @@ package com.comercioflex.payment.application;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import com.comercioflex.payment.domain.PaymentEnvironment;
@@ -19,6 +20,11 @@ public interface CheckoutRepository {
 
 	Optional<StoredCheckoutAttempt> findPendingByOrder(
 		UUID orderId, byte[] lookupTokenHash);
+
+	Optional<StoredCheckoutAttempt> findLatestByOrder(
+		UUID orderId, byte[] lookupTokenHash);
+
+	List<StoredCheckoutAttempt> findPendingForReconciliation(int limit);
 
 	boolean hasBlockingIntent(long orderInternalId);
 
@@ -46,6 +52,8 @@ public interface CheckoutRepository {
 		Instant now);
 
 	void markCreationForReview(StoredCheckoutAttempt attempt);
+
+	void markExpired(StoredCheckoutAttempt attempt, Instant now);
 
 	void applyVerifiedPayment(
 		StoredCheckoutAttempt attempt,

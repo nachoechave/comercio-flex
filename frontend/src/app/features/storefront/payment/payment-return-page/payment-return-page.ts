@@ -40,11 +40,6 @@ export class PaymentReturnPage implements OnDestroy {
 
   protected readonly storeSlug = this.route.snapshot.paramMap.get('storeSlug') ?? '';
   protected readonly returnToken = this.route.snapshot.paramMap.get('returnToken') ?? '';
-  private readonly providerPaymentId = this.validProviderPaymentId(
-    this.route.snapshot.queryParamMap.get('payment_id'),
-  );
-  private readonly shouldInspectReturn =
-    !this.providerPaymentId && this.hasProviderReturnContext();
   protected readonly result = signal<PaymentReturnStatus | null>(null);
   protected readonly loading = signal(true);
   protected readonly refreshing = signal(false);
@@ -70,22 +65,10 @@ export class PaymentReturnPage implements OnDestroy {
     if (this.refreshing()) return;
     this.refreshing.set(true);
     this.errorMessage.set(null);
-    const request = this.providerPaymentId
-      ? this.csrf
-          .ensureToken()
-          .pipe(
-            exhaustMap(() =>
-              this.api.reconcileReturn(this.storeSlug, this.returnToken, this.providerPaymentId!),
-            ),
-          )
-      : this.shouldInspectReturn
-        ? this.csrf
-            .ensureToken()
-            .pipe(
-              exhaustMap(() => this.api.inspectReturn(this.storeSlug, this.returnToken)),
-              catchError(() => this.api.getReturnStatus(this.storeSlug, this.returnToken)),
-            )
-        : this.api.getReturnStatus(this.storeSlug, this.returnToken);
+    const request = this.csrf.ensureToken().pipe(
+      exhaustMap(() => this.api.reconcileReturn(this.storeSlug, this.returnToken)),
+      catchError(() => this.api.getReturnStatus(this.storeSlug, this.returnToken)),
+    );
     request.pipe(finalize(() => this.refreshing.set(false))).subscribe({
       next: (result) => this.receive(result),
       error: (error: unknown) =>
@@ -98,7 +81,7 @@ export class PaymentReturnPage implements OnDestroy {
   protected retryPayment(): void {
     const result = this.result();
     if (!result?.canRetry || this.retrying()) return;
-    const recovery = this.recovery.find(this.storeSlug, result.orderId);
+    const recovery = this.recovery.rotateAttempt(this.storeSlug, result.orderId);
     if (!recovery) {
       this.errorMessage.set('Abrí el enlace privado del pedido para volver a intentar el pago.');
       return;
@@ -223,35 +206,12 @@ export class PaymentReturnPage implements OnDestroy {
     if (firstResult) queueMicrotask(() => this.title()?.nativeElement.focus());
   }
 
-  private validProviderPaymentId(value: string | null): string | null {
-    return value && /^[0-9]{1,20}$/.test(value) ? value : null;
-  }
-
-  private hasProviderReturnContext(): boolean {
-    return ['payment', 'status', 'collection_status', 'preference_id', 'merchant_order_id'].some(
-      (name) => this.route.snapshot.queryParamMap.has(name),
-    );
-  }
-
   private pollRequest(iteration: number) {
-    if (iteration === 0 && this.providerPaymentId) {
+    if (iteration === 0) {
       return this.csrf
         .ensureToken()
         .pipe(
-          exhaustMap(() =>
-            this.api.reconcileReturn(
-              this.storeSlug,
-              this.returnToken,
-              this.providerPaymentId!,
-            ),
-          ),
-        );
-    }
-    if (iteration === 0 && this.shouldInspectReturn) {
-      return this.csrf
-        .ensureToken()
-        .pipe(
-          exhaustMap(() => this.api.inspectReturn(this.storeSlug, this.returnToken)),
+          exhaustMap(() => this.api.reconcileReturn(this.storeSlug, this.returnToken)),
           catchError(() => this.api.getReturnStatus(this.storeSlug, this.returnToken)),
         );
     }

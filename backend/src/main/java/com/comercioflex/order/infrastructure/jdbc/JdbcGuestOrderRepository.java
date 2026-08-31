@@ -337,6 +337,33 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 			SET status = 'EXPIRED', version = version + 1
 			WHERE id = ?
 				AND status = 'PENDING_CONFIRMATION'
+				AND NOT EXISTS (
+					SELECT 1
+					FROM payment_intents intent
+					WHERE intent.order_id = orders.id
+						AND intent.provider = 'MERCADO_PAGO'
+						AND intent.status = 'PENDING'
+						AND (
+							(
+								NOT EXISTS (
+									SELECT 1 FROM payment_transactions transaction_record
+									WHERE transaction_record.payment_intent_id = intent.id
+										AND transaction_record.provider_status = 'PENDING'
+								)
+								AND DATE_ADD(intent.checkout_expires_at, INTERVAL 5 MINUTE)
+									> UTC_TIMESTAMP(6)
+							)
+							OR (
+								EXISTS (
+									SELECT 1 FROM payment_transactions transaction_record
+									WHERE transaction_record.payment_intent_id = intent.id
+										AND transaction_record.provider_status = 'PENDING'
+								)
+								AND DATE_ADD(intent.checkout_expires_at, INTERVAL 24 HOUR)
+									> UTC_TIMESTAMP(6)
+							)
+						)
+				)
 			""",
 			orderInternalId);
 		if (changed == 0) return;

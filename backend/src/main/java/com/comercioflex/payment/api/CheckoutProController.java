@@ -47,14 +47,16 @@ public class CheckoutProController {
 	}
 
 	@PostMapping("/orders/{orderId}/payments/checkout-pro/reconcile")
-	ResponseEntity<Void> reconcilePendingOrder(
+	ResponseEntity<PaymentReturnResponse> reconcilePendingOrder(
 			@PathVariable String storeSlug,
 			@PathVariable UUID orderId,
 			@RequestParam @Pattern(regexp = TOKEN) String token) {
-		service.reconcilePendingOrder(storeSlug, orderId, token);
-		return ResponseEntity.noContent()
-			.cacheControl(CacheControl.noStore())
-			.build();
+		var result = service.reconcilePrivateOrder(storeSlug, orderId, token);
+		if (result == null) {
+			return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+		}
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+			.body(PaymentReturnResponse.from(result));
 	}
 
 	@GetMapping("/payment-returns/{returnToken}")
@@ -68,12 +70,11 @@ public class CheckoutProController {
 	@PostMapping("/payment-returns/{returnToken}/reconcile")
 	ResponseEntity<PaymentReturnResponse> reconcileReturn(
 			@PathVariable String storeSlug,
-			@PathVariable @Pattern(regexp = TOKEN) String returnToken,
-			@RequestParam @Pattern(regexp = "^[0-9]{1,20}$") String paymentId) {
+			@PathVariable @Pattern(regexp = TOKEN) String returnToken) {
 		return ResponseEntity.ok()
 			.cacheControl(CacheControl.noStore())
 			.body(PaymentReturnResponse.from(
-				service.reconcileReturn(storeSlug, returnToken, paymentId)));
+				service.reconcileReturn(storeSlug, returnToken)));
 	}
 
 	@PostMapping("/payment-returns/{returnToken}/inspect")

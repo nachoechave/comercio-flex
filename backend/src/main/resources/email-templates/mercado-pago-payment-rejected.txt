@@ -1,0 +1,17 @@
+{{storeName}}
+
+EL PAGO NO PUDO COMPLETARSE
+
+Hola, {{customerName}}.
+
+Mercado Pago confirmó que el pago del pedido {{orderNumber}} no fue aprobado.
+
+Total: {{total}}
+Medio de pago: Mercado Pago
+
+Si la reserva continúa vigente, podés volver al pedido e intentar el pago nuevamente.
+
+Resultado verificado el {{eventDate}}.
+Reserva informada hasta el {{reservationExpiresAt}}.
+
+Este es un email transaccional de {{storeName}}.

@@ -6,6 +6,9 @@ Hola, {{customerName}}.
 
 Tu pedido {{orderNumber}} fue confirmado correctamente.
 
+Pago aprobado
+Medio de pago: {{paymentMethod}}
+
 RESUMEN DEL PEDIDO
 {{itemsText}}
 

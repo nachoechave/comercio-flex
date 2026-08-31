@@ -29,7 +29,7 @@ class PaidOrderConfirmerTests {
 		OrderTransitionExecutor executor = mock(OrderTransitionExecutor.class);
 		CustomerNotificationPublisher notifications = mock(CustomerNotificationPublisher.class);
 		AdminOrderDetail detail = mock(AdminOrderDetail.class);
-		when(executor.execute(any())).thenReturn(OrderTransitionExecution.completed(detail));
+		when(executor.executePaid(any())).thenReturn(OrderTransitionExecution.completed(detail));
 		TransactionSynchronizationManager.setActualTransactionActive(true);
 
 		new PaidOrderConfirmer(executor, notifications, Clock.fixed(NOW, ZoneOffset.UTC))

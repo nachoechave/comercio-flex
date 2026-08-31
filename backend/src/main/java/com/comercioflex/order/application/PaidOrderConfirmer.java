@@ -35,18 +35,32 @@ public class PaidOrderConfirmer {
 	public OrderTransitionExecution confirmWithinCurrentTransaction(
 			UUID orderId,
 			UUID idempotencyKey) {
+		return confirmWithinCurrentTransaction(orderId, idempotencyKey, null);
+	}
+
+	public OrderTransitionExecution confirmWithinCurrentTransaction(
+			UUID orderId,
+			UUID idempotencyKey,
+			String paymentMethod) {
 		if (!TransactionSynchronizationManager.isActualTransactionActive()) {
 			throw new IllegalStateException(
 				"La confirmación por pago requiere una transacción tenant activa.");
 		}
-		OrderTransitionExecution result = executor.execute(new OrderTransitionCommand(
+		OrderTransitionExecution result = executor.executePaid(new OrderTransitionCommand(
 			orderId,
 			idempotencyKey,
 			OrderStatus.CONFIRMED,
 			"Pago aprobado y verificado",
 			null,
 			SYSTEM_ACTOR));
-		if (!result.expired()) notifications.orderConfirmed(result.detail(), clock.instant());
+		if (!result.expired()) {
+			if (paymentMethod == null) {
+				notifications.orderConfirmed(result.detail(), clock.instant());
+			}
+			else {
+				notifications.orderConfirmed(result.detail(), clock.instant(), paymentMethod);
+			}
+		}
 		return result;
 	}
 }

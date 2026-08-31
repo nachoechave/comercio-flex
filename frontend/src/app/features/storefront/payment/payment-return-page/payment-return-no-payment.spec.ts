@@ -45,9 +45,9 @@ describe('PaymentReturnPage without a provider payment', () => {
   it('verifies the preference and explains that no charge was recorded', async () => {
     vi.advanceTimersByTime(0);
     http.expectOne('/api/v1/auth/csrf').flush({});
-    const inspection = http.expectOne(
-      '/api/v1/stores/tienda-a/payment-returns/opaque-token/inspect',
-    );
+	const inspection = http.expectOne(
+	  '/api/v1/stores/tienda-a/payment-returns/opaque-token/reconcile',
+	);
     expect(inspection.request.method).toBe('POST');
     inspection.flush({
       orderId: 'order-12',

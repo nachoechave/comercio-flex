@@ -52,6 +52,15 @@ class OrderTransitionExecutor {
 	}
 
 	OrderTransitionExecution execute(OrderTransitionCommand command) {
+		return execute(command, false);
+	}
+
+	OrderTransitionExecution executePaid(OrderTransitionCommand command) {
+		return execute(command, true);
+	}
+
+	private OrderTransitionExecution execute(
+			OrderTransitionCommand command, boolean verifiedPayment) {
 		LockedAdminOrder order = repository.lockOrder(command.orderId())
 			.orElseThrow(AdminOrderNotFoundException::new);
 		var replay = repository.findTransition(command.idempotencyKey());
@@ -60,7 +69,8 @@ class OrderTransitionExecutor {
 			return OrderTransitionExecution.completed(repository.findDetail(command.orderId())
 				.orElseThrow(AdminOrderNotFoundException::new));
 		}
-		if (order.status() == OrderStatus.PENDING_CONFIRMATION
+		if (!verifiedPayment
+				&& order.status() == OrderStatus.PENDING_CONFIRMATION
 				&& !order.reservationExpiresAt().isAfter(clock.instant())) {
 			repository.expireOrder(order.internalId());
 			return OrderTransitionExecution.expiration();
