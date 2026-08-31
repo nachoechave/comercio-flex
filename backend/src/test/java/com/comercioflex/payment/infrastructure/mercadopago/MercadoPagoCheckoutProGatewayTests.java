@@ -266,6 +266,119 @@ class MercadoPagoCheckoutProGatewayTests {
 	}
 
 	@Test
+	void reportsWhenFallbackPaymentHasNoOrder() throws Exception {
+		Payment payment = providerPayment(1001L, "approved");
+		when(payment.getOrder()).thenReturn(null);
+		FallbackFixture fixture = fallbackFixture(payment);
+
+		CheckoutPaymentException failure = fallbackFailure(fixture.gateway(), credential());
+
+		assertThat(failure.reconciliationDiagnostics().reason())
+			.isEqualTo("PREFERENCE_NOT_VERIFIABLE");
+		assertThat(failure.reconciliationDiagnostics().preferenceLinkDiagnostics())
+			.satisfies(diagnostics -> {
+				assertThat(diagnostics.paymentOrderPresent()).isFalse();
+				assertThat(diagnostics.paymentOrderIdPresent()).isFalse();
+				assertThat(diagnostics.paymentOrderTypePresent()).isFalse();
+				assertThat(diagnostics.merchantOrderLookupAttempted()).isFalse();
+				assertThat(diagnostics.merchantOrderResponsePresent()).isFalse();
+				assertThat(diagnostics.merchantOrderPreferencePresent()).isFalse();
+				assertThat(diagnostics.merchantOrderPreferenceMatches()).isNull();
+			});
+		verify(fixture.merchantOrders(), never()).get(any(), any(MPRequestOptions.class));
+	}
+
+	@Test
+	void reportsWhenFallbackPaymentOrderHasNoId() throws Exception {
+		Payment payment = providerPayment(1001L, "approved");
+		when(payment.getOrder().getId()).thenReturn(null);
+		FallbackFixture fixture = fallbackFixture(payment);
+
+		CheckoutPaymentException failure = fallbackFailure(fixture.gateway(), credential());
+
+		assertThat(failure.reconciliationDiagnostics().reason())
+			.isEqualTo("PREFERENCE_NOT_VERIFIABLE");
+		assertThat(failure.reconciliationDiagnostics().preferenceLinkDiagnostics())
+			.satisfies(diagnostics -> {
+				assertThat(diagnostics.paymentOrderPresent()).isTrue();
+				assertThat(diagnostics.paymentOrderIdPresent()).isFalse();
+				assertThat(diagnostics.paymentOrderTypePresent()).isTrue();
+				assertThat(diagnostics.merchantOrderLookupAttempted()).isFalse();
+			});
+		verify(fixture.merchantOrders(), never()).get(any(), any(MPRequestOptions.class));
+	}
+
+	@Test
+	void reportsMerchantOrderLookupErrorSeparately() throws Exception {
+		Payment payment = providerPayment(1001L, "approved");
+		FallbackFixture fixture = fallbackFixture(payment);
+		MPApiException providerFailure = new MPApiException(
+			"merchant order unavailable",
+			new MPResponse(404, Map.of(), "{\"error\":\"not_found\"}"));
+		when(fixture.merchantOrders().get(
+			org.mockito.ArgumentMatchers.eq(77L), any(MPRequestOptions.class)))
+			.thenThrow(providerFailure);
+
+		CheckoutPaymentException failure = fallbackFailure(fixture.gateway(), credential());
+
+		assertThat(failure.reconciliationDiagnostics().reason())
+			.isEqualTo("PAYMENT_LOOKUP_FAILED");
+		assertThat(failure.reconciliationDiagnostics().preferenceLinkDiagnostics())
+			.satisfies(diagnostics -> {
+				assertThat(diagnostics.paymentOrderPresent()).isTrue();
+				assertThat(diagnostics.paymentOrderIdPresent()).isTrue();
+				assertThat(diagnostics.paymentOrderTypePresent()).isTrue();
+				assertThat(diagnostics.merchantOrderLookupAttempted()).isTrue();
+				assertThat(diagnostics.merchantOrderResponsePresent()).isFalse();
+				assertThat(diagnostics.merchantOrderHttpStatus()).isEqualTo(404);
+				assertThat(diagnostics.merchantOrderProviderErrorCode()).isEqualTo("not_found");
+			});
+	}
+
+	@Test
+	void reportsWhenMerchantOrderResponseIsNull() throws Exception {
+		Payment payment = providerPayment(1001L, "approved");
+		FallbackFixture fixture = fallbackFixture(payment);
+		when(fixture.merchantOrders().get(
+			org.mockito.ArgumentMatchers.eq(77L), any(MPRequestOptions.class)))
+			.thenReturn(null);
+
+		CheckoutPaymentException failure = fallbackFailure(fixture.gateway(), credential());
+
+		assertThat(failure.reconciliationDiagnostics().reason())
+			.isEqualTo("PREFERENCE_NOT_VERIFIABLE");
+		assertThat(failure.reconciliationDiagnostics().preferenceLinkDiagnostics())
+			.satisfies(diagnostics -> {
+				assertThat(diagnostics.merchantOrderLookupAttempted()).isTrue();
+				assertThat(diagnostics.merchantOrderResponsePresent()).isFalse();
+				assertThat(diagnostics.merchantOrderPreferencePresent()).isFalse();
+				assertThat(diagnostics.merchantOrderPreferenceMatches()).isNull();
+			});
+	}
+
+	@Test
+	void reportsWhenMerchantOrderPreferenceIsNull() throws Exception {
+		Payment payment = providerPayment(1001L, "approved");
+		FallbackFixture fixture = fallbackFixture(payment);
+		MerchantOrder orderWithoutPreference = linkedOrder(null);
+		when(fixture.merchantOrders().get(
+			org.mockito.ArgumentMatchers.eq(77L), any(MPRequestOptions.class)))
+			.thenReturn(orderWithoutPreference);
+
+		CheckoutPaymentException failure = fallbackFailure(fixture.gateway(), credential());
+
+		assertThat(failure.reconciliationDiagnostics().reason())
+			.isEqualTo("PREFERENCE_NOT_VERIFIABLE");
+		assertThat(failure.reconciliationDiagnostics().preferenceLinkDiagnostics())
+			.satisfies(diagnostics -> {
+				assertThat(diagnostics.merchantOrderLookupAttempted()).isTrue();
+				assertThat(diagnostics.merchantOrderResponsePresent()).isTrue();
+				assertThat(diagnostics.merchantOrderPreferencePresent()).isFalse();
+				assertThat(diagnostics.merchantOrderPreferenceMatches()).isNull();
+			});
+	}
+
+	@Test
 	void rejectsFallbackPaymentWhenPreferenceCannotBeVerified() throws Exception {
 		Payment payment = providerPayment(1001L, "approved");
 		FallbackFixture fixture = fallbackFixture(payment);
@@ -274,7 +387,16 @@ class MercadoPagoCheckoutProGatewayTests {
 			org.mockito.ArgumentMatchers.eq(77L), any(MPRequestOptions.class)))
 			.thenReturn(wrongPreference);
 
-		assertFallbackFailure(fixture.gateway(), credential(), "PREFERENCE_NOT_VERIFIABLE");
+		CheckoutPaymentException failure = fallbackFailure(fixture.gateway(), credential());
+
+		assertThat(failure.reconciliationDiagnostics().reason())
+			.isEqualTo("PREFERENCE_NOT_VERIFIABLE");
+		assertThat(failure.reconciliationDiagnostics().preferenceLinkDiagnostics())
+			.satisfies(diagnostics -> {
+				assertThat(diagnostics.merchantOrderResponsePresent()).isTrue();
+				assertThat(diagnostics.merchantOrderPreferencePresent()).isTrue();
+				assertThat(diagnostics.merchantOrderPreferenceMatches()).isFalse();
+			});
 	}
 
 	@Test
@@ -514,6 +636,7 @@ class MercadoPagoCheckoutProGatewayTests {
 		when(payment.getCollectorId()).thenReturn(123456L);
 		when(payment.getOrder()).thenReturn(paymentOrder);
 		when(paymentOrder.getId()).thenReturn(77L);
+		when(paymentOrder.getType()).thenReturn("merchant_order");
 		when(payment.getExternalReference()).thenReturn("external-123");
 		when(payment.getTransactionAmount()).thenReturn(new BigDecimal("5.00"));
 		when(payment.getCurrencyId()).thenReturn("ARS");
@@ -567,13 +690,17 @@ class MercadoPagoCheckoutProGatewayTests {
 	private void assertFallbackFailure(
 			MercadoPagoCheckoutProGateway gateway, PaymentCredential credential,
 			String reason) {
-		assertThatThrownBy(() -> gateway.findPaymentForPreference(
+		assertThat(fallbackFailure(gateway, credential).reconciliationDiagnostics().reason())
+			.isEqualTo(reason);
+	}
+
+	private CheckoutPaymentException fallbackFailure(
+			MercadoPagoCheckoutProGateway gateway, PaymentCredential credential) {
+		return org.assertj.core.api.Assertions.catchThrowableOfType(
+			() -> gateway.findPaymentForPreference(
 			credential, "pref-123", "external-123",
-			new BigDecimal("5.00"), "ARS"))
-			.isInstanceOf(CheckoutPaymentException.class)
-			.satisfies(exception -> assertThat(
-				((CheckoutPaymentException) exception)
-					.reconciliationDiagnostics().reason()).isEqualTo(reason));
+			new BigDecimal("5.00"), "ARS"),
+			CheckoutPaymentException.class);
 	}
 
 	private PaymentCredential credential() {

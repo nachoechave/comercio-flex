@@ -296,7 +296,10 @@ class CheckoutProServiceTests {
 			"PREFERENCE_LOOKUP_FAILED", "No se pudo consultar el proveedor.")
 			.withReconciliationDiagnostics(
 				"PROVIDER_SEARCH", "PREFERENCE_LOOKUP_FAILED", 503, "bad_request", 0,
-				false, true, null, false);
+				false, true, null, false)
+			.withPreferenceLinkDiagnostics(
+				new CheckoutPaymentException.PreferenceLinkDiagnostics(
+					true, true, true, true, false, false, null, 404, "not_found"));
 		when(credentials.resolve(1L, "tienda-a")).thenReturn(credential);
 		when(repository.findPendingForReconciliation(20)).thenReturn(List.of(storedAttempt));
 		when(gateway.findPaymentForPreference(
@@ -329,6 +332,15 @@ class CheckoutProServiceTests {
 			.contains("merchantOrdersCollectionNull=true")
 			.contains("merchantOrdersCount=null")
 			.contains("pagingPresent=false")
+			.contains("paymentOrderPresent=true")
+			.contains("paymentOrderIdPresent=true")
+			.contains("paymentOrderTypePresent=true")
+			.contains("merchantOrderLookupAttempted=true")
+			.contains("merchantOrderResponsePresent=false")
+			.contains("merchantOrderPreferencePresent=false")
+			.contains("merchantOrderPreferenceMatches=null")
+			.contains("merchantOrderHttpStatus=404")
+			.contains("merchantOrderProviderErrorCode=not_found")
 			.doesNotContain("sensitive-access-token")
 			.doesNotContain("No se pudo consultar el proveedor.");
 	}

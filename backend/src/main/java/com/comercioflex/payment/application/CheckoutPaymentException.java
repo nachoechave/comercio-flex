@@ -42,12 +42,32 @@ public class CheckoutPaymentException extends RuntimeException {
 			String providerErrorCode, Integer resultCount,
 			Boolean providerResponseNull, Boolean merchantOrdersCollectionNull,
 			Integer merchantOrdersCount, Boolean pagingPresent) {
+		PreferenceLinkDiagnostics preferenceLinkDiagnostics = reconciliationDiagnostics == null
+			? null : reconciliationDiagnostics.preferenceLinkDiagnostics();
 		return new CheckoutPaymentException(
 			code, getMessage(), getCause(),
 			new ReconciliationDiagnostics(
 				stage, reason, providerHttpStatus, providerErrorCode, resultCount,
 				providerResponseNull, merchantOrdersCollectionNull,
-				merchantOrdersCount, pagingPresent));
+				merchantOrdersCount, pagingPresent, preferenceLinkDiagnostics));
+	}
+
+	public CheckoutPaymentException withPreferenceLinkDiagnostics(
+			PreferenceLinkDiagnostics preferenceLinkDiagnostics) {
+		ReconciliationDiagnostics current = reconciliationDiagnostics;
+		return new CheckoutPaymentException(
+			code, getMessage(), getCause(),
+			new ReconciliationDiagnostics(
+				current == null ? null : current.stage(),
+				current == null ? null : current.reason(),
+				current == null ? null : current.providerHttpStatus(),
+				current == null ? null : current.providerErrorCode(),
+				current == null ? null : current.resultCount(),
+				current == null ? null : current.providerResponseNull(),
+				current == null ? null : current.merchantOrdersCollectionNull(),
+				current == null ? null : current.merchantOrdersCount(),
+				current == null ? null : current.pagingPresent(),
+				preferenceLinkDiagnostics));
 	}
 
 	public record ReconciliationDiagnostics(
@@ -59,6 +79,19 @@ public class CheckoutPaymentException extends RuntimeException {
 		Boolean providerResponseNull,
 		Boolean merchantOrdersCollectionNull,
 		Integer merchantOrdersCount,
-		Boolean pagingPresent) {
+		Boolean pagingPresent,
+		PreferenceLinkDiagnostics preferenceLinkDiagnostics) {
+	}
+
+	public record PreferenceLinkDiagnostics(
+		Boolean paymentOrderPresent,
+		Boolean paymentOrderIdPresent,
+		Boolean paymentOrderTypePresent,
+		Boolean merchantOrderLookupAttempted,
+		Boolean merchantOrderResponsePresent,
+		Boolean merchantOrderPreferencePresent,
+		Boolean merchantOrderPreferenceMatches,
+		Integer merchantOrderHttpStatus,
+		String merchantOrderProviderErrorCode) {
 	}
 }
