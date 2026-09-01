@@ -101,6 +101,7 @@ class MercadoPagoCheckoutProGatewayTests {
 			PaymentCredential.Source.CENTRAL_TEST);
 		CheckoutPreferenceCommand command = new CheckoutPreferenceCommand(
 			UUID.fromString("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+			"synthetic-provider-idempotency-key",
 			"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "Pedido #42",
 			new BigDecimal("1500.00"), "ARS",
 			URI.create("https://shop.example.test/return/token"),
@@ -116,6 +117,9 @@ class MercadoPagoCheckoutProGatewayTests {
 		org.mockito.Mockito.verify(preferences).create(request.capture(), options.capture());
 		assertThat(created.preferenceId()).isEqualTo("pref-123");
 		assertThat(options.getValue().getAccessToken()).isEqualTo("TEST-secret-token");
+		assertThat(options.getValue().getCustomHeaders()).containsOnly(
+			org.assertj.core.api.Assertions.entry(
+				"X-Idempotency-Key", "synthetic-provider-idempotency-key"));
 		assertThat(request.getValue().getMarketplaceFee()).isNull();
 		assertThat(request.getValue().getBinaryMode()).isFalse();
 		assertThat(request.getValue().getPaymentMethods().getExcludedPaymentTypes())
@@ -131,6 +135,28 @@ class MercadoPagoCheckoutProGatewayTests {
 		assertThat(request.getValue().getAutoReturn()).isEqualTo("approved");
 		assertThat(request.getValue().getNotificationUrl())
 			.isEqualTo("https://api.example.test/webhooks?route=token");
+	}
+
+	@Test
+	void classifiesTransportFailureAsUnknownCreationOutcome() throws Exception {
+		PreferenceClient preferences = mock(PreferenceClient.class);
+		when(preferences.create(any(PreferenceRequest.class), any(MPRequestOptions.class)))
+			.thenThrow(new MPException("synthetic timeout"));
+		MercadoPagoCheckoutProGateway gateway = new MercadoPagoCheckoutProGateway(
+			preferences, mock(PaymentClient.class), mock(MerchantOrderClient.class), properties());
+		CheckoutPreferenceCommand command = new CheckoutPreferenceCommand(
+			UUID.fromString("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+			"synthetic-provider-idempotency-key",
+			"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "Pedido #42",
+			new BigDecimal("1500.00"), "ARS",
+			URI.create("https://shop.example.test/return/token"),
+			URI.create("https://api.example.test/webhooks?route=token"),
+			Instant.parse("2026-07-31T17:00:00Z"));
+
+		assertThatThrownBy(() -> gateway.createPreference(credential(), command))
+			.isInstanceOf(CheckoutPaymentException.class)
+			.satisfies(exception -> assertThat(((CheckoutPaymentException) exception).code())
+				.isEqualTo("PREFERENCE_CREATION_OUTCOME_UNKNOWN"));
 	}
 
 	@Test

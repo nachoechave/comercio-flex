@@ -104,7 +104,17 @@ public class JdbcCheckoutControlRepository implements CheckoutControlRepository 
 				AND environment = ? AND status = 'PENDING'
 			""", preferenceId, paymentAttemptId.toString(), environment.name());
 		if (changed != 1) {
-			throw new CheckoutPaymentException("CHECKOUT_ROUTE_CONFLICT", "La ruta de pago cambió.");
+			Integer matching = jdbcTemplate.queryForObject("""
+				SELECT COUNT(*) FROM payment_webhook_routes
+				WHERE payment_intent_public_id = UUID_TO_BIN(?)
+					AND environment = ? AND provider_preference_id = ?
+					AND status = 'ACTIVE'
+				""", Integer.class, paymentAttemptId.toString(),
+				environment.name(), preferenceId);
+			if (matching == null || matching != 1) {
+				throw new CheckoutPaymentException(
+					"CHECKOUT_ROUTE_CONFLICT", "La ruta de pago cambió.");
+			}
 		}
 	}
 

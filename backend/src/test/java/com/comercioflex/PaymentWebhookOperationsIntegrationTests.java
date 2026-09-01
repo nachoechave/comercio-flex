@@ -1,6 +1,7 @@
 package com.comercioflex;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -113,9 +114,18 @@ class PaymentWebhookOperationsIntegrationTests {
 				payment_intent_public_id, expected_seller_account_id,
 				provider_preference_id, status, expires_at)
 			VALUES (UUID_TO_BIN(UUID()), UNHEX(SHA2(UUID(), 256)), ?, 'PRODUCTION',
-				UUID_TO_BIN(?), 'seller', 'stored-preference', 'ACTIVE', ?)
+				UUID_TO_BIN(?), 'seller', NULL, 'PENDING', ?)
 			""", tenantId, paymentAttemptId.toString(),
 			java.sql.Timestamp.from(Instant.now().plusSeconds(3600)));
+
+		repository.activateRoute(
+			paymentAttemptId,
+			com.comercioflex.payment.domain.PaymentEnvironment.PRODUCTION,
+			"stored-preference");
+		repository.activateRoute(
+			paymentAttemptId,
+			com.comercioflex.payment.domain.PaymentEnvironment.PRODUCTION,
+			"stored-preference");
 
 		assertThat(repository.routePreferenceMatches(
 			tenantId, paymentAttemptId,
@@ -129,6 +139,11 @@ class PaymentWebhookOperationsIntegrationTests {
 			tenantId + 1, paymentAttemptId,
 			com.comercioflex.payment.domain.PaymentEnvironment.PRODUCTION,
 			"stored-preference")).isEmpty();
+		assertThatThrownBy(() -> repository.activateRoute(
+			paymentAttemptId,
+			com.comercioflex.payment.domain.PaymentEnvironment.PRODUCTION,
+			"different-preference"))
+			.isInstanceOf(com.comercioflex.payment.application.CheckoutPaymentException.class);
 	}
 
 	@Test

@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record CheckoutPreferenceCommand(
 	UUID paymentAttemptId,
+	String providerIdempotencyKey,
 	String externalReference,
 	String title,
 	BigDecimal amount,

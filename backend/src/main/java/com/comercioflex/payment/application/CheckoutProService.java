@@ -41,6 +41,8 @@ public class CheckoutProService {
 
 	private static final String RETURN_NAMESPACE = "checkout-return:v1:";
 	private static final String ROUTE_NAMESPACE = "checkout-webhook-route:v1:";
+	private static final String PROVIDER_IDEMPOTENCY_NAMESPACE =
+		"checkout-pro-preference:v1:";
 
 	private final CheckoutRepository repository;
 	private final CheckoutControlRepository controlRepository;
@@ -140,7 +142,8 @@ public class CheckoutProService {
 			resolved.attempt().reservationExpiresAt()));
 
 		CheckoutPreferenceCommand command = new CheckoutPreferenceCommand(
-			resolved.attempt().id(), resolved.attempt().externalReference(),
+			resolved.attempt().id(), providerIdempotencyKey(resolved.attempt().id()),
+			resolved.attempt().externalReference(),
 			"Pedido #" + resolved.attempt().orderNumber(), resolved.attempt().amount(),
 			resolved.attempt().currencyCode(), returnUri(tenant.slug(), returnToken),
 			notificationUri(routeToken), resolved.attempt().reservationExpiresAt());
@@ -150,15 +153,20 @@ public class CheckoutProService {
 			validatePreference(preference, credential);
 		}
 		catch (RuntimeException exception) {
-			markCreationForReview(resolved.attempt(), exception);
-			controlTransactions.executeWithoutResult(status ->
-				controlRepository.expireRoute(resolved.attempt().id(), environment()));
+			if (!creationOutcomeUnknown(exception)) {
+				markCreationForReview(resolved.attempt(), exception);
+				controlTransactions.executeWithoutResult(status ->
+					controlRepository.expireRoute(resolved.attempt().id(), environment()));
+			}
 			throw exception;
 		}
 
 		StoredCheckoutAttempt attached = tenantTransactions.execute(status -> {
 			StoredCheckoutAttempt locked = repository.findByPublicId(
 				resolved.attempt().id(), true).orElseThrow(this::notFound);
+			if (sameAssociatedPreference(locked, preference, credential)) {
+				return locked;
+			}
 			repository.attachPreference(
 				locked, preference.preferenceId(), preference.checkoutUri(),
 				locked.reservationExpiresAt(), credential.sellerAccountId(),
@@ -472,10 +480,35 @@ public class CheckoutProService {
 				"IDEMPOTENCY_CONFLICT", "La clave idempotente ya fue usada.");
 		}
 		if (attempt.checkoutUri() == null || attempt.checkoutExpiresAt() == null) {
+			if (attempt.status() == PaymentIntentStatus.CREATED
+					&& attempt.preferenceId() == null
+					&& attempt.checkoutUri() == null
+					&& attempt.checkoutExpiresAt() == null) {
+				return new PreparedAttempt(attempt, false);
+			}
 			throw new CheckoutPaymentException(
 				"PAYMENT_REQUIRES_REVIEW", "El intento de pago requiere revisión.");
 		}
 		return new PreparedAttempt(attempt, true);
+	}
+
+	private boolean creationOutcomeUnknown(RuntimeException exception) {
+		return exception instanceof CheckoutPaymentException failure
+			&& failure.code().equals("PREFERENCE_CREATION_OUTCOME_UNKNOWN");
+	}
+
+	private boolean sameAssociatedPreference(
+			StoredCheckoutAttempt attempt, CreatedCheckoutPreference preference,
+			PaymentCredential credential) {
+		if (attempt.preferenceId() == null) return false;
+		if (!attempt.preferenceId().equals(preference.preferenceId())
+				|| attempt.checkoutUri() == null
+				|| !credential.sellerAccountId().equals(attempt.sellerAccountId())
+				|| credential.environment() != attempt.environment()) {
+			throw new CheckoutPaymentException(
+				"PAYMENT_CONCURRENT_UPDATE", "El intento de pago cambió durante el proceso.");
+		}
+		return true;
 	}
 
 	private CheckoutInitiation initiation(StoredCheckoutAttempt attempt, boolean replayed) {
@@ -571,6 +604,11 @@ public class CheckoutProService {
 		catch (Exception exception) {
 			throw new IllegalStateException("HMAC-SHA256 no está disponible.", exception);
 		}
+	}
+
+	private String providerIdempotencyKey(UUID paymentAttemptId) {
+		return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
+			sha256(PROVIDER_IDEMPOTENCY_NAMESPACE + paymentAttemptId));
 	}
 
 	private byte[] sha256(String value) {
