@@ -10,6 +10,12 @@ describe('CheckoutProHandoffService', () => {
     replayed: false,
   };
 
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    TestBed.configureTestingModule({});
+  });
+
   it('keeps checkout data isolated by store and order without browser persistence', () => {
     const service = TestBed.inject(CheckoutProHandoffService);
 
