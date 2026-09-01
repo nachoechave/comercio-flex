@@ -46,6 +46,7 @@ import com.comercioflex.payment.domain.PaymentEnvironment;
 import com.comercioflex.payment.domain.PaymentResultStatus;
 
 public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
+	private static final String IDEMPOTENCY_HEADER = "X-Idempotency-Key";
 	private static final Pattern PROVIDER_ERROR_CODE = Pattern.compile(
 		"\\\"error\\\"\\s*:\\s*\\\"([A-Za-z0-9_.-]{1,64})\\\"");
 
@@ -101,7 +102,8 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 			.expirationDateTo(OffsetDateTime.ofInstant(command.expiresAt(), ZoneOffset.UTC))
 			.build();
 		try {
-			Preference preference = preferences.create(request, options(credential));
+			Preference preference = preferences.create(
+				request, creationOptions(credential, command.providerIdempotencyKey()));
 			String checkoutUrl = credential.environment()
 				== com.comercioflex.payment.domain.PaymentEnvironment.TEST
 				? preference.getSandboxInitPoint() : preference.getInitPoint();
@@ -113,8 +115,11 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 				preference.getId(), URI.create(checkoutUrl),
 				preference.getCollectorId().toString());
 		}
-		catch (MPApiException | MPException exception) {
+		catch (MPApiException exception) {
 			throw gatewayFailure("PREFERENCE_CREATION_FAILED", exception);
+		}
+		catch (MPException exception) {
+			throw gatewayFailure("PREFERENCE_CREATION_OUTCOME_UNKNOWN", exception);
 		}
 	}
 
@@ -566,11 +571,23 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 	}
 
 	private MPRequestOptions options(PaymentCredential credential) {
+		return options(credential, Map.of());
+	}
+
+	private MPRequestOptions creationOptions(
+			PaymentCredential credential, String providerIdempotencyKey) {
+		return options(credential, Map.of(
+			IDEMPOTENCY_HEADER, providerIdempotencyKey));
+	}
+
+	private MPRequestOptions options(
+			PaymentCredential credential, Map<String, String> customHeaders) {
 		return MPRequestOptions.builder()
 			.accessToken(credential.accessToken())
 			.connectionTimeout(Math.toIntExact(properties.connectTimeout().toMillis()))
 			.connectionRequestTimeout(Math.toIntExact(properties.connectTimeout().toMillis()))
 			.socketTimeout(Math.toIntExact(properties.readTimeout().toMillis()))
+			.customHeaders(customHeaders)
 			.build();
 	}
 
