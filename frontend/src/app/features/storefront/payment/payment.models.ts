@@ -15,8 +15,17 @@ export interface CheckoutProStart {
   replayed: boolean;
 }
 
+export interface QrOrderStart {
+  paymentAttemptId: string;
+  qrData: string | null;
+  expiresAt: string;
+  status: PublicPaymentStatus;
+  replayed: boolean;
+}
+
 export interface PaymentMethods {
   mercadoPago: boolean;
+  mercadoPagoQr?: boolean;
   bankTransfer: boolean;
 }
 

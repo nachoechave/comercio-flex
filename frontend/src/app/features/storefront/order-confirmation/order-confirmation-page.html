@@ -73,22 +73,8 @@
           </p>
           @if (checkoutPro(); as checkout) {
             <section class="checkout-pro" aria-labelledby="checkout-pro-title">
-              <h2 id="checkout-pro-title">Pagá con Mercado Pago</h2>
-              <p>Escaneá el código con la cámara de tu celular para continuar en Checkout Pro.</p>
-              @if (checkoutQrLoading()) {
-                <div class="qr-placeholder" role="status">Generando QR seguro…</div>
-              } @else if (checkoutQrDataUrl(); as qrDataUrl) {
-                <img
-                  class="checkout-qr"
-                  [src]="qrDataUrl"
-                  alt="Código QR para pagar con Mercado Pago"
-                  width="240"
-                  height="240"
-                />
-              }
-              @if (checkoutQrErrorMessage()) {
-                <p class="checkout-qr-error" role="alert">{{ checkoutQrErrorMessage() }}</p>
-              }
+              <h2 id="checkout-pro-title">Pagar en este dispositivo</h2>
+              <p>Continuá en Checkout Pro para elegir tarjeta, saldo u otros medios.</p>
               <p class="checkout-expiration">
                 Enlace disponible hasta el <strong>{{ checkout.expiresAt | commerceDate }}</strong
                 >.
@@ -96,6 +82,40 @@
               <button type="button" (click)="openCheckoutPro()">
                 Abrir Mercado Pago en este dispositivo
               </button>
+              <button type="button" class="secondary" (click)="chooseAnotherPaymentMethod()">
+                Elegir otro medio de pago
+              </button>
+            </section>
+          }
+          @if (qrOrder(); as qr) {
+            <section class="checkout-pro qr-order" aria-labelledby="qr-order-title">
+              <h2 id="qr-order-title">Pagar con QR</h2>
+              @if (qr.status === 'EXPIRED') {
+                <p role="status">El QR venció.</p>
+                <button type="button" (click)="retryQrPayment()" [disabled]="paymentStarting()">
+                  Generar un nuevo QR
+                </button>
+              } @else {
+                <p>Escaneá el QR con Mercado Pago.</p>
+                @if (qrLoading()) {
+                  <div class="qr-placeholder" role="status">Generando QR seguro…</div>
+                } @else if (qrDataUrl(); as dataUrl) {
+                  <img
+                    class="checkout-qr"
+                    [src]="dataUrl"
+                    alt="Código QR dinámico de Mercado Pago"
+                    width="240"
+                    height="240"
+                  />
+                }
+                @if (qrErrorMessage()) {
+                  <p class="checkout-qr-error" role="alert">{{ qrErrorMessage() }}</p>
+                }
+                <p role="status">Esperando acreditación…</p>
+                <p class="checkout-expiration">
+                  QR disponible hasta el <strong>{{ qr.expiresAt | commerceDate }}</strong>.
+                </p>
+              }
               <button type="button" class="secondary" (click)="chooseAnotherPaymentMethod()">
                 Elegir otro medio de pago
               </button>
@@ -111,15 +131,19 @@
               </button>
             </div>
           } @else if (paymentMethods(); as methods) {
-            @if (!bankTransfer() && !checkoutPro()) {
+            @if (!bankTransfer() && !checkoutPro() && !qrOrder()) {
               <section class="payment-methods" aria-labelledby="payment-methods-title">
                 <h2 id="payment-methods-title">¿Cómo querés pagar?</h2>
                 @if (methods.mercadoPago) {
                   <button type="button" (click)="startPayment()" [disabled]="paymentStarting()">
-                    <strong>{{
-                      paymentErrorMessage() ? 'Reintentar con Mercado Pago' : 'Mercado Pago'
-                    }}</strong>
-                    <span>Tarjetas y dinero disponible</span>
+                    <strong>Pagar con Mercado Pago</strong>
+                    <span>Tarjeta, saldo u otros medios</span>
+                  </button>
+                }
+                @if (methods.mercadoPagoQr) {
+                  <button type="button" (click)="startQrPayment()" [disabled]="paymentStarting()">
+                    <strong>Pagar con QR</strong>
+                    <span>Escaneá este código con Mercado Pago</span>
                   </button>
                 }
                 @if (methods.bankTransfer && !bankTransfer()) {
@@ -133,7 +157,12 @@
                     <span>Transferí y enviá el comprobante</span>
                   </button>
                 }
-                @if (!methods.mercadoPago && !methods.bankTransfer && !bankTransfer()) {
+                @if (
+                  !methods.mercadoPago &&
+                  !methods.mercadoPagoQr &&
+                  !methods.bankTransfer &&
+                  !bankTransfer()
+                ) {
                   <p>El comercio todavía no habilitó un medio de pago.</p>
                 }
               </section>

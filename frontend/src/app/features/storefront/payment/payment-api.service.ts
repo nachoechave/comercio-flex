@@ -7,6 +7,7 @@ import {
   CheckoutProStart,
   PaymentMethods,
   PaymentReturnStatus,
+  QrOrderStart,
 } from './payment.models';
 
 @Injectable({ providedIn: 'root' })
@@ -25,6 +26,33 @@ export class PaymentApiService {
       `${this.ordersUrl(storeSlug)}/${encodeURIComponent(orderId)}/payments/checkout-pro`,
       {},
       { headers, params },
+    );
+  }
+
+  startQrOrder(
+    storeSlug: string,
+    orderId: string,
+    lookupToken: string,
+    idempotencyKey: string,
+  ): Observable<QrOrderStart> {
+    const headers = new HttpHeaders({ 'Idempotency-Key': idempotencyKey });
+    const params = new HttpParams().set('token', lookupToken);
+    return this.http.post<QrOrderStart>(
+      `${this.ordersUrl(storeSlug)}/${encodeURIComponent(orderId)}/payments/qr`,
+      {},
+      { headers, params },
+    );
+  }
+
+  getCurrentQrOrder(
+    storeSlug: string,
+    orderId: string,
+    lookupToken: string,
+  ): Observable<QrOrderStart | null> {
+    const params = new HttpParams().set('token', lookupToken);
+    return this.http.get<QrOrderStart | null>(
+      `${this.ordersUrl(storeSlug)}/${encodeURIComponent(orderId)}/payments/qr`,
+      { params },
     );
   }
 
