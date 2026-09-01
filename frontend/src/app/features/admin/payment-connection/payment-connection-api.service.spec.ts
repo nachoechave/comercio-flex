@@ -43,6 +43,41 @@ describe('PaymentConnectionApiService', () => {
     request.flush(null);
   });
 
+  it('keeps QR discovery and explicit provisioning on separate admin endpoints', () => {
+    service.getQrSetup('tienda/a').subscribe();
+    let request = http.expectOne('/api/v1/stores/tienda%2Fa/admin/payment-connection/qr');
+    expect(request.request.method).toBe('GET');
+    request.flush({});
+
+    service.discoverQrSetup('tienda/a').subscribe();
+    request = http.expectOne(
+      '/api/v1/stores/tienda%2Fa/admin/payment-connection/qr/discovery',
+    );
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush({});
+
+    service
+      .configureQr('tienda/a', {
+        storeName: 'Sucursal Centro',
+        streetName: 'San Martín',
+        streetNumber: '123',
+        cityName: 'Córdoba',
+        stateName: 'Córdoba',
+        latitude: -31.4167,
+        longitude: -64.1833,
+        reference: null,
+      })
+      .subscribe();
+    request = http.expectOne(
+      '/api/v1/stores/tienda%2Fa/admin/payment-connection/qr/configuration',
+    );
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).not.toHaveProperty('accessToken');
+    expect(request.request.body).not.toHaveProperty('externalPosId');
+    request.flush({});
+  });
+
   it('loads only failed or exhausted webhooks from the safe operational endpoint', () => {
     service.getFailedWebhooks('tienda/a').subscribe();
 

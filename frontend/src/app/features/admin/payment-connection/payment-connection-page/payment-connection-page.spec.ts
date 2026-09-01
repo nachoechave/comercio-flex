@@ -6,7 +6,11 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { PaymentAuthorizationNavigationService } from '../payment-authorization-navigation.service';
-import { PaymentConnection, PaymentWebhookEventSummary } from '../payment-connection.models';
+import {
+  PaymentConnection,
+  PaymentWebhookEventSummary,
+  QrSetup,
+} from '../payment-connection.models';
 import { PaymentConnectionPage } from './payment-connection-page';
 
 const CONNECTED: PaymentConnection = {
@@ -23,6 +27,26 @@ const NOT_CONNECTED: PaymentConnection = {
   status: 'NOT_CONNECTED',
   connectedAccountLabel: null,
   connectedAt: null,
+};
+
+const QR_NOT_CONFIGURED: QrSetup = {
+  environment: 'PRODUCTION' as const,
+  status: 'NO_CONFIGURADO' as const,
+  authorization: 'NOT_CHECKED' as const,
+  storeConfigured: false,
+  posConfigured: false,
+  externalPosIdAvailable: false,
+  qrOrdersReady: false,
+};
+
+const QR_READY: QrSetup = {
+  ...QR_NOT_CONFIGURED,
+  status: 'LISTO' as const,
+  authorization: 'AUTHORIZED' as const,
+  storeConfigured: true,
+  posConfigured: true,
+  externalPosIdAvailable: true,
+  qrOrdersReady: true,
 };
 
 const DEAD_WEBHOOK: PaymentWebhookEventSummary = {
@@ -54,8 +78,11 @@ describe('PaymentConnectionPage', () => {
     fixture.detectChanges();
   }
 
-  function flushConnection(connection: PaymentConnection): void {
+  function flushConnection(connection: PaymentConnection, qr: QrSetup = QR_NOT_CONFIGURED): void {
     http.expectOne('/api/v1/stores/tienda-a/admin/payment-connection').flush(connection);
+    if (connection.status === 'CONNECTED') {
+      http.expectOne('/api/v1/stores/tienda-a/admin/payment-connection/qr').flush(qr);
+    }
     fixture.detectChanges();
   }
 
@@ -119,6 +146,82 @@ describe('PaymentConnectionPage', () => {
     expect(text).toContain('Conectada a: Cuenta de Mercado Pago verificada');
     expect(text).not.toContain('undefined');
     expect(text).not.toContain('null');
+  });
+
+  it('shows only safe QR readiness booleans and never provider identifiers', () => {
+    createComponent();
+    flushConnection(CONNECTED, QR_READY);
+
+    const text = fixture.nativeElement.textContent.replace(/\s+/g, ' ');
+    expect(text).toContain('Código QR');
+    expect(text).toContain('Sucursal configurada:Sí');
+    expect(text).toContain('Caja configurada:Sí');
+    expect(text).toContain('QR Orders listo:Sí');
+    expect(text).not.toContain('external_pos_id');
+    expect(text).not.toContain('providerStoreId');
+  });
+
+  it('performs read-only QR discovery only after an explicit owner action', () => {
+    createComponent();
+    flushConnection(CONNECTED);
+
+    const verifyButton = Array.from<HTMLButtonElement>(
+      fixture.nativeElement.querySelectorAll('.qr-setup button'),
+    ).find((button) => button.textContent.includes('Verificar'))!;
+    verifyButton.click();
+    http.expectOne('/api/v1/auth/csrf').flush(null);
+    const discovery = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/payment-connection/qr/discovery',
+    );
+    expect(discovery.request.method).toBe('POST');
+    expect(discovery.request.body).toEqual({});
+    discovery.flush(QR_READY);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'La sucursal y la caja QR quedaron verificadas.',
+    );
+  });
+
+  it('sends real location fields without IDs or credentials when configuring QR', () => {
+    createComponent();
+    flushConnection(CONNECTED);
+
+    const configureButton = Array.from<HTMLButtonElement>(
+      fixture.nativeElement.querySelectorAll('.qr-setup button'),
+    ).find((button) => button.textContent.trim() === 'Configurar QR')!;
+    configureButton.click();
+    fixture.detectChanges();
+    fixture.componentInstance['qrForm'].setValue({
+      storeName: 'Sucursal Centro',
+      streetName: 'San Martín',
+      streetNumber: '123',
+      cityName: 'Córdoba',
+      stateName: 'Córdoba',
+      latitude: -31.4167,
+      longitude: -64.1833,
+      reference: '',
+    });
+    fixture.componentInstance['configureQr']();
+    http.expectOne('/api/v1/auth/csrf').flush(null);
+    const request = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/payment-connection/qr/configuration',
+    );
+    expect(request.request.body).toEqual({
+      storeName: 'Sucursal Centro',
+      streetName: 'San Martín',
+      streetNumber: '123',
+      cityName: 'Córdoba',
+      stateName: 'Córdoba',
+      latitude: -31.4167,
+      longitude: -64.1833,
+      reference: null,
+    });
+    expect(JSON.stringify(request.request.body)).not.toMatch(
+      /accessToken|externalPosId|providerPosId|secret/i,
+    );
+    request.flush(QR_READY);
+    fixture.detectChanges();
   });
 
   it('starts authorization only after obtaining CSRF and uses same-tab navigation', () => {

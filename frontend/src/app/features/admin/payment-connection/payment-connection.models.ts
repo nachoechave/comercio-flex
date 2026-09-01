@@ -40,3 +40,33 @@ export interface PaymentWebhookRetryResult {
 export interface PaymentStoreSettings {
   timezone: string;
 }
+
+export type QrProvisioningStatus = 'NO_CONFIGURADO' | 'VERIFICANDO' | 'LISTO' | 'ERROR';
+
+export type QrAuthorizationStatus =
+  | 'NOT_CHECKED'
+  | 'AUTHORIZED'
+  | 'UNAUTHORIZED_SCOPES'
+  | 'NOT_FOUND'
+  | 'PROVIDER_ERROR';
+
+export interface QrSetup {
+  environment: PaymentEnvironment;
+  status: QrProvisioningStatus;
+  authorization: QrAuthorizationStatus;
+  storeConfigured: boolean;
+  posConfigured: boolean;
+  externalPosIdAvailable: boolean;
+  qrOrdersReady: boolean;
+}
+
+export interface ConfigureQrRequest {
+  storeName: string;
+  streetName: string;
+  streetNumber: string;
+  cityName: string;
+  stateName: string;
+  latitude: number;
+  longitude: number;
+  reference: string | null;
+}
