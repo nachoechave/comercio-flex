@@ -8,6 +8,8 @@ import {
   PaymentStoreSettings,
   PaymentWebhookEventSummary,
   PaymentWebhookRetryResult,
+  ConfigureQrRequest,
+  QrSetup,
 } from './payment-connection.models';
 
 @Injectable({ providedIn: 'root' })
@@ -27,6 +29,21 @@ export class PaymentConnectionApiService {
 
   disconnect(storeSlug: string): Observable<void> {
     return this.http.delete<void>(this.connectionUrl(storeSlug));
+  }
+
+  getQrSetup(storeSlug: string): Observable<QrSetup> {
+    return this.http.get<QrSetup>(`${this.connectionUrl(storeSlug)}/qr`);
+  }
+
+  discoverQrSetup(storeSlug: string): Observable<QrSetup> {
+    return this.http.post<QrSetup>(`${this.connectionUrl(storeSlug)}/qr/discovery`, {});
+  }
+
+  configureQr(storeSlug: string, request: ConfigureQrRequest): Observable<QrSetup> {
+    return this.http.post<QrSetup>(
+      `${this.connectionUrl(storeSlug)}/qr/configuration`,
+      request,
+    );
   }
 
   getFailedWebhooks(storeSlug: string): Observable<PaymentWebhookEventSummary[]> {

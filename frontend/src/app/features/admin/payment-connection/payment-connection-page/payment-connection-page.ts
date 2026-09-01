@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, finalize, forkJoin, of, Subscription, switchMap } from 'rxjs';
 
 import { CsrfService } from '../../../../core/auth/csrf.service';
@@ -19,13 +20,17 @@ import { inheritedRouteParam } from '../../../../core/routing/inherited-route-pa
 import { PaymentAuthorizationNavigationService } from '../payment-authorization-navigation.service';
 import { PaymentConnectionApiService } from '../payment-connection-api.service';
 import { paymentConnectionErrorMessage } from '../payment-connection-errors';
-import { PaymentConnection, PaymentWebhookEventSummary } from '../payment-connection.models';
+import {
+  PaymentConnection,
+  PaymentWebhookEventSummary,
+  QrSetup,
+} from '../payment-connection.models';
 
 type OAuthResult = 'connected' | 'cancelled' | 'failed';
 
 @Component({
   selector: 'app-payment-connection-page',
-  imports: [CommerceDatePipe, RouterLink, StatusPill],
+  imports: [CommerceDatePipe, ReactiveFormsModule, RouterLink, StatusPill],
   templateUrl: './payment-connection-page.html',
   styleUrl: './payment-connection-page.scss',
 })
@@ -43,6 +48,7 @@ export class PaymentConnectionPage {
   private webhooksSubscription?: Subscription;
   private retrySubscription?: Subscription;
   private retryTriggerEventId: string | null = null;
+  private qrSubscription?: Subscription;
 
   readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
     initialValue: '',
@@ -61,7 +67,25 @@ export class PaymentConnectionPage {
   readonly storeTimezone = signal('UTC');
   readonly retryingEventId = signal<string | null>(null);
   readonly confirmingRetryEventId = signal<string | null>(null);
-  readonly busy = computed(() => this.startingAuthorization() || this.disconnecting());
+  readonly qrSetup = signal<QrSetup | null>(null);
+  readonly qrLoading = signal(false);
+  readonly qrAction = signal<'DISCOVERY' | 'CONFIGURATION' | null>(null);
+  readonly qrFormVisible = signal(false);
+  readonly qrErrorMessage = signal<string | null>(null);
+  readonly qrNoticeMessage = signal<string | null>(null);
+  readonly qrForm = new FormGroup({
+    storeName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(60)] }),
+    streetName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(200)] }),
+    streetNumber: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(40)] }),
+    cityName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
+    stateName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
+    latitude: new FormControl<number | null>(null, [Validators.required, Validators.min(-90), Validators.max(90)]),
+    longitude: new FormControl<number | null>(null, [Validators.required, Validators.min(-180), Validators.max(180)]),
+    reference: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(120)] }),
+  });
+  readonly busy = computed(
+    () => this.startingAuthorization() || this.disconnecting() || this.qrAction() !== null,
+  );
   readonly accountLabel = computed(
     () => this.connection()?.connectedAccountLabel?.trim() || 'Cuenta de Mercado Pago verificada',
   );
@@ -78,6 +102,10 @@ export class PaymentConnectionPage {
       this.noticeMessage.set(null);
       this.webhooksNoticeMessage.set(null);
       this.storeTimezone.set('UTC');
+      this.qrSetup.set(null);
+      this.qrErrorMessage.set(null);
+      this.qrNoticeMessage.set(null);
+      this.qrFormVisible.set(false);
       this.confirmingDisconnect.set(false);
       this.loading.set(true);
       this.cancelOperationalRequests();
@@ -87,6 +115,7 @@ export class PaymentConnectionPage {
           this.connection.set(connection);
           this.loading.set(false);
           this.applyOAuthResult(connection);
+          if (connection.status === 'CONNECTED') this.loadQrSetup(storeSlug);
         },
         error: (error: unknown) => {
           this.loading.set(false);
@@ -100,6 +129,26 @@ export class PaymentConnectionPage {
         this.cancelOperationalRequests();
       });
     });
+  }
+
+  discoverQrSetup(): void {
+    this.runQrAction('DISCOVERY');
+  }
+
+  showQrConfiguration(): void {
+    if (!this.busy()) this.qrFormVisible.set(true);
+  }
+
+  cancelQrConfiguration(): void {
+    if (!this.busy()) this.qrFormVisible.set(false);
+  }
+
+  configureQr(): void {
+    if (this.qrForm.invalid || this.busy()) {
+      this.qrForm.markAllAsTouched();
+      return;
+    }
+    this.runQrAction('CONFIGURATION');
   }
 
   askToRetry(event: PaymentWebhookEventSummary): void {
@@ -297,8 +346,69 @@ export class PaymentConnectionPage {
     this.retrySubscription?.unsubscribe();
     this.webhooksSubscription = undefined;
     this.retrySubscription = undefined;
+    this.qrSubscription?.unsubscribe();
+    this.qrSubscription = undefined;
     this.retryingEventId.set(null);
     this.confirmingRetryEventId.set(null);
+  }
+
+  private loadQrSetup(storeSlug: string): void {
+    this.qrSubscription?.unsubscribe();
+    this.qrLoading.set(true);
+    this.qrErrorMessage.set(null);
+    this.qrSubscription = this.api
+      .getQrSetup(storeSlug)
+      .pipe(finalize(() => this.qrLoading.set(false)))
+      .subscribe({
+        next: (setup) => this.qrSetup.set(setup),
+        error: (error: unknown) => {
+          this.qrErrorMessage.set(
+            paymentConnectionErrorMessage(error, 'No pudimos cargar la configuración QR.'),
+          );
+        },
+      });
+  }
+
+  private runQrAction(action: 'DISCOVERY' | 'CONFIGURATION'): void {
+    const storeSlug = this.storeSlug();
+    if (!storeSlug || this.busy()) return;
+    this.qrAction.set(action);
+    this.qrErrorMessage.set(null);
+    this.qrNoticeMessage.set(null);
+    const request$ = action === 'DISCOVERY'
+      ? this.api.discoverQrSetup(storeSlug)
+      : this.api.configureQr(storeSlug, {
+          storeName: this.qrForm.controls.storeName.value.trim(),
+          streetName: this.qrForm.controls.streetName.value.trim(),
+          streetNumber: this.qrForm.controls.streetNumber.value.trim(),
+          cityName: this.qrForm.controls.cityName.value.trim(),
+          stateName: this.qrForm.controls.stateName.value.trim(),
+          latitude: this.qrForm.controls.latitude.value!,
+          longitude: this.qrForm.controls.longitude.value!,
+          reference: this.qrForm.controls.reference.value.trim() || null,
+        });
+    this.qrSubscription = this.csrf
+      .ensureToken()
+      .pipe(
+        switchMap(() => request$),
+        finalize(() => this.qrAction.set(null)),
+      )
+      .subscribe({
+        next: (setup) => {
+          this.qrSetup.set(setup);
+          this.qrFormVisible.set(false);
+          this.qrNoticeMessage.set(
+            setup.qrOrdersReady
+              ? 'La sucursal y la caja QR quedaron verificadas.'
+              : 'Verificamos Mercado Pago. Todavía falta configurar la sucursal o la caja.',
+          );
+        },
+        error: (error: unknown) => {
+          this.qrErrorMessage.set(
+            paymentConnectionErrorMessage(error, 'No pudimos configurar Código QR.'),
+          );
+        },
+      });
   }
 
   private restoreRetryFocus(): void {

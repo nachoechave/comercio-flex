@@ -126,6 +126,117 @@
         Para autorizar, saldrás temporalmente de Comercio Flex y volverás a esta pantalla.
       </small>
     </section>
+
+    @if (current.status === 'CONNECTED') {
+      <section class="card qr-setup" aria-labelledby="qr-setup-title" [attr.aria-busy]="qrAction() !== null">
+        <div class="card-heading">
+          <div>
+            <p class="eyebrow">Mercado Pago</p>
+            <h2 id="qr-setup-title">Código QR</h2>
+          </div>
+          @if (qrAction() !== null || qrSetup()?.status === 'VERIFICANDO') {
+            <app-status-pill label="Verificando" tone="warning" />
+          } @else {
+            @switch (qrSetup()?.status) {
+              @case ('LISTO') {
+                <app-status-pill label="Listo" tone="success" />
+              }
+              @case ('ERROR') {
+                <app-status-pill label="Error" tone="danger" />
+              }
+              @default {
+                <app-status-pill label="No configurado" />
+              }
+            }
+          }
+        </div>
+
+        <p>
+          Configurá una sucursal y una caja de Mercado Pago para habilitar QR Orders. Esta acción no
+          crea cobros ni realiza compras.
+        </p>
+
+        @if (qrNoticeMessage()) {
+          <p class="notice" role="status" aria-live="polite">{{ qrNoticeMessage() }}</p>
+        }
+        @if (qrErrorMessage()) {
+          <p class="error" role="alert">{{ qrErrorMessage() }}</p>
+        }
+
+        @if (qrLoading()) {
+          <p class="loading" role="status">Cargando configuración QR…</p>
+        } @else if (qrSetup(); as qr) {
+          <dl class="qr-status">
+            <div><dt>Sucursal configurada:</dt><dd>{{ qr.storeConfigured ? 'Sí' : 'No' }}</dd></div>
+            <div><dt>Caja configurada:</dt><dd>{{ qr.posConfigured ? 'Sí' : 'No' }}</dd></div>
+            <div><dt>QR Orders listo:</dt><dd>{{ qr.qrOrdersReady ? 'Sí' : 'No' }}</dd></div>
+          </dl>
+          <div class="actions">
+            <button type="button" (click)="discoverQrSetup()" [disabled]="busy()">
+              {{ qrAction() === 'DISCOVERY' ? 'Verificando…' : 'Verificar configuración' }}
+            </button>
+            @if (!qr.qrOrdersReady) {
+              <button type="button" class="primary" (click)="showQrConfiguration()" [disabled]="busy()">
+                Configurar QR
+              </button>
+            }
+          </div>
+        }
+
+        @if (qrFormVisible()) {
+          <form class="qr-form" [formGroup]="qrForm" (ngSubmit)="configureQr()">
+            <h3>Datos reales de la sucursal</h3>
+            <p class="operational-help">
+              Mercado Pago utiliza la ubicación para registrar la sucursal. No ingreses datos
+              inventados.
+            </p>
+            <div class="field-grid">
+              <label>
+                Nombre de la sucursal
+                <input type="text" formControlName="storeName" autocomplete="organization" maxlength="60" />
+              </label>
+              <label>
+                Calle
+                <input type="text" formControlName="streetName" autocomplete="address-line1" maxlength="200" />
+              </label>
+              <label>
+                Número
+                <input type="text" formControlName="streetNumber" autocomplete="address-line2" maxlength="40" />
+              </label>
+              <label>
+                Ciudad
+                <input type="text" formControlName="cityName" autocomplete="address-level2" maxlength="120" />
+              </label>
+              <label>
+                Provincia
+                <input type="text" formControlName="stateName" autocomplete="address-level1" maxlength="120" />
+              </label>
+              <label>
+                Referencia <span>(opcional)</span>
+                <input type="text" formControlName="reference" maxlength="120" />
+              </label>
+              <label>
+                Latitud
+                <input type="number" formControlName="latitude" min="-90" max="90" step="any" />
+              </label>
+              <label>
+                Longitud
+                <input type="number" formControlName="longitude" min="-180" max="180" step="any" />
+              </label>
+            </div>
+            @if (qrForm.invalid && qrForm.touched) {
+              <p class="error" role="alert">Completá todos los datos reales y revisá las coordenadas.</p>
+            }
+            <div class="actions">
+              <button type="button" (click)="cancelQrConfiguration()" [disabled]="busy()">Cancelar</button>
+              <button type="submit" class="primary" [disabled]="busy()">
+                {{ qrAction() === 'CONFIGURATION' ? 'Configurando…' : 'Crear o recuperar sucursal y caja' }}
+              </button>
+            </div>
+          </form>
+        }
+      </section>
+    }
   }
   <section class="card operations" aria-labelledby="payment-operations-title">
     <div class="card-heading">

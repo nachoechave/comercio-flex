@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.comercioflex.payment.application.PaymentOAuthException;
+import com.comercioflex.payment.application.QrSetupException;
 
 @RestControllerAdvice(basePackageClasses = PaymentConnectionController.class)
 public class PaymentOAuthErrorHandler {
@@ -28,6 +29,20 @@ public class PaymentOAuthErrorHandler {
 		problem.setTitle("No se pudo configurar Mercado Pago");
 		problem.setType(URI.create(
 			"https://comercio-flex.local/problems/payment-connection"));
+		problem.setProperty("code", exception.code());
+		return problem;
+	}
+
+	@ExceptionHandler(QrSetupException.class)
+	ProblemDetail qrSetup(QrSetupException exception) {
+		HttpStatus status = "QR_SETUP_IN_PROGRESS".equals(exception.code())
+			? HttpStatus.CONFLICT
+			: exception.code().contains("PROVIDER_ERROR")
+				? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.BAD_REQUEST;
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, exception.getMessage());
+		problem.setTitle("No se pudo configurar Código QR");
+		problem.setType(URI.create(
+			"https://comercio-flex.local/problems/payment-qr-setup"));
 		problem.setProperty("code", exception.code());
 		return problem;
 	}
