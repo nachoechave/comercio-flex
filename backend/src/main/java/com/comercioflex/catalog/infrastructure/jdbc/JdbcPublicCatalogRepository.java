@@ -213,7 +213,7 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				variant.price,
 				variant.size_value,
 				variant.color_value,
-				(
+				GREATEST(
 					COALESCE(balance.quantity, 0.000)
 					- COALESCE((
 						SELECT SUM(reservation.quantity)
@@ -221,21 +221,27 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 						WHERE reservation.variant_id = variant.id
 							AND reservation.status = 'ACTIVE'
 							AND reservation.expires_at > UTC_TIMESTAMP(6)
-					), 0.000)
-				) > 0 available
+					), 0.000),
+					0.000
+				) available_quantity
 			FROM product_variants variant
 			LEFT JOIN inventory_balances balance ON balance.variant_id = variant.id
 			WHERE variant.product_id = ?
 				AND variant.status = 'ACTIVE'
 			ORDER BY variant.size_value, variant.color_value, variant.id
 			""",
-			(resultSet, rowNumber) -> new PublicVariant(
-				UUID.fromString(resultSet.getString("variant_public_id")),
-				resultSet.getBigDecimal("price"),
-				nullableOption(resultSet.getString("size_value")),
-				nullableOption(resultSet.getString("color_value")),
-				List.of(),
-				resultSet.getBoolean("available")),
+			(resultSet, rowNumber) -> {
+				var availableQuantity = resultSet.getBigDecimal("available_quantity");
+
+				return new PublicVariant(
+					UUID.fromString(resultSet.getString("variant_public_id")),
+					resultSet.getBigDecimal("price"),
+					nullableOption(resultSet.getString("size_value")),
+					nullableOption(resultSet.getString("color_value")),
+					List.of(),
+					availableQuantity.signum() > 0,
+					availableQuantity);
+			},
 			product.internalId());
 		return Optional.of(product.toDetail(withOptions(product.internalId(), variants)));
 	}
@@ -267,7 +273,8 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 			variant.size(),
 			variant.color(),
 			List.copyOf(optionsByVariant.getOrDefault(variant.id(), List.of())),
-			variant.available())).toList();
+			variant.available(),
+			variant.availableQuantity())).toList();
 	}
 
 	private void appendFilters(
