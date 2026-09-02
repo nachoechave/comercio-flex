@@ -56,15 +56,34 @@ export class StorefrontLayout {
       }
     });
 
-    effect((onCleanup) => {
-      const faviconUrl = this.context.settings()?.branding?.faviconUrl;
-      if (!faviconUrl) return;
-      const link = this.document.createElement('link');
-      link.rel = 'icon';
-      link.href = faviconUrl;
-      link.dataset['tenantFavicon'] = 'true';
-      this.document.head.appendChild(link);
-      onCleanup(() => link.remove());
+    effect(() => {
+       const faviconUrl = this.context.settings()?.branding?.faviconUrl;
+
+       const faviconLinks = Array.from(
+        this.document.head.querySelectorAll<HTMLLinkElement>('link[rel="icon"]'),
+      );
+
+      let link = faviconLinks[0];
+
+      if (!link) {
+       link = this.document.createElement('link');
+       link.rel = 'icon';
+       this.document.head.appendChild(link);
+      }
+
+    faviconLinks.slice(1).forEach((extraLink) => {
+       extraLink.remove();
+    });
+
+      if (faviconUrl) {
+        link.href = faviconUrl;
+        link.removeAttribute('type');
+        link.dataset['tenantFavicon'] = 'true';
+      } else {
+        link.href = '/favicon.ico';
+        link.type = 'image/x-icon';
+        delete link.dataset['tenantFavicon'];
+        }
     });
   }
 
