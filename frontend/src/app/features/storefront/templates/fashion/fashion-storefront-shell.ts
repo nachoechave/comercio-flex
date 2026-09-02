@@ -17,7 +17,7 @@ import { StoreSettings, TenantBranding } from '../../storefront.models';
       </a>
       <button class="mobile-menu" type="button" (click)="toggleMenu()" [attr.aria-expanded]="menuOpen()" aria-label="Abrir navegación">Menú</button>
       <nav [class.nav-open]="menuOpen()" aria-label="Navegación principal">
-        <a [routerLink]="['/tiendas', settings().slug]">Inicio</a><a [routerLink]="['/tiendas', settings().slug]" fragment="catalog-products">Colección</a><a [routerLink]="['/tiendas', settings().slug]" fragment="category-section">Categorías</a><a [routerLink]="['/tiendas', settings().slug, 'mis-pedidos']">Mis pedidos</a><a class="cart-link" [routerLink]="['/tiendas', settings().slug, 'carrito']" [attr.aria-label]="'Carrito, ' + cartUnits() + ' unidades'">Bolsa <span>{{ cartUnits() }}</span></a>
+        <a [routerLink]="['/tiendas', settings().slug]">Inicio</a><a [routerLink]="['/tiendas', settings().slug]" fragment="catalog-products">Colección</a><a [routerLink]="['/tiendas', settings().slug]" fragment="category-section">Categorías</a><a [routerLink]="['/tiendas', settings().slug, 'mis-pedidos']">Mis pedidos</a><a class="cart-link" [routerLink]="['/tiendas', settings().slug, 'carrito']" [attr.aria-label]="'Carrito, ' + cartUnits() + ' unidades'">Carrito <span>{{ cartUnits() }}</span></a>
       </nav>
     </header>
     <app-cart-preview [storeSlug]="settings().slug" />
