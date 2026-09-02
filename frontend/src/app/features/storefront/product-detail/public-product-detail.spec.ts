@@ -21,7 +21,7 @@ const MODERN_BRANDING = {
   font: 'SANS' as const,
   heroTitle: null,
   heroSubtitle: null,
-  template: 'MODERN' as const,
+  template: 'FASHION' as const,
   logoUrl: null,
   faviconUrl: null,
   heroImageUrl: null,

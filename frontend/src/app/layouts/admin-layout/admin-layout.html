@@ -39,6 +39,7 @@
         @if (currentMembership.role !== 'STAFF') {
           <p class="nav-group-label">Tienda</p>
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'comercio']" routerLinkActive="active"><app-admin-icon name="commerce" /><span>Comercio</span></a>
+          <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'apariencia']" routerLinkActive="active"><app-admin-icon name="appearance" /><span>Apariencia</span></a>
         }
         @if (currentMembership.role === 'OWNER') {
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'pagos']" routerLinkActive="active"><app-admin-icon name="payments" /><span>Pagos</span></a>

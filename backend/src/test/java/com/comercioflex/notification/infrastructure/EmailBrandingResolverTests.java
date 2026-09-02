@@ -89,7 +89,7 @@ class EmailBrandingResolverTests {
 		BrandAssetReference logo = withLogo
 			? new BrandAssetReference("private/branding/logo.webp", "image/webp", ETAG) : null;
 		TenantBranding branding = new TenantBranding(color, "#222222", "#FFFFFF", "#111111",
-			BrandFont.SYSTEM, null, null, StorefrontTemplate.CLASSIC, logo, null, null);
+			BrandFont.SYSTEM, null, null, StorefrontTemplate.CATALOG, logo, null, null);
 		return new StoreSettings(name, "ARS", "America/Argentina/Buenos_Aires",
 			null, null, null, null, false, null, null, null, null, null, branding);
 	}

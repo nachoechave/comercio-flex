@@ -14,8 +14,12 @@ import com.comercioflex.media.application.InvalidProductImageException;
 import com.comercioflex.media.application.ProductImageNotFoundException;
 import com.comercioflex.media.application.ProductImageConflictException;
 import com.comercioflex.media.application.ProductImageStorageException;
+import com.comercioflex.tenant.api.AdminStoreBrandingController;
 
-@RestControllerAdvice(basePackageClasses = AdminProductImageController.class)
+@RestControllerAdvice(basePackageClasses = {
+	AdminProductImageController.class,
+	AdminStoreBrandingController.class
+})
 public class ProductImageErrorHandler {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ProductImageErrorHandler.class);
 

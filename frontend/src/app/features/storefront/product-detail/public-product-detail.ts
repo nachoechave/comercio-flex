@@ -72,10 +72,10 @@ export class PublicProductDetail {
     () => (this.product()?.variants.length ?? 0) === 1 && this.optionGroups().length === 0,
   );
   protected readonly isStreetwear = computed(
-    () => this.context.settings()?.branding?.template === 'MODERN',
+    () => this.context.settings()?.branding?.template === 'FASHION',
   );
   protected readonly isMinimal = computed(
-    () => this.context.settings()?.branding?.template === 'MINIMAL',
+    () => this.context.settings()?.branding?.template === 'CATALOG',
   );
   protected readonly featuredPrice = computed(
     () =>

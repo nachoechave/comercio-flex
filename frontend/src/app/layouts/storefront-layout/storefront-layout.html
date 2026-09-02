@@ -1,161 +1,21 @@
 @if (context.loading()) {
-  <header class="site-header site-header--loading" aria-hidden="true">
-    <span class="brand-placeholder"></span>
-  </header>
-  <main id="main-content" class="store-state" aria-busy="true">
-    <p role="status">Cargando tienda…</p>
-  </main>
+  <header class="site-header site-header--loading" aria-hidden="true"><span class="brand-placeholder"></span></header>
+  <main id="main-content" class="store-state" aria-busy="true"><p role="status">Cargando tienda…</p></main>
 } @else if (context.errorMessage()) {
-  <header class="site-header">
-    <a class="brand" routerLink="/">Comercio Flex</a>
-  </header>
+  <header class="site-header"><a class="brand" routerLink="/">Comercio Flex</a></header>
   <main id="main-content" class="store-state">
     <p class="eyebrow">Tienda pública</p>
     <h1>{{ context.notFound() ? 'No encontramos esta tienda' : 'No pudimos abrir la tienda' }}</h1>
     <p>{{ context.errorMessage() }}</p>
-    @if (!context.notFound()) {
-      <button type="button" (click)="context.retry()">Reintentar</button>
-    }
+    @if (!context.notFound()) { <button type="button" (click)="context.retry()">Reintentar</button> }
     <a routerLink="/">Volver a Comercio Flex</a>
   </main>
 } @else if (context.settings(); as settings) {
-  <div
-    class="store-theme"
-    [attr.data-template]="branding().template.toLowerCase()"
-    [style.--store-primary-color]="branding().primaryColor"
-    [style.--store-secondary-color]="branding().secondaryColor"
-    [style.--store-background-color]="branding().backgroundColor"
-    [style.--store-text-color]="branding().textColor"
-    [style.--store-font-family]="fontFamily()"
-    [style.--store-hero-image]="branding().heroImageUrl ? 'url(' + branding().heroImageUrl + ')' : 'none'"
-  >
-    @if (isModern()) {
-      <aside class="announcement-bar" aria-label="Beneficios de compra">
-        <span>Catálogo actualizado</span>
-        <span>Comprá online de forma simple y segura</span>
-        <span>Atención del comercio</span>
-      </aside>
-    }
-    <header
-      class="site-header"
-      [class.site-header--streetwear]="isModern()"
-      [class.site-header--minimal]="isMinimal()"
-    >
-      <a class="brand" [routerLink]="['/tiendas', settings.slug]">
-        @if (branding().logoUrl; as logoUrl) {
-          <img class="brand-logo" [src]="logoUrl" [alt]="'Logo de ' + settings.storeName" />
-        } @else {
-          <span class="brand-mark" aria-hidden="true">{{ isModern() ? settings.storeName.slice(0, 2).toUpperCase() : settings.storeName.slice(0, 1) }}</span>
-        }
-        <span class="brand-copy">
-          <strong>{{ settings.storeName }}</strong>
-          @if (isModern()) { <small>tienda online</small> }
-        </span>
-      </a>
-      <nav aria-label="Navegación principal">
-        @if (isModern()) {
-          <a [routerLink]="['/tiendas', settings.slug]">Inicio</a>
-          <a [routerLink]="['/tiendas', storeSlug()]" fragment="catalog-products">Tienda</a>
-          <a
-            class="desktop-nav"
-            [routerLink]="['/tiendas', storeSlug()]"
-            fragment="category-section"
-            >Colecciones</a
-          >
-          <a
-            class="desktop-nav"
-            [routerLink]="['/tiendas', storeSlug()]"
-            fragment="catalog-products"
-            >Novedades</a
-          >
-          <a
-            class="icon-link search-link"
-            [routerLink]="['/tiendas', storeSlug()]"
-            fragment="catalog-search"
-            aria-label="Buscar productos"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
-          </a>
-        } @else {
-          <a [routerLink]="['/tiendas', settings.slug]">Productos</a>
-        }
-        <a [routerLink]="['/tiendas', settings.slug, 'mis-pedidos']">Mis pedidos</a>
-        <a
-          class="cart-link"
-          [routerLink]="['/tiendas', settings.slug, 'carrito']"
-          [attr.aria-label]="'Carrito, ' + cartUnits() + ' unidades'"
-        >
-          @if (isModern()) {
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 8.5h13l-1 11h-11z"></path><path d="M9 9V7a3 3 0 0 1 6 0v2"></path></svg>
-            <span class="sr-cart-label">Carrito</span>
-          } @else {
-            Carrito
-          }
-          <span aria-hidden="true">{{ cartUnits() }}</span>
-        </a>
-      </nav>
-    </header>
-    <app-cart-preview [storeSlug]="settings.slug" />
-    <main id="main-content">
-      <router-outlet />
-    </main>
-    @if (isModern()) {
-      <section class="store-newsletter" aria-labelledby="newsletter-title">
-        <div>
-          <span aria-hidden="true">✉</span>
-          <p><strong id="newsletter-title">Recibí novedades</strong><small>Productos, beneficios y noticias de la tienda.</small></p>
-        </div>
-        <form>
-          <label class="visually-hidden" for="store-newsletter-email">Correo electrónico</label>
-          <input id="store-newsletter-email" type="email" placeholder="Tu correo electrónico" />
-          <button type="button">Suscribirme</button>
-        </form>
-      </section>
-      <footer class="site-footer site-footer--streetwear">
-        <div class="footer-brand">
-          <strong>{{ settings.storeName }}</strong>
-          <p>Productos seleccionados y atención directa del comercio.</p>
-          @if (settings.pickupAddress) { <span>{{ settings.pickupAddress }}</span> }
-        </div>
-        <div>
-          <strong>Tienda</strong>
-          <a [routerLink]="['/tiendas', storeSlug()]" fragment="catalog-products">Productos</a>
-          <a [routerLink]="['/tiendas', storeSlug()]" fragment="category-section"
-            >Colecciones</a
-          >
-          <a [routerLink]="['/tiendas', settings.slug, 'carrito']">Carrito</a>
-          <a [routerLink]="['/tiendas', settings.slug, 'mis-pedidos']">Mis pedidos</a>
-        </div>
-        <div>
-          <strong>Ayuda</strong>
-          @if (settings.contactPhone) { <a [href]="'tel:' + settings.contactPhone">Contacto</a> }
-          @if (settings.contactEmail) { <a [href]="'mailto:' + settings.contactEmail">Escribinos</a> }
-          <a [routerLink]="['/tiendas', settings.slug, 'admin']">Administrar tienda</a>
-        </div>
-        <div class="footer-platform">
-          <span>Una tienda creada con</span>
-          <a routerLink="/">Comercio Flex</a>
-          <small>© 2026 {{ settings.storeName }}</small>
-        </div>
-      </footer>
-    } @else {
-      <footer class="site-footer" [class.site-footer--minimal]="isMinimal()">
-        <div>
-          <strong>{{ settings.storeName }}</strong>
-          @if (settings.pickupAddress) { <span>{{ settings.pickupAddress }}</span> }
-          @if (settings.contactPhone) {
-            <a [href]="'tel:' + settings.contactPhone">{{ settings.contactPhone }}</a>
-          }
-          @if (settings.contactEmail) {
-            <a [href]="'mailto:' + settings.contactEmail">{{ settings.contactEmail }}</a>
-          }
-        </div>
-        <div>
-          <p>Tienda creada con <a routerLink="/">Comercio Flex</a></p>
-          <a [routerLink]="['/tiendas', settings.slug, 'mis-pedidos']">Mis pedidos</a>
-          <a [routerLink]="['/tiendas', settings.slug, 'admin']">Administrar tienda</a>
-        </div>
-      </footer>
+  <div class="store-theme" [attr.data-template]="branding().template.toLowerCase()" [style.--store-primary-color]="branding().primaryColor" [style.--store-secondary-color]="branding().secondaryColor" [style.--store-background-color]="branding().backgroundColor" [style.--store-text-color]="branding().textColor" [style.--store-font-family]="fontFamily()" [style.--store-hero-image]="branding().heroImageUrl ? 'url(' + branding().heroImageUrl + ')' : 'none'">
+    @switch (branding().template) {
+      @case ('FASHION') { <app-fashion-storefront-shell [settings]="settings" [branding]="branding()" [cartUnits]="cartUnits()" /> }
+      @case ('FRESH') { <app-fresh-storefront-shell [settings]="settings" [branding]="branding()" [cartUnits]="cartUnits()" /> }
+      @default { <app-catalog-storefront-shell [settings]="settings" [branding]="branding()" [cartUnits]="cartUnits()" /> }
     }
   </div>
 }

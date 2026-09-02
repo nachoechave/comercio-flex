@@ -27,7 +27,7 @@
       <fieldset>
         <legend>Tipografía y presentación</legend>
         <label>Tipografía<select formControlName="font">@for (font of fonts; track font.value) { <option [value]="font.value">{{ font.label }}</option> }</select></label>
-        <label>Template<select formControlName="template">@for (template of templates; track template.value) { <option [value]="template.value">{{ template.label }}</option> }</select></label>
+        <label>Plantilla<select formControlName="template">@for (template of templates; track template.value) { <option [value]="template.value">{{ template.name }}</option> }</select></label>
         <label>Título hero<input formControlName="heroTitle" maxlength="160" /></label>
         <label>Subtítulo hero<textarea formControlName="heroSubtitle" rows="3" maxlength="300"></textarea></label>
       </fieldset>

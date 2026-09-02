@@ -1,6 +1,7 @@
 import { Component, input } from '@angular/core';
 
 export type AdminIconName =
+  | 'appearance'
   | 'categories'
   | 'chevron'
   | 'commerce'
@@ -28,6 +29,7 @@ export type AdminIconName =
         @case ('orders') { <path d="M7 3h10v3H7V3ZM5 5h14v16H5V5Zm4 5h6m-6 4h6m-6 4h4" /> }
         @case ('transfers') { <path d="M4 7h16M7 3h10l4 4H3l4-4Zm-2 8v7m5-7v7m4-7v7m5-7v7M3 21h18" /> }
         @case ('commerce') { <path d="M4 10v10h16V10M3 10l2-6h14l2 6M8 20v-6h8v6M3 10c0 2 4 2 4 0 0 2 5 2 5 0 0 2 5 2 5 0 0 2 4 2 4 0" /> }
+        @case ('appearance') { <path d="M4 19h16M6 16l6-12 6 12M8 12h8M5 19v2m14-2v2" /> }
         @case ('payments') { <path d="M3 6h18v13H3V6Zm0 4h18M7 15h4" /> }
         @case ('store') { <path d="M4 10v10h16V10M3 10l2-6h14l2 6M8 20v-6h8v6" /> }
         @case ('user') { <circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /> }
