@@ -58,11 +58,13 @@ public class SecurityConfig {
 					postMatcher("/api/v1/stores/*/orders"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/checkout-pro"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/checkout-pro/reconcile"),
+					postMatcher("/api/v1/stores/*/orders/*/payments/qr"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/bank-transfer"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/bank-transfer/*/receipt"),
 					postMatcher("/api/v1/stores/*/payment-returns/*/reconcile"),
 					postMatcher("/api/v1/stores/*/payment-returns/*/inspect"),
-					postMatcher("/api/v1/integrations/mercado-pago/webhooks"))
+					postMatcher("/api/v1/integrations/mercado-pago/webhooks"),
+					postMatcher("/api/v1/integrations/mercado-pago/orders/webhook"))
 				.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
 			.securityContext(context -> context
 				.requireExplicitSave(true)
@@ -100,7 +102,12 @@ public class SecurityConfig {
 				.requestMatchers(
 					HttpMethod.POST,
 					"/api/v1/stores/*/orders/*/payments/checkout-pro",
-					"/api/v1/stores/*/orders/*/payments/checkout-pro/reconcile")
+					"/api/v1/stores/*/orders/*/payments/checkout-pro/reconcile",
+					"/api/v1/stores/*/orders/*/payments/qr")
+				.permitAll()
+				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/stores/*/orders/*/payments/qr")
 				.permitAll()
 				.requestMatchers(
 					"/api/v1/stores/*/orders/*/payments/bank-transfer",
@@ -117,7 +124,8 @@ public class SecurityConfig {
 				.permitAll()
 				.requestMatchers(
 					HttpMethod.POST,
-					"/api/v1/integrations/mercado-pago/webhooks")
+					"/api/v1/integrations/mercado-pago/webhooks",
+					"/api/v1/integrations/mercado-pago/orders/webhook")
 				.permitAll()
 				.requestMatchers(
 					"/api/v1/auth/csrf",

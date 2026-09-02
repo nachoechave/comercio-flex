@@ -14,6 +14,7 @@ public class PaymentMethodsService {
 
 	private final TenantResolver tenantResolver;
 	private final CheckoutControlRepository controlRepository;
+	private final QrSetupRepository qrSetupRepository;
 	private final BankTransferRepository bankTransferRepository;
 	private final CheckoutProProperties checkoutProperties;
 	private final PaymentOAuthProperties oauthProperties;
@@ -24,6 +25,7 @@ public class PaymentMethodsService {
 	public PaymentMethodsService(
 			TenantResolver tenantResolver,
 			CheckoutControlRepository controlRepository,
+			QrSetupRepository qrSetupRepository,
 			BankTransferRepository bankTransferRepository,
 			CheckoutProProperties checkoutProperties,
 			PaymentOAuthProperties oauthProperties,
@@ -32,6 +34,7 @@ public class PaymentMethodsService {
 			@Qualifier("tenantTransactionTemplate") TransactionTemplate tenantTransactions) {
 		this.tenantResolver = tenantResolver;
 		this.controlRepository = controlRepository;
+		this.qrSetupRepository = qrSetupRepository;
 		this.bankTransferRepository = bankTransferRepository;
 		this.checkoutProperties = checkoutProperties;
 		this.oauthProperties = oauthProperties;
@@ -47,8 +50,17 @@ public class PaymentMethodsService {
 				controlRepository.isCommerciallyEnabled(
 					tenant.id(), oauthProperties.environment())))
 			&& credentials.isAvailable(tenant.id(), tenant.slug());
+		boolean mercadoPagoQr = mercadoPago
+			&& oauthProperties.environment() == com.comercioflex.payment.domain.PaymentEnvironment.PRODUCTION
+			&& Boolean.TRUE.equals(controlTransactions.execute(status ->
+				qrSetupRepository.find(tenant.id(), oauthProperties.environment())
+					.filter(setup -> setup.status() == QrProvisioningStatus.LISTO)
+					.filter(setup -> setup.authorization() == QrAuthorizationStatus.AUTHORIZED)
+					.filter(setup -> setup.externalPosId() != null
+						&& !setup.externalPosId().isBlank())
+					.isPresent()));
 		boolean bankTransfer = Objects.requireNonNull(tenantTransactions.execute(status ->
 			bankTransferRepository.findConfiguration())).enabled();
-		return new PaymentMethodsAvailability(mercadoPago, bankTransfer);
+		return new PaymentMethodsAvailability(mercadoPago, mercadoPagoQr, bankTransfer);
 	}
 }

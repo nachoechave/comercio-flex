@@ -21,7 +21,7 @@ import { CommerceDatePipe } from '../../../shared/pipes/commerce-date.pipe';
 import { variantOptionsLabel } from '../../../shared/variant-options';
 import { CheckoutProHandoffService } from '../payment/checkout-pro-handoff.service';
 import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
-import { CheckoutProQrService } from '../payment/checkout-pro-qr.service';
+import { QrCodeService } from '../payment/qr-code.service';
 import { GuestOrderHistoryService } from '../guest-orders/guest-order-history.service';
 import { PaymentApiService } from '../payment/payment-api.service';
 import {
@@ -30,6 +30,7 @@ import {
   PaymentMethods,
   PaymentReturnStatus,
   PublicPaymentStatus,
+  QrOrderStart,
 } from '../payment/payment.models';
 import { paymentErrorMessage } from '../payment/payment-errors';
 import { PaymentRecoveryService } from '../payment/payment-recovery.service';
@@ -51,7 +52,7 @@ export class OrderConfirmationPage {
   private readonly paymentApi = inject(PaymentApiService);
   private readonly paymentHandoff = inject(CheckoutProHandoffService);
   private readonly paymentNavigation = inject(CheckoutProNavigationService);
-  private readonly paymentQr = inject(CheckoutProQrService);
+  private readonly paymentQr = inject(QrCodeService);
   private readonly paymentRecovery = inject(PaymentRecoveryService);
   private readonly guestOrders = inject(GuestOrderHistoryService);
   private readonly route = inject(ActivatedRoute);
@@ -84,9 +85,10 @@ export class OrderConfirmationPage {
   protected readonly paymentErrorMessage = signal<string | null>(null);
   protected readonly checkoutPaymentStatus = signal<PublicPaymentStatus | null>(null);
   protected readonly checkoutPro = signal<CheckoutProStart | null>(null);
-  protected readonly checkoutQrDataUrl = signal<string | null>(null);
-  protected readonly checkoutQrLoading = signal(false);
-  protected readonly checkoutQrErrorMessage = signal<string | null>(null);
+  protected readonly qrOrder = signal<QrOrderStart | null>(null);
+  protected readonly qrDataUrl = signal<string | null>(null);
+  protected readonly qrLoading = signal(false);
+  protected readonly qrErrorMessage = signal<string | null>(null);
   protected readonly paymentsUnavailable = signal(false);
   protected readonly paymentMethods = signal<PaymentMethods | null>(null);
   protected readonly paymentMethodsLoading = signal(false);
@@ -103,9 +105,10 @@ export class OrderConfirmationPage {
       const token = this.token();
       this.order.set(null);
       this.checkoutPro.set(null);
-      this.checkoutQrDataUrl.set(null);
-      this.checkoutQrLoading.set(false);
-      this.checkoutQrErrorMessage.set(null);
+      this.qrOrder.set(null);
+      this.qrDataUrl.set(null);
+      this.qrLoading.set(false);
+      this.qrErrorMessage.set(null);
       this.errorMessage.set(null);
       this.paymentErrorMessage.set(null);
       this.checkoutPaymentStatus.set(null);
@@ -228,6 +231,14 @@ export class OrderConfirmationPage {
           next: (payment) => this.bankTransfer.set(payment),
           error: () => undefined,
         });
+        if (methods.mercadoPagoQr) {
+          this.paymentApi.getCurrentQrOrder(storeSlug, orderId, token).subscribe({
+            next: (qr) => {
+              if (qr) this.presentQr(qr);
+            },
+            error: () => undefined,
+          });
+        }
       },
       error: () => {
         this.paymentMethodsLoading.set(false);
@@ -244,7 +255,10 @@ export class OrderConfirmationPage {
       .pipe(
         exhaustMap(() => {
           if (this.document.visibilityState === 'hidden') return of(null);
-          return this.paymentApi.reconcilePendingCheckout(storeSlug, orderId, token).pipe(
+          const checkoutStatus = this.checkoutPro()
+            ? this.paymentApi.reconcilePendingCheckout(storeSlug, orderId, token)
+            : of(null);
+          return checkoutStatus.pipe(
             catchError(() => of(null)),
             switchMap((payment) =>
               this.api.getOrder(storeSlug, orderId, token).pipe(
@@ -255,11 +269,20 @@ export class OrderConfirmationPage {
               this.applyOrder(storeSlug, order);
               this.applyCheckoutPayment(storeSlug, orderId, payment);
               if (order.status !== 'PENDING_CONFIRMATION' || this.isTerminalPayment(payment)) {
-                return of({ order, payment, transfer: null });
+                return of({ order, payment, transfer: null, qr: this.qrOrder() });
+              }
+              if (this.qrOrder()) {
+                return this.paymentApi.getCurrentQrOrder(storeSlug, orderId, token).pipe(
+                  map((qr) => {
+                    if (qr) this.applyQr(qr);
+                    return { order, payment, transfer: null, qr };
+                  }),
+                  catchError(() => of({ order, payment, transfer: null, qr: this.qrOrder() })),
+                );
               }
               return this.paymentApi.getCurrentBankTransfer(storeSlug, orderId, token).pipe(
-                map((transfer) => ({ order, payment, transfer })),
-                catchError(() => of({ order, payment, transfer: null })),
+                map((transfer) => ({ order, payment, transfer, qr: null })),
+                catchError(() => of({ order, payment, transfer: null, qr: null })),
               );
             }),
             catchError((error: unknown) => {
@@ -272,7 +295,8 @@ export class OrderConfirmationPage {
           (result) =>
             result === null ||
             (result.order.status === 'PENDING_CONFIRMATION' &&
-              !this.isTerminalPayment(result.payment)),
+              !this.isTerminalPayment(result.payment) &&
+              !this.isTerminalQr(result.qr)),
           true,
         ),
       )
@@ -294,14 +318,16 @@ export class OrderConfirmationPage {
       );
       this.paymentHandoff.forget(storeSlug, orderId);
       this.checkoutPro.set(null);
-      this.checkoutQrDataUrl.set(null);
+      this.qrOrder.set(null);
+      this.qrDataUrl.set(null);
       this.paymentRecovery.rotateAttempt(storeSlug, orderId);
     } else if (status === 'REQUIRES_REVIEW') {
       this.paymentErrorMessage.set(
         'Recibimos información del pago y el comercio debe revisarla. No vuelvas a pagar.',
       );
       this.checkoutPro.set(null);
-      this.checkoutQrDataUrl.set(null);
+      this.qrOrder.set(null);
+      this.qrDataUrl.set(null);
     }
   }
 
@@ -315,7 +341,8 @@ export class OrderConfirmationPage {
     this.guestOrders.update(storeSlug, order);
     if (order.status !== 'PENDING_CONFIRMATION') {
       this.checkoutPro.set(null);
-      this.checkoutQrDataUrl.set(null);
+      this.qrOrder.set(null);
+      this.qrDataUrl.set(null);
       this.paymentHandoff.forget(storeSlug, order.id);
     }
   }
@@ -384,7 +411,7 @@ export class OrderConfirmationPage {
     try {
       this.paymentNavigation.navigate(checkout.checkoutUrl);
     } catch {
-      this.checkoutQrErrorMessage.set(
+      this.paymentErrorMessage.set(
         'No pudimos abrir el destino seguro de Mercado Pago. Tu pedido sigue guardado.',
       );
     }
@@ -394,10 +421,12 @@ export class OrderConfirmationPage {
     const storeSlug = this.storeSlug();
     const orderId = this.orderId();
     if (storeSlug && orderId) this.paymentHandoff.forget(storeSlug, orderId);
+    if (storeSlug && orderId) this.paymentRecovery.rotateAttempt(storeSlug, orderId);
     this.checkoutPro.set(null);
-    this.checkoutQrDataUrl.set(null);
-    this.checkoutQrLoading.set(false);
-    this.checkoutQrErrorMessage.set(null);
+    this.qrOrder.set(null);
+    this.qrDataUrl.set(null);
+    this.qrLoading.set(false);
+    this.qrErrorMessage.set(null);
   }
 
   private presentCheckout(checkout: CheckoutProStart): void {
@@ -405,23 +434,78 @@ export class OrderConfirmationPage {
     const orderId = this.orderId();
     if (storeSlug && orderId) this.paymentHandoff.remember(storeSlug, orderId, checkout);
     this.checkoutPro.set(checkout);
-    this.checkoutQrDataUrl.set(null);
-    this.checkoutQrErrorMessage.set(null);
-    this.checkoutQrLoading.set(true);
-    void this.paymentQr.create(checkout.checkoutUrl).then(
+    this.qrOrder.set(null);
+    this.qrDataUrl.set(null);
+  }
+
+  protected startQrPayment(): void {
+    if (this.paymentStarting()) return;
+    const storeSlug = this.storeSlug();
+    const orderId = this.orderId();
+    const token = this.token();
+    if (!storeSlug || !orderId || !token) return;
+    const recovery =
+      this.paymentRecovery.find(storeSlug, orderId) ??
+      this.paymentRecovery.remember(storeSlug, orderId, token);
+    this.paymentStarting.set(true);
+    this.paymentErrorMessage.set(null);
+    this.csrf.ensureToken().pipe(
+      switchMap(() => this.paymentApi.startQrOrder(
+        storeSlug, orderId, recovery.lookupToken, recovery.idempotencyKey,
+      )),
+      finalize(() => this.paymentStarting.set(false)),
+    ).subscribe({
+      next: (qr) => this.presentQr(qr),
+      error: (error: unknown) => this.paymentErrorMessage.set(
+        paymentErrorMessage(error, 'No pudimos generar el QR. Tu pedido sigue guardado.'),
+      ),
+    });
+  }
+
+  protected retryQrPayment(): void {
+    const storeSlug = this.storeSlug();
+    const orderId = this.orderId();
+    if (storeSlug && orderId) this.paymentRecovery.rotateAttempt(storeSlug, orderId);
+    this.qrOrder.set(null);
+    this.qrDataUrl.set(null);
+    this.startQrPayment();
+  }
+
+  private presentQr(qr: QrOrderStart): void {
+    this.checkoutPro.set(null);
+    this.applyQr(qr);
+    if (!qr.qrData || qr.status === 'EXPIRED') return;
+    this.qrLoading.set(true);
+    this.qrErrorMessage.set(null);
+    void this.paymentQr.create(qr.qrData).then(
       (dataUrl) => {
-        if (this.checkoutPro() !== checkout) return;
-        this.checkoutQrDataUrl.set(dataUrl);
-        this.checkoutQrLoading.set(false);
+        if (this.qrOrder() !== qr) return;
+        this.qrDataUrl.set(dataUrl);
+        this.qrLoading.set(false);
       },
       () => {
-        if (this.checkoutPro() !== checkout) return;
-        this.checkoutQrLoading.set(false);
-        this.checkoutQrErrorMessage.set(
-          'No pudimos generar el QR. Podés abrir Mercado Pago en este dispositivo.',
+        if (this.qrOrder() !== qr) return;
+        this.qrLoading.set(false);
+        this.qrErrorMessage.set(
+          'No pudimos mostrar el QR. Intentá generarlo nuevamente.',
         );
       },
     );
+  }
+
+  private applyQr(qr: QrOrderStart): void {
+    this.qrOrder.set(qr);
+    if (qr.status === 'APPROVED') {
+      this.qrDataUrl.set(null);
+    } else if (qr.status === 'EXPIRED' || qr.status === 'REJECTED') {
+      this.qrDataUrl.set(null);
+      this.paymentRecovery.rotateAttempt(this.storeSlug() ?? '', this.orderId() ?? '');
+    }
+  }
+
+  private isTerminalQr(qr: QrOrderStart | null): boolean {
+    return qr !== null && ['APPROVED', 'EXPIRED', 'REJECTED', 'REQUIRES_REVIEW']
+      .includes(qr.status);
   }
 
   protected statusLabel(status: GuestOrderStatus): string {

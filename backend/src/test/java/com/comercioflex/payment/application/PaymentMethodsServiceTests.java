@@ -21,6 +21,7 @@ class PaymentMethodsServiceTests {
 
 	private final TenantResolver tenantResolver = mock(TenantResolver.class);
 	private final CheckoutControlRepository controlRepository = mock(CheckoutControlRepository.class);
+	private final QrSetupRepository qrSetupRepository = mock(QrSetupRepository.class);
 	private final BankTransferRepository bankTransferRepository = mock(BankTransferRepository.class);
 	private final CheckoutProProperties checkoutProperties = mock(CheckoutProProperties.class);
 	private final PaymentOAuthProperties oauthProperties = mock(PaymentOAuthProperties.class);
@@ -28,7 +29,7 @@ class PaymentMethodsServiceTests {
 	private final TransactionTemplate controlTransactions = transactionTemplate();
 	private final TransactionTemplate tenantTransactions = transactionTemplate();
 	private final PaymentMethodsService service = new PaymentMethodsService(
-		tenantResolver, controlRepository, bankTransferRepository,
+		tenantResolver, controlRepository, qrSetupRepository, bankTransferRepository,
 		checkoutProperties, oauthProperties, credentials,
 		controlTransactions, tenantTransactions);
 
@@ -42,6 +43,8 @@ class PaymentMethodsServiceTests {
 			.thenReturn(true);
 		when(bankTransferRepository.findConfiguration())
 			.thenReturn(new BankTransferConfiguration(true, "Banco", "Tienda A", "TIENDA.A", null));
+		when(qrSetupRepository.find(11L, PaymentEnvironment.PRODUCTION))
+			.thenReturn(java.util.Optional.empty());
 	}
 
 	@Test
@@ -51,6 +54,7 @@ class PaymentMethodsServiceTests {
 		PaymentMethodsAvailability result = service.find("tienda-a");
 
 		assertThat(result.mercadoPago()).isFalse();
+		assertThat(result.mercadoPagoQr()).isFalse();
 		assertThat(result.bankTransfer()).isTrue();
 	}
 
@@ -61,7 +65,39 @@ class PaymentMethodsServiceTests {
 		PaymentMethodsAvailability result = service.find("tienda-a");
 
 		assertThat(result.mercadoPago()).isTrue();
+		assertThat(result.mercadoPagoQr()).isFalse();
 		assertThat(result.bankTransfer()).isTrue();
+	}
+
+	@Test
+	void advertisesNativeQrOnlyWhenTheProductionSetupIsReadyAndAuthorized() {
+		when(credentials.isAvailable(11L, "tienda-a")).thenReturn(true);
+		when(qrSetupRepository.find(11L, PaymentEnvironment.PRODUCTION))
+			.thenReturn(java.util.Optional.of(new StoredQrSetup(
+				1L, 11L, PaymentEnvironment.PRODUCTION, "store-provider", "CFS_STORE",
+				"pos-provider", "CFP_POS", QrProvisioningStatus.LISTO,
+				QrAuthorizationStatus.AUTHORIZED, java.util.UUID.randomUUID(), 0L)));
+
+		PaymentMethodsAvailability result = service.find("tienda-a");
+
+		assertThat(result.mercadoPago()).isTrue();
+		assertThat(result.mercadoPagoQr()).isTrue();
+		assertThat(result.bankTransfer()).isTrue();
+	}
+
+	@Test
+	void doesNotAdvertiseNativeQrWhenTheSetupIsNotReady() {
+		when(credentials.isAvailable(11L, "tienda-a")).thenReturn(true);
+		when(qrSetupRepository.find(11L, PaymentEnvironment.PRODUCTION))
+			.thenReturn(java.util.Optional.of(new StoredQrSetup(
+				1L, 11L, PaymentEnvironment.PRODUCTION, null, "CFS_STORE",
+				null, "CFP_POS", QrProvisioningStatus.VERIFICANDO,
+				QrAuthorizationStatus.NOT_CHECKED, java.util.UUID.randomUUID(), 0L)));
+
+		PaymentMethodsAvailability result = service.find("tienda-a");
+
+		assertThat(result.mercadoPago()).isTrue();
+		assertThat(result.mercadoPagoQr()).isFalse();
 	}
 
 	@Test

@@ -7,7 +7,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { CheckoutProNavigationService } from '../payment/checkout-pro-navigation.service';
-import { CheckoutProQrService } from '../payment/checkout-pro-qr.service';
+import { QrCodeService } from '../payment/qr-code.service';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
 import { GuestOrder, StoreSettings } from '../storefront.models';
@@ -68,7 +68,7 @@ describe('OrderConfirmationPage', () => {
         StorefrontApiService,
         CsrfService,
         { provide: CheckoutProNavigationService, useValue: paymentNavigation },
-        { provide: CheckoutProQrService, useValue: paymentQr },
+        { provide: QrCodeService, useValue: paymentQr },
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -109,7 +109,7 @@ describe('OrderConfirmationPage', () => {
     vi.useRealTimers();
   });
 
-  it('shows a QR for the exact Checkout Pro URL and keeps same-device navigation', async () => {
+  it('keeps Checkout Pro as same-device navigation and never renders its URL as QR', async () => {
     http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush({
       mercadoPago: true,
       bankTransfer: false,
@@ -127,7 +127,7 @@ describe('OrderConfirmationPage', () => {
       'El pago en línea no está habilitado para esta tienda.',
     );
     const button = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
-    expect(button.textContent).toContain('Reintentar con Mercado Pago');
+    expect(button.textContent).toContain('Pagar con Mercado Pago');
 
     button.click();
 
@@ -149,13 +149,8 @@ describe('OrderConfirmationPage', () => {
     await Promise.resolve();
     fixture.detectChanges();
 
-    expect(paymentQr.create).toHaveBeenCalledWith(
-      'https://www.mercadopago.com.ar/checkout/v1/redirect',
-    );
-    expect(paymentQr.create).not.toHaveBeenCalledWith(expect.stringContaining('private-token'));
-    const qr = fixture.nativeElement.querySelector('.checkout-qr') as HTMLImageElement;
-    expect(qr.src).toContain('data:image/png;base64,checkout-qr');
-    expect(qr.alt).toBe('Código QR para pagar con Mercado Pago');
+    expect(paymentQr.create).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.checkout-qr')).toBeNull();
     expect(paymentNavigation.navigate).not.toHaveBeenCalled();
 
     const open = Array.from(
@@ -168,9 +163,10 @@ describe('OrderConfirmationPage', () => {
     );
   });
 
-  it('removes the QR when polling confirms the order', async () => {
+  it('renders provider qr_data and removes the QR when local polling confirms the order', async () => {
     http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush({
       mercadoPago: true,
+      mercadoPagoQr: true,
       bankTransfer: false,
     });
     http
@@ -181,30 +177,33 @@ describe('OrderConfirmationPage', () => {
           request.params.get('token') === 'private-token',
       )
       .flush({}, { status: 404, statusText: 'Not Found' });
+    http
+      .expectOne((request) => request.url.endsWith('/payments/qr'))
+      .flush(null, { status: 204, statusText: 'No Content' });
     fixture.detectChanges();
 
-    const mercadoPago = Array.from(
+    const mercadoPagoQr = Array.from(
       fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-    ).find((candidate) => candidate.textContent?.includes('Mercado Pago'));
-    mercadoPago?.click();
+    ).find((candidate) => candidate.textContent?.includes('Pagar con QR'));
+    mercadoPagoQr?.click();
     http.expectOne('/api/v1/auth/csrf').flush({});
     http
-      .expectOne((request) => request.url.endsWith('/payments/checkout-pro'))
+      .expectOne((request) => request.url.endsWith('/payments/qr'))
       .flush({
-        checkoutUrl: 'https://www.mercadopago.com.ar/checkout/v1/redirect',
         paymentAttemptId: 'attempt-1',
+        qrData: 'provider-native-qr-data',
         expiresAt: '2026-08-17T03:31:00Z',
+        status: 'PENDING',
         replayed: true,
       });
     await Promise.resolve();
     fixture.detectChanges();
+    expect(paymentQr.create).toHaveBeenCalledWith('provider-native-qr-data');
+    expect(paymentQr.create).not.toHaveBeenCalledWith(expect.stringContaining('checkout'));
     expect(fixture.nativeElement.querySelector('.checkout-qr')).not.toBeNull();
 
     await vi.advanceTimersByTimeAsync(12_000);
-    http.expectOne((request) => request.url.endsWith('/checkout-pro/reconcile')).flush(null, {
-      status: 204,
-      statusText: 'No Content',
-    });
+    http.expectNone((request) => request.url.endsWith('/checkout-pro/reconcile'));
     http
       .expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
       .flush({ ...order, status: 'CONFIRMED' });
@@ -212,6 +211,60 @@ describe('OrderConfirmationPage', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Pedido confirmado');
     expect(fixture.nativeElement.querySelector('.checkout-qr')).toBeNull();
+  });
+
+  it('uses a new idempotency key when switching from Checkout Pro to QR', async () => {
+    http.expectOne('/api/v1/stores/tienda-a/payment-methods').flush({
+      mercadoPago: true,
+      mercadoPagoQr: true,
+      bankTransfer: false,
+    });
+    http
+      .expectOne((request) => request.url.endsWith('/payments/bank-transfer'))
+      .flush({}, { status: 404, statusText: 'Not Found' });
+    http
+      .expectOne((request) => request.url.endsWith('/payments/qr'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    fixture.detectChanges();
+
+    const checkoutButton = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((candidate) => candidate.textContent?.includes('Pagar con Mercado Pago'));
+    checkoutButton?.click();
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    const checkoutRequest = http.expectOne((request) => request.url.endsWith('/checkout-pro'));
+    const checkoutIdempotencyKey = checkoutRequest.request.headers.get('Idempotency-Key');
+    checkoutRequest.flush({
+      checkoutUrl: 'https://www.mercadopago.com.ar/checkout/v1/redirect',
+      paymentAttemptId: 'checkout-attempt',
+      expiresAt: '2026-08-17T03:31:00Z',
+      replayed: false,
+    });
+    fixture.detectChanges();
+
+    const chooseAnother = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((candidate) => candidate.textContent?.includes('Elegir otro medio de pago'));
+    chooseAnother?.click();
+    fixture.detectChanges();
+
+    const qrButton = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((candidate) => candidate.textContent?.includes('Pagar con QR'));
+    qrButton?.click();
+    const qrRequest = http.expectOne((request) => request.url.endsWith('/payments/qr'));
+    const qrIdempotencyKey = qrRequest.request.headers.get('Idempotency-Key');
+    expect(qrIdempotencyKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(qrIdempotencyKey).not.toBe(checkoutIdempotencyKey);
+    qrRequest.flush({
+      paymentAttemptId: 'qr-attempt',
+      qrData: 'provider-native-qr-data',
+      expiresAt: '2026-08-17T03:31:00Z',
+      status: 'PENDING',
+      replayed: false,
+    });
   });
 
   it('fails closed and allows retrying when payment methods cannot be loaded', () => {
@@ -297,10 +350,7 @@ describe('OrderConfirmationPage', () => {
     flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
 
     await vi.advanceTimersByTimeAsync(12_000);
-    http.expectOne((request) => request.url.endsWith('/checkout-pro/reconcile')).flush(null, {
-      status: 204,
-      statusText: 'No Content',
-    });
+    http.expectNone((request) => request.url.endsWith('/checkout-pro/reconcile'));
     http
       .expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
       .flush({ ...order, status: 'CONFIRMED' });
@@ -314,10 +364,7 @@ describe('OrderConfirmationPage', () => {
     flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
 
     await vi.advanceTimersByTimeAsync(12_000);
-    http.expectOne((request) => request.url.endsWith('/checkout-pro/reconcile')).flush(null, {
-      status: 204,
-      statusText: 'No Content',
-    });
+    http.expectNone((request) => request.url.endsWith('/checkout-pro/reconcile'));
     http
       .expectOne((request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`)
       .flush(order);
@@ -335,10 +382,7 @@ describe('OrderConfirmationPage', () => {
     flushPaymentMethodsAndTransfer(bankTransfer('UNDER_REVIEW'));
 
     await vi.advanceTimersByTimeAsync(12_000);
-    http.expectOne((request) => request.url.endsWith('/checkout-pro/reconcile')).flush(null, {
-      status: 204,
-      statusText: 'No Content',
-    });
+    http.expectNone((request) => request.url.endsWith('/checkout-pro/reconcile'));
     const slow = http.expectOne(
       (request) => request.url === `/api/v1/stores/tienda-a/orders/${orderId}`,
     );
