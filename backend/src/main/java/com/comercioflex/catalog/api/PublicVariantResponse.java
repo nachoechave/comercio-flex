@@ -10,7 +10,8 @@ public record PublicVariantResponse(
 	String size,
 	String color,
 	List<VariantOptionValueResponse> options,
-	boolean available) {
+	boolean available,
+	String availableQuantity) {
 
 	static PublicVariantResponse from(PublicVariant variant) {
 		return new PublicVariantResponse(
@@ -19,6 +20,7 @@ public record PublicVariantResponse(
 			variant.size(),
 			variant.color(),
 			variant.options().stream().map(VariantOptionValueResponse::from).toList(),
-			variant.available());
+			variant.available(),
+			variant.availableQuantity().stripTrailingZeros().toPlainString());
 	}
 }
