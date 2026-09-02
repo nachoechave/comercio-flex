@@ -15,7 +15,7 @@ import { CartService } from './cart.service';
 const MODERN_BRANDING = {
   primaryColor: '#B7FF2A', secondaryColor: '#080808', backgroundColor: '#FFFFFF',
   textColor: '#0B0B0B', font: 'SANS' as const, heroTitle: null, heroSubtitle: null,
-  template: 'MODERN' as const, logoUrl: null, faviconUrl: null, heroImageUrl: null,
+  template: 'FASHION' as const, logoUrl: null, faviconUrl: null, heroImageUrl: null,
 };
 
 describe('CartPage', () => {

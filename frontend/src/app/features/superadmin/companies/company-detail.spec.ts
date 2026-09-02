@@ -44,7 +44,7 @@ describe('CompanyDetailPage', () => {
           font: 'SANS',
           heroTitle: 'Nueva colección',
           heroSubtitle: null,
-          template: 'MODERN',
+          template: 'FASHION',
           logoUrl: null,
           faviconUrl: null,
           heroImageUrl: null,

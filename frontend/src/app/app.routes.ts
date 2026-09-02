@@ -118,6 +118,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'configuracion/apariencia',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/admin/store-branding/store-branding-page').then(
+            (module) => module.StoreBrandingPage,
+          ),
+      },
+      {
         path: 'categorias',
         loadChildren: () =>
           import('./features/admin/categories/category.routes').then(

@@ -32,10 +32,10 @@ export class CartPage {
     initialValue: '',
   });
   protected readonly isStreetwear = computed(
-    () => this.context.settings()?.branding?.template === 'MODERN',
+    () => this.context.settings()?.branding?.template === 'FASHION',
   );
   protected readonly isMinimal = computed(
-    () => this.context.settings()?.branding?.template === 'MINIMAL',
+    () => this.context.settings()?.branding?.template === 'CATALOG',
   );
   protected readonly items = computed(() => this.cart.items(this.storeSlug() ?? ''));
   protected readonly subtotal = computed(() => this.cart.availableSubtotal(this.storeSlug() ?? ''));

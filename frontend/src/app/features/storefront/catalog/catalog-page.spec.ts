@@ -19,7 +19,7 @@ const MODERN_BRANDING = {
   font: 'SANS' as const,
   heroTitle: 'Colección dinámica',
   heroSubtitle: 'Identidad configurada por plataforma.',
-  template: 'MODERN' as const,
+  template: 'FASHION' as const,
   logoUrl: null,
   faviconUrl: null,
   heroImageUrl: null,
@@ -361,7 +361,7 @@ describe('CatalogPage', () => {
         ...MODERN_BRANDING,
         heroTitle: 'Objetos esenciales',
         heroSubtitle: 'Una selección simple y cuidada.',
-        template: 'MINIMAL',
+        template: 'CATALOG',
       },
     });
     queryParams.next(convertToParamMap({}));

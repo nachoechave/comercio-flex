@@ -1,14 +1,16 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, computed, effect, inject } from '@angular/core';
+import { Component, computed, effect, inject, ViewEncapsulation } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 
 import { StorefrontApiService } from '../../features/storefront/storefront-api.service';
 import { StorefrontContextService } from '../../features/storefront/storefront-context.service';
-import { CartPreview } from '../../features/storefront/cart/cart-preview';
 import { CartService } from '../../features/storefront/cart/cart.service';
 import { BrandFont, TenantBranding } from '../../features/storefront/storefront.models';
+import { CatalogStorefrontShell } from '../../features/storefront/templates/catalog/catalog-storefront-shell';
+import { FashionStorefrontShell } from '../../features/storefront/templates/fashion/fashion-storefront-shell';
+import { FreshStorefrontShell } from '../../features/storefront/templates/fresh/fresh-storefront-shell';
 
 const DEFAULT_BRANDING: TenantBranding = {
   primaryColor: '#6D3CE7',
@@ -18,7 +20,7 @@ const DEFAULT_BRANDING: TenantBranding = {
   font: 'SYSTEM',
   heroTitle: null,
   heroSubtitle: null,
-  template: 'CLASSIC',
+  template: 'CATALOG',
   logoUrl: null,
   faviconUrl: null,
   heroImageUrl: null,
@@ -26,10 +28,11 @@ const DEFAULT_BRANDING: TenantBranding = {
 
 @Component({
   selector: 'app-storefront-layout',
-  imports: [RouterLink, RouterOutlet, CartPreview],
+  imports: [RouterLink, CatalogStorefrontShell, FashionStorefrontShell, FreshStorefrontShell],
   providers: [StorefrontApiService, StorefrontContextService],
   templateUrl: './storefront-layout.html',
   styleUrl: './storefront-layout.scss',
+  encapsulation: ViewEncapsulation.None,
 })
 export class StorefrontLayout {
   private readonly route = inject(ActivatedRoute);
@@ -42,8 +45,6 @@ export class StorefrontLayout {
   );
   protected readonly cartUnits = computed(() => this.cart.totalUnits(this.storeSlug()));
   protected readonly branding = computed(() => this.context.settings()?.branding ?? DEFAULT_BRANDING);
-  protected readonly isModern = computed(() => this.branding().template === 'MODERN');
-  protected readonly isMinimal = computed(() => this.branding().template === 'MINIMAL');
   protected readonly fontFamily = computed(() => this.fontStack(this.branding().font));
 
   constructor() {

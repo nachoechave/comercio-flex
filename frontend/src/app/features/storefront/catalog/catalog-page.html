@@ -1,6 +1,7 @@
 <section
   class="catalog"
   [class.catalog--streetwear]="isModern()"
+  [class.catalog--fresh]="isFresh()"
   [class.catalog--minimal]="isMinimal()"
   aria-labelledby="catalog-title"
 >
@@ -76,6 +77,40 @@
         </div>
       </section>
     }
+  } @else if (isFresh()) {
+    <header class="fresh-hero">
+      <div class="fresh-hero-copy">
+        <p class="eyebrow">Calidad de todos los días</p>
+        <h1 id="catalog-title">{{ heroTitle() }}</h1>
+        <p>{{ heroSubtitle() }}</p>
+        <a
+          [routerLink]="['/tiendas', storeSlug()]"
+          fragment="catalog-products"
+          queryParamsHandling="preserve"
+          >Ver productos frescos</a
+        >
+      </div>
+    </header>
+
+    @if (categories().length > 0) {
+      <section id="category-section" class="fresh-categories" aria-labelledby="fresh-categories-title">
+        <div>
+          <p class="eyebrow">Comprá fácil</p>
+          <h2 id="fresh-categories-title">Elegí una categoría</h2>
+        </div>
+        <div class="fresh-category-list">
+          @for (category of categories().slice(0, 8); track category.id) {
+            <a
+              [routerLink]="['/tiendas', storeSlug()]"
+              [queryParams]="{ categoria: category.slug }"
+            >
+              <span aria-hidden="true">{{ category.name.slice(0, 1) }}</span>
+              <strong>{{ category.name }}</strong>
+            </a>
+          }
+        </div>
+      </section>
+    }
   } @else {
     <header class="hero">
       <p class="eyebrow">{{ isMinimal() ? 'Selección' : 'Catálogo online' }}</p>
@@ -94,6 +129,7 @@
     id="catalog-search"
     class="filters"
     [class.filters--streetwear]="isModern()"
+    [class.filters--fresh]="isFresh()"
     [class.filters--minimal]="isMinimal()"
     [formGroup]="filters"
     (ngSubmit)="search()"

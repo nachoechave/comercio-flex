@@ -1,3 +1,5 @@
+import { StorefrontTemplate } from '../storefront/storefront-template';
+
 export type CompanyStatus =
   | 'ACTIVE'
   | 'INACTIVE'
@@ -98,7 +100,7 @@ export interface CreateCompanyRequest {
 }
 
 export type BrandFont = 'SYSTEM' | 'SANS' | 'SERIF';
-export type StorefrontTemplate = 'CLASSIC' | 'MODERN' | 'MINIMAL';
+export type { StorefrontTemplate } from '../storefront/storefront-template';
 export type BrandAssetType = 'logo' | 'favicon' | 'hero';
 
 export interface CompanyBranding {

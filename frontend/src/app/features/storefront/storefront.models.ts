@@ -1,4 +1,7 @@
 import { VariantOptionValue } from '../../shared/variant-options';
+import { StorefrontTemplate } from './storefront-template';
+
+export type { StorefrontTemplate } from './storefront-template';
 
 export interface StoreSettings {
   slug: string;
@@ -17,7 +20,6 @@ export interface StoreSettings {
 export type BrandTheme = 'VIOLET' | 'BURGUNDY' | 'FOREST' | 'NAVY';
 
 export type BrandFont = 'SYSTEM' | 'SANS' | 'SERIF';
-export type StorefrontTemplate = 'CLASSIC' | 'MODERN' | 'MINIMAL';
 
 export interface TenantBranding {
   primaryColor: string;

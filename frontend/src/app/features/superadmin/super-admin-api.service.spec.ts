@@ -93,7 +93,7 @@ describe('SuperAdminApiService', () => {
       font: 'SANS',
       heroTitle: 'Nueva colección',
       heroSubtitle: null,
-      template: 'MODERN',
+      template: 'FASHION',
     }).subscribe();
 
     const request = http.expectOne('/api/v1/superadmin/companies/company%2F1/branding');

@@ -50,10 +50,13 @@ export class CatalogPage {
   protected readonly query = signal('');
   protected readonly selectedCategory = signal('');
   protected readonly isModern = computed(
-    () => this.context.settings()?.branding?.template === 'MODERN',
+    () => this.context.settings()?.branding?.template === 'FASHION',
+  );
+  protected readonly isFresh = computed(
+    () => this.context.settings()?.branding?.template === 'FRESH',
   );
   protected readonly isMinimal = computed(
-    () => this.context.settings()?.branding?.template === 'MINIMAL',
+    () => this.context.settings()?.branding?.template === 'CATALOG',
   );
   protected readonly heroTitle = computed(
     () => this.context.settings()?.branding?.heroTitle || 'Una tienda con identidad propia.',

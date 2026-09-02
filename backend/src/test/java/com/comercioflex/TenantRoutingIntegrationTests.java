@@ -168,7 +168,7 @@ class TenantRoutingIntegrationTests {
 			  "font":"SERIF",
 			  "heroTitle":"Colección A",
 			  "heroSubtitle":"Solo para el tenant A",
-			  "template":"MODERN"
+			  "template":"FRESH"
 			}
 			""";
 
@@ -179,7 +179,7 @@ class TenantRoutingIntegrationTests {
 				.content(update))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.primaryColor").value("#123456"))
-			.andExpect(jsonPath("$.template").value("MODERN"));
+			.andExpect(jsonPath("$.template").value("FRESH"));
 
 		MockMultipartFile logo = new MockMultipartFile(
 			"file", "logo.png", "image/png", png());
