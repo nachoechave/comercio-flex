@@ -19,7 +19,10 @@ export class CartService {
     if (!slug || this.loadedStores.has(slug)) return;
 
     this.loadedStores.add(slug);
-    this.carts.update((carts) => ({ ...carts, [slug]: this.read(slug) }));
+    this.carts.update((carts) => ({
+      ...carts,
+      [slug]: this.read(slug),
+    }));
   }
 
   items(storeSlug: string): readonly CartLine[] {
@@ -27,166 +30,363 @@ export class CartService {
   }
 
   totalUnits(storeSlug: string): number {
-    return this.items(storeSlug).reduce((total, line) => total + line.quantity, 0);
+    return this.items(storeSlug).reduce(
+      (total, line) => total + line.quantity,
+      0,
+    );
   }
 
   availableSubtotal(storeSlug: string): string {
     const totalCents = this.items(storeSlug)
       .filter((line) => line.status === 'AVAILABLE')
-      .reduce((total, line) => total + parseCents(line.unitPrice) * BigInt(line.quantity), 0n);
+      .reduce(
+        (total, line) =>
+          total + parseCents(line.unitPrice) * BigInt(line.quantity),
+        0n,
+      );
+
     return formatCents(totalCents);
   }
 
   add(storeSlug: string, item: AddCartItem): AddCartResult {
     const slug = requireStore(storeSlug);
     this.activate(slug);
-    if (!item.variant.available) throw new Error('La variante no está disponible.');
-    if (!isQuantity(item.quantity)) throw new Error('La cantidad debe estar entre 1 y 99.');
+
+    if (!item.variant.available) {
+      throw new Error('La variante no está disponible.');
+    }
+
+    if (!isQuantity(item.quantity)) {
+      throw new Error('La cantidad debe estar entre 1 y 99.');
+    }
+
+    const availableQuantity = availableUnits(
+      item.variant.availableQuantity,
+    );
+
+    if (availableQuantity < 1) {
+      throw new Error('La variante no tiene stock disponible.');
+    }
+
+    const maxQuantity = Math.min(
+      MAX_QUANTITY,
+      availableQuantity,
+    );
 
     const current = this.items(slug);
-    const existing = current.find((line) => line.variantId === item.variant.id);
-    const requestedQuantity = (existing?.quantity ?? 0) + item.quantity;
-    const quantity = Math.min(requestedQuantity, MAX_QUANTITY);
-    const nextLine = toCartLine(item, quantity);
+
+    const existing = current.find(
+      (line) => line.variantId === item.variant.id,
+    );
+
+    const requestedQuantity =
+      (existing?.quantity ?? 0) + item.quantity;
+
+    /*
+     * Si había un carrito viejo con una cantidad superior
+     * al stock actual, no lo reducimos silenciosamente.
+     */
+    const quantity =
+      existing && existing.quantity > maxQuantity
+        ? existing.quantity
+        : Math.min(requestedQuantity, maxQuantity);
+
+    const nextLine = toCartLine(
+      item,
+      quantity,
+      availableQuantity,
+    );
+
     const next = existing
-      ? current.map((line) => (line.variantId === item.variant.id ? nextLine : line))
+      ? current.map((line) =>
+          line.variantId === item.variant.id
+            ? nextLine
+            : line,
+        )
       : [...current, nextLine];
+
     this.replace(slug, next);
-    return { quantity, reachedLimit: requestedQuantity > MAX_QUANTITY };
+
+    return {
+      quantity,
+      reachedLimit:
+        requestedQuantity > maxQuantity ||
+        quantity > maxQuantity,
+      maxQuantity,
+    };
   }
 
-  setQuantity(storeSlug: string, variantId: string, quantity: number): boolean {
+  setQuantity(
+    storeSlug: string,
+    variantId: string,
+    quantity: number,
+  ): boolean {
     const slug = requireStore(storeSlug);
     this.activate(slug);
+
     if (!isQuantity(quantity)) return false;
 
     let found = false;
+    let accepted = false;
+
     const next = this.items(slug).map((line) => {
-      if (line.variantId !== variantId) return line;
+      if (line.variantId !== variantId) {
+        return line;
+      }
+
       found = true;
-      return { ...line, quantity };
+
+      const maxQuantity =
+        line.availableQuantity === null
+          ? MAX_QUANTITY
+          : Math.min(
+              MAX_QUANTITY,
+              line.availableQuantity,
+            );
+
+      if (quantity > maxQuantity) {
+        return line;
+      }
+
+      accepted = true;
+
+      return {
+        ...line,
+        quantity,
+        status:
+          line.availableQuantity === null
+            ? line.status
+            : ('AVAILABLE' as const),
+        notice:
+          line.availableQuantity === null
+            ? line.notice
+            : null,
+      };
     });
-    if (found) this.replace(slug, next);
-    return found;
+
+    if (found && accepted) {
+      this.replace(slug, next);
+    }
+
+    return found && accepted;
   }
 
   remove(storeSlug: string, variantId: string): void {
     const slug = requireStore(storeSlug);
     this.activate(slug);
+
     this.replace(
       slug,
-      this.items(slug).filter((line) => line.variantId !== variantId),
+      this.items(slug).filter(
+        (line) => line.variantId !== variantId,
+      ),
     );
   }
 
   clear(storeSlug: string): void {
     const slug = requireStore(storeSlug);
     this.activate(slug);
+
     this.replace(slug, []);
   }
 
-  reconcileProduct(storeSlug: string, product: PublicProductDetail): void {
+  reconcileProduct(
+    storeSlug: string,
+    product: PublicProductDetail,
+  ): void {
     const slug = requireStore(storeSlug);
     this.activate(slug);
+
     const next = this.items(slug).map((line) => {
-      if (line.productSlug !== product.slug) return line;
-      const variant = product.variants.find((candidate) => candidate.id === line.variantId);
+      if (line.productSlug !== product.slug) {
+        return line;
+      }
+
+      const variant = product.variants.find(
+        (candidate) => candidate.id === line.variantId,
+      );
+
       if (!variant) {
         return {
           ...line,
+          availableQuantity: 0,
           status: 'UNAVAILABLE' as const,
           notice: 'Esta opción ya no está publicada.',
         };
       }
 
+      const availableQuantity = availableUnits(
+        variant.availableQuantity,
+      );
+
+      const outOfStock =
+        !variant.available ||
+        availableQuantity < 1;
+
+      const exceedsStock =
+        !outOfStock &&
+        line.quantity > availableQuantity;
+
       const changed =
         line.productName !== product.name ||
-        line.imageThumbnailUrl !== (product.image?.thumbnailUrl ?? null) ||
-        line.imageAltText !== (product.image?.altText ?? null) ||
+        line.imageThumbnailUrl !==
+          (product.image?.thumbnailUrl ?? null) ||
+        line.imageAltText !==
+          (product.image?.altText ?? null) ||
         line.unitPrice !== normalizeMoney(variant.price) ||
-        canonicalVariantOptions(line.options, line.size, line.color) !==
-          canonicalVariantOptions(variant.options, variant.size, variant.color);
+        canonicalVariantOptions(
+          line.options,
+          line.size,
+          line.color,
+        ) !==
+          canonicalVariantOptions(
+            variant.options,
+            variant.size,
+            variant.color,
+          );
+
       return {
         ...line,
         productId: product.id,
         productName: product.name,
-        imageThumbnailUrl: product.image?.thumbnailUrl ?? null,
-        imageAltText: product.image?.altText ?? null,
+        imageThumbnailUrl:
+          product.image?.thumbnailUrl ?? null,
+        imageAltText:
+          product.image?.altText ?? null,
         size: variant.size,
         color: variant.color,
-        options: variant.options ?? legacyOptions(variant.size, variant.color),
+        options:
+          variant.options ??
+          legacyOptions(
+            variant.size,
+            variant.color,
+          ),
         unitPrice: normalizeMoney(variant.price),
-        status: variant.available ? ('AVAILABLE' as const) : ('UNAVAILABLE' as const),
-        notice: !variant.available
+
+        availableQuantity,
+
+        status:
+          outOfStock || exceedsStock
+            ? ('UNAVAILABLE' as const)
+            : ('AVAILABLE' as const),
+
+        notice: outOfStock
           ? 'Esta opción está momentáneamente sin stock.'
-          : changed
-            ? 'Actualizamos los datos de este producto.'
-            : null,
+          : exceedsStock
+            ? `Solo hay ${availableQuantity} ${
+                availableQuantity === 1
+                  ? 'unidad disponible'
+                  : 'unidades disponibles'
+              }. Ajustá la cantidad para continuar.`
+            : changed
+              ? 'Actualizamos los datos de este producto.'
+              : null,
       };
     });
+
     this.replace(slug, next);
   }
 
-  markProductUnavailable(storeSlug: string, productSlug: string): void {
-    this.updateProductStatus(
-      storeSlug,
-      productSlug,
-      'UNAVAILABLE',
-      'Este producto ya no está publicado.',
-    );
-  }
-
-  markProductUnknown(storeSlug: string, productSlug: string): void {
-    this.updateProductStatus(
-      storeSlug,
-      productSlug,
-      'UNKNOWN',
-      'No pudimos confirmar precio y disponibilidad.',
-    );
-  }
-
-  private updateProductStatus(
+  markProductUnavailable(
     storeSlug: string,
     productSlug: string,
-    status: CartLine['status'],
-    notice: string,
   ): void {
     const slug = requireStore(storeSlug);
     this.activate(slug);
+
     this.replace(
       slug,
       this.items(slug).map((line) =>
-        line.productSlug === productSlug ? { ...line, status, notice } : line,
+        line.productSlug === productSlug
+          ? {
+              ...line,
+              availableQuantity: 0,
+              status: 'UNAVAILABLE' as const,
+              notice: 'Este producto ya no está publicado.',
+            }
+          : line,
       ),
     );
   }
 
-  private replace(storeSlug: string, items: readonly CartLine[]): void {
-    const next = items.map((item) => ({ ...item }));
-    this.carts.update((carts) => ({ ...carts, [storeSlug]: next }));
+  markProductUnknown(
+    storeSlug: string,
+    productSlug: string,
+  ): void {
+    const slug = requireStore(storeSlug);
+    this.activate(slug);
+
+    this.replace(
+      slug,
+      this.items(slug).map((line) =>
+        line.productSlug === productSlug
+          ? {
+              ...line,
+              availableQuantity: null,
+              status: 'UNKNOWN' as const,
+              notice:
+                'No pudimos confirmar precio y disponibilidad.',
+            }
+          : line,
+      ),
+    );
+  }
+
+  private replace(
+    storeSlug: string,
+    items: readonly CartLine[],
+  ): void {
+    const next = items.map((item) => ({
+      ...item,
+    }));
+
+    this.carts.update((carts) => ({
+      ...carts,
+      [storeSlug]: next,
+    }));
+
     this.write(storeSlug, next);
   }
 
   private read(storeSlug: string): CartLine[] {
     const storage = browserStorage();
+
     if (!storage) return [];
 
     try {
-      const raw = storage.getItem(storageKey(storeSlug));
+      const raw = storage.getItem(
+        storageKey(storeSlug),
+      );
+
       if (!raw) return [];
+
       const parsed: unknown = JSON.parse(raw);
+
       if (!isStoredCart(parsed)) {
         storage.removeItem(storageKey(storeSlug));
         return [];
       }
+
       return parsed.items.map((item) => ({
         ...item,
-        imageThumbnailUrl: item.imageThumbnailUrl ?? null,
-        imageAltText: item.imageAltText ?? null,
-        options: item.options ?? legacyOptions(item.size, item.color),
+        imageThumbnailUrl:
+          item.imageThumbnailUrl ?? null,
+        imageAltText:
+          item.imageAltText ?? null,
+        options:
+          item.options ??
+          legacyOptions(item.size, item.color),
         unitPrice: normalizeMoney(item.unitPrice),
+
+        /*
+         * El stock NO se toma de localStorage.
+         * Se vuelve a confirmar contra el backend.
+         */
+        availableQuantity: null,
+
         status: 'UNKNOWN',
-        notice: 'Confirmando precio y disponibilidad.',
+        notice:
+          'Confirmando precio y disponibilidad.',
       }));
     } catch {
       try {
@@ -194,67 +394,150 @@ export class CartService {
       } catch {
         // Storage may be disabled; the in-memory cart remains usable.
       }
+
       return [];
     }
   }
 
-  private write(storeSlug: string, items: readonly CartLine[]): void {
+  private write(
+    storeSlug: string,
+    items: readonly CartLine[],
+  ): void {
     const storage = browserStorage();
+
     if (!storage) return;
 
+    /*
+     * availableQuantity no se persiste porque podría quedar
+     * obsoleto entre una visita y otra.
+     */
     const stored: StoredCart = {
       version: 1,
-      items: items.map(({ status: _status, notice: _notice, ...item }) => item),
+      items: items.map(
+        ({
+          status: _status,
+          notice: _notice,
+          availableQuantity: _availableQuantity,
+          ...item
+        }) => item,
+      ),
     };
+
     try {
-      if (stored.items.length === 0) storage.removeItem(storageKey(storeSlug));
-      else storage.setItem(storageKey(storeSlug), JSON.stringify(stored));
+      if (stored.items.length === 0) {
+        storage.removeItem(storageKey(storeSlug));
+      } else {
+        storage.setItem(
+          storageKey(storeSlug),
+          JSON.stringify(stored),
+        );
+      }
     } catch {
       // Quota or privacy mode must not make the in-memory cart unusable.
     }
   }
 }
 
-function toCartLine(item: AddCartItem, quantity: number): CartLine {
+function toCartLine(
+  item: AddCartItem,
+  quantity: number,
+  availableQuantity: number,
+): CartLine {
+  const exceedsStock =
+    quantity > availableQuantity;
+
   return {
     productId: item.product.id,
     productSlug: item.product.slug,
     productName: item.product.name,
-    imageThumbnailUrl: item.product.image?.thumbnailUrl ?? null,
-    imageAltText: item.product.image?.altText ?? null,
+    imageThumbnailUrl:
+      item.product.image?.thumbnailUrl ?? null,
+    imageAltText:
+      item.product.image?.altText ?? null,
     variantId: item.variant.id,
     size: item.variant.size,
     color: item.variant.color,
-    options: item.variant.options ?? legacyOptions(item.variant.size, item.variant.color),
-    unitPrice: normalizeMoney(item.variant.price),
+    options:
+      item.variant.options ??
+      legacyOptions(
+        item.variant.size,
+        item.variant.color,
+      ),
+    unitPrice: normalizeMoney(
+      item.variant.price,
+    ),
     quantity,
-    status: 'AVAILABLE',
-    notice: null,
+    availableQuantity,
+
+    status: exceedsStock
+      ? 'UNAVAILABLE'
+      : 'AVAILABLE',
+
+    notice: exceedsStock
+      ? `Solo hay ${availableQuantity} ${
+          availableQuantity === 1
+            ? 'unidad disponible'
+            : 'unidades disponibles'
+        }. Ajustá la cantidad para continuar.`
+      : null,
   };
 }
 
-function isStoredCart(value: unknown): value is StoredCart {
-  if (!isRecord(value) || value['version'] !== 1 || !Array.isArray(value['items'])) return false;
+function isStoredCart(
+  value: unknown,
+): value is StoredCart {
+  if (
+    !isRecord(value) ||
+    value['version'] !== 1 ||
+    !Array.isArray(value['items'])
+  ) {
+    return false;
+  }
+
   return value['items'].every(isStoredLine);
 }
 
-function isStoredLine(value: unknown): value is StoredCartLine {
+function isStoredLine(
+  value: unknown,
+): value is StoredCartLine {
   if (!isRecord(value)) return false;
+
   return (
     isText(value['productId'], 100) &&
     isText(value['productSlug'], 180) &&
     isText(value['productName'], 160) &&
-    (value['imageThumbnailUrl'] === undefined ||
-      isNullableText(value['imageThumbnailUrl'], 2048)) &&
-    (value['imageAltText'] === undefined || isNullableText(value['imageAltText'], 300)) &&
+
+    (
+      value['imageThumbnailUrl'] === undefined ||
+      isNullableText(
+        value['imageThumbnailUrl'],
+        2048,
+      )
+    ) &&
+
+    (
+      value['imageAltText'] === undefined ||
+      isNullableText(
+        value['imageAltText'],
+        300,
+      )
+    ) &&
+
     isText(value['variantId'], 100) &&
     isNullableText(value['size'], 60) &&
     isNullableText(value['color'], 60) &&
-    (value['options'] === undefined || isVariantOptions(value['options'])) &&
+
+    (
+      value['options'] === undefined ||
+      isVariantOptions(value['options'])
+    ) &&
+
     typeof value['unitPrice'] === 'string' &&
     MONEY_PATTERN.test(value['unitPrice']) &&
     parseCents(value['unitPrice']) > 0n &&
+
     isQuantity(value['quantity']) &&
+
     Object.keys(value).every((key) =>
       [
         'productId',
@@ -273,71 +556,174 @@ function isStoredLine(value: unknown): value is StoredCartLine {
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value)
+  );
 }
 
-function isVariantOptions(value: unknown): value is VariantOptionValue[] {
+function isVariantOptions(
+  value: unknown,
+): value is VariantOptionValue[] {
   return (
     Array.isArray(value) &&
     value.length <= 5 &&
     value.every(
       (option) =>
         isRecord(option) &&
-        Object.keys(option).every((key) => ['name', 'value'].includes(key)) &&
+        Object.keys(option).every((key) =>
+          ['name', 'value'].includes(key),
+        ) &&
         isText(option['name'], 40) &&
         isText(option['value'], 60),
     )
   );
 }
 
-function legacyOptions(size: string | null, color: string | null): VariantOptionValue[] {
+function legacyOptions(
+  size: string | null,
+  color: string | null,
+): VariantOptionValue[] {
   return [
-    ...(size ? [{ name: 'Talle', value: size }] : []),
-    ...(color ? [{ name: 'Color', value: color }] : []),
+    ...(size
+      ? [{ name: 'Talle', value: size }]
+      : []),
+
+    ...(color
+      ? [{ name: 'Color', value: color }]
+      : []),
   ];
 }
 
-function isText(value: unknown, maxLength: number): value is string {
-  return typeof value === 'string' && value.trim().length > 0 && value.length <= maxLength;
+function isText(
+  value: unknown,
+  maxLength: number,
+): value is string {
+  return (
+    typeof value === 'string' &&
+    value.trim().length > 0 &&
+    value.length <= maxLength
+  );
 }
 
-function isNullableText(value: unknown, maxLength: number): value is string | null {
-  return value === null || (typeof value === 'string' && value.length <= maxLength);
+function isNullableText(
+  value: unknown,
+  maxLength: number,
+): value is string | null {
+  return (
+    value === null ||
+    (
+      typeof value === 'string' &&
+      value.length <= maxLength
+    )
+  );
 }
 
-function isQuantity(value: unknown): value is number {
-  return Number.isInteger(value) && Number(value) >= 1 && Number(value) <= MAX_QUANTITY;
+function isQuantity(
+  value: unknown,
+): value is number {
+  return (
+    Number.isInteger(value) &&
+    Number(value) >= 1 &&
+    Number(value) <= MAX_QUANTITY
+  );
 }
 
-function normalizeStoreSlug(value: string): string {
-  const normalized = value.trim().toLowerCase();
-  return STORE_SLUG_PATTERN.test(normalized) ? normalized : '';
+/*
+ * Convierte la disponibilidad enviada por el backend a unidades
+ * enteras utilizables por la versión actual de Comercio Flex.
+ *
+ * Ejemplo:
+ * "2"     -> 2
+ * "5.000" -> 5
+ *
+ * En una futura versión con venta por peso esta política
+ * puede modificarse sin cambiar el contrato público.
+ */
+function availableUnits(
+  value: string | null | undefined,
+): number {
+  const quantity = Number(value);
+
+  if (
+    !Number.isFinite(quantity) ||
+    quantity <= 0
+  ) {
+    return 0;
+  }
+
+  return Math.floor(quantity);
 }
 
-function requireStore(value: string): string {
+function normalizeStoreSlug(
+  value: string,
+): string {
+  const normalized =
+    value.trim().toLowerCase();
+
+  return STORE_SLUG_PATTERN.test(normalized)
+    ? normalized
+    : '';
+}
+
+function requireStore(
+  value: string,
+): string {
   const slug = normalizeStoreSlug(value);
-  if (!slug) throw new Error('No se pudo identificar el comercio.');
+
+  if (!slug) {
+    throw new Error(
+      'No se pudo identificar el comercio.',
+    );
+  }
+
   return slug;
 }
 
-function normalizeMoney(value: string): string {
-  if (!MONEY_PATTERN.test(value) || parseCents(value) <= 0n) {
-    throw new Error('El precio público no es válido.');
+function normalizeMoney(
+  value: string,
+): string {
+  if (
+    !MONEY_PATTERN.test(value) ||
+    parseCents(value) <= 0n
+  ) {
+    throw new Error(
+      'El precio público no es válido.',
+    );
   }
-  return formatCents(parseCents(value));
+
+  return formatCents(
+    parseCents(value),
+  );
 }
 
-function parseCents(value: string): bigint {
-  const [integer, fraction = ''] = value.split('.');
-  return BigInt(integer) * 100n + BigInt(fraction.padEnd(2, '0'));
+function parseCents(
+  value: string,
+): bigint {
+  const [integer, fraction = ''] =
+    value.split('.');
+
+  return (
+    BigInt(integer) * 100n +
+    BigInt(fraction.padEnd(2, '0'))
+  );
 }
 
-function formatCents(value: bigint): string {
-  return `${value / 100n}.${(value % 100n).toString().padStart(2, '0')}`;
+function formatCents(
+  value: bigint,
+): string {
+  return `${value / 100n}.${(value % 100n)
+    .toString()
+    .padStart(2, '0')}`;
 }
 
-function storageKey(storeSlug: string): string {
+function storageKey(
+  storeSlug: string,
+): string {
   return `${STORAGE_PREFIX}${storeSlug}`;
 }
 

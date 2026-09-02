@@ -225,6 +225,15 @@ nav {
   text-transform: uppercase;
 }
 
+.site-header--streetwear .cart-link {
+  color: #111;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .site-header--streetwear nav > a:not(.icon-link, .cart-link)::after {
   position: absolute;
   right: 0;

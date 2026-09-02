@@ -127,7 +127,7 @@
                 aria-label="Cantidad"
                 type="number"
                 min="1"
-                max="99"
+                max="selectedVariant()?.stock ?? 1"
                 step="1"
                 inputmode="numeric"
                 [value]="quantity()"
@@ -137,7 +137,10 @@
               <button
                 type="button"
                 aria-label="Aumentar cantidad"
-                [disabled]="quantity() === 99 || !canAddToCart()"
+                [disabled]="
+                  !canAddToCart() ||
+                  quantity() >= maxQuantity()
+                "
                 (click)="increaseQuantity()"
               >
                 +
