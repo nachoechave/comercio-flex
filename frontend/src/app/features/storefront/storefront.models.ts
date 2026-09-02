@@ -84,6 +84,7 @@ export interface PublicProductVariant {
   color: string | null;
   options?: VariantOptionValue[];
   available: boolean;
+  availableQuantity: string;  
 }
 
 export interface PublicProductDetail {

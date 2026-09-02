@@ -90,7 +90,18 @@ export class PublicProductDetail {
   protected readonly selectedVariant = computed(() =>
     this.product()?.variants.find((variant) => variant.id === this.selectedVariantId()),
   );
-  protected readonly canAddToCart = computed(() => this.selectedVariant()?.available === true);
+  protected readonly maxQuantity = computed(() => {
+    const availableQuantity = Number(this.selectedVariant()?.availableQuantity ?? 0);
+
+    if (!Number.isFinite(availableQuantity)) {
+      return 0;
+    }
+
+    return Math.max(0, Math.floor(availableQuantity));
+  });
+  protected readonly canAddToCart = computed(
+    () => this.selectedVariant()?.available === true && this.maxQuantity() > 0,
+  );
   protected readonly availabilityLabel = computed(() => {
     const selected = this.selectedVariant();
     if (selected) return selected.available ? 'En stock' : 'Sin stock';
@@ -204,7 +215,7 @@ export class PublicProductDetail {
   }
 
   protected increaseQuantity(): void {
-    if (this.quantity() < 99) {
+    if (this.quantity() < this.maxQuantity()) {
       this.quantity.update((value) => value + 1);
       this.cartMessage.set('');
     }
@@ -213,11 +224,20 @@ export class PublicProductDetail {
   protected updateQuantity(event: Event): void {
     const input = event.target as HTMLInputElement;
     const value = input.valueAsNumber;
-    if (!Number.isInteger(value) || value < 1 || value > 99) {
+    const maxQuantity = this.maxQuantity();
+
+    if (!Number.isInteger(value) || value < 1 || value > maxQuantity) {
       input.value = String(this.quantity());
-      this.cartMessage.set('La cantidad debe ser un número entero entre 1 y 99.');
+
+      this.cartMessage.set(
+        maxQuantity > 0
+          ? `Solo hay ${maxQuantity} ${maxQuantity === 1 ? 'unidad disponible' : 'unidades disponibles'}.`
+          : 'Este producto no tiene stock disponible.',
+      );
+
       return;
     }
+
     this.quantity.set(value);
     this.cartMessage.set('');
   }
@@ -227,6 +247,12 @@ export class PublicProductDetail {
     const variant = this.selectedVariant();
     if (!product || !variant?.available) {
       this.cartMessage.set('Elegí una variante disponible.');
+      return;
+    }
+    if (this.quantity() > this.maxQuantity()) {
+      this.cartMessage.set(
+        `Solo hay ${this.maxQuantity()} unidades disponibles.`,
+      );
       return;
     }
 

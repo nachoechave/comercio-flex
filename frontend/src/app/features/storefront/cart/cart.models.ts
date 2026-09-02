@@ -15,6 +15,11 @@ export interface CartLine {
   options: VariantOptionValue[];
   unitPrice: string;
   quantity: number;
+
+  // Stock disponible confirmado actualmente.
+  // null significa que todavía no fue reconciliado con el backend.
+  availableQuantity: number | null;
+
   status: CartLineStatus;
   notice: string | null;
 }
@@ -28,6 +33,7 @@ export interface AddCartItem {
 export interface AddCartResult {
   quantity: number;
   reachedLimit: boolean;
+  maxQuantity: number;
 }
 
 export interface StoredCart {
@@ -37,7 +43,12 @@ export interface StoredCart {
 
 export interface StoredCartLine extends Omit<
   CartLine,
-  'status' | 'notice' | 'imageThumbnailUrl' | 'imageAltText' | 'options'
+  | 'status'
+  | 'notice'
+  | 'imageThumbnailUrl'
+  | 'imageAltText'
+  | 'options'
+  | 'availableQuantity'
 > {
   imageThumbnailUrl?: string | null;
   imageAltText?: string | null;
