@@ -10,7 +10,7 @@
   } @else if (entries().length === 0) {
     <div class="empty-state">
       <p>No tenés pedidos recientes en este dispositivo.</p>
-      <a [routerLink]="['/tiendas', storeSlug()]">Ver productos</a>
+      <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')">Ver productos</a>
     </div>
   } @else {
     <ul>

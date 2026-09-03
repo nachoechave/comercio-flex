@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, from, mergeMap, of, Subscription } from 'rxjs';
 
-import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { StorefrontRoutingService } from '../storefront-routing.service';
 import { CommerceDatePipe } from '../../../shared/pipes/commerce-date.pipe';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
@@ -21,10 +21,14 @@ export class RecentOrdersPage {
   private readonly api = inject(StorefrontApiService);
   private readonly history = inject(GuestOrderHistoryService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly router = inject(Router);
-  protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
-    initialValue: '',
-  });
+  protected readonly storeSlug = toSignal(
+    this.storefrontRouting.storeSlug(this.route),
+    {
+      initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
+    },
+  );
   protected readonly entries = signal<GuestOrderHistoryEntry[]>([]);
   protected readonly loading = signal(true);
 
@@ -67,7 +71,9 @@ export class RecentOrdersPage {
   }
 
   protected open(entry: GuestOrderHistoryEntry): void {
-    void this.router.navigate(['/tiendas', entry.storeSlug, 'pedidos', entry.orderId]);
+    void this.router.navigate(
+      this.storefrontRouting.route(entry.storeSlug, 'pedidos', entry.orderId),
+    );
   }
 
   protected statusLabel(status: GuestOrderStatus): string {

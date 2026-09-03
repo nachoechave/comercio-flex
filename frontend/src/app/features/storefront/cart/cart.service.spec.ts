@@ -29,6 +29,7 @@ describe('CartService', () => {
       { name: 'Color', value: 'Azul' },
     ],
     available: true,
+    availableQuantity: '10',
   };
 
   beforeEach(() => {
@@ -39,24 +40,27 @@ describe('CartService', () => {
 
   afterEach(() => localStorage.clear());
 
-  it('persists and accumulates an available variant without exceeding 99', () => {
+  it('persists and accumulates an available variant without exceeding available stock', () => {
     expect(service.add('tienda-a', { product, variant, quantity: 2 })).toEqual({
       quantity: 2,
       reachedLimit: false,
-    });
-    expect(service.add('tienda-a', { product, variant, quantity: 98 })).toEqual({
-      quantity: 99,
-      reachedLimit: true,
+      maxQuantity: 10,
     });
 
-    expect(service.totalUnits('tienda-a')).toBe(99);
+    expect(service.add('tienda-a', { product, variant, quantity: 98 })).toEqual({
+      quantity: 10,
+      reachedLimit: true,
+      maxQuantity: 10,
+    });
+
+    expect(service.totalUnits('tienda-a')).toBe(10);
     expect(JSON.parse(localStorage.getItem('comercio-flex:cart:v1:tienda-a')!)).toEqual({
       version: 1,
       items: [
         expect.objectContaining({
           productSlug: 'remera',
           variantId: 'variant-1',
-          quantity: 99,
+          quantity: 10,
           imageThumbnailUrl: '/media/image-1/thumbnail',
           imageAltText: 'Remera azul de frente',
           options: [

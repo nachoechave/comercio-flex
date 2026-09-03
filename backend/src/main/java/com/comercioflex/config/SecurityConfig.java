@@ -73,11 +73,18 @@ public class SecurityConfig {
 				.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(
-					"/", "/index.html", "/*.js", "/*.css", "/*.ico", "/assets/**",
-					"/admin", "/admin/**", "/superadmin", "/superadmin/**", "/tiendas/**",
-					"/stores/*/payment-return/*")
+						"/", "/index.html", "/*.js", "/*.css", "/*.ico", "/assets/**",
+						"/admin", "/admin/**", "/superadmin", "/superadmin/**", "/tiendas/**",
+						"/stores/*/payment-return/*",
+						"/payment-return/*",
+						"/carrito",
+						"/checkout",
+						"/mis-pedidos",
+						"/pedidos/**",
+						"/productos/**")
 				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/storefront/resolve").permitAll()
 				.requestMatchers("/api/v1/stores/*/settings").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/payment-methods").permitAll()
 				.requestMatchers(

@@ -49,6 +49,7 @@ describe('CartPage', () => {
         size: 'M',
         color: 'Azul',
         available: true,
+        availableQuantity: '10',
       },
     ],
   };

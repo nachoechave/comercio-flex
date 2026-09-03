@@ -2,9 +2,8 @@ import { DOCUMENT } from '@angular/common';
 import { Component, computed, effect, inject, ViewEncapsulation } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { map } from 'rxjs';
+import { StorefrontRoutingService } from '../../features/storefront/storefront-routing.service';
 
-import { StorefrontApiService } from '../../features/storefront/storefront-api.service';
 import { StorefrontContextService } from '../../features/storefront/storefront-context.service';
 import { CartService } from '../../features/storefront/cart/cart.service';
 import { BrandFont, TenantBranding } from '../../features/storefront/storefront.models';
@@ -29,21 +28,26 @@ const DEFAULT_BRANDING: TenantBranding = {
 @Component({
   selector: 'app-storefront-layout',
   imports: [RouterLink, CatalogStorefrontShell, FashionStorefrontShell, FreshStorefrontShell],
-  providers: [StorefrontApiService, StorefrontContextService],
+  providers: [StorefrontContextService],
   templateUrl: './storefront-layout.html',
   styleUrl: './storefront-layout.scss',
   encapsulation: ViewEncapsulation.None,
 })
 export class StorefrontLayout {
   private readonly route = inject(ActivatedRoute);
+  private readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly cart = inject(CartService);
   private readonly document = inject(DOCUMENT);
   protected readonly context = inject(StorefrontContextService);
   protected readonly storeSlug = toSignal(
-    this.route.paramMap.pipe(map((params) => params.get('storeSlug') ?? '')),
-    { initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '' },
+    this.storefrontRouting.storeSlug(this.route),
+    {
+      initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
+    },
   );
-  protected readonly cartUnits = computed(() => this.cart.totalUnits(this.storeSlug()));
+  protected readonly cartUnits = computed(() =>
+    this.cart.totalUnits(this.storeSlug() ?? ''),
+  );
   protected readonly branding = computed(() => this.context.settings()?.branding ?? DEFAULT_BRANDING);
   protected readonly fontFamily = computed(() => this.fontStack(this.branding().font));
 

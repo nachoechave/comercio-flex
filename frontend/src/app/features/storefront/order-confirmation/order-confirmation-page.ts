@@ -16,6 +16,7 @@ import {
 
 import { CsrfService } from '../../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { StorefrontRoutingService } from '../storefront-routing.service';
 import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
 import { CommerceDatePipe } from '../../../shared/pipes/commerce-date.pipe';
 import { variantOptionsLabel } from '../../../shared/variant-options';
@@ -56,11 +57,21 @@ export class OrderConfirmationPage {
   private readonly paymentRecovery = inject(PaymentRecoveryService);
   private readonly guestOrders = inject(GuestOrderHistoryService);
   private readonly route = inject(ActivatedRoute);
+protected readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly document = inject(DOCUMENT);
   protected readonly context = inject(StorefrontContextService);
-  protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
-    initialValue: '',
-  });
+  protected readonly storeSlug = toSignal(
+    this.storefrontRouting.storeSlug(this.route),
+    {
+      initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
+    },
+  );
+   protected readonly productSlug = toSignal(
+    inheritedRouteParam(this.route, 'productSlug'),
+    {
+      initialValue: '',
+    },
+  );
   protected readonly orderId = toSignal(inheritedRouteParam(this.route, 'orderId'), {
     initialValue: '',
   });

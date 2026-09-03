@@ -6,7 +6,7 @@
 >
   <a
     class="visual"
-    [routerLink]="['/tiendas', storeSlug(), 'productos', product().slug]"
+    [routerLink]="storefrontRouting.route(storeSlug(), 'productos', product().slug)"
     tabindex="-1"
     aria-hidden="true"
   >
@@ -22,7 +22,7 @@
   <div class="content">
     <p class="category">{{ product().category.name }}</p>
     <h2>
-      <a [routerLink]="['/tiendas', storeSlug(), 'productos', product().slug]">
+      <a [routerLink]="storefrontRouting.route(storeSlug(), 'productos', product().slug)">
         {{ product().name }}
       </a>
     </h2>

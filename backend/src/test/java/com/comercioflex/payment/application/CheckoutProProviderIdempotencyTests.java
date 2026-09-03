@@ -30,6 +30,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
@@ -42,6 +43,7 @@ import com.comercioflex.payment.domain.PaymentEnvironment;
 import com.comercioflex.payment.domain.PaymentIntentStatus;
 import com.comercioflex.tenant.application.ResolvedTenant;
 import com.comercioflex.tenant.application.TenantResolver;
+import com.comercioflex.tenant.application.TenantDomainResolver;
 
 class CheckoutProProviderIdempotencyTests {
 
@@ -255,6 +257,62 @@ class CheckoutProProviderIdempotencyTests {
 		assertThat(harness.attachments).hasValue(0);
 	}
 
+	@Test
+	void usesVerifiedPrimaryDomainForPaymentReturn() {
+			Harness harness = new Harness(ORDER_ID);
+			UUID key = UUID.fromString(
+					"12121212-1212-4212-8212-121212121212");
+
+			when(harness.domains.verifiedPrimaryHostname(1L))
+					.thenReturn(Optional.of("laolamadre.com.ar"));
+
+			AtomicReference<CheckoutPreferenceCommand> sent =
+					new AtomicReference<>();
+
+			harness.providerCall.set(command -> {
+					sent.set(command);
+					return preference("pref-custom-domain");
+			});
+
+			harness.service().initiate(
+					"tienda-a",
+					ORDER_ID,
+					LOOKUP_TOKEN,
+					key);
+
+			assertThat(sent.get().returnUri().toString())
+					.startsWith(
+							"https://laolamadre.com.ar/payment-return/");
+
+			assertThat(sent.get().returnUri().toString())
+					.doesNotContain("/stores/tienda-a/");
+	}
+
+	@Test
+	void fallsBackToPlatformReturnWhenTenantHasNoCustomDomain() {
+			Harness harness = new Harness(ORDER_ID);
+			UUID key = UUID.fromString(
+					"13131313-1313-4313-8313-131313131313");
+
+			AtomicReference<CheckoutPreferenceCommand> sent =
+					new AtomicReference<>();
+
+			harness.providerCall.set(command -> {
+					sent.set(command);
+					return preference("pref-platform-domain");
+			});
+
+			harness.service().initiate(
+					"tienda-a",
+					ORDER_ID,
+					LOOKUP_TOKEN,
+					key);
+
+			assertThat(sent.get().returnUri().toString())
+					.startsWith(
+							"https://shop.example.test/stores/tienda-a/payment-return/");
+	}
+
 	private static CreatedCheckoutPreference preference(String id) {
 		return new CreatedCheckoutPreference(
 			id, URI.create("https://sandbox.mercadopago.com/checkout/" + id), "seller-1");
@@ -279,6 +337,7 @@ class CheckoutProProviderIdempotencyTests {
 		private final CheckoutControlRepository controlRepository =
 			mock(CheckoutControlRepository.class);
 		private final CheckoutProGateway gateway = mock(CheckoutProGateway.class);
+		private final TenantDomainResolver domains = mock(TenantDomainResolver.class);
 		private final AtomicReference<StoredCheckoutAttempt> attempt = new AtomicReference<>();
 		private final AtomicReference<Function<CheckoutPreferenceCommand,
 			CreatedCheckoutPreference>> providerCall = new AtomicReference<>(
@@ -292,6 +351,8 @@ class CheckoutProProviderIdempotencyTests {
 
 		private Harness(UUID orderId) {
 			this.orderId = orderId;
+				when(domains.verifiedPrimaryHostname(1L))
+			.thenReturn(Optional.empty());
 			CheckoutOrder order = new CheckoutOrder(
 				42L, orderId, OrderStatus.PENDING_CONFIRMATION,
 				new BigDecimal("5.00"), "ARS", NOW.plusSeconds(1800));
@@ -356,72 +417,101 @@ class CheckoutProProviderIdempotencyTests {
 			when(gateway.createPreference(any(), any())).thenAnswer(invocation ->
 				providerCall.get().apply(invocation.getArgument(1)));
 		}
+private CheckoutProService service() {
+        PaymentCredentialResolver credentials = mock(PaymentCredentialResolver.class);
+        when(credentials.resolve(1L, "tienda-a")).thenReturn(credential);
 
-		private CheckoutProService service() {
-			PaymentCredentialResolver credentials = mock(PaymentCredentialResolver.class);
-			when(credentials.resolve(1L, "tienda-a")).thenReturn(credential);
-			TenantResolver tenants = mock(TenantResolver.class);
-			when(tenants.resolveActive("tienda-a"))
-				.thenReturn(new ResolvedTenant(1L, "tienda-a", "Tienda A", "tenant-a"));
-			PaymentOAuthProperties oauth = mock(PaymentOAuthProperties.class);
-			when(oauth.environment()).thenReturn(PaymentEnvironment.TEST);
-			CheckoutProProperties properties = new CheckoutProProperties(
-				true, null, null, null,
-				URI.create("https://api.example.test"),
-				URI.create("https://shop.example.test"),
-				"synthetic-webhook-secret", Duration.ofSeconds(1), Duration.ofSeconds(1),
-				Duration.ofSeconds(30), Duration.ofSeconds(30), 3, Duration.ofHours(1));
-			return new CheckoutProService(
-				repository, controlRepository, credentials, gateway,
-				mock(PaidOrderConfirmer.class), mock(RejectedPaymentNotifier.class),
-				mock(AdminOrderRepository.class), tenants, properties, oauth,
-				transactions(tenantTransactionLock), transactions(new ReentrantLock()),
-				Clock.fixed(NOW, ZoneOffset.UTC));
-		}
+        TenantResolver tenants = mock(TenantResolver.class);
+        when(tenants.resolveActive("tienda-a"))
+                .thenReturn(new ResolvedTenant(
+                        1L,
+                        "tienda-a",
+                        "Tienda A",
+                        "tenant-a"));
 
-		private void associate(String preferenceId) {
-			associate(preferenceId, preference(preferenceId).checkoutUri(),
-				NOW.plusSeconds(1800), "seller-1", PaymentEnvironment.TEST, NOW);
-		}
+        PaymentOAuthProperties oauth = mock(PaymentOAuthProperties.class);
+        when(oauth.environment()).thenReturn(PaymentEnvironment.TEST);
 
-		private void associate(
-				String preferenceId, URI checkoutUri, Instant expiresAt,
-				String seller, PaymentEnvironment environment, Instant now) {
-			StoredCheckoutAttempt current = attempt.get();
-			attempt.set(new StoredCheckoutAttempt(
-				current.internalId(), current.id(), current.orderInternalId(), current.orderId(),
-				current.orderNumber(), current.orderStatus(), current.reservationExpiresAt(),
-				current.idempotencyKey(), current.requestFingerprint(),
-				current.transitionIdempotencyKey(), PaymentIntentStatus.PENDING,
-				current.amount(), current.currencyCode(), current.externalReference(),
-				current.returnTokenExpiresAt(), preferenceId, checkoutUri, expiresAt,
-				seller, environment, now, current.version() + 1));
+        CheckoutProProperties properties = new CheckoutProProperties(
+                true,
+                null,
+                null,
+                null,
+                URI.create("https://api.example.test"),
+                URI.create("https://shop.example.test"),
+                "synthetic-webhook-secret",
+                Duration.ofSeconds(1),
+                Duration.ofSeconds(1),
+                Duration.ofSeconds(30),
+                Duration.ofSeconds(30),
+                3,
+                Duration.ofHours(1));
+
+        return new CheckoutProService(
+                repository,
+                controlRepository,
+                credentials,
+                gateway,
+                mock(PaidOrderConfirmer.class),
+                mock(RejectedPaymentNotifier.class),
+                mock(AdminOrderRepository.class),
+                tenants,
+                domains,
+                properties,
+                oauth,
+                transactions(tenantTransactionLock),
+                transactions(new ReentrantLock()),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+}
+
+private void associate(String preferenceId) {
+        associate(
+                preferenceId,
+                preference(preferenceId).checkoutUri(),
+                NOW.plusSeconds(1800),
+                "seller-1",
+                PaymentEnvironment.TEST,
+                NOW);
+}
+
+private void associate(
+                String preferenceId, URI checkoutUri, Instant expiresAt,
+                String seller, PaymentEnvironment environment, Instant now) {
+        StoredCheckoutAttempt current = attempt.get();
+        attempt.set(new StoredCheckoutAttempt(
+                current.internalId(), current.id(), current.orderInternalId(), current.orderId(),
+                current.orderNumber(), current.orderStatus(), current.reservationExpiresAt(),
+                current.idempotencyKey(), current.requestFingerprint(),
+                current.transitionIdempotencyKey(), PaymentIntentStatus.PENDING,
+                current.amount(), current.currencyCode(), current.externalReference(),
+                current.returnTokenExpiresAt(), preferenceId, checkoutUri, expiresAt,
+                seller, environment, now, current.version() + 1));
 		}
 	}
 
 	private static TransactionTemplate transactions(ReentrantLock lock) {
-		TransactionTemplate transactions = mock(TransactionTemplate.class);
-		when(transactions.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
-			lock.lock();
-			try {
-				TransactionCallback<?> callback = invocation.getArgument(0);
-				return callback.doInTransaction(mock(TransactionStatus.class));
-			}
-			finally {
-				lock.unlock();
-			}
-		});
-		doAnswer(invocation -> {
-			lock.lock();
-			try {
-				Consumer<TransactionStatus> callback = invocation.getArgument(0);
-				callback.accept(mock(TransactionStatus.class));
-				return null;
-			}
-			finally {
-				lock.unlock();
-			}
-		}).when(transactions).executeWithoutResult(any());
-		return transactions;
-	}
+			TransactionTemplate transactions = mock(TransactionTemplate.class);
+			when(transactions.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
+				lock.lock();
+				try {
+					TransactionCallback<?> callback = invocation.getArgument(0);
+					return callback.doInTransaction(mock(TransactionStatus.class));
+				}
+				finally {
+					lock.unlock();
+				}
+			});
+			doAnswer(invocation -> {
+				lock.lock();
+				try {
+					Consumer<TransactionStatus> callback = invocation.getArgument(0);
+					callback.accept(mock(TransactionStatus.class));
+					return null;
+				}
+				finally {
+					lock.unlock();
+				}
+			}).when(transactions).executeWithoutResult(any());
+			return transactions;
+		}
 }

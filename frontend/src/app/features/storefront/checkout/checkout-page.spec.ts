@@ -62,6 +62,7 @@ describe('CheckoutPage', () => {
         size: null,
         color: null,
         available: true,
+        availableQuantity: '10',
       },
     ],
   };

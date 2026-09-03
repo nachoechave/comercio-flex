@@ -11,9 +11,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class SpaForwardController {
 
 	@GetMapping({
-		"/", "/admin", "/admin/**", "/superadmin", "/superadmin/**",
-		"/tiendas/{slug}", "/tiendas/{slug}/**",
-		"/stores/{slug}/payment-return/{returnToken}"
+			"/", "/admin", "/admin/**", "/superadmin", "/superadmin/**",
+			"/tiendas/{slug}", "/tiendas/{slug}/**",
+			"/stores/{slug}/payment-return/{returnToken}",
+			"/payment-return/{returnToken}",
+			"/carrito",
+			"/checkout",
+			"/mis-pedidos",
+			"/pedidos/**",
+			"/productos/**"
 	})
 	public String forwardToAngular() {
 		return "forward:/index.html";

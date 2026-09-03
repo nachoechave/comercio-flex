@@ -10,26 +10,44 @@ import {
   superAdminGuard,
 } from './core/auth/auth.guards';
 import { ADMIN_ROLES } from './core/auth/auth.models';
+import { storefrontDomainGuard } from './features/storefront/storefront-domain.guard';
 
 export const routes: Routes = [
   {
     path: '',
-    pathMatch: 'full',
+    canMatch: [storefrontDomainGuard],
     loadComponent: () =>
-      import('./features/landing/landing-page/landing-page').then((module) => module.LandingPage),
-  },
-  {
-    path: 'admin/login',
-    loadComponent: () => import('./features/auth/login/login').then((module) => module.Login),
-  },
-  {
-    path: 'admin/comercios',
-    canActivate: [authGuard, membershipSelectionGuard],
-    loadComponent: () =>
-      import('./features/admin/store-selector/store-selector').then(
-        (module) => module.StoreSelector,
+      import('./layouts/storefront-layout/storefront-layout').then(
+        (module) => module.StorefrontLayout,
+      ),
+    loadChildren: () =>
+      import('./features/storefront/storefront.routes').then(
+        (module) => module.STOREFRONT_ROUTES,
       ),
   },
+  {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/landing/landing-page/landing-page').then(
+        (module) => module.LandingPage,
+      ),
+  },
+
+{
+  path: 'admin/login',
+  loadComponent: () =>
+    import('./features/auth/login/login').then((module) => module.Login),
+},
+{
+  path: 'admin/comercios',
+  canActivate: [authGuard, membershipSelectionGuard],
+  loadComponent: () =>
+    import('./features/admin/store-selector/store-selector').then(
+      (module) => module.StoreSelector,
+    ),
+},
+
   {
     path: 'admin',
     pathMatch: 'full',

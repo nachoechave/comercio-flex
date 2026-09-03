@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, map, switchMap } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
-import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { StorefrontRoutingService } from '../storefront-routing.service';
 import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
 import { CartService } from '../cart/cart.service';
 import { GuestOrderHistoryService } from '../guest-orders/guest-order-history.service';
@@ -38,15 +38,19 @@ export class CheckoutPage {
   private readonly paymentRecovery = inject(PaymentRecoveryService);
   private readonly guestOrders = inject(GuestOrderHistoryService);
   private readonly route = inject(ActivatedRoute);
+protected readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly router = inject(Router);
   protected readonly context = inject(StorefrontContextService);
   private intentFingerprint: string | null = null;
   private idempotencyKey: string | null = null;
   private paymentIdempotencyKey: string | null = null;
 
-  protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
-    initialValue: '',
-  });
+  protected readonly storeSlug = toSignal(
+    this.storefrontRouting.storeSlug(this.route),
+    {
+      initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
+    },
+  );
   protected readonly items = computed(() => this.cart.items(this.storeSlug() ?? ''));
   protected readonly subtotal = computed(() => this.cart.availableSubtotal(this.storeSlug() ?? ''));
   protected readonly ready = computed(
@@ -227,10 +231,13 @@ export class CheckoutPage {
     order: { id: string; lookupToken: string },
     payment: 'failed' | 'not-enabled',
   ): Promise<boolean> {
-    return this.router.navigate(['/tiendas', storeSlug, 'pedidos', order.id], {
-      queryParams: { token: order.lookupToken, payment },
-      replaceUrl: true,
-    });
+    return this.router.navigate(
+      this.storefrontRouting.route(storeSlug, 'pedidos', order.id),
+      {
+        queryParams: { token: order.lookupToken, payment },
+        replaceUrl: true,
+      },
+    );
   }
 
   private navigateToOrder(
@@ -244,7 +251,7 @@ export class CheckoutPage {
   }
 
   private orderRoute(storeSlug: string, order: { id: string }): string[] {
-    return ['/tiendas', storeSlug, 'pedidos', order.id];
+    return this.storefrontRouting.route(storeSlug, 'pedidos', order.id);
   }
 
   private orderNavigationExtras(order: { lookupToken: string }) {
