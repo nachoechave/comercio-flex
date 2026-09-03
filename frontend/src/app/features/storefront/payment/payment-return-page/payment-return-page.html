@@ -14,7 +14,7 @@
       <p class="eyebrow">No pudimos verificarlo</p>
       <h1 id="payment-result-title">Revisá el enlace</h1>
       <p>{{ errorMessage() }}</p>
-      <a [routerLink]="['/tiendas', storeSlug]">Volver a la tienda</a>
+      <a [routerLink]="storefrontRouting.route(storeSlug)">Volver a la tienda</a>
     </section>
   } @else if (result(); as current) {
     <section
@@ -57,7 +57,7 @@
           Ver mi pedido
         </a>
       } @else {
-        <a [routerLink]="['/tiendas', storeSlug]">Volver a la tienda</a>
+        <a [routerLink]="storefrontRouting.route(storeSlug)">Volver a la tienda</a>
       }
     </section>
   }

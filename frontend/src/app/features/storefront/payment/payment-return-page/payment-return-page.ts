@@ -12,6 +12,7 @@ import {
   timer,
 } from 'rxjs';
 
+import { StorefrontRoutingService } from '../../storefront-routing.service';
 import { CsrfService } from '../../../../core/auth/csrf.service';
 import { CommerceDatePipe } from '../../../../shared/pipes/commerce-date.pipe';
 import { CheckoutProNavigationService } from '../checkout-pro-navigation.service';
@@ -34,6 +35,7 @@ export class PaymentReturnPage implements OnDestroy {
   private readonly navigation = inject(CheckoutProNavigationService);
   private readonly recovery = inject(PaymentRecoveryService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly title = viewChild<ElementRef<HTMLElement>>('resultTitle');
   private pollingSubscription?: Subscription;
   private lastAnnouncementKey?: string;
@@ -157,7 +159,7 @@ export class PaymentReturnPage implements OnDestroy {
 
   protected privateOrderLink(result: PaymentReturnStatus): unknown[] | null {
     return this.recovery.find(this.storeSlug, result.orderId)
-      ? ['/tiendas', this.storeSlug, 'pedidos', result.orderId]
+      ? this.storefrontRouting.route(this.storeSlug, 'pedidos', result.orderId)
       : null;
   }
 

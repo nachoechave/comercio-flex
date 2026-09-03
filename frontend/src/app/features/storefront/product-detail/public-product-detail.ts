@@ -3,7 +3,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-
+import { StorefrontRoutingService } from '../storefront-routing.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { VariantOptionValue, variantOptionsLabel } from '../../../shared/variant-options';
 import { StorefrontApiService } from '../storefront-api.service';
@@ -35,16 +35,23 @@ export class PublicProductDetail {
   private readonly cartPreview = inject(CartPreviewService);
   protected readonly context = inject(StorefrontContextService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly title = inject(Title);
   private readonly meta = inject(Meta);
   private readonly retryVersion = signal(0);
 
-  protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
-    initialValue: '',
-  });
-  protected readonly productSlug = toSignal(inheritedRouteParam(this.route, 'productSlug'), {
-    initialValue: '',
-  });
+  protected readonly storeSlug = toSignal(
+    this.storefrontRouting.storeSlug(this.route),
+    {
+      initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
+    },
+  );
+  protected readonly productSlug = toSignal(
+    inheritedRouteParam(this.route, 'productSlug'),
+    {
+      initialValue: '',
+    },
+  );
   protected readonly product = signal<PublicProductDetailModel | null>(null);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);

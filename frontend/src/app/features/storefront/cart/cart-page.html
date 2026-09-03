@@ -5,7 +5,7 @@
   aria-labelledby="cart-title"
 >
   <nav class="breadcrumbs" aria-label="Migas de pan">
-    <a [routerLink]="['/tiendas', storeSlug()]">Productos</a>
+    <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')">Productos</a>
     <span aria-hidden="true">/</span>
     <span>Carrito</span>
   </nav>
@@ -52,7 +52,7 @@
       <p class="eyebrow">Carrito vacío</p>
       <h2>Todavía no elegiste productos</h2>
       <p>Explorá el catálogo y seleccioná la variante que necesitás.</p>
-      <a [routerLink]="['/tiendas', storeSlug()]">Ver productos</a>
+      <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')">Ver productos</a>
     </section>
   } @else {
     <div class="cart-layout">
@@ -74,7 +74,7 @@
               <div class="line-heading">
                 <div>
                   <h2>
-                    <a [routerLink]="['/tiendas', storeSlug(), 'productos', line.productSlug]">
+                    <a [routerLink]="storefrontRouting.route(storeSlug() ?? '', 'productos', line.productSlug)">
                       {{ line.productName }}
                     </a>
                   </h2>
@@ -128,7 +128,7 @@
         @if (canCheckout()) {
           <a
             class="checkout-link"
-            [routerLink]="['/tiendas', storeSlug(), 'checkout']"
+            [routerLink]="storefrontRouting.route(storeSlug() ?? '', 'checkout')"
             aria-describedby="checkout-help"
           >
             Continuar

@@ -1,6 +1,6 @@
 <section class="checkout-page" aria-labelledby="checkout-title">
   <nav class="breadcrumbs" aria-label="Migas de pan">
-    <a [routerLink]="['/tiendas', storeSlug(), 'carrito']">Carrito</a>
+    <a [routerLink]="storefrontRouting.route(storeSlug() ?? '', 'carrito')">Carrito</a>
     <span aria-hidden="true">/</span>
     <span>Checkout</span>
   </nav>
@@ -15,7 +15,7 @@
     <section class="warning" role="alert">
       <h2>Necesitamos revisar tu carrito</h2>
       <p>Está vacío o contiene productos cuya disponibilidad todavía no fue confirmada.</p>
-      <a [routerLink]="['/tiendas', storeSlug(), 'carrito']">Volver al carrito</a>
+      <a [routerLink]="storefrontRouting.route(storeSlug() ?? '', 'carrito')">Volver al carrito</a>
     </section>
   } @else {
     <div class="checkout-layout">

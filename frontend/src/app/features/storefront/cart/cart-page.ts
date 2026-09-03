@@ -5,7 +5,7 @@ import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
 
-import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { StorefrontRoutingService } from '../storefront-routing.service';
 import { variantOptionsLabel } from '../../../shared/variant-options';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
@@ -24,13 +24,17 @@ export class CartPage {
   protected readonly cart = inject(CartService);
   protected readonly context = inject(StorefrontContextService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly title = inject(Title);
   private readonly meta = inject(Meta);
   private readonly retryVersion = signal(0);
 
-  protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
-    initialValue: '',
-  });
+  protected readonly storeSlug = toSignal(
+    this.storefrontRouting.storeSlug(this.route),
+    {
+      initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
+    },
+  );
   protected readonly isStreetwear = computed(
     () => this.context.settings()?.branding?.template === 'FASHION',
   );

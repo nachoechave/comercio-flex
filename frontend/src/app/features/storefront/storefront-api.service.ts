@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, shareReplay } from 'rxjs';
 
 import {
   CreateGuestOrder,
@@ -10,15 +10,28 @@ import {
   PublicProductDetail,
   PublicProductPage,
   PublicProductQuery,
+  StorefrontTenantResolution,
   StoreSettings,
 } from './storefront.models';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root',
+})
 export class StorefrontApiService {
   private readonly http = inject(HttpClient);
 
+  private readonly storefrontResolution$ = this.http
+    .get<StorefrontTenantResolution>('/api/v1/storefront/resolve')
+    .pipe(shareReplay(1));
+
+  resolveStorefront(): Observable<StorefrontTenantResolution> {
+    return this.storefrontResolution$;
+  }
+
   getSettings(storeSlug: string): Observable<StoreSettings> {
-    return this.http.get<StoreSettings>(`/api/v1/stores/${encodeURIComponent(storeSlug)}/settings`);
+    return this.http.get<StoreSettings>(
+      `/api/v1/stores/${encodeURIComponent(storeSlug)}/settings`,
+    );
   }
 
   listCategories(storeSlug: string): Observable<PublicCategory[]> {

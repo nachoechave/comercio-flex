@@ -3,20 +3,31 @@ import { Routes } from '@angular/router';
 export const STOREFRONT_ROUTES: Routes = [
   {
     path: '',
-    loadComponent: () => import('./catalog/catalog-page').then((module) => module.CatalogPage),
+    loadComponent: () =>
+      import('./catalog/catalog-page').then(
+        (module) => module.CatalogPage,
+      ),
   },
   {
     path: 'carrito',
-    loadComponent: () => import('./cart/cart-page').then((module) => module.CartPage),
+    loadComponent: () =>
+      import('./cart/cart-page').then(
+        (module) => module.CartPage,
+      ),
   },
   {
     path: 'checkout',
-    loadComponent: () => import('./checkout/checkout-page').then((module) => module.CheckoutPage),
+    loadComponent: () =>
+      import('./checkout/checkout-page').then(
+        (module) => module.CheckoutPage,
+      ),
   },
   {
     path: 'mis-pedidos',
     loadComponent: () =>
-      import('./guest-orders/recent-orders-page').then((module) => module.RecentOrdersPage),
+      import('./guest-orders/recent-orders-page').then(
+        (module) => module.RecentOrdersPage,
+      ),
   },
   {
     path: 'pedidos/:orderId',
@@ -28,6 +39,12 @@ export const STOREFRONT_ROUTES: Routes = [
   {
     path: 'productos/:productSlug',
     loadComponent: () =>
-      import('./product-detail/public-product-detail').then((module) => module.PublicProductDetail),
+      import('./product-detail/public-product-detail').then(
+        (module) => module.PublicProductDetail,
+      ),
+  },
+  {
+    path: '**',
+    redirectTo: '',
   },
 ];

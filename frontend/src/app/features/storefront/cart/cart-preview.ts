@@ -7,6 +7,7 @@ import { StorefrontMoneyPipe } from '../storefront-money.pipe';
 import { CartLine } from './cart.models';
 import { CartPreviewService } from './cart-preview.service';
 import { CartService } from './cart.service';
+import { StorefrontRoutingService } from '../storefront-routing.service';
 
 @Component({
   selector: 'app-cart-preview',
@@ -18,6 +19,7 @@ export class CartPreview {
   private readonly cart = inject(CartService);
   private readonly preview = inject(CartPreviewService);
   protected readonly context = inject(StorefrontContextService);
+  protected readonly storefrontRouting = inject(StorefrontRoutingService);
 
   readonly storeSlug = input.required<string>();
   protected readonly isOpen = computed(() => this.preview.storeSlug() === this.storeSlug());

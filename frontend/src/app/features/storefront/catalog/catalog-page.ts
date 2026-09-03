@@ -5,7 +5,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
-import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
+import { StorefrontRoutingService } from '../storefront-routing.service';
 import { ProductCard } from '../product-card/product-card';
 import { StorefrontApiService } from '../storefront-api.service';
 import { StorefrontContextService } from '../storefront-context.service';
@@ -31,15 +31,19 @@ export class CatalogPage {
   private readonly api = inject(StorefrontApiService);
   protected readonly context = inject(StorefrontContextService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
   private readonly title = inject(Title);
   private readonly meta = inject(Meta);
   private readonly retryVersion = signal(0);
 
-  protected readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
-    initialValue: '',
-  });
+  protected readonly storeSlug = toSignal(
+    this.storefrontRouting.storeSlug(this.route),
+    {
+      initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
+    },
+  );
   private readonly queryParams = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });

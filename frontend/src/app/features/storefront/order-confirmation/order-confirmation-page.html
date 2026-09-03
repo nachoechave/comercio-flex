@@ -6,7 +6,7 @@
       <p class="eyebrow">No disponible</p>
       <h1 id="confirmation-title">No encontramos el pedido</h1>
       <p>{{ errorMessage() }}</p>
-      <a [routerLink]="['/tiendas', storeSlug()]">Volver a la tienda</a>
+      <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')">Volver a la tienda</a>
     </div>
   } @else if (order(); as currentOrder) {
     <header>
@@ -251,7 +251,7 @@
             <p class="bank-message" role="status">{{ bankTransferMessage() }}</p>
           }
         }
-        <a [routerLink]="['/tiendas', storeSlug()]">Seguir comprando</a>
+        <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')">Seguir comprando</a>
       </aside>
     </div>
   }

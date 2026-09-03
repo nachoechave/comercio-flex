@@ -53,7 +53,7 @@
       <strong>Subtotal {{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
     </div>
 
-    <a class="view-cart" [routerLink]="['/tiendas', storeSlug(), 'carrito']" (click)="close()">
+    <a class="view-cart" [routerLink]="storefrontRouting.route(storeSlug(), 'carrito')" (click)="close()">
       Ver carrito
     </a>
   </section>

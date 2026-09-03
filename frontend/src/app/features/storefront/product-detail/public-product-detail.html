@@ -5,9 +5,9 @@
   aria-labelledby="product-title"
 >
   <nav class="breadcrumbs" aria-label="Migas de pan">
-    <a [routerLink]="['/tiendas', storeSlug()]">Inicio</a>
+    <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')">Inicio</a>
     <span aria-hidden="true">/</span>
-    <a [routerLink]="['/tiendas', storeSlug()]" fragment="catalog-products">Productos</a>
+    <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products">Productos</a>
     @if (product(); as currentProduct) {
       <span aria-hidden="true">/</span>
       <span>{{ currentProduct.name }}</span>
@@ -30,7 +30,7 @@
         @if (!notFound()) {
           <button type="button" (click)="retry()">Reintentar</button>
         }
-        <a [routerLink]="['/tiendas', storeSlug()]">Volver al catálogo</a>
+        <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')">Volver al catálogo</a>
       </div>
     </div>
   } @else if (product(); as currentProduct) {
@@ -127,7 +127,7 @@
                 aria-label="Cantidad"
                 type="number"
                 min="1"
-                max="selectedVariant()?.stock ?? 1"
+                max="maxQuantity()"
                 step="1"
                 inputmode="numeric"
                 [value]="quantity()"
@@ -137,10 +137,7 @@
               <button
                 type="button"
                 aria-label="Aumentar cantidad"
-                [disabled]="
-                  !canAddToCart() ||
-                  quantity() >= maxQuantity()
-                "
+                [disabled]="quantity() >= maxQuantity() || !canAddToCart()"
                 (click)="increaseQuantity()"
               >
                 +
@@ -162,7 +159,7 @@
           <p class="cart-feedback" aria-live="polite">
             {{ cartMessage() }}
             @if (cartMessage() && selectedVariant()?.available) {
-              <a [routerLink]="['/tiendas', storeSlug(), 'carrito']">Ver carrito</a>
+              <a [routerLink]="storefrontRouting.route(storeSlug() ?? '', 'carrito')">Ver carrito</a>
             }
           </p>
           <small>La disponibilidad final se verifica al confirmar el pedido.</small>

@@ -5,7 +5,9 @@ import { routes } from './app.routes';
 
 describe('application routes', () => {
   it('loads the commercial landing only at the public root', async () => {
-    const rootRoute = routes.find((route) => route.path === '');
+    const rootRoute = routes.find(
+      (route) => route.path === '' && route.pathMatch === 'full',
+    );
 
     expect(rootRoute?.pathMatch).toBe('full');
     expect(await rootRoute?.loadComponent?.()).toBe(LandingPage);
@@ -65,5 +67,31 @@ describe('application routes', () => {
       'empresas/:companyId',
     ]);
     expect(await route?.loadComponent?.()).toBeTruthy();
+  });
+
+  it('keeps unknown custom-domain paths inside the storefront', async () => {
+    const customDomainRoute = routes.find(
+      (route) =>
+        route.path === '' &&
+        route.canMatch?.length === 1 &&
+        route.loadChildren,
+    );
+
+    expect(customDomainRoute).toBeTruthy();
+
+    const storefrontRoutes = await customDomainRoute?.loadChildren?.();
+
+    expect(Array.isArray(storefrontRoutes)).toBe(true);
+
+    if (!Array.isArray(storefrontRoutes)) {
+      throw new Error('Expected storefront routes to be an array');
+    }
+
+    expect(storefrontRoutes.at(-1)).toEqual(
+      expect.objectContaining({
+        path: '**',
+        redirectTo: '',
+      }),
+    );
   });
 });

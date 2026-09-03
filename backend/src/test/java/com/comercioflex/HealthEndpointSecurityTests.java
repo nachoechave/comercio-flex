@@ -36,23 +36,48 @@ class HealthEndpointSecurityTests {
 
 	@Test
 	void storefrontAndAdminShellRoutesArePublic() throws Exception {
-		mockMvc.perform(get("/tiendas/tienda-a/catalogo"))
-			.andExpect(status().isOk())
-			.andExpect(forwardedUrl("/index.html"));
+			mockMvc.perform(get("/tiendas/tienda-a/catalogo"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/index.html"));
 
-		mockMvc.perform(get("/superadmin/empresas/bc979239-95a1-11f1-9748-8234a5e60875"))
-			.andExpect(status().isOk())
-			.andExpect(forwardedUrl("/index.html"));
+			mockMvc.perform(get("/carrito")
+							.header("Host", "laolamadre.com.ar"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/index.html"));
 
-		mockMvc.perform(get("/stores/tienda-a/payment-return/opaque-token")
-				.queryParam("status", "approved")
-				.queryParam("payment_id", "173304330197"))
-			.andExpect(status().isOk())
-			.andExpect(forwardedUrl("/index.html"));
+			mockMvc.perform(get("/checkout")
+							.header("Host", "laolamadre.com.ar"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/index.html"));
 
-		mockMvc.perform(get("/admin/login"))
-			.andExpect(status().isOk())
-			.andExpect(forwardedUrl("/index.html"));
+			mockMvc.perform(get("/mis-pedidos")
+							.header("Host", "laolamadre.com.ar"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/index.html"));
+
+			mockMvc.perform(get("/pedidos/ORD-123")
+							.header("Host", "laolamadre.com.ar"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/index.html"));
+
+			mockMvc.perform(get("/productos/remera-surf")
+							.header("Host", "laolamadre.com.ar"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/index.html"));
+
+			mockMvc.perform(get("/superadmin/empresas/bc979239-95a1-11f1-9748-8234a5e60875"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/index.html"));
+
+			mockMvc.perform(get("/stores/tienda-a/payment-return/opaque-token")
+							.queryParam("status", "approved")
+							.queryParam("payment_id", "173304330197"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/index.html"));
+
+			mockMvc.perform(get("/admin/login"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/index.html"));
 	}
 
 	@Test

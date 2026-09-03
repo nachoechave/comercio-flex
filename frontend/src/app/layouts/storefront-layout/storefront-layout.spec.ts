@@ -79,10 +79,24 @@ describe('StorefrontLayout', () => {
           altText: 'Remera azul',
         },
         variants: [
-          { id: 'variant-1', price: '2500.00', size: 'M', color: 'Azul', available: true },
+          {
+            id: 'variant-1',
+            price: '2500.00',
+            size: 'M',
+            color: 'Azul',
+            available: true,
+            availableQuantity: '10',
+          },
         ],
       },
-      variant: { id: 'variant-1', price: '2500.00', size: 'M', color: 'Azul', available: true },
+      variant: {
+        id: 'variant-1',
+        price: '2500.00',
+        size: 'M',
+        color: 'Azul',
+        available: true,
+        availableQuantity: '10',
+      },
       quantity: 2,
     });
     TestBed.inject(CartPreviewService).open('tienda-a');

@@ -1,8 +1,9 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { PublicProductSummary } from '../storefront.models';
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
+import { StorefrontRoutingService } from '../storefront-routing.service';
 
 @Component({
   selector: 'app-public-product-card',
@@ -11,6 +12,7 @@ import { StorefrontMoneyPipe } from '../storefront-money.pipe';
   styleUrl: './product-card.scss',
 })
 export class ProductCard {
+  protected readonly storefrontRouting = inject(StorefrontRoutingService);
   readonly product = input.required<PublicProductSummary>();
   readonly storeSlug = input.required<string>();
   readonly currencyCode = input.required<string>();

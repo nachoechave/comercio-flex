@@ -17,6 +17,11 @@ export interface StoreSettings {
   branding?: TenantBranding;
 }
 
+export interface StorefrontTenantResolution {
+  storeSlug: string;
+  displayName: string;
+}
+
 export type BrandTheme = 'VIOLET' | 'BURGUNDY' | 'FOREST' | 'NAVY';
 
 export type BrandFont = 'SYSTEM' | 'SANS' | 'SERIF';
