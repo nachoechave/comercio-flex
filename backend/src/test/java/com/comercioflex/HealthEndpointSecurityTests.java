@@ -75,6 +75,11 @@ class HealthEndpointSecurityTests {
 					.andExpect(status().isOk())
 					.andExpect(forwardedUrl("/index.html"));
 
+			mockMvc.perform(get("/payment-return/opaque-token")
+							.header("Host", "laolamadre.com.ar"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/index.html"));
+
 			mockMvc.perform(get("/admin/login"))
 					.andExpect(status().isOk())
 					.andExpect(forwardedUrl("/index.html"));

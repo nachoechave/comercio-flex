@@ -14,6 +14,7 @@ public class SpaForwardController {
 			"/", "/admin", "/admin/**", "/superadmin", "/superadmin/**",
 			"/tiendas/{slug}", "/tiendas/{slug}/**",
 			"/stores/{slug}/payment-return/{returnToken}",
+			"/payment-return/{returnToken}",
 			"/carrito",
 			"/checkout",
 			"/mis-pedidos",

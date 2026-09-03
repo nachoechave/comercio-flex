@@ -35,6 +35,7 @@ import com.comercioflex.payment.domain.PaymentEnvironment;
 import com.comercioflex.payment.domain.PaymentIntentStatus;
 import com.comercioflex.payment.domain.PaymentResultStatus;
 import com.comercioflex.tenant.application.ResolvedTenant;
+import com.comercioflex.tenant.application.TenantDomainResolver;
 import com.comercioflex.tenant.application.TenantResolver;
 
 import ch.qos.logback.classic.Logger;
@@ -54,6 +55,7 @@ class CheckoutProServiceTests {
 	private final PaymentCredentialResolver credentials = mock(PaymentCredentialResolver.class);
 	private final CheckoutProGateway gateway = mock(CheckoutProGateway.class);
 	private final TenantResolver tenantResolver = mock(TenantResolver.class);
+	private final TenantDomainResolver tenantDomainResolver = mock(TenantDomainResolver.class);
 	private final CheckoutProProperties checkoutProperties = mock(CheckoutProProperties.class);
 	private final PaymentOAuthProperties oauthProperties = mock(PaymentOAuthProperties.class);
 	private final StoredCheckoutAttempt storedAttempt = attempt();
@@ -70,6 +72,7 @@ class CheckoutProServiceTests {
 			rejectedPaymentNotifier,
 			adminOrders,
 			tenantResolver,
+			tenantDomainResolver,
 			checkoutProperties,
 			oauthProperties,
 			immediateTransactions(),
@@ -81,6 +84,8 @@ class CheckoutProServiceTests {
 			.thenReturn(OrderTransitionExecution.completed(null));
 		when(oauthProperties.environment()).thenReturn(PaymentEnvironment.TEST);
 		when(checkoutProperties.enabled()).thenReturn(true);
+		when(tenantDomainResolver.verifiedPrimaryHostname(any()))
+			.thenReturn(Optional.empty());
 	}
 
 	@Test

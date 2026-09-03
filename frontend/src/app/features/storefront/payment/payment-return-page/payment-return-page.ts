@@ -40,7 +40,7 @@ export class PaymentReturnPage implements OnDestroy {
   private pollingSubscription?: Subscription;
   private lastAnnouncementKey?: string;
 
-  protected readonly storeSlug = this.route.snapshot.paramMap.get('storeSlug') ?? '';
+  protected storeSlug = this.route.snapshot.paramMap.get('storeSlug') ?? '';
   protected readonly returnToken = this.route.snapshot.paramMap.get('returnToken') ?? '';
   protected readonly result = signal<PaymentReturnStatus | null>(null);
   protected readonly loading = signal(true);
@@ -51,12 +51,36 @@ export class PaymentReturnPage implements OnDestroy {
   protected readonly announcement = signal('Consultando el estado del pago.');
 
   constructor() {
-    if (!this.storeSlug || !this.returnToken) {
+    if (!this.returnToken) {
       this.loading.set(false);
       this.errorMessage.set('El enlace de confirmación está incompleto.');
       return;
     }
-    this.startPolling();
+
+    if (this.storeSlug) {
+      this.startPolling();
+      return;
+    }
+
+    this.storefrontRouting
+      .storeSlug(this.route)
+      .pipe(take(1))
+      .subscribe({
+        next: (storeSlug) => {
+          if (!storeSlug) {
+            this.loading.set(false);
+            this.errorMessage.set('El enlace de confirmación está incompleto.');
+            return;
+          }
+
+          this.storeSlug = storeSlug;
+          this.startPolling();
+        },
+        error: () => {
+          this.loading.set(false);
+          this.errorMessage.set('No pudimos identificar la tienda.');
+        },
+      });
   }
 
   ngOnDestroy(): void {

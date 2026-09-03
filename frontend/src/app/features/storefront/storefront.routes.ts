@@ -44,6 +44,13 @@ export const STOREFRONT_ROUTES: Routes = [
       ),
   },
   {
+    path: 'payment-return/:returnToken',
+    loadComponent: () =>
+      import('./payment/payment-return-page/payment-return-page').then(
+        (module) => module.PaymentReturnPage,
+      ),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

@@ -76,6 +76,7 @@ public class SecurityConfig {
 						"/", "/index.html", "/*.js", "/*.css", "/*.ico", "/assets/**",
 						"/admin", "/admin/**", "/superadmin", "/superadmin/**", "/tiendas/**",
 						"/stores/*/payment-return/*",
+						"/payment-return/*",
 						"/carrito",
 						"/checkout",
 						"/mis-pedidos",

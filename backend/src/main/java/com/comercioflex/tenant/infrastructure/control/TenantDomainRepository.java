@@ -16,4 +16,15 @@ public interface TenantDomainRepository extends JpaRepository<TenantDomainEntity
                         AND domain.tenant.status = com.comercioflex.tenant.infrastructure.control.TenantStatus.ACTIVE
                 """)
         Optional<String> findActiveSlugByHostname(@Param("hostname") String hostname);
+
+        @Query("""
+                SELECT domain.hostname
+                FROM TenantDomainEntity domain
+                WHERE domain.tenant.id = :tenantId
+                        AND domain.primaryDomain = true
+                        AND domain.verified = true
+                        AND domain.tenant.status = com.comercioflex.tenant.infrastructure.control.TenantStatus.ACTIVE
+                """)
+        Optional<String> findVerifiedPrimaryHostnameByTenantId(
+                @Param("tenantId") Long tenantId);
 }

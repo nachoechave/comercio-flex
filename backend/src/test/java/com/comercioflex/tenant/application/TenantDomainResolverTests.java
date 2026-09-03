@@ -60,6 +60,33 @@ class TenantDomainResolverTests {
         }
 
         @Test
+        void returnsVerifiedPrimaryHostnameForTenant() {
+                when(tenantDomainRepository.findVerifiedPrimaryHostnameByTenantId(42L))
+                        .thenReturn(Optional.of("laolamadre.com.ar"));
+
+                Optional<String> result = resolver.verifiedPrimaryHostname(42L);
+
+                assertThat(result)
+                        .contains("laolamadre.com.ar");
+
+                verify(tenantDomainRepository)
+                        .findVerifiedPrimaryHostnameByTenantId(42L);
+        }
+
+        @Test
+        void returnsEmptyWhenTenantHasNoVerifiedPrimaryHostname() {
+                when(tenantDomainRepository.findVerifiedPrimaryHostnameByTenantId(42L))
+                        .thenReturn(Optional.empty());
+
+                Optional<String> result = resolver.verifiedPrimaryHostname(42L);
+
+                assertThat(result).isEmpty();
+
+                verify(tenantDomainRepository)
+                        .findVerifiedPrimaryHostnameByTenantId(42L);
+        }
+
+        @Test
         void rejectsNullHostname() {
                 assertThatThrownBy(() -> resolver.resolveActive(null))
                         .isInstanceOf(TenantNotFoundException.class);

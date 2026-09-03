@@ -31,6 +31,7 @@ import com.comercioflex.payment.domain.PaymentIntentStatus;
 import com.comercioflex.payment.domain.PaymentResultStatus;
 import com.comercioflex.tenant.application.ResolvedTenant;
 import com.comercioflex.tenant.application.TenantResolver;
+import com.comercioflex.tenant.application.TenantDomainResolver;
 
 @Service
 public class CheckoutProService {
@@ -52,6 +53,7 @@ public class CheckoutProService {
 	private final RejectedPaymentNotifier rejectedPaymentNotifier;
 	private final AdminOrderRepository orders;
 	private final TenantResolver tenantResolver;
+	private final TenantDomainResolver tenantDomainResolver;
 	private final CheckoutProProperties properties;
 	private final PaymentOAuthProperties oauthProperties;
 	private final TransactionTemplate tenantTransactions;
@@ -68,13 +70,14 @@ public class CheckoutProService {
 			RejectedPaymentNotifier rejectedPaymentNotifier,
 			AdminOrderRepository orders,
 			TenantResolver tenantResolver,
+			TenantDomainResolver tenantDomainResolver,
 			CheckoutProProperties properties,
 			PaymentOAuthProperties oauthProperties,
 			@Qualifier("tenantTransactionTemplate") TransactionTemplate tenantTransactions,
 			@Qualifier("controlTransactionTemplate") TransactionTemplate controlTransactions) {
 		this(repository, controlRepository, credentials, gateway, orderConfirmer,
 			rejectedPaymentNotifier, orders,
-			tenantResolver, properties, oauthProperties, tenantTransactions,
+			tenantResolver, tenantDomainResolver, properties, oauthProperties, tenantTransactions,
 			controlTransactions, Clock.systemUTC());
 	}
 
@@ -87,6 +90,7 @@ public class CheckoutProService {
 			RejectedPaymentNotifier rejectedPaymentNotifier,
 			AdminOrderRepository orders,
 			TenantResolver tenantResolver,
+			TenantDomainResolver tenantDomainResolver,
 			CheckoutProProperties properties,
 			PaymentOAuthProperties oauthProperties,
 			TransactionTemplate tenantTransactions,
@@ -100,6 +104,7 @@ public class CheckoutProService {
 		this.rejectedPaymentNotifier = rejectedPaymentNotifier;
 		this.orders = orders;
 		this.tenantResolver = tenantResolver;
+		this.tenantDomainResolver = tenantDomainResolver;
 		this.properties = properties;
 		this.oauthProperties = oauthProperties;
 		this.tenantTransactions = tenantTransactions;
@@ -145,7 +150,7 @@ public class CheckoutProService {
 			resolved.attempt().id(), providerIdempotencyKey(resolved.attempt().id()),
 			resolved.attempt().externalReference(),
 			"Pedido #" + resolved.attempt().orderNumber(), resolved.attempt().amount(),
-			resolved.attempt().currencyCode(), returnUri(tenant.slug(), returnToken),
+			resolved.attempt().currencyCode(), returnUri(tenant.id(), tenant.slug(), returnToken),
 			notificationUri(routeToken), resolved.attempt().reservationExpiresAt());
 		CreatedCheckoutPreference preference;
 		try {
@@ -571,9 +576,12 @@ public class CheckoutProService {
 		}
 	}
 
-	private URI returnUri(String tenantSlug, String token) {
-		return properties.frontendBaseUri().resolve(
-			"/stores/" + tenantSlug + "/payment-return/" + token);
+	private URI returnUri(long tenantId, String tenantSlug, String token) {
+		return tenantDomainResolver.verifiedPrimaryHostname(tenantId)
+			.map(hostname -> URI.create(
+				"https://" + hostname + "/payment-return/" + token))
+			.orElseGet(() -> properties.frontendBaseUri().resolve(
+				"/stores/" + tenantSlug + "/payment-return/" + token));
 	}
 
 	private URI notificationUri(String routeToken) {

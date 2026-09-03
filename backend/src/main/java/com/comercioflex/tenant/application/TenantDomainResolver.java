@@ -2,6 +2,7 @@ package com.comercioflex.tenant.application;
 
 import java.net.IDN;
 import java.util.Locale;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,15 @@ public class TenantDomainResolver {
                         .orElseThrow(TenantNotFoundException::new);
 
                 return tenantResolver.resolveActive(slug);
+        }
+
+        @Transactional(readOnly = true)
+        public Optional<String> verifiedPrimaryHostname(Long tenantId) {
+                if (tenantId == null) {
+                        return Optional.empty();
+                }
+
+                return tenantDomainRepository.findVerifiedPrimaryHostnameByTenantId(tenantId);
         }
 
         private String normalize(String hostname) {
