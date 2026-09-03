@@ -78,6 +78,7 @@ public class SecurityConfig {
 					"/stores/*/payment-return/*")
 				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/storefront/resolve").permitAll()
 				.requestMatchers("/api/v1/stores/*/settings").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/payment-methods").permitAll()
 				.requestMatchers(

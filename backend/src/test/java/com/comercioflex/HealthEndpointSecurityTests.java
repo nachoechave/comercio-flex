@@ -39,14 +39,17 @@ class HealthEndpointSecurityTests {
 		mockMvc.perform(get("/tiendas/tienda-a/catalogo"))
 			.andExpect(status().isOk())
 			.andExpect(forwardedUrl("/index.html"));
+
 		mockMvc.perform(get("/superadmin/empresas/bc979239-95a1-11f1-9748-8234a5e60875"))
 			.andExpect(status().isOk())
 			.andExpect(forwardedUrl("/index.html"));
+
 		mockMvc.perform(get("/stores/tienda-a/payment-return/opaque-token")
 				.queryParam("status", "approved")
 				.queryParam("payment_id", "173304330197"))
 			.andExpect(status().isOk())
 			.andExpect(forwardedUrl("/index.html"));
+
 		mockMvc.perform(get("/admin/login"))
 			.andExpect(status().isOk())
 			.andExpect(forwardedUrl("/index.html"));
@@ -55,19 +58,30 @@ class HealthEndpointSecurityTests {
 	@Test
 	void publicCheckoutWritesDoNotRequireCsrf() throws Exception {
 		String token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+
 		mockMvc.perform(post("/api/v1/stores/tienda-a/orders"))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.title").value("Tienda no encontrada"));
+
 		mockMvc.perform(post("/api/v1/stores/tienda-a/orders/order-id/payments/checkout-pro"))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.title").value("Tienda no encontrada"));
+
 		mockMvc.perform(post("/api/v1/stores/tienda-a/payment-returns/"
 				+ token + "/inspect"))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.title").value("Tienda no encontrada"));
+
 		mockMvc.perform(post("/api/v1/stores/tienda-a/payment-returns/"
 				+ token + "/reconcile"))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.title").value("Tienda no encontrada"));
+	}
+
+	@Test
+	void storefrontTenantResolutionIsPublic() throws Exception {
+		mockMvc.perform(get("/api/v1/storefront/resolve")
+				.header("Host", "laolamadre.com.ar"))
+			.andExpect(status().isNotFound());
 	}
 }
