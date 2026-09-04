@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.comercioflex.order.domain.OrderPaymentMethod;
 import com.comercioflex.order.application.OrderTransitionExecution;
 import com.comercioflex.order.application.PaidOrderConfirmer;
 import com.comercioflex.order.domain.OrderStatus;
@@ -78,6 +79,13 @@ public class BankTransferPaymentService {
 			BankTransferConfiguration configuration = requireEnabled();
 			BankTransferOrder order = repository.lockOrder(orderId, sha256(lookupToken))
 				.orElseThrow(this::notFound);
+
+			if (order.paymentMethod() != OrderPaymentMethod.BANK_TRANSFER) {
+					throw conflict(
+							"BANK_TRANSFER_PAYMENT_METHOD_MISMATCH",
+							"El pedido fue creado para Mercado Pago.");
+			}
+
 			var current = repository.findCurrentForOrder(order.internalId());
 			if (current.isPresent()
 					&& current.get().status() != BankTransferStatus.REJECTED) {
@@ -132,7 +140,7 @@ public class BankTransferPaymentService {
 		validatePublicRequest(orderId, lookupToken);
 		ValidatedReceipt receipt = validateReceipt(originalFilename, declaredContentType, bytes);
 		byte[] tokenHash = sha256(lookupToken);
-		BankTransferPayment prepared = Objects.requireNonNull(transactions.execute(status -> {
+		Objects.requireNonNull(transactions.execute(status -> {
 			BankTransferPayment payment = repository.findByIdAndOrderToken(
 				paymentId, orderId, tokenHash, true).orElseThrow(this::notFound);
 			requireUploadable(payment);

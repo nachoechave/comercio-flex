@@ -27,6 +27,10 @@ describe('RecentOrdersPage', () => {
     subtotal: '19999.00',
     reservationExpiresAt: '2026-08-26T12:00:00Z',
     createdAt: '2026-08-25T12:00:00Z',
+    paymentMethod: 'MERCADO_PAGO',
+    listSubtotal: '2500.00',
+    discountPercentage: '0.00',
+    discountAmount: '0.00',
     items: [],
   };
 

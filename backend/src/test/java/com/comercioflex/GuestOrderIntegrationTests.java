@@ -23,6 +23,11 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+import com.comercioflex.payment.application.CheckoutRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
@@ -113,6 +118,8 @@ class GuestOrderIntegrationTests {
 	private TransactionTemplate tenantTransactionTemplate;
 	@Autowired
 	private TenantContext tenantContext;
+	@Autowired
+	private CheckoutRepository checkoutRepository;
 
 	@DynamicPropertySource
 	static void configureDatabases(DynamicPropertyRegistry registry) {
@@ -234,6 +241,39 @@ class GuestOrderIntegrationTests {
 			"SELECT quantity FROM inventory_reservations")).isEqualTo("2.000");
 		assertThat(decimal(TENANT_A_DATABASE,
 			"SELECT quantity FROM inventory_balances")).isEqualTo("5.000");
+	}
+
+	@Test
+	void checkoutProRepositoryOnlyLocksMercadoPagoOrders() throws Exception {
+			JsonNode created = create(UUID.randomUUID(), "1", 201);
+
+			UUID orderId = UUID.fromString(created.at("/order/id").asText());
+			String lookupToken = created.at("/lookupToken").asText();
+			byte[] lookupTokenHash = sha256(lookupToken);
+
+			try (var scope = tenantContext.open("tenant-a")) {
+					var mercadoPagoOrder = tenantTransactionTemplate.execute(
+							status -> checkoutRepository.lockOrder(
+									orderId,
+									lookupTokenHash));
+
+					assertThat(mercadoPagoOrder).isPresent();
+			}
+
+			execute(TENANT_A_DATABASE, """
+					UPDATE orders
+					SET payment_method = 'BANK_TRANSFER'
+					WHERE public_id = UUID_TO_BIN('%s')
+					""".formatted(orderId));
+
+			try (var scope = tenantContext.open("tenant-a")) {
+					var bankTransferOrder = tenantTransactionTemplate.execute(
+							status -> checkoutRepository.lockOrder(
+									orderId,
+									lookupTokenHash));
+
+					assertThat(bankTransferOrder).isEmpty();
+			}
 	}
 
 	@Test
@@ -784,6 +824,290 @@ class GuestOrderIntegrationTests {
 	}
 
 	@Test
+	void appliesBankTransferDiscountAndKeepsMercadoPagoAtListPrice() throws Exception {
+		execute(TENANT_A_DATABASE, """
+			UPDATE store_settings
+			SET bank_transfer_enabled = TRUE,
+				bank_transfer_discount_percentage = 20.00,
+				bank_account_holder = 'Tienda A',
+				bank_alias = 'TIENDA.A'
+			""");
+
+		JsonNode mercadoPagoCreated = create(
+			UUID.randomUUID(),
+			"1",
+			201);
+
+		UUID mercadoPagoOrderId = UUID.fromString(
+			mercadoPagoCreated.at("/order/id").asText());
+
+		// API - Mercado Pago
+		assertThat(mercadoPagoCreated.at("/order/paymentMethod").asText())
+			.isEqualTo("MERCADO_PAGO");
+
+		assertThat(mercadoPagoCreated.at("/order/listSubtotal").asText())
+			.isEqualTo("2500.00");
+
+		assertThat(mercadoPagoCreated.at("/order/discountPercentage").asText())
+			.isEqualTo("0.00");
+
+		assertThat(mercadoPagoCreated.at("/order/discountAmount").asText())
+			.isEqualTo("0.00");
+
+		assertThat(mercadoPagoCreated.at("/order/subtotal").asText())
+			.isEqualTo("2500.00");
+
+		// Crear pedido por transferencia sin usar body(String, String)
+		MockHttpServletResponse bankTransferResponse = mockMvc.perform(
+				post(orders("tienda-a"))
+					.with(csrf())
+					.header("Idempotency-Key", UUID.randomUUID())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+						{
+							"customerName": "Ana Pérez",
+							"customerPhone": "11 5555 1234",
+							"customerEmail": "ana@example.com",
+							"notes": "Pedido con descuento",
+							"paymentMethod": "BANK_TRANSFER",
+							"items": [
+								{
+									"variantId": "%s",
+									"quantity": "1"
+								}
+							]
+						}
+						""".formatted(VARIANT_A)))
+			.andExpect(status().isCreated())
+			.andReturn()
+			.getResponse();
+
+		JsonNode bankTransferCreated =
+			objectMapper.readTree(bankTransferResponse.getContentAsString());
+
+		UUID bankTransferOrderId = UUID.fromString(
+			bankTransferCreated.at("/order/id").asText());
+
+		// API - Transferencia
+		assertThat(bankTransferCreated.at("/order/paymentMethod").asText())
+			.isEqualTo("BANK_TRANSFER");
+
+		assertThat(bankTransferCreated.at("/order/listSubtotal").asText())
+			.isEqualTo("2500.00");
+
+		assertThat(bankTransferCreated.at("/order/discountPercentage").asText())
+			.isEqualTo("20.00");
+
+		assertThat(bankTransferCreated.at("/order/discountAmount").asText())
+			.isEqualTo("500.00");
+
+		assertThat(bankTransferCreated.at("/order/subtotal").asText())
+			.isEqualTo("2000.00");
+
+		// Base de datos - Mercado Pago
+		assertThat(text(
+			TENANT_A_DATABASE,
+			"""
+			SELECT payment_method
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(mercadoPagoOrderId)))
+			.isEqualTo("MERCADO_PAGO");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT list_subtotal
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(mercadoPagoOrderId)))
+			.isEqualTo("2500.00");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT discount_percentage
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(mercadoPagoOrderId)))
+			.isEqualTo("0.00");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT discount_amount
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(mercadoPagoOrderId)))
+			.isEqualTo("0.00");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT subtotal
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(mercadoPagoOrderId)))
+			.isEqualTo("2500.00");
+
+		// Base de datos - Transferencia
+		assertThat(text(
+			TENANT_A_DATABASE,
+			"""
+			SELECT payment_method
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(bankTransferOrderId)))
+			.isEqualTo("BANK_TRANSFER");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT list_subtotal
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(bankTransferOrderId)))
+			.isEqualTo("2500.00");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT discount_percentage
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(bankTransferOrderId)))
+			.isEqualTo("20.00");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT discount_amount
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(bankTransferOrderId)))
+			.isEqualTo("500.00");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT subtotal
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(bankTransferOrderId)))
+			.isEqualTo("2000.00");
+	}
+	@Test
+	void rejectsBankTransferOrderWhenBankTransferIsDisabled() throws Exception {
+		mockMvc.perform(post(orders("tienda-a"))
+				.with(csrf())
+				.header("Idempotency-Key", UUID.randomUUID())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"customerName": "Ana Pérez",
+						"customerPhone": "11 5555 1234",
+						"customerEmail": "ana@example.com",
+						"notes": "Pedido por transferencia",
+						"paymentMethod": "BANK_TRANSFER",
+						"items": [
+							{
+								"variantId": "%s",
+								"quantity": "1"
+							}
+						]
+					}
+					""".formatted(VARIANT_A)))
+			.andExpect(status().isBadRequest());
+
+		assertThat(count(
+				TENANT_A_DATABASE,
+				"SELECT COUNT(*) FROM orders"))
+			.isZero();
+	}
+
+	@Test
+	void roundsBankTransferDiscountToTwoDecimals() throws Exception {
+		execute(TENANT_A_DATABASE, """
+			UPDATE product_variants
+			SET price = 999.99
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(VARIANT_A));
+
+		execute(TENANT_A_DATABASE, """
+			UPDATE store_settings
+			SET bank_transfer_enabled = TRUE,
+				bank_transfer_discount_percentage = 15.00,
+				bank_account_holder = 'Tienda A',
+				bank_alias = 'TIENDA.A'
+			""");
+
+		MockHttpServletResponse response = mockMvc.perform(
+				post(orders("tienda-a"))
+					.with(csrf())
+					.header("Idempotency-Key", UUID.randomUUID())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+						{
+							"customerName": "Ana Pérez",
+							"customerPhone": "11 5555 1234",
+							"customerEmail": "ana@example.com",
+							"notes": "Prueba de redondeo",
+							"paymentMethod": "BANK_TRANSFER",
+							"items": [
+								{
+									"variantId": "%s",
+									"quantity": "1"
+								}
+							]
+						}
+						""".formatted(VARIANT_A)))
+			.andExpect(status().isCreated())
+			.andReturn()
+			.getResponse();
+
+		JsonNode created = objectMapper.readTree(response.getContentAsString());
+
+		UUID orderId = UUID.fromString(
+			created.at("/order/id").asText());
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT list_subtotal
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(orderId)))
+			.isEqualTo("999.99");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT discount_percentage
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(orderId)))
+			.isEqualTo("15.00");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT discount_amount
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(orderId)))
+			.isEqualTo("150.00");
+
+		assertThat(decimal(
+			TENANT_A_DATABASE,
+			"""
+			SELECT subtotal
+			FROM orders
+			WHERE public_id = UUID_TO_BIN('%s')
+			""".formatted(orderId)))
+			.isEqualTo("849.99");
+	}
+
+	@Test
 	void allowsPublicOrderWithoutCsrfAndValidatesPayloadAndTenantScope() throws Exception {
 		mockMvc.perform(post(orders("tienda-a"))
 				.header("Idempotency-Key", UUID.randomUUID())
@@ -885,15 +1209,16 @@ class GuestOrderIntegrationTests {
 	}
 
 	private String body(String quantity) {
-		return """
-			{
-				"customerName": "  Ana   Pérez  ",
-				"customerPhone": " 11 5555 1234 ",
-				"customerEmail": "ANA@EXAMPLE.COM",
-				"notes": " Cortado   fino ",
-				"items": [{"variantId": "%s", "quantity": "%s"}]
-			}
-			""".formatted(VARIANT_A, quantity);
+			return """
+					{
+							"customerName": "  Ana   Pérez  ",
+							"customerPhone": " 11 5555 1234 ",
+							"customerEmail": "ANA@EXAMPLE.COM",
+							"notes": " Cortado   fino ",
+							"paymentMethod": "MERCADO_PAGO",
+							"items": [{"variantId": "%s", "quantity": "%s"}]
+					}
+					""".formatted(VARIANT_A, quantity);
 	}
 
 	private String orders(String storeSlug) {
@@ -1002,6 +1327,16 @@ class GuestOrderIntegrationTests {
 				PaymentResultStatus.REJECTED,
 				request.amount(),
 				request.currencyCode());
+		}
+	}
+
+	private byte[] sha256(String value) {
+		try {
+			return MessageDigest.getInstance("SHA-256")
+				.digest(value.getBytes(StandardCharsets.UTF_8));
+		}
+		catch (NoSuchAlgorithmException exception) {
+			throw new IllegalStateException(exception);
 		}
 	}
 

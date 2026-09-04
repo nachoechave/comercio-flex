@@ -3,7 +3,7 @@ package com.comercioflex.tenant.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
-
+import java.math.BigDecimal;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 
@@ -15,28 +15,28 @@ class UpdateStoreSettingsRequestTests {
 	void acceptsACompleteConfiguration() {
 		var request = new UpdateStoreSettingsRequest("Mi tienda", "+54 11 4444-5555",
 			"ventas@mitienda.test", "Calle 123", "Tocar timbre",
-			false, null, null, null, null);
+			false, BigDecimal.ZERO, null, null, null, null);
 		assertThat(validator.validate(request)).isEmpty();
 	}
 
 	@Test
 	void rejectsMissingContactAndValuesThatOnlyMeetLengthBeforeTrimming() {
 		var request = new UpdateStoreSettingsRequest(" A ", "", "", " x ", "",
-			false, null, null, null, null);
+			false, BigDecimal.ZERO, null, null, null, null);
 		assertThat(validator.validate(request)).isNotEmpty();
 	}
 
 	@Test
 	void rejectsMalformedPhoneAndEmail() {
 		var request = new UpdateStoreSettingsRequest("Mi tienda", "abc1234", "correo-invalido",
-			"Calle 123", "", false, null, null, null, null);
+			"Calle 123", "", false, BigDecimal.ZERO, null, null, null, null);
 		assertThat(validator.validate(request)).hasSizeGreaterThanOrEqualTo(2);
 	}
 
 	@Test
 	void requiresHolderAndAliasOrCbuWhenBankTransferIsEnabled() {
 		var request = new UpdateStoreSettingsRequest("Mi tienda", "+54 11 4444-5555",
-			"ventas@mitienda.test", "Calle 123", "", true,
+			"ventas@mitienda.test", "Calle 123", "", true, BigDecimal.ZERO,
 			"Banco", "", "", "");
 		assertThat(validator.validate(request)).isNotEmpty();
 	}

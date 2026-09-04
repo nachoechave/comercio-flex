@@ -48,6 +48,7 @@ public class GuestOrderController {
 			body.customerPhone(),
 			body.customerEmail(),
 			body.notes(),
+			body.paymentMethod(),
 			body.items().stream()
 				.map(item -> new OrderItemCommand(
 					item.variantId(),

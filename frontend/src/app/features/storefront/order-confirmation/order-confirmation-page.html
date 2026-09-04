@@ -132,38 +132,60 @@
             </div>
           } @else if (paymentMethods(); as methods) {
             @if (!bankTransfer() && !checkoutPro() && !qrOrder()) {
-              <section class="payment-methods" aria-labelledby="payment-methods-title">
-                <h2 id="payment-methods-title">¿Cómo querés pagar?</h2>
-                @if (methods.mercadoPago) {
-                  <button type="button" (click)="startPayment()" [disabled]="paymentStarting()">
-                    <strong>Pagar con Mercado Pago</strong>
-                    <span>Tarjeta, saldo u otros medios</span>
-                  </button>
+              <section
+                class="payment-methods"
+                aria-labelledby="payment-methods-title"
+              >
+                <h2 id="payment-methods-title">
+                  Continuar con el pago
+                </h2>
+
+                @if (currentOrder.paymentMethod === 'MERCADO_PAGO') {
+                  @if (methods.mercadoPago) {
+                    <button
+                      type="button"
+                      (click)="startPayment()"
+                      [disabled]="paymentStarting()"
+                    >
+                      <strong>Pagar con Mercado Pago</strong>
+                      <span>Tarjeta, saldo u otros medios</span>
+                    </button>
+                  }
+
+                  @if (methods.mercadoPagoQr) {
+                    <button
+                      type="button"
+                      (click)="startQrPayment()"
+                      [disabled]="paymentStarting()"
+                    >
+                      <strong>Pagar con QR</strong>
+                      <span>Escaneá este código con Mercado Pago</span>
+                    </button>
+                  }
+
+                  @if (!methods.mercadoPago && !methods.mercadoPagoQr) {
+                    <p>
+                      Mercado Pago no está disponible en este momento.
+                    </p>
+                  }
                 }
-                @if (methods.mercadoPagoQr) {
-                  <button type="button" (click)="startQrPayment()" [disabled]="paymentStarting()">
-                    <strong>Pagar con QR</strong>
-                    <span>Escaneá este código con Mercado Pago</span>
-                  </button>
-                }
-                @if (methods.bankTransfer && !bankTransfer()) {
-                  <button
-                    type="button"
-                    class="secondary"
-                    (click)="startBankTransfer()"
-                    [disabled]="bankTransferStarting()"
-                  >
-                    <strong>Transferencia bancaria</strong>
-                    <span>Transferí y enviá el comprobante</span>
-                  </button>
-                }
-                @if (
-                  !methods.mercadoPago &&
-                  !methods.mercadoPagoQr &&
-                  !methods.bankTransfer &&
-                  !bankTransfer()
-                ) {
-                  <p>El comercio todavía no habilitó un medio de pago.</p>
+
+                @if (currentOrder.paymentMethod === 'BANK_TRANSFER') {
+                  @if (methods.bankTransfer) {
+                    <button
+                      type="button"
+                      class="secondary"
+                      (click)="startBankTransfer()"
+                      [disabled]="bankTransferStarting()"
+                    >
+                      <strong>Transferencia bancaria</strong>
+                      <span>Transferí y enviá el comprobante</span>
+                    </button>
+                  } @else {
+                    <p>
+                      La transferencia bancaria no está disponible en este momento.
+                    </p>
+                  }
                 }
               </section>
             }

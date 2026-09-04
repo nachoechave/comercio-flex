@@ -10,12 +10,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.comercioflex.order.domain.OrderPaymentMethod;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import com.comercioflex.order.application.OrderPaymentPricing;
 
 import com.comercioflex.order.application.GuestOrderRepository;
 import com.comercioflex.order.application.LockedOrderVariant;
@@ -31,21 +33,25 @@ import com.comercioflex.catalog.domain.VariantOptionValue;
 public class JdbcGuestOrderRepository implements GuestOrderRepository {
 
 	private static final String ORDER_SELECT = """
-		SELECT
-			order_record.id order_internal_id,
-			BIN_TO_UUID(order_record.public_id) order_public_id,
-			order_record.status,
-			order_record.fulfillment_type,
-			order_record.customer_name,
-			order_record.customer_phone,
-			order_record.customer_email,
-			order_record.customer_notes,
-			order_record.currency_code,
-			order_record.subtotal,
-			order_record.reservation_expires_at,
-			order_record.created_at
-		FROM orders order_record
-		""";
+			SELECT
+					order_record.id order_internal_id,
+					BIN_TO_UUID(order_record.public_id) order_public_id,
+					order_record.status,
+					order_record.fulfillment_type,
+					order_record.payment_method,
+					order_record.customer_name,
+					order_record.customer_phone,
+					order_record.customer_email,
+					order_record.customer_notes,
+					order_record.currency_code,
+					order_record.list_subtotal,
+					order_record.discount_percentage,
+					order_record.discount_amount,
+					order_record.subtotal,
+					order_record.reservation_expires_at,
+					order_record.created_at
+			FROM orders order_record
+			""";
 
 	private final JdbcTemplate jdbcTemplate;
 	private final OrderOptionsJsonCodec optionsJsonCodec;
@@ -171,6 +177,21 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 	}
 
 	@Override
+	public OrderPaymentPricing findPaymentPricing() {
+			return jdbcTemplate.query("""
+					SELECT bank_transfer_enabled, bank_transfer_discount_percentage
+					FROM store_settings
+					LIMIT 1
+					""",
+					(resultSet, rowNumber) -> new OrderPaymentPricing(
+							resultSet.getBoolean("bank_transfer_enabled"),
+							resultSet.getBigDecimal("bank_transfer_discount_percentage")))
+					.stream()
+					.findFirst()
+					.orElse(new OrderPaymentPricing(false, BigDecimal.ZERO));
+	}
+
+	@Override
 	public long insertOrder(
 			UUID orderId,
 			UUID idempotencyKey,
@@ -181,50 +202,70 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 			String customerEmail,
 			String notes,
 			String currencyCode,
-			java.math.BigDecimal subtotal,
+			OrderPaymentMethod paymentMethod,
+			BigDecimal listSubtotal,
+			BigDecimal discountPercentage,
+			BigDecimal discountAmount,
+			BigDecimal subtotal,
 			Instant reservationExpiresAt) {
-		KeyHolder keyHolder = new GeneratedKeyHolder();
-		jdbcTemplate.update(connection -> {
-			PreparedStatement statement = connection.prepareStatement("""
-				INSERT INTO orders (
-					public_id,
-					idempotency_key,
-					request_fingerprint,
-					lookup_token_hash,
-					status,
-					fulfillment_type,
-					customer_name,
-					customer_phone,
-					customer_email,
-					customer_notes,
-					currency_code,
-					subtotal,
-					reservation_expires_at
-				)
-				VALUES (
-					UUID_TO_BIN(?), UUID_TO_BIN(?), ?, ?,
-					'PENDING_CONFIRMATION', 'PICKUP', ?, ?, ?, ?, ?, ?, ?
-				)
-				""",
-				Statement.RETURN_GENERATED_KEYS);
-			statement.setString(1, orderId.toString());
-			statement.setString(2, idempotencyKey.toString());
-			statement.setBytes(3, requestFingerprint);
-			statement.setBytes(4, lookupTokenHash);
-			statement.setString(5, customerName);
-			statement.setString(6, customerPhone);
-			statement.setString(7, customerEmail);
-			statement.setString(8, notes);
-			statement.setString(9, currencyCode);
-			statement.setBigDecimal(10, subtotal);
-			statement.setTimestamp(11, Timestamp.from(reservationExpiresAt));
-			return statement;
-		}, keyHolder);
-		Number key = keyHolder.getKey();
-		if (key == null) {
-			throw new IllegalStateException("No se pudo obtener el identificador del pedido.");
-		}
-		return key.longValue();
+
+			KeyHolder keyHolder = new GeneratedKeyHolder();
+
+			jdbcTemplate.update(connection -> {
+					PreparedStatement statement = connection.prepareStatement("""
+							INSERT INTO orders (
+									public_id,
+									idempotency_key,
+									request_fingerprint,
+									lookup_token_hash,
+									status,
+									fulfillment_type,
+									payment_method,
+									customer_name,
+									customer_phone,
+									customer_email,
+									customer_notes,
+									currency_code,
+									list_subtotal,
+									discount_percentage,
+									discount_amount,
+									subtotal,
+									reservation_expires_at
+							)
+							VALUES (
+									UUID_TO_BIN(?), UUID_TO_BIN(?), ?, ?,
+									'PENDING_CONFIRMATION', 'PICKUP',
+									?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+							)
+							""",
+							Statement.RETURN_GENERATED_KEYS);
+
+					statement.setString(1, orderId.toString());
+					statement.setString(2, idempotencyKey.toString());
+					statement.setBytes(3, requestFingerprint);
+					statement.setBytes(4, lookupTokenHash);
+					statement.setString(5, paymentMethod.name());
+					statement.setString(6, customerName);
+					statement.setString(7, customerPhone);
+					statement.setString(8, customerEmail);
+					statement.setString(9, notes);
+					statement.setString(10, currencyCode);
+					statement.setBigDecimal(11, listSubtotal);
+					statement.setBigDecimal(12, discountPercentage);
+					statement.setBigDecimal(13, discountAmount);
+					statement.setBigDecimal(14, subtotal);
+					statement.setTimestamp(15, Timestamp.from(reservationExpiresAt));
+
+					return statement;
+			}, keyHolder);
+
+			Number key = keyHolder.getKey();
+			if (key == null) {
+					throw new IllegalStateException(
+							"No se pudo obtener el identificador del pedido.");
+			}
+
+			return key.longValue();
 	}
 
 	@Override
@@ -405,19 +446,23 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 			this::mapItem,
 			internalId);
 		return new GuestOrder(
-			UUID.fromString(resultSet.getString("order_public_id")),
-			internalId,
-			OrderStatus.valueOf(resultSet.getString("status")),
-			FulfillmentType.valueOf(resultSet.getString("fulfillment_type")),
-			resultSet.getString("customer_name"),
-			resultSet.getString("customer_phone"),
-			resultSet.getString("customer_email"),
-			resultSet.getString("customer_notes"),
-			resultSet.getString("currency_code"),
-			resultSet.getBigDecimal("subtotal"),
-			resultSet.getTimestamp("reservation_expires_at").toInstant(),
-			resultSet.getTimestamp("created_at").toInstant(),
-			items);
+				UUID.fromString(resultSet.getString("order_public_id")),
+				internalId,
+				OrderStatus.valueOf(resultSet.getString("status")),
+				FulfillmentType.valueOf(resultSet.getString("fulfillment_type")),
+				OrderPaymentMethod.valueOf(resultSet.getString("payment_method")),
+				resultSet.getString("customer_name"),
+				resultSet.getString("customer_phone"),
+				resultSet.getString("customer_email"),
+				resultSet.getString("customer_notes"),
+				resultSet.getString("currency_code"),
+				resultSet.getBigDecimal("list_subtotal"),
+				resultSet.getBigDecimal("discount_percentage"),
+				resultSet.getBigDecimal("discount_amount"),
+				resultSet.getBigDecimal("subtotal"),
+				resultSet.getTimestamp("reservation_expires_at").toInstant(),
+				resultSet.getTimestamp("created_at").toInstant(),
+				items);
 	}
 
 	private GuestOrderItem mapItem(ResultSet resultSet, int rowNumber)

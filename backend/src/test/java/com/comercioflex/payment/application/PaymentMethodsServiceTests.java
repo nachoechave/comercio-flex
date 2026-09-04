@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionStatus;
@@ -42,7 +43,7 @@ class PaymentMethodsServiceTests {
 		when(controlRepository.isCommerciallyEnabled(11L, PaymentEnvironment.PRODUCTION))
 			.thenReturn(true);
 		when(bankTransferRepository.findConfiguration())
-			.thenReturn(new BankTransferConfiguration(true, "Banco", "Tienda A", "TIENDA.A", null));
+			.thenReturn(new BankTransferConfiguration(true, BigDecimal.ZERO, "Banco", "Tienda A", "TIENDA.A", null));
 		when(qrSetupRepository.find(11L, PaymentEnvironment.PRODUCTION))
 			.thenReturn(java.util.Optional.empty());
 	}

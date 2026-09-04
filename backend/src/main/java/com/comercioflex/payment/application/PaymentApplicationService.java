@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.transaction.support.TransactionTemplate;
+import com.comercioflex.order.domain.OrderPaymentMethod;
 
 import com.comercioflex.order.application.OrderTransitionExecution;
 import com.comercioflex.order.application.PaidOrderConfirmer;
@@ -127,6 +128,11 @@ public class PaymentApplicationService {
 	private CreatedOrReplayed createOrReplay(PaymentCommand command) {
 		LockedPaymentOrder order = repository.lockOrder(command.orderId())
 			.orElseThrow(() -> new InvalidPaymentException("El pedido no existe."));
+
+		if (order.paymentMethod() != OrderPaymentMethod.MERCADO_PAGO) {
+				throw new PaymentConflictException(
+						"El pedido fue creado para transferencia bancaria.");
+		}
 		byte[] fingerprint = fingerprint(command.orderId());
 		var replay = repository.findByIdempotencyKey(command.idempotencyKey());
 		if (replay.isPresent()) {

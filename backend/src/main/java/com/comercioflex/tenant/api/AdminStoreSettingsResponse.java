@@ -1,6 +1,7 @@
 package com.comercioflex.tenant.api;
 
 import com.comercioflex.tenant.domain.StoreSettings;
+import java.math.BigDecimal;
 
 public record AdminStoreSettingsResponse(
 	String slug,
@@ -12,6 +13,7 @@ public record AdminStoreSettingsResponse(
 	String pickupAddress,
 	String pickupInstructions,
 	boolean bankTransferEnabled,
+	BigDecimal bankTransferDiscountPercentage,
 	String brandTheme,
 	StoreSettingsResponse.BrandingResponse branding,
 	String bankName,
@@ -25,7 +27,7 @@ public record AdminStoreSettingsResponse(
 			publicSettings.slug(), publicSettings.storeName(), publicSettings.currencyCode(),
 			publicSettings.timezone(), publicSettings.contactPhone(), publicSettings.contactEmail(),
 			publicSettings.pickupAddress(), publicSettings.pickupInstructions(),
-			publicSettings.bankTransferEnabled(), publicSettings.brandTheme(), publicSettings.branding(),
+			publicSettings.bankTransferEnabled(), value.bankTransferDiscountPercentage(), publicSettings.brandTheme(), publicSettings.branding(),
 			value.bankName(),
 			value.bankAccountHolder(), value.bankAlias(), value.bankCbuCvu());
 	}

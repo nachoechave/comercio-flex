@@ -59,7 +59,9 @@ public class JdbcCheckoutRepository implements CheckoutRepository {
 			SELECT id, BIN_TO_UUID(public_id) public_id, status, subtotal,
 				currency_code, reservation_expires_at
 			FROM orders
-			WHERE public_id = UUID_TO_BIN(?) AND lookup_token_hash = ?
+			WHERE public_id = UUID_TO_BIN(?)
+				AND lookup_token_hash = ?
+				AND payment_method = 'MERCADO_PAGO'
 			FOR UPDATE
 			""", (resultSet, rowNumber) -> new CheckoutOrder(
 			resultSet.getLong("id"), UUID.fromString(resultSet.getString("public_id")),

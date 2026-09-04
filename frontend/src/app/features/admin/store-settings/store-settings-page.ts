@@ -27,6 +27,10 @@ export class StoreSettingsPage {
     pickupAddress: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(240)]],
     pickupInstructions: ['', Validators.maxLength(500)],
     bankTransferEnabled: [false],
+    bankTransferDiscountPercentage: [
+      0,
+      [Validators.min(0), Validators.max(50)],
+    ],
     bankName: ['', Validators.maxLength(120)],
     bankAccountHolder: ['', Validators.maxLength(160)],
     bankAlias: ['', Validators.maxLength(120)],
@@ -45,6 +49,7 @@ export class StoreSettingsPage {
             pickupAddress: settings.pickupAddress ?? '',
             pickupInstructions: settings.pickupInstructions ?? '',
             bankTransferEnabled: settings.bankTransferEnabled ?? false,
+            bankTransferDiscountPercentage: settings.bankTransferDiscountPercentage ?? 0,
             bankName: settings.bankName ?? '', bankAccountHolder: settings.bankAccountHolder ?? '',
             bankAlias: settings.bankAlias ?? '', bankCbuCvu: settings.bankCbuCvu ?? '' });
           this.loading.set(false);

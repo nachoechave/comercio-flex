@@ -14,9 +14,13 @@ export interface AdminOrderSummary {
   number: string;
   status: OrderStatus;
   fulfillmentType: 'PICKUP';
+  paymentMethod: OrderPaymentMethod;
   customerName: string;
   customerPhone: string;
   currencyCode: string;
+  listSubtotal: string;
+  discountPercentage: string;
+  discountAmount: string;
   subtotal: string;
   createdAt: string;
 }
@@ -70,6 +74,8 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   CANCELLED: 'Cancelado',
   EXPIRED: 'Vencido',
 };
+
+export type OrderPaymentMethod = 'MERCADO_PAGO' | 'BANK_TRANSFER';
 
 export const ORDER_ACTION_LABELS: Partial<Record<OrderStatus, string>> = {
   CONFIRMED: 'Confirmar',

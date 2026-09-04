@@ -40,6 +40,10 @@ describe('OrderConfirmationPage', () => {
     subtotal: '12333.00',
     reservationExpiresAt: '2026-08-17T03:31:00Z',
     createdAt: '2026-08-17T03:01:00Z',
+    paymentMethod: 'MERCADO_PAGO',
+    listSubtotal: '2500.00',
+    discountPercentage: '0.00',
+    discountAmount: '0.00',
     items: [
       {
         productId: 'product-1',
@@ -304,8 +308,15 @@ describe('OrderConfirmationPage', () => {
     expect(fixture.nativeElement.textContent).not.toContain(
       'No pudimos consultar los medios de pago. Intentá nuevamente.',
     );
-    expect(fixture.nativeElement.textContent).toContain('Transferencia bancaria');
-    expect(fixture.nativeElement.textContent).not.toContain('Tarjetas y dinero disponible');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Mercado Pago no está disponible en este momento.',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Transferencia bancaria',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Tarjetas y dinero disponible',
+    );
   });
 
   it('keeps an existing bank transfer usable after new transfers are disabled', () => {

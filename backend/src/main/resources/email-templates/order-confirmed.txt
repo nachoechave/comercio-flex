@@ -12,7 +12,7 @@ Medio de pago: {{paymentMethod}}
 RESUMEN DEL PEDIDO
 {{itemsText}}
 
-Total: {{total}}
+{{pricingText}}
 
 ENTREGA
 {{fulfillment}}

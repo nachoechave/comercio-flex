@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import com.comercioflex.order.domain.OrderPaymentMethod;
 
 import com.comercioflex.order.domain.OrderStatus;
 import com.comercioflex.payment.application.GatewayPayment;
@@ -57,23 +58,25 @@ public class JdbcPaymentRepository implements PaymentRepository {
 
 	@Override
 	public Optional<LockedPaymentOrder> lockOrder(UUID orderId) {
-		return jdbcTemplate.query("""
-			SELECT id, BIN_TO_UUID(public_id) public_id, status, subtotal,
-				currency_code, reservation_expires_at
-			FROM orders
-			WHERE public_id = UUID_TO_BIN(?)
-			FOR UPDATE
-			""",
-			(resultSet, rowNumber) -> new LockedPaymentOrder(
-				resultSet.getLong("id"),
-				UUID.fromString(resultSet.getString("public_id")),
-				OrderStatus.valueOf(resultSet.getString("status")),
-				resultSet.getBigDecimal("subtotal"),
-				resultSet.getString("currency_code"),
-				resultSet.getTimestamp("reservation_expires_at").toInstant()),
-			orderId.toString())
-			.stream()
-			.findFirst();
+			return jdbcTemplate.query("""
+					SELECT id, BIN_TO_UUID(public_id) public_id, status,
+							payment_method, subtotal, currency_code,
+							reservation_expires_at
+					FROM orders
+					WHERE public_id = UUID_TO_BIN(?)
+					FOR UPDATE
+					""",
+					(resultSet, rowNumber) -> new LockedPaymentOrder(
+							resultSet.getLong("id"),
+							UUID.fromString(resultSet.getString("public_id")),
+							OrderStatus.valueOf(resultSet.getString("status")),
+							OrderPaymentMethod.valueOf(resultSet.getString("payment_method")),
+							resultSet.getBigDecimal("subtotal"),
+							resultSet.getString("currency_code"),
+							resultSet.getTimestamp("reservation_expires_at").toInstant()),
+					orderId.toString())
+					.stream()
+					.findFirst();
 	}
 
 	@Override
