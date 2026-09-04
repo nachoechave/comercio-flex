@@ -65,16 +65,40 @@ class JdbcNotificationOutboxRepositoryIntegrationTests {
 		jdbc.update("DELETE FROM transactional_email_outbox");
 		jdbc.update("DELETE FROM orders");
 		jdbc.update("""
-			INSERT INTO orders (
-				public_id, idempotency_key, request_fingerprint, lookup_token_hash,
-				status, fulfillment_type, customer_name, customer_phone, customer_email,
-				currency_code, subtotal, reservation_expires_at
-			) VALUES (
-				UUID_TO_BIN(?), UUID_TO_BIN(UUID()), UNHEX(SHA2('request', 256)),
-				UNHEX(SHA2('lookup', 256)), 'PENDING_CONFIRMATION', 'PICKUP',
-				'Ana', '1155551234', 'ana@example.com', 'ARS', 100.00, ?
-			)
-			""", ORDER_ID.toString(), java.sql.Timestamp.from(NOW.plusSeconds(3_600)));
+				INSERT INTO orders (
+						public_id,
+						idempotency_key,
+						request_fingerprint,
+						lookup_token_hash,
+						status,
+						fulfillment_type,
+						customer_name,
+						customer_phone,
+						customer_email,
+						currency_code,
+						payment_method,
+						list_subtotal,
+						subtotal,
+						reservation_expires_at
+				) VALUES (
+						UUID_TO_BIN(?),
+						UUID_TO_BIN(UUID()),
+						UNHEX(SHA2('request', 256)),
+						UNHEX(SHA2('lookup', 256)),
+						'PENDING_CONFIRMATION',
+						'PICKUP',
+						'Ana',
+						'1155551234',
+						'ana@example.com',
+						'ARS',
+						'MERCADO_PAGO',
+						100.00,
+						100.00,
+						?
+				)
+				""",
+				ORDER_ID.toString(),
+				java.sql.Timestamp.from(NOW.plusSeconds(3_600)));
 	}
 
 	@Test

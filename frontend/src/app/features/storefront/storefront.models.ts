@@ -13,6 +13,7 @@ export interface StoreSettings {
   pickupAddress?: string | null;
   pickupInstructions?: string | null;
   bankTransferEnabled?: boolean;
+  bankTransferDiscountPercentage?: number;
   brandTheme?: BrandTheme;
   branding?: TenantBranding;
 }
@@ -109,11 +110,14 @@ export interface PublicProductQuery {
   category?: string;
 }
 
+export type OrderPaymentMethod = 'MERCADO_PAGO' | 'BANK_TRANSFER';
+
 export interface CreateGuestOrder {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
   notes?: string;
+  paymentMethod: OrderPaymentMethod;
   items: {
     variantId: string;
     quantity: string;
@@ -147,9 +151,13 @@ export interface GuestOrder {
   number: string;
   status: GuestOrderStatus;
   fulfillmentType: 'PICKUP';
+  paymentMethod: OrderPaymentMethod;
   customerName: string;
   contactHint: string;
   currencyCode: string;
+  listSubtotal: string;
+  discountPercentage: string;
+  discountAmount: string;
   subtotal: string;
   reservationExpiresAt: string;
   createdAt: string;

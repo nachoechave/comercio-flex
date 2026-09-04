@@ -937,24 +937,61 @@ class InventoryManagementIntegrationTests {
 			MySQLContainer<?> database,
 			String status,
 			String subtotal) throws SQLException {
+
 		execute(database, """
-			INSERT INTO orders (
-				public_id, idempotency_key, request_fingerprint, lookup_token_hash,
-				status, fulfillment_type, customer_name, customer_phone,
-				currency_code, subtotal, reservation_expires_at)
-			VALUES (
-				UUID_TO_BIN(UUID()), UUID_TO_BIN(UUID()), RANDOM_BYTES(32), RANDOM_BYTES(32),
-				'%s', 'PICKUP', 'Cliente dashboard', '11111111',
-				'ARS', %s, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 1 HOUR))
-			""".formatted(status, subtotal));
+				INSERT INTO orders (
+						public_id,
+						idempotency_key,
+						request_fingerprint,
+						lookup_token_hash,
+						status,
+						fulfillment_type,
+						customer_name,
+						customer_phone,
+						currency_code,
+						payment_method,
+						list_subtotal,
+						subtotal,
+						reservation_expires_at
+				)
+				VALUES (
+						UUID_TO_BIN(UUID()),
+						UUID_TO_BIN(UUID()),
+						RANDOM_BYTES(32),
+						RANDOM_BYTES(32),
+						'%s',
+						'PICKUP',
+						'Cliente dashboard',
+						'11111111',
+						'ARS',
+						'MERCADO_PAGO',
+						%s,
+						%s,
+						DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 1 HOUR)
+				)
+				""".formatted(
+						status,
+						subtotal,
+						subtotal));
+
 		execute(database, """
-			INSERT INTO order_status_history (
-				public_id, order_id, previous_status, new_status,
-				actor_display_name, created_at)
-			SELECT UUID_TO_BIN(UUID()), MAX(id), 'PENDING_CONFIRMATION', 'CONFIRMED',
-				'Sistema', UTC_TIMESTAMP(6)
-			FROM orders
-			""");
+				INSERT INTO order_status_history (
+						public_id,
+						order_id,
+						previous_status,
+						new_status,
+						actor_display_name,
+						created_at
+				)
+				SELECT
+						UUID_TO_BIN(UUID()),
+						MAX(id),
+						'PENDING_CONFIRMATION',
+						'CONFIRMED',
+						'Sistema',
+						UTC_TIMESTAMP(6)
+				FROM orders
+				""");
 	}
 
 	private static void insertCategory(

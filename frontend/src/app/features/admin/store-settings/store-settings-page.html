@@ -25,6 +25,29 @@
           Transferencia bancaria habilitada
         </label>
         @if (form.controls.bankTransferEnabled.value) {
+          <label>
+          Porcentaje de descuento (%)
+          <input
+            formControlName="bankTransferDiscountPercentage"
+            type="number"
+            inputmode="decimal"
+            min="0"
+            max="50"
+            step="0.01"
+          />
+        </label>
+
+        @if (
+          form.controls.bankTransferDiscountPercentage.touched &&
+          form.controls.bankTransferDiscountPercentage.invalid
+        ) {
+          <small>Ingresá un porcentaje entre 0% y 50%.</small>
+        }
+
+        <small>
+          Se aplica automáticamente cuando el cliente elige transferencia bancaria.
+          Usá 0% para no aplicar descuento.
+        </small>
           <label>Banco <span>(opcional)</span><input formControlName="bankName" maxlength="120" /></label>
           <label>Titular<input formControlName="bankAccountHolder" maxlength="160" /></label>
           <label>Alias<input formControlName="bankAlias" maxlength="120" /></label>

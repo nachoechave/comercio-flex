@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.comercioflex.order.domain.OrderPaymentMethod;
 import com.comercioflex.order.application.AdminOrderDetail;
 import com.comercioflex.order.application.AdminOrderPage;
 import com.comercioflex.order.application.AdminOrderRepository;
@@ -66,6 +67,10 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 				customer_name,
 				customer_phone,
 				currency_code,
+				payment_method,
+				list_subtotal,
+				discount_percentage,
+				discount_amount,
 				subtotal,
 				created_at
 			FROM orders
@@ -130,6 +135,10 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 				customer_email,
 				customer_notes,
 				currency_code,
+				payment_method,
+				list_subtotal,
+				discount_percentage,
+				discount_amount,
 				subtotal,
 				reservation_expires_at,
 				created_at,
@@ -358,37 +367,46 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 	}
 
 	private AdminOrderSummary mapSummary(ResultSet resultSet, int rowNumber)
-			throws SQLException {
-		return new AdminOrderSummary(
-			UUID.fromString(resultSet.getString("public_id")),
-			resultSet.getLong("id"),
-			OrderStatus.valueOf(resultSet.getString("status")),
-			FulfillmentType.valueOf(resultSet.getString("fulfillment_type")),
-			resultSet.getString("customer_name"),
-			resultSet.getString("customer_phone"),
-			resultSet.getString("currency_code"),
-			resultSet.getBigDecimal("subtotal"),
-			resultSet.getTimestamp("created_at").toInstant());
+					throws SQLException {
+			return new AdminOrderSummary(
+					UUID.fromString(resultSet.getString("public_id")),
+					resultSet.getLong("id"),
+					OrderStatus.valueOf(resultSet.getString("status")),
+					FulfillmentType.valueOf(resultSet.getString("fulfillment_type")),
+					OrderPaymentMethod.valueOf(resultSet.getString("payment_method")),
+					resultSet.getString("customer_name"),
+					resultSet.getString("customer_phone"),
+					resultSet.getString("currency_code"),
+					resultSet.getBigDecimal("list_subtotal"),
+					resultSet.getBigDecimal("discount_percentage"),
+					resultSet.getBigDecimal("discount_amount"),
+					resultSet.getBigDecimal("subtotal"),
+					resultSet.getTimestamp("created_at").toInstant());
 	}
 
 	private AdminOrderDetail mapDetail(ResultSet resultSet) throws SQLException {
-		long internalId = resultSet.getLong("id");
-		return new AdminOrderDetail(
-			UUID.fromString(resultSet.getString("public_id")),
-			internalId,
-			OrderStatus.valueOf(resultSet.getString("status")),
-			FulfillmentType.valueOf(resultSet.getString("fulfillment_type")),
-			resultSet.getString("customer_name"),
-			resultSet.getString("customer_phone"),
-			resultSet.getString("customer_email"),
-			resultSet.getString("customer_notes"),
-			resultSet.getString("currency_code"),
-			resultSet.getBigDecimal("subtotal"),
-			resultSet.getTimestamp("reservation_expires_at").toInstant(),
-			resultSet.getTimestamp("created_at").toInstant(),
-			resultSet.getLong("version"),
-			findItems(internalId),
-			findHistory(internalId));
+			long internalId = resultSet.getLong("id");
+
+			return new AdminOrderDetail(
+					UUID.fromString(resultSet.getString("public_id")),
+					internalId,
+					OrderStatus.valueOf(resultSet.getString("status")),
+					FulfillmentType.valueOf(resultSet.getString("fulfillment_type")),
+					OrderPaymentMethod.valueOf(resultSet.getString("payment_method")),
+					resultSet.getString("customer_name"),
+					resultSet.getString("customer_phone"),
+					resultSet.getString("customer_email"),
+					resultSet.getString("customer_notes"),
+					resultSet.getString("currency_code"),
+					resultSet.getBigDecimal("list_subtotal"),
+					resultSet.getBigDecimal("discount_percentage"),
+					resultSet.getBigDecimal("discount_amount"),
+					resultSet.getBigDecimal("subtotal"),
+					resultSet.getTimestamp("reservation_expires_at").toInstant(),
+					resultSet.getTimestamp("created_at").toInstant(),
+					resultSet.getLong("version"),
+					findItems(internalId),
+					findHistory(internalId));
 	}
 
 	private List<GuestOrderItem> findItems(long orderInternalId) {

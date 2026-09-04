@@ -115,9 +115,19 @@
                   [disabled]="submitting()"
                   (change)="selectPaymentMethod('BANK_TRANSFER')"
                 />
+
                 <span class="payment-method-copy">
                   <strong>Transferencia bancaria</strong>
-                  <span>Transferí y enviá el comprobante</span>
+
+                  @if (bankTransferDiscountPercentage() > 0) {
+                    <span>
+                      {{ bankTransferDiscountPercentage() }}% OFF ·
+                      Pagás
+                      {{ bankTransferSubtotal() | storefrontMoney: context.currencyCode() }}
+                    </span>
+                  } @else {
+                    <span>Transferí y enviá el comprobante</span>
+                  }
                 </span>
               </label>
             }
@@ -160,10 +170,32 @@
             </li>
           }
         </ul>
-        <div class="total">
-          <span>Subtotal</span>
-          <strong>{{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
-        </div>
+        @if (
+          selectedPaymentMethod() === 'BANK_TRANSFER' &&
+          bankTransferDiscountPercentage() > 0
+        ) {
+          <div class="total">
+            <span>Precio de lista</span>
+            <strong>{{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
+          </div>
+
+          <div class="total">
+            <span>Descuento por transferencia</span>
+            <strong>-{{ bankTransferDiscountPercentage() }}%</strong>
+          </div>
+
+          <div class="total">
+            <span>Total por transferencia</span>
+            <strong>
+              {{ bankTransferSubtotal() | storefrontMoney: context.currencyCode() }}
+            </strong>
+          </div>
+        } @else {
+          <div class="total">
+            <span>Subtotal</span>
+            <strong>{{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
+          </div>
+        }
         <small>El backend verificará nuevamente precios y stock al confirmar.</small>
       </aside>
     </div>

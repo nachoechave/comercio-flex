@@ -123,27 +123,62 @@ public class GuestOrderService {
 				lineTotal));
 		}
 
+		BigDecimal listSubtotal = subtotal;
+		OrderPaymentPricing paymentPricing = repository.findPaymentPricing();
+
+		BigDecimal discountPercentage = BigDecimal.ZERO.setScale(2);
+		BigDecimal discountAmount = BigDecimal.ZERO.setScale(2);
+
+		if (command.paymentMethod()
+				== com.comercioflex.order.domain.OrderPaymentMethod.BANK_TRANSFER) {
+
+				if (!paymentPricing.bankTransferEnabled()) {
+						throw new InvalidGuestOrderException(
+								"La transferencia bancaria no está habilitada para esta tienda.");
+				}
+
+				discountPercentage = paymentPricing.bankTransferDiscountPercentage() == null
+						? BigDecimal.ZERO.setScale(2)
+						: paymentPricing.bankTransferDiscountPercentage()
+								.setScale(2, RoundingMode.HALF_UP);
+
+				discountAmount = listSubtotal
+						.multiply(discountPercentage)
+						.divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+		}
+
+		BigDecimal finalSubtotal = listSubtotal
+				.subtract(discountAmount)
+				.setScale(2, RoundingMode.HALF_UP);
+
 		Instant expiresAt = clock.instant().plus(RESERVATION_DURATION);
 		UUID orderId = UUID.randomUUID();
+
 		long internalId = repository.insertOrder(
-			orderId,
-			command.idempotencyKey(),
-			fingerprint,
-			tokenHash,
-			command.customerName(),
-			command.customerPhone(),
-			command.customerEmail(),
-			command.notes(),
-			repository.findCurrencyCode(),
-			subtotal,
-			expiresAt);
+				orderId,
+				command.idempotencyKey(),
+				fingerprint,
+				tokenHash,
+				command.customerName(),
+				command.customerPhone(),
+				command.customerEmail(),
+				command.notes(),
+				repository.findCurrencyCode(),
+				command.paymentMethod(),
+				listSubtotal,
+				discountPercentage,
+				discountAmount,
+				finalSubtotal,
+				expiresAt);
+
 		repository.insertInitialHistory(internalId);
 		repository.insertItemsAndReservations(internalId, items, expiresAt);
+
 		return new GuestOrderCreation(
-			repository.findByInternalId(internalId),
-			lookupToken,
-			false);
-	}
+				repository.findByInternalId(internalId),
+				lookupToken,
+				false);
+		}
 
 	private GuestOrderCreation replay(
 			UUID idempotencyKey,
@@ -176,6 +211,10 @@ public class GuestOrderService {
 			throw new InvalidGuestOrderException(
 				"Idempotency-Key debe ser un UUID v4 válido.");
 		}
+		if (command.paymentMethod() == null) {
+				throw new InvalidGuestOrderException(
+						"Debe indicar un medio de pago.");
+		}
 		String name = requiredText(command.customerName(), 160, "El nombre");
 		String phone = requiredText(command.customerPhone(), 40, "El teléfono");
 		String email = requiredText(command.customerEmail(), 254, "El correo")
@@ -195,12 +234,13 @@ public class GuestOrderService {
 			.sorted(Comparator.comparing(item -> item.variantId().toString()))
 			.toList();
 		return new CreateGuestOrderCommand(
-			command.idempotencyKey(),
-			name,
-			phone,
-			email,
-			notes,
-			items);
+				command.idempotencyKey(),
+				name,
+				phone,
+				email,
+				notes,
+				command.paymentMethod(),
+				items);
 	}
 
 	private OrderItemCommand validateItem(
@@ -262,17 +302,20 @@ public class GuestOrderService {
 	}
 
 	private byte[] fingerprint(CreateGuestOrderCommand command) {
-		StringBuilder canonical = new StringBuilder()
-			.append(command.customerName()).append('\n')
-			.append(command.customerPhone()).append('\n')
-			.append(Objects.toString(command.customerEmail(), "")).append('\n')
-			.append(Objects.toString(command.notes(), ""));
-		command.items().forEach(item -> canonical
-			.append('\n')
-			.append(item.variantId())
-			.append(':')
-			.append(item.quantity().toPlainString()));
-		return sha256(canonical.toString());
+			StringBuilder canonical = new StringBuilder()
+					.append(command.customerName()).append('\n')
+					.append(command.customerPhone()).append('\n')
+					.append(Objects.toString(command.customerEmail(), "")).append('\n')
+					.append(Objects.toString(command.notes(), "")).append('\n')
+					.append(command.paymentMethod().name());
+
+			command.items().forEach(item -> canonical
+					.append('\n')
+					.append(item.variantId())
+					.append(':')
+					.append(item.quantity().toPlainString()));
+
+			return sha256(canonical.toString());
 	}
 
 	private String deriveLookupToken(UUID idempotencyKey) {

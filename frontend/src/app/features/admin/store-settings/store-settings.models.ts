@@ -16,6 +16,7 @@ export interface UpdateStoreSettings {
   pickupAddress: string;
   pickupInstructions: string;
   bankTransferEnabled: boolean;
+  bankTransferDiscountPercentage: number;
   bankName: string;
   bankAccountHolder: string;
   bankAlias: string;

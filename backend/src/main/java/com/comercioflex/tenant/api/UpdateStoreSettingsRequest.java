@@ -6,6 +6,10 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 
 public record UpdateStoreSettingsRequest(
 	@NotBlank @Size(min = 2, max = 160) String storeName,
@@ -14,6 +18,10 @@ public record UpdateStoreSettingsRequest(
 	@NotBlank @Size(min = 5, max = 240) String pickupAddress,
 	@Size(max = 500) String pickupInstructions,
 	boolean bankTransferEnabled,
+	@DecimalMin("0.00")
+	@DecimalMax("50.00")
+	@Digits(integer = 2, fraction = 2)
+	BigDecimal bankTransferDiscountPercentage,
 	@Size(max = 120) String bankName,
 	@Size(max = 160) String bankAccountHolder,
 	@Size(max = 120) String bankAlias,
@@ -37,9 +45,18 @@ public record UpdateStoreSettingsRequest(
 	}
 
 	UpdateStoreSettingsCommand toCommand() {
-		return new UpdateStoreSettingsCommand(storeName, contactPhone, contactEmail,
-			pickupAddress, pickupInstructions, bankTransferEnabled, bankName,
-			bankAccountHolder, bankAlias, bankCbuCvu);
+		return new UpdateStoreSettingsCommand(
+			storeName,
+			contactPhone,
+			contactEmail,
+			pickupAddress,
+			pickupInstructions,
+			bankTransferEnabled,
+			bankTransferDiscountPercentage,
+			bankName,
+			bankAccountHolder,
+			bankAlias,
+			bankCbuCvu);
 	}
 
 	private static boolean hasText(String value) {

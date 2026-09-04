@@ -200,6 +200,7 @@ describe('CheckoutPage', () => {
       customerName: 'Ana Pérez',
       customerPhone: '11 5555 1234',
       customerEmail: 'ana@example.com',
+      paymentMethod: 'MERCADO_PAGO',
       notes: 'Cortado fino',
       items: [{ variantId: 'variant-1', quantity: '2' }],
     });

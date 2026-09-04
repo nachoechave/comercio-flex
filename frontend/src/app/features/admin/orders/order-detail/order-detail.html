@@ -1,71 +1,200 @@
 <section class="page" aria-labelledby="order-title">
-  <nav aria-label="Migas de pan"><a [routerLink]="['../']">Pedidos</a><span aria-hidden="true">/</span><span>Detalle</span></nav>
+  <nav aria-label="Migas de pan">
+    <a [routerLink]="['../']">Pedidos</a>
+    <span aria-hidden="true">/</span>
+    <span>Detalle</span>
+  </nav>
+
   @if (loading()) {
-    <p role="status">Cargando pedido…</p>
+    <p role="status">
+      Cargando pedido…
+    </p>
   } @else if (order(); as current) {
     <header>
       <div>
-        <p><span [attr.data-status]="current.status">{{ labels[current.status] }}</span></p>
-        <h1 id="order-title">{{ current.number }}</h1>
-        <p>{{ current.createdAt | commerceDate }}</p>
+        <p>
+          <span [attr.data-status]="current.status">
+            {{ labels[current.status] }}
+          </span>
+        </p>
+
+        <h1 id="order-title">
+          {{ current.number }}
+        </h1>
+
+        <p>
+          {{ current.createdAt | commerceDate }}
+        </p>
       </div>
-      <strong class="total">{{ current.subtotal | storefrontMoney: current.currencyCode }}</strong>
+
+      <strong class="total">
+        {{
+          current.subtotal
+            | storefrontMoney: current.currencyCode
+        }}
+      </strong>
     </header>
 
     @if (errorMessage()) {
-      <p class="error" role="alert">{{ errorMessage() }}</p>
+      <p
+        class="error"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
     }
 
     <div class="layout">
       <div class="content">
+
         <section class="card">
           <h2>Cliente</h2>
+
           <dl>
             <div>
               <dt>Nombre</dt>
               <dd>{{ current.customerName }}</dd>
             </div>
+
             <div>
               <dt>Teléfono</dt>
               <dd>{{ current.customerPhone }}</dd>
             </div>
+
             <div>
               <dt>Correo</dt>
-              <dd>{{ current.customerEmail || 'No informado' }}</dd>
+              <dd>
+                {{ current.customerEmail || 'No informado' }}
+              </dd>
             </div>
+
             <div>
               <dt>Entrega</dt>
               <dd>Retiro en el comercio</dd>
             </div>
           </dl>
+
           @if (current.notes) {
-            <p class="notes"><strong>Observaciones:</strong> {{ current.notes }}</p>
+            <p class="notes">
+              <strong>Observaciones:</strong>
+              {{ current.notes }}
+            </p>
           }
         </section>
+
+        <section class="card">
+          <h2>Pago</h2>
+
+          <dl>
+            <div>
+              <dt>Medio de pago</dt>
+              <dd>
+                {{
+                  current.paymentMethod === 'BANK_TRANSFER'
+                    ? 'Transferencia bancaria'
+                    : 'Mercado Pago'
+                }}
+              </dd>
+            </div>
+
+            <div>
+              <dt>Precio de lista</dt>
+              <dd>
+                {{
+                  current.listSubtotal
+                    | storefrontMoney: current.currencyCode
+                }}
+              </dd>
+            </div>
+
+            @if (
+              current.paymentMethod === 'BANK_TRANSFER' &&
+              current.discountPercentage !== '0.00'
+            ) {
+              <div>
+                <dt>Descuento por transferencia</dt>
+                <dd>
+                  {{ current.discountPercentage }}%
+                  (-
+                  {{
+                    current.discountAmount
+                      | storefrontMoney: current.currencyCode
+                  }})
+                </dd>
+              </div>
+            }
+
+            <div>
+              <dt>Total final</dt>
+              <dd>
+                <strong>
+                  {{
+                    current.subtotal
+                      | storefrontMoney: current.currencyCode
+                  }}
+                </strong>
+              </dd>
+            </div>
+          </dl>
+        </section>
+
         <section class="card">
           <h2>Productos</h2>
+
           <ul>
             @for (item of current.items; track item.variantId) {
               <li>
                 <div>
-                  <strong>{{ item.productName }}</strong>
-                  @if (optionLabel(item.options, item.size, item.color)) {
-                    <span>{{ optionLabel(item.options, item.size, item.color) }}</span>
+                  <strong>
+                    {{ item.productName }}
+                  </strong>
+
+                  @if (
+                    optionLabel(
+                      item.options,
+                      item.size,
+                      item.color
+                    )
+                  ) {
+                    <span>
+                      {{
+                        optionLabel(
+                          item.options,
+                          item.size,
+                          item.color
+                        )
+                      }}
+                    </span>
                   }
-                  <span>{{ item.quantity | quantityFormat }} unidad(es)</span>
+
+                  <span>
+                    {{ item.quantity | quantityFormat }}
+                    unidad(es)
+                  </span>
                 </div>
-                <strong>{{ item.lineTotal | storefrontMoney: current.currencyCode }}</strong>
+
+                <strong>
+                  {{
+                    item.lineTotal
+                      | storefrontMoney: current.currencyCode
+                  }}
+                </strong>
               </li>
             }
           </ul>
         </section>
       </div>
+
       <aside>
         <section class="card">
           <h2>Actualizar estado</h2>
+
           @if (actions().length) {
             <form [formGroup]="form">
-              <label for="transition-note">Observación opcional</label>
+              <label for="transition-note">
+                Observación opcional
+              </label>
+
               <textarea
                 id="transition-note"
                 formControlName="note"
@@ -74,16 +203,25 @@
                 [attr.aria-invalid]="form.controls.note.invalid"
                 aria-describedby="transition-note-help"
               ></textarea>
+
               <small id="transition-note-help">
-                {{ form.controls.note.value.length }} de 500 caracteres
+                {{ form.controls.note.value.length }}
+                de 500 caracteres
               </small>
+
               <div class="actions">
                 @for (action of actions(); track action) {
                   <button
                     type="button"
                     (click)="transition(action)"
-                    [class.destructive]="action === 'CANCELLED' || action === 'REJECTED'"
-                    [disabled]="submitting() || form.invalid"
+                    [class.destructive]="
+                      action === 'CANCELLED' ||
+                      action === 'REJECTED'
+                    "
+                    [disabled]="
+                      submitting() ||
+                      form.invalid
+                    "
                   >
                     {{ actionLabels[action] }}
                   </button>
@@ -91,18 +229,32 @@
               </div>
             </form>
           } @else {
-            <p>Este pedido no admite más cambios.</p>
+            <p>
+              Este pedido no admite más cambios.
+            </p>
           }
         </section>
+
         <section class="card">
           <h2>Historial</h2>
+
           <ol>
             @for (entry of current.history; track entry.id) {
               <li>
-                <strong>{{ labels[entry.newStatus] }}</strong>
-                <span>{{ entry.createdAt | commerceDate }} · {{ entry.actorDisplayName }}</span>
+                <strong>
+                  {{ labels[entry.newStatus] }}
+                </strong>
+
+                <span>
+                  {{ entry.createdAt | commerceDate }}
+                  ·
+                  {{ entry.actorDisplayName }}
+                </span>
+
                 @if (entry.note) {
-                  <p>{{ entry.note }}</p>
+                  <p>
+                    {{ entry.note }}
+                  </p>
                 }
               </li>
             }
@@ -111,6 +263,11 @@
       </aside>
     </div>
   } @else {
-    <p class="error" role="alert">{{ errorMessage() }}</p>
+    <p
+      class="error"
+      role="alert"
+    >
+      {{ errorMessage() }}
+    </p>
   }
 </section>

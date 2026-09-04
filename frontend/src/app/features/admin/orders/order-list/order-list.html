@@ -1,5 +1,10 @@
 <section class="page" aria-labelledby="orders-title">
-  <nav aria-label="Migas de pan"><a [routerLink]="['/tiendas', storeSlug(), 'admin']">Panel</a><span aria-hidden="true">/</span><span>Pedidos</span></nav>
+  <nav aria-label="Migas de pan">
+    <a [routerLink]="['/tiendas', storeSlug(), 'admin']">Panel</a>
+    <span aria-hidden="true">/</span>
+    <span>Pedidos</span>
+  </nav>
+
   <header>
     <div>
       <p class="eyebrow">Operación</p>
@@ -8,27 +13,59 @@
     </div>
   </header>
 
-  <form class="filters" [formGroup]="filters" (ngSubmit)="search()">
+  <form
+    class="filters"
+    [formGroup]="filters"
+    (ngSubmit)="search()"
+  >
     <div>
       <label for="order-q">Número</label>
-      <input id="order-q" type="search" formControlName="q" placeholder="ORD-000001" />
+      <input
+        id="order-q"
+        type="search"
+        formControlName="q"
+        placeholder="ORD-000001"
+      />
     </div>
+
     <div>
       <label for="order-status">Estado</label>
-      <select id="order-status" formControlName="status">
+      <select
+        id="order-status"
+        formControlName="status"
+      >
         <option value="">Todos</option>
+
         @for (entry of labels | keyvalue; track entry.key) {
-          <option [value]="entry.key">{{ entry.value }}</option>
+          <option [value]="entry.key">
+            {{ entry.value }}
+          </option>
         }
       </select>
     </div>
-    <button type="submit" [disabled]="loading()">Aplicar filtros</button>
+
+    <button
+      type="submit"
+      [disabled]="loading()"
+    >
+      Aplicar filtros
+    </button>
   </form>
 
   @if (loading()) {
-    <p class="state" role="status">Cargando pedidos…</p>
+    <p
+      class="state"
+      role="status"
+    >
+      Cargando pedidos…
+    </p>
   } @else if (errorMessage()) {
-    <p class="state error" role="alert">{{ errorMessage() }}</p>
+    <p
+      class="state error"
+      role="alert"
+    >
+      {{ errorMessage() }}
+    </p>
   } @else if (page().items.length === 0) {
     <div class="state">
       <h2>No hay pedidos</h2>
@@ -43,35 +80,88 @@
             <th>Cliente</th>
             <th>Fecha</th>
             <th>Estado</th>
+            <th>Medio de pago</th>
             <th>Total</th>
             <th></th>
           </tr>
         </thead>
+
         <tbody>
           @for (order of page().items; track order.id) {
             <tr>
               <td>
                 <strong>{{ order.number }}</strong>
               </td>
+
               <td>
-                {{ order.customerName }}<small>{{ order.customerPhone }}</small>
+                {{ order.customerName }}
+                <small>{{ order.customerPhone }}</small>
               </td>
-              <td>{{ order.createdAt | commerceDate }}</td>
+
               <td>
-                <span class="badge" [attr.data-status]="order.status">{{ labels[order.status] }}</span>
+                {{ order.createdAt | commerceDate }}
               </td>
-              <td>{{ order.subtotal | storefrontMoney: order.currencyCode }}</td>
-              <td><a [routerLink]="[order.id]">Ver pedido</a></td>
+
+              <td>
+                <span
+                  class="badge"
+                  [attr.data-status]="order.status"
+                >
+                  {{ labels[order.status] }}
+                </span>
+              </td>
+
+              <td>
+                {{
+                  order.paymentMethod === 'BANK_TRANSFER'
+                    ? 'Transferencia'
+                    : 'Mercado Pago'
+                }}
+
+                @if (
+                  order.paymentMethod === 'BANK_TRANSFER' &&
+                  order.discountPercentage !== '0.00'
+                ) {
+                  <small>
+                    {{ order.discountPercentage }}% de descuento
+                  </small>
+                }
+              </td>
+
+              <td>
+                {{
+                  order.subtotal
+                    | storefrontMoney: order.currencyCode
+                }}
+              </td>
+
+              <td>
+                <a [routerLink]="[order.id]">
+                  Ver pedido
+                </a>
+              </td>
             </tr>
           }
         </tbody>
       </table>
     </div>
-    <nav class="pagination" aria-label="Paginación">
-      <button type="button" (click)="goToPage(page().page - 1)" [disabled]="page().page === 0">
+
+    <nav
+      class="pagination"
+      aria-label="Paginación"
+    >
+      <button
+        type="button"
+        (click)="goToPage(page().page - 1)"
+        [disabled]="page().page === 0"
+      >
         Anterior
       </button>
-      <span>Página {{ page().page + 1 }} de {{ page().totalPages }}</span>
+
+      <span>
+        Página {{ page().page + 1 }} de {{ page().totalPages }}
+      </span>
+
       <button
         type="button"
         (click)="goToPage(page().page + 1)"

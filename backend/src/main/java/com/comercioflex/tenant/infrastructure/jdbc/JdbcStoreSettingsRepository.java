@@ -29,7 +29,7 @@ public class JdbcStoreSettingsRepository implements StoreSettingsRepository {
 	public Optional<StoreSettings> findCurrent() {
 		List<StoreSettings> result = jdbcTemplate.query("""
 				SELECT store_name, currency_code, timezone, contact_phone, contact_email,
-				       pickup_address, pickup_instructions, bank_transfer_enabled,
+				       pickup_address, pickup_instructions, bank_transfer_enabled, bank_transfer_discount_percentage,
 				       bank_name, bank_account_holder, bank_alias, bank_cbu_cvu, brand_theme,
 				       primary_color, secondary_color, background_color, text_color,
 				       brand_font, hero_title, hero_subtitle, storefront_template,
@@ -48,6 +48,7 @@ public class JdbcStoreSettingsRepository implements StoreSettingsRepository {
 			resultSet.getString("pickup_address"),
 			resultSet.getString("pickup_instructions"),
 			resultSet.getBoolean("bank_transfer_enabled"),
+			resultSet.getBigDecimal("bank_transfer_discount_percentage"),
 			resultSet.getString("bank_name"),
 			resultSet.getString("bank_account_holder"),
 			resultSet.getString("bank_alias"),
@@ -73,14 +74,14 @@ public class JdbcStoreSettingsRepository implements StoreSettingsRepository {
 		jdbcTemplate.update("""
 				UPDATE store_settings
 				SET store_name = ?, contact_phone = ?, contact_email = ?, pickup_address = ?,
-				    pickup_instructions = ?, bank_transfer_enabled = ?, bank_name = ?,
+				    pickup_instructions = ?, bank_transfer_enabled = ?, bank_transfer_discount_percentage = ?, bank_name = ?,
 				    bank_account_holder = ?, bank_alias = ?, bank_cbu_cvu = ?
 				ORDER BY id
 				LIMIT 1
 				""",
 			command.storeName(), command.contactPhone(), command.contactEmail(),
 			command.pickupAddress(), command.pickupInstructions(),
-			command.bankTransferEnabled(), command.bankName(), command.bankAccountHolder(),
+			command.bankTransferEnabled(), command.bankTransferDiscountPercentage(), command.bankName(), command.bankAccountHolder(),
 			command.bankAlias(), command.bankCbuCvu());
 	}
 

@@ -3,6 +3,7 @@ package com.comercioflex.tenant.application;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+import java.math.BigDecimal;
 
 import com.comercioflex.tenant.domain.StoreSettings;
 
@@ -27,6 +28,7 @@ public class StoreSettingsService {
 			command.pickupAddress().trim(),
 			nullIfBlank(command.pickupInstructions()),
 			command.bankTransferEnabled(),
+			normalizeDiscount(command.bankTransferDiscountPercentage()),
 			nullIfBlank(command.bankName()),
 			nullIfBlank(command.bankAccountHolder()),
 			nullIfBlank(command.bankAlias()),
@@ -41,7 +43,11 @@ public class StoreSettingsService {
 	}
 
 	private static String nullIfBlank(String value) {
-		if (value == null || value.isBlank()) return null;
-		return value.trim();
+			if (value == null || value.isBlank()) return null;
+			return value.trim();
+	}
+
+	private static BigDecimal normalizeDiscount(BigDecimal value) {
+			return value == null ? BigDecimal.ZERO : value.stripTrailingZeros();
 	}
 }

@@ -53,6 +53,23 @@ protected readonly storefrontRouting = inject(StorefrontRoutingService);
   );
   protected readonly items = computed(() => this.cart.items(this.storeSlug() ?? ''));
   protected readonly subtotal = computed(() => this.cart.availableSubtotal(this.storeSlug() ?? ''));
+  protected readonly bankTransferDiscountPercentage = computed(() => {
+    const value = Number(this.context.settings()?.bankTransferDiscountPercentage ?? 0);
+
+    if (!Number.isFinite(value)) return 0;
+
+    return Math.min(50, Math.max(0, value));
+  });
+
+  protected readonly bankTransferSubtotal = computed(() => {
+    const subtotal = Number(this.subtotal());
+    const discount = this.bankTransferDiscountPercentage();
+
+    const total =
+      Math.round((subtotal * (1 - discount / 100) + Number.EPSILON) * 100) / 100;
+
+    return total.toFixed(2);
+  });
   protected readonly ready = computed(
     () => this.items().length > 0 && this.items().every((item) => item.status === 'AVAILABLE'),
   );
@@ -139,6 +156,7 @@ protected readonly storefrontRouting = inject(StorefrontRoutingService);
       customerPhone: value.customerPhone.trim(),
       customerEmail: value.customerEmail.trim(),
       ...(value.notes.trim() ? { notes: value.notes.trim() } : {}),
+      paymentMethod: selectedPaymentMethod,
       items: this.items().map((item) => ({
         variantId: item.variantId,
         quantity: String(item.quantity),

@@ -7,11 +7,13 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.comercioflex.order.domain.OrderPaymentMethod;
 import com.comercioflex.order.domain.OrderStatus;
 import com.comercioflex.payment.application.BankTransferConfiguration;
 import com.comercioflex.payment.application.BankTransferOrder;
@@ -47,45 +49,64 @@ public class JdbcBankTransferRepository implements BankTransferRepository {
 
 	@Override
 	public BankTransferConfiguration findConfiguration() {
-		return jdbcTemplate.query("""
-			SELECT bank_transfer_enabled, bank_name, bank_account_holder,
-				bank_alias, bank_cbu_cvu
-			FROM store_settings ORDER BY id LIMIT 1
-			""", (resultSet, rowNumber) -> new BankTransferConfiguration(
-			resultSet.getBoolean("bank_transfer_enabled"),
-			resultSet.getString("bank_name"),
-			resultSet.getString("bank_account_holder"),
-			resultSet.getString("bank_alias"),
-			resultSet.getString("bank_cbu_cvu"))).stream().findFirst()
-			.orElse(new BankTransferConfiguration(false, null, null, null, null));
+			return jdbcTemplate.query("""
+					SELECT bank_transfer_enabled, bank_transfer_discount_percentage,
+							bank_name, bank_account_holder, bank_alias, bank_cbu_cvu
+					FROM store_settings ORDER BY id LIMIT 1
+					""", (resultSet, rowNumber) -> new BankTransferConfiguration(
+					resultSet.getBoolean("bank_transfer_enabled"),
+					resultSet.getBigDecimal("bank_transfer_discount_percentage"),
+					resultSet.getString("bank_name"),
+					resultSet.getString("bank_account_holder"),
+					resultSet.getString("bank_alias"),
+					resultSet.getString("bank_cbu_cvu"))).stream().findFirst()
+					.orElse(new BankTransferConfiguration(
+							false,
+							BigDecimal.ZERO,
+							null,
+							null,
+							null,
+							null));
 	}
 
 	@Override
 	public Optional<BankTransferOrder> lockOrder(UUID orderId, byte[] lookupTokenHash) {
 		return jdbcTemplate.query("""
-			SELECT id, BIN_TO_UUID(public_id) public_id, status, customer_name,
-				subtotal, currency_code, reservation_expires_at
-			FROM orders
-			WHERE public_id = UUID_TO_BIN(?) AND lookup_token_hash = ?
-			FOR UPDATE
-			""", (resultSet, rowNumber) -> new BankTransferOrder(
-			resultSet.getLong("id"),
-			UUID.fromString(resultSet.getString("public_id")),
-			resultSet.getLong("id"),
-			OrderStatus.valueOf(resultSet.getString("status")),
-			resultSet.getString("customer_name"),
-			resultSet.getBigDecimal("subtotal"),
-			resultSet.getString("currency_code"),
-			resultSet.getTimestamp("reservation_expires_at").toInstant()),
-			orderId.toString(), lookupTokenHash).stream().findFirst();
+				SELECT id, BIN_TO_UUID(public_id) public_id, status,
+					payment_method, customer_name, subtotal,
+					currency_code, reservation_expires_at
+				FROM orders
+				WHERE public_id = UUID_TO_BIN(?)
+				AND lookup_token_hash = ?
+				FOR UPDATE
+				""",
+				(resultSet, rowNumber) -> new BankTransferOrder(
+						resultSet.getLong("id"),
+						UUID.fromString(resultSet.getString("public_id")),
+						resultSet.getLong("id"),
+						OrderStatus.valueOf(resultSet.getString("status")),
+						OrderPaymentMethod.valueOf(resultSet.getString("payment_method")),
+						resultSet.getString("customer_name"),
+						resultSet.getBigDecimal("subtotal"),
+						resultSet.getString("currency_code"),
+						resultSet.getTimestamp("reservation_expires_at").toInstant()
+				),
+				orderId.toString(),
+				lookupTokenHash
+		).stream().findFirst();
 	}
-
 	@Override
 	public boolean hasBlockingCheckout(long orderInternalId) {
 		Integer count = jdbcTemplate.queryForObject("""
-			SELECT COUNT(*) FROM payment_intents
-			WHERE order_id = ? AND status IN ('CREATED', 'PENDING', 'APPROVED', 'REQUIRES_REVIEW')
-			""", Integer.class, orderInternalId);
+				SELECT COUNT(*)
+				FROM payment_intents
+				WHERE order_id = ?
+				AND status IN ('CREATED', 'PENDING', 'APPROVED', 'REQUIRES_REVIEW')
+				""",
+				Integer.class,
+				orderInternalId
+		);
+
 		return count != null && count > 0;
 	}
 

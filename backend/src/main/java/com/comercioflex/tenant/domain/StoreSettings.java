@@ -1,4 +1,5 @@
 package com.comercioflex.tenant.domain;
+import java.math.BigDecimal;
 
 public record StoreSettings(
 	String storeName,
@@ -9,6 +10,7 @@ public record StoreSettings(
 	String pickupAddress,
 	String pickupInstructions,
 	boolean bankTransferEnabled,
+	BigDecimal bankTransferDiscountPercentage,
 	String bankName,
 	String bankAccountHolder,
 	String bankAlias,

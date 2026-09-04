@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.comercioflex.order.domain.OrderPaymentMethod;
 
 import com.comercioflex.order.domain.GuestOrder;
 
@@ -15,17 +16,22 @@ public interface GuestOrderRepository {
 	Optional<LockedOrderVariant> lockVariant(UUID variantId);
 
 	String findCurrencyCode();
+	OrderPaymentPricing findPaymentPricing();
 
 	long insertOrder(
-		UUID orderId,
-		UUID idempotencyKey,
-		byte[] requestFingerprint,
-		byte[] lookupTokenHash,
-		String customerName,
-		String customerPhone,
-		String customerEmail,
-		String notes,
-		String currencyCode,
+			UUID orderId,
+			UUID idempotencyKey,
+			byte[] requestFingerprint,
+			byte[] lookupTokenHash,
+			String customerName,
+			String customerPhone,
+			String customerEmail,
+			String notes,
+			String currencyCode,
+			OrderPaymentMethod paymentMethod,
+			BigDecimal listSubtotal,
+			BigDecimal discountPercentage,
+			BigDecimal discountAmount,
 			BigDecimal subtotal,
 			Instant reservationExpiresAt);
 
@@ -42,4 +48,3 @@ public interface GuestOrderRepository {
 
 	void expireOrder(long orderInternalId);
 }
-
