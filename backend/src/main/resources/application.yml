@@ -137,6 +137,9 @@ app:
       retry-delay: ${PAYMENT_WEBHOOK_RETRY_DELAY:30s}
       max-webhook-attempts: ${PAYMENT_WEBHOOK_MAX_ATTEMPTS:8}
       return-token-ttl: ${PAYMENT_RETURN_TOKEN_TTL:24h}
+    qr-orders:
+      webhook-secret: ${MP_ORDERS_WEBHOOK_SECRET:}
+      signature-tolerance: ${MP_ORDERS_WEBHOOK_SIGNATURE_TOLERANCE:5m}
   database:
     tenant-migration-enabled: ${TENANT_MIGRATION_ENABLED:false}
     migration-username: ${MIGRATION_DB_USER:}

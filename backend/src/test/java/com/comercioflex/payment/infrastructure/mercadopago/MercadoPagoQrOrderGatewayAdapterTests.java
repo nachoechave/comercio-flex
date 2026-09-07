@@ -9,6 +9,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -17,6 +18,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
@@ -92,6 +94,18 @@ class MercadoPagoQrOrderGatewayAdapterTests {
 			.isInstanceOfSatisfying(QrOrderException.class, exception -> {
 				assertThat(exception.code()).isEqualTo("QR_PROVIDER_INVALID_RESPONSE");
 				assertThat(exception.toString()).doesNotContain("oauth-access-token-fixture");
+			});
+	}
+
+	@Test
+	void marksProviderRateLimitingAsRetryable() {
+		server.expect(requestTo("https://api.mercadopago.test/v1/orders"))
+			.andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+
+		assertThatThrownBy(() -> gateway.createOrder(credential(), command()))
+			.isInstanceOfSatisfying(QrOrderException.class, exception -> {
+				assertThat(exception.code()).isEqualTo("QR_PROVIDER_HTTP_429");
+				assertThat(exception.retryable()).isTrue();
 			});
 	}
 

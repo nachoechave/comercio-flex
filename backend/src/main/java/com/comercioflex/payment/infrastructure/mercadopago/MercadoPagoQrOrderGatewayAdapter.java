@@ -162,10 +162,12 @@ public final class MercadoPagoQrOrderGatewayAdapter implements MercadoPagoQrOrde
 	}
 
 	private QrOrderException providerError(RestClientResponseException exception) {
+		boolean retryable = exception.getStatusCode().value() == 429
+			|| exception.getStatusCode().is5xxServerError();
 		return new QrOrderException(
 			"QR_PROVIDER_HTTP_" + exception.getStatusCode().value(),
 			"Mercado Pago no pudo consultar la orden QR.",
-			exception.getStatusCode().is5xxServerError(), exception);
+			retryable, exception);
 	}
 
 	private QrOrderException unavailable(ResourceAccessException exception) {

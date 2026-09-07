@@ -80,10 +80,11 @@ public class JdbcQrOrderControlRepository implements QrOrderControlRepository {
 			 WHERE route.status = 'ACTIVE'
 				AND route.available_at <= ?
 				AND (route.leased_until IS NULL OR route.leased_until < ?)
+				AND route.expires_at > ?
 			 ORDER BY route.available_at, route.id
 			 LIMIT 1
 			 FOR UPDATE SKIP LOCKED
-			""", this::map, Timestamp.from(now), Timestamp.from(now))
+			""", this::map, Timestamp.from(now), Timestamp.from(now), Timestamp.from(now))
 			.stream().findFirst();
 		if (found.isEmpty()) return Optional.empty();
 		QrOrderRoute route = found.get();
@@ -99,6 +100,16 @@ public class JdbcQrOrderControlRepository implements QrOrderControlRepository {
 			route.tenantDatabaseKey(), route.environment(), route.paymentAttemptId(),
 			route.providerOrderId(), route.expectedSellerAccountId(), route.status(),
 			route.attemptCount() + 1, route.expiresAt()));
+	}
+
+	@Override
+	public int expireDue(Instant now) {
+		return jdbcTemplate.update("""
+			UPDATE merchant_qr_order_routes
+			SET status = 'EXPIRED', leased_until = NULL,
+				last_error_code = NULL, updated_at = ?
+			WHERE status = 'ACTIVE' AND expires_at <= ?
+			""", Timestamp.from(now), Timestamp.from(now));
 	}
 
 	@Override

@@ -2,6 +2,9 @@ package com.comercioflex.payment.application;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Locale;
 
@@ -10,6 +13,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,24 +32,44 @@ public class MercadoPagoQrOrderWebhookReceiver {
 	private final QrOrderService orders;
 	private final PaymentOAuthProperties oauthProperties;
 	private final CheckoutProProperties checkoutProperties;
+	private final QrOrderProperties qrProperties;
 	private final TenantContext tenantContext;
 	private final ObjectMapper objectMapper;
+	private final Clock clock;
 
+	@Autowired
 	public MercadoPagoQrOrderWebhookReceiver(
 			QrOrderControlRepository routes,
 			PaymentCredentialResolver credentials,
 			QrOrderService orders,
 			PaymentOAuthProperties oauthProperties,
 			CheckoutProProperties checkoutProperties,
+			QrOrderProperties qrProperties,
 			TenantContext tenantContext,
 			ObjectMapper objectMapper) {
+		this(routes, credentials, orders, oauthProperties, checkoutProperties,
+			qrProperties, tenantContext, objectMapper, Clock.systemUTC());
+	}
+
+	MercadoPagoQrOrderWebhookReceiver(
+			QrOrderControlRepository routes,
+			PaymentCredentialResolver credentials,
+			QrOrderService orders,
+			PaymentOAuthProperties oauthProperties,
+			CheckoutProProperties checkoutProperties,
+			QrOrderProperties qrProperties,
+			TenantContext tenantContext,
+			ObjectMapper objectMapper,
+			Clock clock) {
 		this.routes = routes;
 		this.credentials = credentials;
 		this.orders = orders;
 		this.oauthProperties = oauthProperties;
 		this.checkoutProperties = checkoutProperties;
+		this.qrProperties = qrProperties;
 		this.tenantContext = tenantContext;
 		this.objectMapper = objectMapper;
+		this.clock = clock;
 	}
 
 	public void receive(
@@ -68,7 +92,7 @@ public class MercadoPagoQrOrderWebhookReceiver {
 				if (terminal(result)) {
 					routes.complete(route.internalId(),
 						result == QrOrderProcessingResult.EXPIRED ? "EXPIRED" : "COMPLETED",
-						java.time.Instant.now());
+						clock.instant());
 				}
 			}
 			LOGGER.info(
@@ -128,13 +152,32 @@ public class MercadoPagoQrOrderWebhookReceiver {
 		if (!MessageDigest.isEqual(expected, actual)) {
 			throw invalid("INVALID_QR_WEBHOOK_SIGNATURE", "La firma no es válida.");
 		}
+		validateTimestamp(timestamp);
+	}
+
+	private void validateTimestamp(String timestamp) {
+		try {
+			long value = Long.parseLong(timestamp);
+			Instant signedAt = value >= 100_000_000_000L
+				? Instant.ofEpochMilli(value) : Instant.ofEpochSecond(value);
+			Duration difference = Duration.between(signedAt, clock.instant()).abs();
+			if (difference.compareTo(qrProperties.signatureTolerance()) > 0) {
+				throw invalid("INVALID_QR_WEBHOOK_SIGNATURE", "La firma no es válida.");
+			}
+		}
+		catch (QrOrderException exception) {
+			throw exception;
+		}
+		catch (RuntimeException exception) {
+			throw invalid("INVALID_QR_WEBHOOK_SIGNATURE", "La firma no es válida.");
+		}
 	}
 
 	private byte[] hmac(String value) {
 		try {
 			Mac mac = Mac.getInstance("HmacSHA256");
 			mac.init(new SecretKeySpec(
-				checkoutProperties.webhookSecret().getBytes(StandardCharsets.UTF_8),
+				qrProperties.webhookSecret().getBytes(StandardCharsets.UTF_8),
 				"HmacSHA256"));
 			return mac.doFinal(value.getBytes(StandardCharsets.UTF_8));
 		}
@@ -160,8 +203,8 @@ public class MercadoPagoQrOrderWebhookReceiver {
 
 	private void requireEnabled() {
 		if (!oauthProperties.enabled() || !checkoutProperties.enabled()
-				|| checkoutProperties.webhookSecret() == null
-				|| checkoutProperties.webhookSecret().isBlank()) {
+				|| qrProperties.webhookSecret() == null
+				|| qrProperties.webhookSecret().isBlank()) {
 			throw invalid("PAYMENTS_NOT_ENABLED", "Los pagos no están habilitados.");
 		}
 	}

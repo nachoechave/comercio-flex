@@ -191,6 +191,23 @@ class QrOrderInitiationTests {
 	}
 
 	@Test
+	void reloadDoesNotRecreateAControlRouteForAnExpiredQr() {
+		StoredQrOrderAttempt expired = attempt(
+			UUID.randomUUID(), CLIENT_KEY, new byte[32], UUID.randomUUID(),
+			"cf_qr_reference", UUID.randomUUID(), NOW.minusSeconds(1),
+			"PROVIDER_ORDER", "READY", PaymentIntentStatus.EXPIRED);
+		when(repository.findCurrentByOrder(any(), any())).thenReturn(Optional.of(expired));
+
+		QrOrderInitiation result = service.findCurrent(
+			"tienda-a", ORDER_ID, LOOKUP_TOKEN).orElseThrow();
+
+		assertThat(result.status()).isEqualTo(PaymentIntentStatus.EXPIRED);
+		assertThat(result.qrData()).isNull();
+		verify(routes, never()).insertRoute(
+			any(), any(Long.class), any(), any(), any(), any(), any(), any());
+	}
+
+	@Test
 	void missingQrSetupFailsClosedBeforeAnyProviderCall() {
 		when(setups.find(1L, PaymentEnvironment.PRODUCTION)).thenReturn(Optional.empty());
 

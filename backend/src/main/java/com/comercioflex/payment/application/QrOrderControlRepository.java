@@ -23,6 +23,8 @@ public interface QrOrderControlRepository {
 
 	Optional<QrOrderRoute> claimNext(Instant now, Instant leasedUntil);
 
+	int expireDue(Instant now);
+
 	void release(long routeId, int attemptCount, String safeErrorCode, Instant availableAt);
 
 	void complete(long routeId, String status, Instant now);

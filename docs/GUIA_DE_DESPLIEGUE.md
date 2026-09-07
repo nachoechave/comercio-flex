@@ -111,7 +111,8 @@ templates hayan sido verificados. No documentar ni copiar la API key/contraseña
 - `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `MP_OAUTH_REDIRECT_URI`
 - `MP_TEST_ACCESS_TOKEN`, `MP_TEST_SELLER_ACCOUNT_ID`,
   `MP_TEST_DEMO_TENANT_SLUG`
-- `MP_WEBHOOK_SECRET`
+- `MP_WEBHOOK_SECRET` para Checkout Pro
+- `MP_ORDERS_WEBHOOK_SECRET` para Mercado Pago Orders / QR
 - `PAYMENT_TOKEN_ACTIVE_KEY_ID`, `PAYMENT_TOKEN_ENCRYPTION_KEY_V1`
 
 La habilitación productiva se realiza sólo después de validar dominio, callback,

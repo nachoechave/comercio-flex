@@ -2,13 +2,16 @@ package com.comercioflex.payment.infrastructure.mercadopago;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import com.comercioflex.payment.application.MercadoPagoQrOrderGateway;
 import com.comercioflex.payment.application.PaymentOAuthProperties;
+import com.comercioflex.payment.application.QrOrderProperties;
 
 @Configuration
+@EnableConfigurationProperties(QrOrderProperties.class)
 public class QrOrderConfiguration {
 
 	@Bean
