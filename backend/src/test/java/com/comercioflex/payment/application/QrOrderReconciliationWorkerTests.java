@@ -62,6 +62,7 @@ class QrOrderReconciliationWorkerTests {
 
 		worker.reconcile();
 
+		verify(routes).expireDue(NOW);
 		verify(routes).release(route.internalId(), route.attemptCount(), null,
 			NOW.plusSeconds(10));
 		assertThat(tenantContext.currentDatabaseKey()).isEmpty();
@@ -78,6 +79,7 @@ class QrOrderReconciliationWorkerTests {
 
 		worker.reconcile();
 
+		verify(routes).expireDue(NOW);
 		verify(routes).complete(route.internalId(), "COMPLETED", NOW);
 	}
 

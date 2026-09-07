@@ -10,7 +10,9 @@ import static org.mockito.Mockito.when;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,6 +32,7 @@ class MercadoPagoQrOrderWebhookReceiverTests {
 
 	private static final String SECRET = "qr-webhook-secret-with-enough-entropy";
 	private static final String ORDER_ID = "provider-order";
+	private static final Instant NOW = Instant.parse("2026-09-01T18:00:00Z");
 	private final QrOrderControlRepository routes = mock(QrOrderControlRepository.class);
 	private final PaymentCredentialResolver credentials = mock(PaymentCredentialResolver.class);
 	private final QrOrderService orders = mock(QrOrderService.class);
@@ -40,7 +43,8 @@ class MercadoPagoQrOrderWebhookReceiverTests {
 	void setUp() {
 		receiver = new MercadoPagoQrOrderWebhookReceiver(
 			routes, credentials, orders, oauthProperties(), checkoutProperties(),
-			tenantContext, new ObjectMapper());
+			qrProperties(), tenantContext, new ObjectMapper(),
+			Clock.fixed(NOW, ZoneOffset.UTC));
 	}
 
 	@Test
@@ -101,6 +105,34 @@ class MercadoPagoQrOrderWebhookReceiverTests {
 		verify(routes, never()).findByProviderOrderId(any(), any());
 	}
 
+	@Test
+	void staleAuthenticSignatureIsRejectedBeforeRouteResolution() throws Exception {
+		String staleTimestamp = Long.toString(NOW.minus(Duration.ofMinutes(6)).getEpochSecond());
+
+		assertThatThrownBy(() -> receiver.receive(
+			ORDER_ID, signature(ORDER_ID, "request-1", staleTimestamp), "request-1",
+			"{\"type\":\"order\",\"data\":{\"id\":\"provider-order\"}}"))
+			.isInstanceOf(QrOrderException.class)
+			.extracting(exception -> ((QrOrderException) exception).code())
+			.isEqualTo("INVALID_QR_WEBHOOK_SIGNATURE");
+
+		verify(routes, never()).findByProviderOrderId(any(), any());
+	}
+
+	@Test
+	void futureAuthenticSignatureIsRejectedBeforeRouteResolution() throws Exception {
+		String futureTimestamp = Long.toString(NOW.plus(Duration.ofMinutes(6)).getEpochSecond());
+
+		assertThatThrownBy(() -> receiver.receive(
+			ORDER_ID, signature(ORDER_ID, "request-1", futureTimestamp), "request-1",
+			"{\"type\":\"order\",\"data\":{\"id\":\"provider-order\"}}"))
+			.isInstanceOf(QrOrderException.class)
+			.extracting(exception -> ((QrOrderException) exception).code())
+			.isEqualTo("INVALID_QR_WEBHOOK_SIGNATURE");
+
+		verify(routes, never()).findByProviderOrderId(any(), any());
+	}
+
 	private String signature(String orderId, String requestId, String timestamp)
 			throws Exception {
 		String manifest = "id:" + orderId + ";request-id:" + requestId
@@ -135,8 +167,12 @@ class MercadoPagoQrOrderWebhookReceiverTests {
 	private CheckoutProProperties checkoutProperties() {
 		return new CheckoutProProperties(
 			true, null, null, null, URI.create("https://api.example.test"),
-			URI.create("https://shop.example.test"), SECRET, Duration.ofSeconds(1),
+			URI.create("https://shop.example.test"), "checkout-pro-secret", Duration.ofSeconds(1),
 			Duration.ofSeconds(2), Duration.ofSeconds(30), Duration.ofSeconds(30),
 			3, Duration.ofHours(24));
+	}
+
+	private QrOrderProperties qrProperties() {
+		return new QrOrderProperties(SECRET, Duration.ofMinutes(5));
 	}
 }

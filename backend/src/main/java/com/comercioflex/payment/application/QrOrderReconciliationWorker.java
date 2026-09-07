@@ -66,6 +66,8 @@ public class QrOrderReconciliationWorker {
 	public void reconcile() {
 		if (!running.compareAndSet(false, true)) return;
 		try {
+			Instant now = clock.instant();
+			controlTransactions.executeWithoutResult(status -> routes.expireDue(now));
 			for (int index = 0; index < BATCH_SIZE; index++) {
 				Optional<QrOrderRoute> claimed = controlTransactions.execute(status ->
 					routes.claimNext(clock.instant(), clock.instant().plus(LEASE)));

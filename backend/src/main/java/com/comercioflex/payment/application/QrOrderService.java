@@ -382,6 +382,12 @@ public class QrOrderService {
 	}
 
 	private void ensureRoute(ResolvedTenant tenant, StoredQrOrderAttempt attempt) {
+		if (attempt.providerOrderId() == null
+				|| (attempt.status() != PaymentIntentStatus.CREATED
+					&& attempt.status() != PaymentIntentStatus.PENDING)
+				|| !attempt.providerExpiresAt().isAfter(clock.instant())) {
+			return;
+		}
 		controlTransactions.executeWithoutResult(status -> controlRepository.insertRoute(
 			UUID.randomUUID(), tenant.id(), attempt.environment(), attempt.id(),
 			attempt.providerOrderId(), attempt.sellerAccountId(),
