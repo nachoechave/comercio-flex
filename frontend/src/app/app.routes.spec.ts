@@ -12,7 +12,13 @@ describe('application routes', () => {
     expect(storefronts[1].loadComponent).toBeUndefined();
     const { RADIO_ROUTES } = await import('./features/radio/radio.routes');
     expect(await storefronts[1].loadChildren?.()).toEqual(RADIO_ROUTES);
-    expect(RADIO_ROUTES.map(route => route.path)).toEqual(['', '**']);
+    expect(RADIO_ROUTES.map(route => route.path)).toEqual(['']);
+    expect(RADIO_ROUTES[0].children?.map(route => route.path)).toEqual([
+      '', 'registro', 'ingresar', 'olvide-contrasena', 'nueva-contrasena', 'mi-cuenta', '**',
+    ]);
+    const account = RADIO_ROUTES[0].children?.find(route => route.path === 'mi-cuenta');
+    expect(account?.canActivate).toHaveLength(1);
+    expect(account?.canActivateChild).toHaveLength(1);
   });
   it('loads the commercial landing only at the public root', async () => {
     const rootRoute = routes.find(

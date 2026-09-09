@@ -59,6 +59,8 @@ logging:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level requestId=%X{requestId:-none} logger=%logger{36} - %msg%n"
 
 app:
+  identity:
+    public-base-uri: ${IDENTITY_PUBLIC_BASE_URI:http://localhost:4200}
   email:
     enabled: ${EMAIL_ENABLED:false}
     public-base-uri: ${PUBLIC_BACKEND_BASE_URI:}
