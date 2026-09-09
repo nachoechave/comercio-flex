@@ -1,5 +1,7 @@
 package com.comercioflex.tenant.infrastructure.control;
 
+import com.comercioflex.tenant.domain.TenantType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,6 +12,10 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "tenants")
 class TenantEntity {
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "tenant_type", nullable = false, length = 30)
+	private TenantType tenantType;
 
 	@Id
 	private Long id;

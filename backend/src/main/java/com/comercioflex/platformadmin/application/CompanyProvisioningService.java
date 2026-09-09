@@ -121,7 +121,7 @@ public class CompanyProvisioningService {
 			nullIfBlank(command.administratorPhone()),
 			normalizeDomain(command.domain()),
 			command.initialPassword(),
-			requested);
+			requested, command.tenantType());
 	}
 
 	private String normalizeDomain(String domain) {

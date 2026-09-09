@@ -1,3 +1,4 @@
+import { radioDomainGuard, tenantExperienceGuard } from './core/tenant/tenant-experience.guards';
 import { Routes } from '@angular/router';
 
 import {
@@ -24,6 +25,11 @@ export const routes: Routes = [
       import('./features/storefront/storefront.routes').then(
         (module) => module.STOREFRONT_ROUTES,
       ),
+  },
+  {
+    path: '',
+    canMatch: [radioDomainGuard],
+    loadChildren: () => import('./features/radio/radio.routes').then(m => m.RADIO_ROUTES),
   },
   {
     path: '',
@@ -181,12 +187,18 @@ export const routes: Routes = [
   },
   {
     path: 'tiendas/:storeSlug',
+    canMatch: [tenantExperienceGuard('ECOMMERCE')],
     loadComponent: () =>
       import('./layouts/storefront-layout/storefront-layout').then(
         (module) => module.StorefrontLayout,
       ),
     loadChildren: () =>
       import('./features/storefront/storefront.routes').then((module) => module.STOREFRONT_ROUTES),
+  },
+  {
+    path: 'tiendas/:storeSlug',
+    canMatch: [tenantExperienceGuard('RADIO')],
+    loadChildren: () => import('./features/radio/radio.routes').then(m => m.RADIO_ROUTES),
   },
   { path: '**', redirectTo: '' },
 ];

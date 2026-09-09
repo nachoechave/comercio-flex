@@ -150,9 +150,9 @@ public class JdbcCompanyCreationRepository implements CompanyCreationRepository 
 			PreparedStatement statement = connection.prepareStatement("""
 				INSERT INTO tenants (
 					public_id, slug, display_name, industry, contact_phone,
-					domain, status, database_key
+					domain, status, database_key, tenant_type
 				)
-				VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, ?, 'PROVISIONING', ?)
+				VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, ?, 'PROVISIONING', ?, ?)
 				""", Statement.RETURN_GENERATED_KEYS);
 			statement.setString(1, companyId.toString());
 			statement.setString(2, command.slug());
@@ -161,6 +161,7 @@ public class JdbcCompanyCreationRepository implements CompanyCreationRepository 
 			statement.setString(5, command.administratorPhone());
 			statement.setString(6, command.domain());
 			statement.setString(7, databaseKey);
+			statement.setString(8, command.tenantType().name());
 			return statement;
 		}, keyHolder);
 		return requiredKey(keyHolder, "tenant");

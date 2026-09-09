@@ -1,3 +1,4 @@
+import { TenantType } from '../../../core/tenant/tenant-type';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -27,6 +28,7 @@ export class CompanyCreate {
       this.capability()?.available !== true,
   );
   readonly form = new FormGroup({
+    tenantType: new FormControl<TenantType>('ECOMMERCE', { nonNullable: true }),
     name: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, Validators.maxLength(160)],

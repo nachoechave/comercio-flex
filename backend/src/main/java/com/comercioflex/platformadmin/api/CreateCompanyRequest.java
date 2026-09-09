@@ -1,5 +1,7 @@
 package com.comercioflex.platformadmin.api;
 
+import com.comercioflex.tenant.domain.TenantType;
+
 import com.comercioflex.platformadmin.application.CreateCompanyCommand;
 import com.comercioflex.platformadmin.domain.CompanyStatus;
 
@@ -23,7 +25,8 @@ public record CreateCompanyRequest(
 		regexp = "^$|(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,63}$")
 	String domain,
 	@NotBlank @Size(min = 12, max = 128) String initialPassword,
-	@NotNull CompanyStatus status) {
+	@NotNull CompanyStatus status,
+	TenantType tenantType) {
 
 	@AssertTrue(message = "status must be ACTIVE or INACTIVE")
 	public boolean isSupportedInitialStatus() {
@@ -40,6 +43,6 @@ public record CreateCompanyRequest(
 			administratorPhone,
 			domain,
 			initialPassword,
-			status);
+			status, tenantType);
 	}
 }

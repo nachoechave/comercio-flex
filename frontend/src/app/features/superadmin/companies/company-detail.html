@@ -57,6 +57,7 @@
         <dl>
           <div><dt>Estado</dt><dd>{{ statusLabel(current.status) }}</dd></div>
           <div><dt>Tenant</dt><dd><code>{{ current.slug }}</code></dd></div>
+          <div><dt>Tipo de sitio</dt><dd>{{ current.tenantType === 'RADIO' ? 'Radio / Medio' : 'Ecommerce' }}</dd></div>
           <div><dt>Rubro</dt><dd>{{ current.industry || 'Sin especificar' }}</dd></div>
           <div><dt>Fecha de alta</dt><dd>{{ current.createdAt | commerceDate }}</dd></div>
         </dl>

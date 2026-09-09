@@ -1,4 +1,6 @@
 package com.comercioflex.tenant.api;
+
+import com.comercioflex.tenant.domain.TenantType;
 import java.math.BigDecimal;
 
 public record StoreSettingsResponse(
@@ -13,14 +15,16 @@ public record StoreSettingsResponse(
 	boolean bankTransferEnabled,
 	BigDecimal bankTransferDiscountPercentage,
 	String brandTheme,
-	BrandingResponse branding
+	BrandingResponse branding,
+	TenantType tenantType
 ) {
-	static StoreSettingsResponse from(String slug, com.comercioflex.tenant.domain.StoreSettings settings) {
+	static StoreSettingsResponse from(String slug, com.comercioflex.tenant.domain.StoreSettings settings,
+			TenantType tenantType) {
 		return new StoreSettingsResponse(slug, settings.storeName(), settings.currencyCode(),
 			settings.timezone(), settings.contactPhone(), settings.contactEmail(),
 			settings.pickupAddress(), settings.pickupInstructions(),
 			settings.bankTransferEnabled(), settings.bankTransferDiscountPercentage(), settings.brandTheme().name(),
-			BrandingResponse.from(slug, settings.branding()));
+			BrandingResponse.from(slug, settings.branding()), tenantType);
 	}
 
 	public record BrandingResponse(

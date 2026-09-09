@@ -1,5 +1,7 @@
 package com.comercioflex.tenant.api;
 
+import com.comercioflex.tenant.application.ResolvedTenant;
+
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -11,7 +13,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-import com.comercioflex.tenant.application.ResolvedTenant;
 import com.comercioflex.tenant.application.TenantContext;
 import com.comercioflex.tenant.application.TenantNotFoundException;
 import com.comercioflex.tenant.application.TenantResolver;
@@ -28,6 +29,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 public class TenantResolutionFilter extends OncePerRequestFilter {
+
+	public static final String RESOLVED_TENANT_ATTRIBUTE =
+		"com.comercioflex.tenant.api.TenantResolutionFilter.tenant";
 
 	public static final String TENANT_MEMBERSHIP_ATTRIBUTE =
 		TenantResolutionFilter.class.getName() + ".membership";
@@ -96,6 +100,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 			}
 
 			ResolvedTenant tenant = tenantResolver.resolveActive(matcher.group(1));
+			request.setAttribute(RESOLVED_TENANT_ATTRIBUTE, tenant);
 			if (administrative) {
 				TenantMembership membership = membershipAuthorizer.requireActiveMembership(
 					principal.id(),

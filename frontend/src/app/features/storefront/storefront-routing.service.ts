@@ -27,6 +27,8 @@ export class StorefrontRoutingService {
   private readonly hostMode = signal<StorefrontHostMode>('unknown');
   private readonly domainResolution = signal<StorefrontTenantResolution | null>(null);
 
+  readonly tenantType = () => this.domainResolution()?.tenantType ?? 'ECOMMERCE';
+
   resolveCustomDomain(): Observable<boolean> {
     const currentMode = this.hostMode();
 

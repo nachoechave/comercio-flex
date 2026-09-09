@@ -1,5 +1,7 @@
 package com.comercioflex.platformadmin.infrastructure.control;
 
+import com.comercioflex.tenant.domain.TenantType;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -122,6 +124,7 @@ public class JdbcCompanyRepository implements CompanyRepository {
 				tenant.status,
 				tenant.created_at,
 				tenant.last_activity_at,
+				tenant.tenant_type,
 				owner_user.display_name owner_name,
 				owner_user.email_normalized owner_email
 			FROM tenants tenant
@@ -136,7 +139,8 @@ public class JdbcCompanyRepository implements CompanyRepository {
 				mapAdministrator(resultSet),
 				resultSet.getString("domain"),
 				resultSet.getTimestamp("created_at").toInstant(),
-				nullableInstant(resultSet, "last_activity_at")),
+				nullableInstant(resultSet, "last_activity_at"),
+				TenantType.valueOf(resultSet.getString("tenant_type"))),
 			companyId.toString())
 			.stream()
 			.findFirst();

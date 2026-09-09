@@ -1,3 +1,4 @@
+import { TenantType } from '../../core/tenant/tenant-type';
 import { StorefrontTemplate } from '../storefront/storefront-template';
 
 export type CompanyStatus =
@@ -32,6 +33,7 @@ export interface CompanySummary {
 }
 
 export interface CompanyDetail extends CompanySummary {
+  tenantType?: TenantType;
   industry: string | null;
   phone: string | null;
   domain: string | null;
@@ -88,6 +90,7 @@ export interface TenantProvisioningCapability {
 }
 
 export interface CreateCompanyRequest {
+  tenantType?: TenantType;
   name: string;
   slug: string;
   industry: string;
