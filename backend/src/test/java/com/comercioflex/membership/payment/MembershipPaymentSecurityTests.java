@@ -14,6 +14,17 @@ import com.comercioflex.payment.application.PaymentCredential;
 import com.comercioflex.payment.domain.PaymentEnvironment;
 
 class MembershipPaymentSecurityTests {
+ @Test void radioReturnUsesCleanPlatformUrlAndVerifiedDomainTakesPriority() {
+  var properties=mock(com.comercioflex.payment.application.CheckoutProProperties.class);
+  when(properties.frontendBaseUri()).thenReturn(URI.create("https://comercioflex.com.ar"));
+  var domains=mock(com.comercioflex.tenant.application.TenantDomainResolver.class);
+  var service=new MembershipCheckoutService(null,null,null,null,null,null,null,properties,null,domains,null,null);
+  var tenant=new com.comercioflex.tenant.application.ResolvedTenant(1L,"atodoboca","Radio","tenant-a",com.comercioflex.tenant.domain.TenantType.RADIO);
+  when(domains.verifiedPrimaryHostname(1L)).thenReturn(java.util.Optional.empty());
+  assertThat(service.returnUrl(tenant)).isEqualTo("https://comercioflex.com.ar/atodoboca/mi-cuenta/pago-retorno");
+  when(domains.verifiedPrimaryHostname(1L)).thenReturn(java.util.Optional.of("radio.example"));
+  assertThat(service.returnUrl(tenant)).isEqualTo("https://radio.example/mi-cuenta/pago-retorno");
+ }
  @Test void fingerprintBindsTenantPeriodSnapshotSellerAndEnvironment() {
   UUID period=UUID.randomUUID();
   byte[] first=MembershipCheckoutService.fingerprint(10,period,"6000.00","ARS",PaymentEnvironment.TEST,"seller-a");

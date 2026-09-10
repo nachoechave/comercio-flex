@@ -29,6 +29,11 @@ public record CreateCompanyRequest(
 	TenantType tenantType) {
 
 	@AssertTrue(message = "status must be ACTIVE or INACTIVE")
+	public boolean isAvailableSlug() {
+		return com.comercioflex.tenant.application.TenantPublicPaths.validSlug(slug);
+	}
+
+	@AssertTrue(message = "status must be ACTIVE or INACTIVE")
 	public boolean isSupportedInitialStatus() {
 		return status == null || status == CompanyStatus.ACTIVE || status == CompanyStatus.INACTIVE;
 	}

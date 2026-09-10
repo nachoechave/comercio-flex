@@ -172,6 +172,17 @@ class RadioMembershipIntegrationTests {
   for(String path:List.of(me(),me()+"/current-period",me()+"/cancel",base("radio-a")+"/admin/membership-plans"))mvc.perform(post(path).cookie(member.cookie()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
   control.update("UPDATE platform_users SET status='DISABLED' WHERE email_normalized='member@example.com'");mine(member).andExpect(status().isForbidden());
  }
+ @Test void cleanRadioPathsAndLegacyRedirectsAreTenantScoped() throws Exception {
+  for (String slug : List.of("radio-a", "radio-b")) for (String suffix : List.of("", "/programas", "/nosotros", "/socios", "/login", "/registro", "/mi-cuenta", "/mi-cuenta/pago-retorno")) {
+   mvc.perform(get("/" + slug + suffix)).andExpect(status().isOk()).andExpect(forwardedUrl("/index.html"));
+  }
+  mvc.perform(get("/tiendas/radio-a/ingresar?next=socios")).andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/radio-a/login?next=socios"));
+  mvc.perform(get("/tiendas/shop")).andExpect(status().isOk()).andExpect(forwardedUrl("/index.html"));
+  for(String slug : List.of("shop", "missing")) mvc.perform(get("/" + slug)).andExpect(status().isNotFound());
+  control.update("UPDATE tenants SET status='INACTIVE' WHERE slug='radio-a'");
+  mvc.perform(get("/radio-a/programas")).andExpect(status().isNotFound());
+  assertThat(context.currentDatabaseKey()).isEmpty();
+ }
 
  @Test void membershipCheckoutNeverAcceptsClientPriceOrIdentityAndNeedsCsrf() throws Exception {
   mvc.perform(get(me()+"/current-period/payment").cookie(member.cookie())).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));

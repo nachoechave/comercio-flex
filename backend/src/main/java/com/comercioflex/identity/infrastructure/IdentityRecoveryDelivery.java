@@ -83,7 +83,7 @@ public class IdentityRecoveryDelivery {
 				transactions.executeWithoutResult(status -> repository.storeReset(user.get(), tenant.id(),
 					PublicIdentityService.hash(token), Instant.now().plus(Duration.ofMinutes(30))));
 				String origin = publicBase.toString().replaceAll("/$", "");
-				String path = "/tiendas/" + tenant.slug() + "/nueva-contrasena";
+				String path = com.comercioflex.tenant.application.TenantPublicPaths.radio(tenant.slug()) + "/nueva-contrasena";
 				var hostname = domains.verifiedPrimaryHostname(tenant.id());
 				if (hostname.isPresent()) {
 					origin = "https://" + hostname.get();

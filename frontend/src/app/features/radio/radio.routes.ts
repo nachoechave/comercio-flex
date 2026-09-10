@@ -6,6 +6,7 @@ export const RADIO_ROUTES: Routes = [
     path: '',
     loadComponent: () => import('./radio-layout').then(m => m.RadioLayout),
     children: [
+      { path: 'login', data: { mode: 'login' }, loadComponent: () => import('./radio-auth-page').then(m => m.RadioAuthPage) },
       { path: '', pathMatch: 'full', loadComponent: () => import('./radio-home-page').then(m => m.RadioHomePage) },
       { path: 'programas', loadComponent: () => import('./radio-programs-page').then(m => m.RadioProgramsPage) },
       { path: 'nosotros', loadComponent: () => import('./radio-about-page').then(m => m.RadioAboutPage) },
@@ -21,7 +22,7 @@ export const RADIO_ROUTES: Routes = [
         { path: 'cuotas', data: { membershipMode: 'history' }, loadComponent: () => import('./membership-account-page').then(m => m.MembershipAccountPage) },
         { path: 'perfil', data: { profile: true }, canActivate: [radioAccountGuard], loadComponent: () => import('./radio-private-page').then(m => m.RadioPrivatePage) },
       ] },
-      { path: '**', redirectTo: '' },
+      { path: '**', loadComponent: () => import('../../core/routing/not-found-page').then(m => m.NotFoundPage) },
     ],
   },
 ];
