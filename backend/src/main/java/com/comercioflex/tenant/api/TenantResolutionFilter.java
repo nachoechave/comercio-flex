@@ -65,7 +65,8 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 			return true;
 		}
 		String storeResource = matcher.group(2);
-		return !storeResource.equals("/settings")
+		return !isPublicIdentityResource(storeResource)
+			&& !storeResource.equals("/settings")
 			&& !storeResource.equals("/payment-methods")
 			&& !storeResource.equals("/catalog")
 			&& !storeResource.startsWith("/catalog/")
@@ -76,6 +77,11 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 			&& !storeResource.startsWith("/media/branding/")
 			&& !storeResource.equals("/admin")
 			&& !storeResource.startsWith("/admin/");
+	}
+
+	private boolean isPublicIdentityResource(String resource) {
+		return resource.equals("/member-registration") || resource.equals("/me/profile")
+			|| resource.equals("/account/password/forgot") || resource.equals("/account/password/reset");
 	}
 
 	@Override

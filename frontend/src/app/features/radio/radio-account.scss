@@ -1,0 +1,27 @@
+:host { display: block; color: #172033; }
+* { box-sizing: border-box; }
+.radio-shell { max-width: 72rem; margin: auto; padding: 1rem; }
+nav { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid #d8dfe8; }
+nav button { margin-left: auto; }
+main { padding-block: 2rem; }
+.account-card { max-width: 40rem; margin: auto; padding: clamp(1rem, 4vw, 2.5rem); background: #fff; border: 1px solid #d8dfe8; border-radius: 1rem; }
+h1 { font-size: clamp(1.5rem, 5vw, 2rem); line-height: 1.2; }
+form, label { display: grid; gap: .5rem; }
+form { gap: 1rem; margin-block: 1.5rem; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+label { min-width: 0; font-weight: 600; }
+input { width: 100%; min-width: 0; padding: .75rem; border: 1px solid #778296; border-radius: .4rem; font: inherit; }
+input[readonly] { background: #f1f4f8; }
+button { min-height: 44px; padding: .65rem 1rem; background: #172d54; color: white; border: 0; border-radius: .4rem; font: inherit; cursor: pointer; }
+button:disabled { opacity: .6; cursor: wait; }
+a { color: #204b83; text-underline-offset: .2em; padding-block: .5rem; }
+:is(a, button, input):focus-visible { outline: 3px solid #ba7300; outline-offset: 3px; }
+.account-links { display: flex; flex-wrap: wrap; gap: 1rem; }
+.error { color: #942626; }
+.hint { font-size: .9rem; color: #4e5b6f; }
+@media (max-width: 600px) {
+  .fields { grid-template-columns: 1fr; }
+  nav { gap: .5rem 1rem; }
+  nav button { margin-left: 0; }
+  .account-card { border-radius: .6rem; }
+}

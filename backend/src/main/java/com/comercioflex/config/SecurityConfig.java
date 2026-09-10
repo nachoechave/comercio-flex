@@ -49,7 +49,9 @@ public class SecurityConfig {
 			TenantResolutionFilter tenantResolutionFilter,
 			PlatformRoleAuthorizationManager platformRoleAuthorizationManager,
 			SecurityContextRepository securityContextRepository,
-			CsrfTokenRepository csrfTokenRepository) throws Exception {
+			CsrfTokenRepository csrfTokenRepository,
+			@org.springframework.beans.factory.annotation.Qualifier("controlJdbcTemplate")
+			org.springframework.jdbc.core.JdbcTemplate controlJdbcTemplate) throws Exception {
 		return http
 			.cors(Customizer.withDefaults())
 			.csrf(csrf -> csrf
@@ -77,6 +79,7 @@ public class SecurityConfig {
 						"/admin", "/admin/**", "/superadmin", "/superadmin/**", "/tiendas/**",
 						"/stores/*/payment-return/*",
 						"/payment-return/*",
+						"/registro", "/ingresar", "/olvide-contrasena", "/nueva-contrasena", "/mi-cuenta", "/mi-cuenta/**",
 						"/carrito",
 						"/checkout",
 						"/mis-pedidos",
@@ -138,6 +141,10 @@ public class SecurityConfig {
 					"/api/v1/auth/csrf",
 					"/api/v1/auth/login",
 					"/api/v1/auth/session").permitAll()
+				.requestMatchers(HttpMethod.POST,
+					"/api/v1/stores/*/member-registration",
+					"/api/v1/stores/*/account/password/forgot",
+					"/api/v1/stores/*/account/password/reset").permitAll()
 				.requestMatchers("/api/v1/superadmin", "/api/v1/superadmin/**")
 				.access(platformRoleAuthorizationManager)
 				.requestMatchers(
@@ -192,6 +199,7 @@ public class SecurityConfig {
 					"/api/v1/integrations/mercado-pago/oauth/callback")
 				.authenticated()
 				.anyRequest().authenticated())
+			.addFilterBefore(new com.comercioflex.identity.api.CredentialSessionFilter(controlJdbcTemplate), AnonymousAuthenticationFilter.class)
 			.addFilterAfter(tenantResolutionFilter, AnonymousAuthenticationFilter.class)
 			.build();
 	}
