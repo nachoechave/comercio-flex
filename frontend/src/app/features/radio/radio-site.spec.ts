@@ -14,6 +14,7 @@ describe('RADIO site configuration API', () => {
   });
   afterEach(() => http.verify());
   it('loads public content scoped to the tenant', () => { api.get('radio/a').subscribe(); const request = http.expectOne('/api/v1/stores/radio%2Fa/radio-site'); expect(request.request.method).toBe('GET'); request.flush({ settings: {}, programs: [], team: [], sponsors: [] }); });
-  it('writes settings through the tenant admin endpoint', () => { api.settings('radio-a', { heroTitle: 'Voz', heroSubtitle: null, description: null, youtubeUrl: null, instagramUrl: null, xUrl: null, whatsappUrl: null }).subscribe(); const request = http.expectOne('/api/v1/stores/radio-a/admin/radio-site'); expect(request.request.method).toBe('PUT'); request.flush({}); });
+  it('loads latest videos through the tenant-scoped public endpoint', () => { api.videos('radio/a').subscribe(); const request = http.expectOne('/api/v1/stores/radio%2Fa/radio-site/videos'); expect(request.request.method).toBe('GET'); request.flush([]); });
+  it('writes settings through the tenant admin endpoint', () => { api.settings('radio-a', { heroTitle: 'Voz', heroSubtitle: null, description: null, youtubeUrl: null, youtubeChannelId: 'UC123', instagramUrl: null, xUrl: null, whatsappUrl: null }).subscribe(); const request = http.expectOne('/api/v1/stores/radio-a/admin/radio-site'); expect(request.request.method).toBe('PUT'); expect(request.request.body.youtubeChannelId).toBe('UC123'); request.flush({}); });
   it('keeps content deletes tenant scoped', () => { api.remove('radio-a', 'sponsors', 'id-1').subscribe(); const request = http.expectOne('/api/v1/stores/radio-a/admin/radio-site/sponsors/id-1'); expect(request.request.method).toBe('DELETE'); request.flush({}); });
 });

@@ -194,8 +194,9 @@ class RadioMembershipIntegrationTests {
 
  @Test void radioContentIsTenantScopedAndAdminOnly() throws Exception {
   mvc.perform(get(base("radio-a")+"/radio-site")).andExpect(status().isOk()).andExpect(jsonPath("$.programs.length()").value(0));
+  mvc.perform(get(base("radio-a")+"/radio-site/videos")).andExpect(status().isOk()).andExpect(jsonPath("$").isArray()).andExpect(jsonPath("$.length()").value(0));
   send(put(base("radio-a")+"/admin/radio-site"),member,Map.of("heroTitle","No autorizado")).andExpect(status().isForbidden());
-  send(put(base("radio-a")+"/admin/radio-site"),admin,Map.of("heroTitle","Radio A en vivo","heroSubtitle","Comunidad","description","La voz del barrio","youtubeUrl","https://youtube.com/radio-a")).andExpect(status().isOk()).andExpect(jsonPath("$.settings.heroTitle").value("Radio A en vivo"));
+  send(put(base("radio-a")+"/admin/radio-site"),admin,Map.of("heroTitle","Radio A en vivo","heroSubtitle","Comunidad","description","La voz del barrio","youtubeUrl","https://youtube.com/radio-a","youtubeChannelId","UC1234567890123456789012")).andExpect(status().isOk()).andExpect(jsonPath("$.settings.heroTitle").value("Radio A en vivo")).andExpect(jsonPath("$.settings.youtubeChannelId").value("UC1234567890123456789012"));
   send(post(base("radio-a")+"/admin/radio-site/programs"),admin,Map.of("name","Programa A","description","Historias","days","Lunes","schedule","18:00","active",true,"displayOrder",0)).andExpect(status().isOk());
   mvc.perform(get(base("radio-a")+"/radio-site")).andExpect(jsonPath("$.programs[0].name").value("Programa A"));
   mvc.perform(get(base("radio-b")+"/radio-site")).andExpect(jsonPath("$.settings.heroTitle").doesNotExist()).andExpect(jsonPath("$.programs.length()").value(0));

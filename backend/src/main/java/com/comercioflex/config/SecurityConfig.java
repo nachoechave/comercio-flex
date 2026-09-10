@@ -91,6 +91,7 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.GET, "/api/v1/storefront/resolve").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/membership-plans").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/radio-site").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/radio-site/videos").permitAll()
 				.requestMatchers("/api/v1/stores/*/admin/membership-payments/settings")
     .access(new TenantPermissionAuthorizationManager(TenantPermission.MANAGE_PAYMENTS))
     .requestMatchers("/api/v1/stores/*/admin/membership-plans", "/api/v1/stores/*/admin/membership-plans/**")
