@@ -264,8 +264,11 @@ class SuperAdminIntegrationTests {
 			""", Integer.class)).isEqualTo(1);
 	}
 
-	@Test
-	void provisionsAnIsolatedTenantAndOwnerWithoutRestarting() throws Exception {
+	@org.junit.jupiter.params.ParameterizedTest
+	@org.junit.jupiter.params.provider.ValueSource(strings = {"OMITTED", "ECOMMERCE", "RADIO"})
+	void provisionsAnIsolatedTenantAndOwnerWithoutRestarting(String type) throws Exception {
+		String typeField = type.equals("OMITTED") ? "" : "\"tenantType\":\"" + type + "\",";
+		String expectedType = type.equals("OMITTED") ? "ECOMMERCE" : type;
 		AuthenticatedCookies superAdmin = login("superadmin@example.com");
 		String initialPassword = "urban-initial-password";
 
@@ -275,6 +278,7 @@ class SuperAdminIntegrationTests {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
+					  %s
 					  "name": "Nueva Tienda",
 					  "slug": "nueva-tienda",
 					  "industry": "Indumentaria",
@@ -285,8 +289,9 @@ class SuperAdminIntegrationTests {
 					  "initialPassword": "%s",
 					  "status": "ACTIVE"
 					}
-					""".formatted(initialPassword)))
+					""".formatted(typeField, initialPassword)))
 			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.tenantType").value(expectedType))
 			.andExpect(jsonPath("$.slug").value("nueva-tienda"))
 			.andExpect(jsonPath("$.status").value("ACTIVE"))
 			.andExpect(jsonPath("$.industry").value("Indumentaria"))
@@ -312,6 +317,7 @@ class SuperAdminIntegrationTests {
 
 		mockMvc.perform(get("/api/v1/stores/nueva-tienda/settings"))
 			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.tenantType").value(expectedType))
 			.andExpect(jsonPath("$.storeName").value("Nueva Tienda"))
 			.andExpect(jsonPath("$.contactEmail").value("maria@example.com"));
 

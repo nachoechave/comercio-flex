@@ -21,6 +21,50 @@ Navegador
 
 ## Backend
 
+### Tipo de tenant: fundación RADIO
+
+```text
+Tenant
+├── ECOMMERCE (predeterminado)
+└── RADIO
+```
+
+`tenant_type` define la experiencia funcional, mientras `industry` sigue siendo
+descriptivo y `storefront_template` sigue definiendo la presentación ecommerce
+(FASHION/FRESH/CATALOG). RADIO no es un cuarto template ni concede permisos.
+
+La migración de control V016 agrega un VARCHAR con CHECK y default ECOMMERCE,
+siguiendo el patrón de estados de `tenants`. Actualiza implícitamente los tenants
+previos; no modifica migraciones anteriores ni las bases tenant. El alta de Super
+Admin permite elegir RADIO y conserva ECOMMERCE cuando se omite el campo.
+La edición de empresas no permite convertir tipos en esta fase.
+
+El tipo viaja en `ResolvedTenant`, en las respuestas públicas de settings y
+resolución por dominio, y en el detalle de empresa de Super Admin. El filtro
+comparte el tenant resuelto como atributo de petición, manteniendo el mismo
+`TenantContext`, autorización administrativa y selección de base. Las respuestas
+no exponen databaseKey ni IDs internos. Angular selecciona árboles lazy separados
+por slug o dominio: ecommerce conserva su layout; RADIO muestra un placeholder.
+La ausencia del campo en respuestas de un backend anterior conserva ecommerce.
+
+Esta fase no bloquea las APIs ecommerce existentes para RADIO: establece la
+selección de experiencia pública, sin introducir una política de autorización por
+vertical. OWNER, ADMIN, STAFF y SUPER_ADMIN mantienen exactamente sus permisos.
+El provisioning de RADIO aplica el mismo esquema tenant y conserva su propietario.
+
+En próximas fases, al introducir `/membership-plans`, `/me/...` y `/radio`, hay que
+agregar sus rutas exactas y prefijos pertinentes a `TenantResolutionFilter` y sus
+reglas explícitas en `SecurityConfig`. Hoy no se reconocen recursos ficticios.
+Los servicios futuros deberán validar el tipo RADIO, mantener CSRF para acciones
+de sesión y verificar la titularidad con el usuario autenticado para `/me`.
+El tipo de tenant no reemplaza ninguna de esas verificaciones.
+
+Para desplegar esta fase se utiliza el mismo build Angular + Spring Boot. Flyway
+aplica V016 en la base de control al iniciar; no se requiere reclasificar tenants
+existentes ni ejecutar SQL manual. Para comprobar RADIO, crear una empresa de ese
+tipo desde Super Admin y abrir `/tiendas/{slug}`. Socios, registro, planes, pagos y
+configuración específica de radio quedan fuera de esta fase.
+
 Los módulos reales bajo `com.comercioflex` son:
 
 - `tenant`: resolución del comercio, settings, branding, provisioning y routing;

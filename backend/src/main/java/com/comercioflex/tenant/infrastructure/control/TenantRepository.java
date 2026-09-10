@@ -14,7 +14,8 @@ public interface TenantRepository extends JpaRepository<TenantEntity, Long> {
 			tenant.id,
 			tenant.slug,
 			tenant.displayName,
-			tenant.databaseKey
+			tenant.databaseKey,
+			tenant.tenantType
 		)
 		FROM TenantEntity tenant
 		WHERE tenant.slug = :slug
@@ -27,7 +28,8 @@ public interface TenantRepository extends JpaRepository<TenantEntity, Long> {
 			tenant.id,
 			tenant.slug,
 			tenant.displayName,
-			tenant.databaseKey
+			tenant.databaseKey,
+			tenant.tenantType
 		)
 		FROM TenantEntity tenant
 		WHERE tenant.databaseKey = :databaseKey
@@ -40,7 +42,8 @@ public interface TenantRepository extends JpaRepository<TenantEntity, Long> {
 			tenant.id,
 			tenant.slug,
 			tenant.displayName,
-			tenant.databaseKey
+			tenant.databaseKey,
+			tenant.tenantType
 		)
 		FROM TenantEntity tenant
 		WHERE tenant.status = com.comercioflex.tenant.infrastructure.control.TenantStatus.ACTIVE

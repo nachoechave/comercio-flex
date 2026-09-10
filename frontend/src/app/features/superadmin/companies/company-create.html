@@ -26,6 +26,13 @@
     <legend>Empresa</legend>
     <div class="form-grid">
       <label>
+        Tipo de sitio
+        <select formControlName="tenantType">
+          <option value="ECOMMERCE">Ecommerce</option>
+          <option value="RADIO">Radio / Medio</option>
+        </select>
+      </label>
+      <label>
         Nombre comercial
         <input formControlName="name" autocomplete="organization" maxlength="160" />
         @if (form.controls.name.touched && form.controls.name.invalid) {

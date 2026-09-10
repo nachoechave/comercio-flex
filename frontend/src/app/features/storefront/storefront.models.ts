@@ -1,9 +1,11 @@
+import { TenantType } from '../../core/tenant/tenant-type';
 import { VariantOptionValue } from '../../shared/variant-options';
 import { StorefrontTemplate } from './storefront-template';
 
 export type { StorefrontTemplate } from './storefront-template';
 
 export interface StoreSettings {
+  tenantType?: TenantType;
   slug: string;
   storeName: string;
   currencyCode: string;
@@ -19,6 +21,7 @@ export interface StoreSettings {
 }
 
 export interface StorefrontTenantResolution {
+  tenantType?: TenantType;
   storeSlug: string;
   displayName: string;
 }

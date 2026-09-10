@@ -1,5 +1,7 @@
 package com.comercioflex.tenant.api;
 
+import com.comercioflex.tenant.application.ResolvedTenant;
+
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -11,7 +13,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-import com.comercioflex.tenant.application.ResolvedTenant;
 import com.comercioflex.tenant.application.TenantContext;
 import com.comercioflex.tenant.application.TenantNotFoundException;
 import com.comercioflex.tenant.application.TenantResolver;
@@ -28,6 +29,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 public class TenantResolutionFilter extends OncePerRequestFilter {
+
+	public static final String RESOLVED_TENANT_ATTRIBUTE =
+		"com.comercioflex.tenant.api.TenantResolutionFilter.tenant";
 
 	public static final String TENANT_MEMBERSHIP_ATTRIBUTE =
 		TenantResolutionFilter.class.getName() + ".membership";
@@ -61,7 +65,8 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 			return true;
 		}
 		String storeResource = matcher.group(2);
-		return !storeResource.equals("/settings")
+		return !isPublicIdentityResource(storeResource)
+			&& !storeResource.equals("/settings")
 			&& !storeResource.equals("/payment-methods")
 			&& !storeResource.equals("/catalog")
 			&& !storeResource.startsWith("/catalog/")
@@ -72,6 +77,13 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 			&& !storeResource.startsWith("/media/branding/")
 			&& !storeResource.equals("/admin")
 			&& !storeResource.startsWith("/admin/");
+	}
+
+	private boolean isPublicIdentityResource(String resource) {
+		return resource.equals("/membership-plans") || resource.equals("/me/membership")
+			|| resource.startsWith("/me/membership/")
+			|| resource.equals("/member-registration") || resource.equals("/me/profile")
+			|| resource.equals("/account/password/forgot") || resource.equals("/account/password/reset");
 	}
 
 	@Override
@@ -96,6 +108,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 			}
 
 			ResolvedTenant tenant = tenantResolver.resolveActive(matcher.group(1));
+			request.setAttribute(RESOLVED_TENANT_ATTRIBUTE, tenant);
 			if (administrative) {
 				TenantMembership membership = membershipAuthorizer.requireActiveMembership(
 					principal.id(),

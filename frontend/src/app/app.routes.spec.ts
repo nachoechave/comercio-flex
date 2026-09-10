@@ -4,6 +4,22 @@ import { LandingPage } from './features/landing/landing-page/landing-page';
 import { routes } from './app.routes';
 
 describe('application routes', () => {
+  it('keeps radio in an independent lazy route tree after tenant administration', async () => {
+    const storefronts = routes.filter(route => route.path === 'tiendas/:storeSlug');
+    expect(storefronts).toHaveLength(2);
+    expect(storefronts[0].canMatch).toHaveLength(1);
+    expect(storefronts[1].canMatch).toHaveLength(1);
+    expect(storefronts[1].loadComponent).toBeUndefined();
+    const { RADIO_ROUTES } = await import('./features/radio/radio.routes');
+    expect(await storefronts[1].loadChildren?.()).toEqual(RADIO_ROUTES);
+    expect(RADIO_ROUTES.map(route => route.path)).toEqual(['']);
+    expect(RADIO_ROUTES[0].children?.map(route => route.path)).toEqual([
+      '', 'registro', 'ingresar', 'olvide-contrasena', 'nueva-contrasena', 'socios', 'mi-cuenta', '**',
+    ]);
+    const account = RADIO_ROUTES[0].children?.find(route => route.path === 'mi-cuenta');
+    expect(account?.canActivate).toHaveLength(1);
+    expect(account?.canActivateChild).toHaveLength(1);
+  });
   it('loads the commercial landing only at the public root', async () => {
     const rootRoute = routes.find(
       (route) => route.path === '' && route.pathMatch === 'full',

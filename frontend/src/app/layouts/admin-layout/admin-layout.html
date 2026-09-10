@@ -22,6 +22,14 @@
       </div>
 
       <nav class="admin-nav">
+        @if (isRadio()) {
+          @if (currentMembership.role !== 'STAFF') {
+            <p class="nav-group-label">RADIO</p>
+            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'socios']" routerLinkActive="active"><app-admin-icon name="user" /><span>Socios</span></a>
+            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'planes']" routerLinkActive="active"><app-admin-icon name="categories" /><span>Planes</span></a>
+            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'cuotas']" routerLinkActive="active"><app-admin-icon name="orders" /><span>Cuotas</span></a>
+          }
+        } @else {
         @if (currentMembership.role !== 'STAFF') {
           <p class="nav-group-label">Resumen</p>
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin']" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
@@ -36,12 +44,13 @@
         <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'categorias']" routerLinkActive="active"><app-admin-icon name="categories" /><span>Categorías</span></a>
         <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'inventario']" routerLinkActive="active"><app-admin-icon name="inventory" /><span>Inventario</span></a>
 
+        }
         @if (currentMembership.role !== 'STAFF') {
           <p class="nav-group-label">Tienda</p>
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'comercio']" routerLinkActive="active"><app-admin-icon name="commerce" /><span>Comercio</span></a>
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'apariencia']" routerLinkActive="active"><app-admin-icon name="appearance" /><span>Apariencia</span></a>
         }
-        @if (currentMembership.role === 'OWNER') {
+        @if (currentMembership.role === 'OWNER' && !isRadio()) {
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'pagos']" routerLinkActive="active"><app-admin-icon name="payments" /><span>Pagos</span></a>
         }
       </nav>

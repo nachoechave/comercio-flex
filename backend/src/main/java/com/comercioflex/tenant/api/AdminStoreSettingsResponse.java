@@ -22,12 +22,11 @@ public record AdminStoreSettingsResponse(
 	String bankCbuCvu
 ) {
 	static AdminStoreSettingsResponse from(String slug, StoreSettings value) {
-		StoreSettingsResponse publicSettings = StoreSettingsResponse.from(slug, value);
 		return new AdminStoreSettingsResponse(
-			publicSettings.slug(), publicSettings.storeName(), publicSettings.currencyCode(),
-			publicSettings.timezone(), publicSettings.contactPhone(), publicSettings.contactEmail(),
-			publicSettings.pickupAddress(), publicSettings.pickupInstructions(),
-			publicSettings.bankTransferEnabled(), value.bankTransferDiscountPercentage(), publicSettings.brandTheme(), publicSettings.branding(),
+			slug, value.storeName(), value.currencyCode(),
+			value.timezone(), value.contactPhone(), value.contactEmail(),
+			value.pickupAddress(), value.pickupInstructions(),
+			value.bankTransferEnabled(), value.bankTransferDiscountPercentage(), value.brandTheme().name(), StoreSettingsResponse.BrandingResponse.from(slug, value.branding()),
 			value.bankName(),
 			value.bankAccountHolder(), value.bankAlias(), value.bankCbuCvu());
 	}

@@ -1,5 +1,9 @@
 package com.comercioflex.tenant.api;
 
+import org.springframework.web.bind.annotation.RequestAttribute;
+
+import com.comercioflex.tenant.application.ResolvedTenant;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,7 +22,9 @@ public class StoreSettingsController {
 	}
 
 	@GetMapping
-	StoreSettingsResponse getSettings(@PathVariable String slug) {
-		return StoreSettingsResponse.from(slug, storeSettingsQueryService.findCurrent());
+	StoreSettingsResponse getSettings(@PathVariable String slug,
+			@RequestAttribute(TenantResolutionFilter.RESOLVED_TENANT_ATTRIBUTE)
+			ResolvedTenant tenant) {
+		return StoreSettingsResponse.from(slug, storeSettingsQueryService.findCurrent(), tenant.tenantType());
 	}
 }

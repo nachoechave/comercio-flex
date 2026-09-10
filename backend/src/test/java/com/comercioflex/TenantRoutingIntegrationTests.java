@@ -217,6 +217,27 @@ class TenantRoutingIntegrationTests {
 	}
 
 	@Test
+	void radioUsesTheSameIsolationAndAdministrativeAuthorization() throws Exception {
+		execute(CONTROL_DATABASE, "UPDATE tenants SET tenant_type = 'RADIO' WHERE slug = 'tienda-a'");
+		mockMvc.perform(get("/api/v1/stores/tienda-a/settings").header("X-Database-Key", "tenant-b"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.tenantType").value("RADIO"))
+			.andExpect(jsonPath("$.storeName").value("Tienda A"));
+		mockMvc.perform(get("/api/v1/stores/tienda-b/settings"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.tenantType").value("ECOMMERCE"))
+			.andExpect(jsonPath("$.storeName").value("Tienda B"));
+		AuthenticatedCookies owner = login("owner@example.com");
+		mockMvc.perform(get("/api/v1/stores/tienda-a/admin/settings").cookie(owner.sessionCookie()))
+			.andExpect(status().isOk());
+		mockMvc.perform(get("/api/v1/stores/tienda-b/admin/settings").cookie(owner.sessionCookie()))
+			.andExpect(status().isForbidden());
+		mockMvc.perform(get("/api/v1/stores/tienda-a/admin/settings"))
+			.andExpect(status().isUnauthorized());
+		assertThat(tenantContext.currentDatabaseKey()).isEmpty();
+	}
+
+	@Test
 	void routesEachSlugToItsOwnDatabaseAndCleansTheContext() throws Exception {
 		mockMvc.perform(get("/api/v1/stores/tienda-a/settings"))
 			.andExpect(status().isOk())

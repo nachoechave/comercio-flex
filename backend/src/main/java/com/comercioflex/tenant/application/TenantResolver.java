@@ -34,7 +34,7 @@ public class TenantResolver {
 				tenant.id(),
 				tenant.slug(),
 				tenant.displayName(),
-				tenant.databaseKey()))
+				tenant.databaseKey(), tenant.tenantType()))
 			.orElseThrow(TenantNotFoundException::new);
 	}
 }

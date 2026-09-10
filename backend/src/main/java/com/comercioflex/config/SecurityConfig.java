@@ -49,7 +49,9 @@ public class SecurityConfig {
 			TenantResolutionFilter tenantResolutionFilter,
 			PlatformRoleAuthorizationManager platformRoleAuthorizationManager,
 			SecurityContextRepository securityContextRepository,
-			CsrfTokenRepository csrfTokenRepository) throws Exception {
+			CsrfTokenRepository csrfTokenRepository,
+			@org.springframework.beans.factory.annotation.Qualifier("controlJdbcTemplate")
+			org.springframework.jdbc.core.JdbcTemplate controlJdbcTemplate) throws Exception {
 		return http
 			.cors(Customizer.withDefaults())
 			.csrf(csrf -> csrf
@@ -77,7 +79,8 @@ public class SecurityConfig {
 						"/admin", "/admin/**", "/superadmin", "/superadmin/**", "/tiendas/**",
 						"/stores/*/payment-return/*",
 						"/payment-return/*",
-						"/carrito",
+						"/registro", "/ingresar", "/olvide-contrasena", "/nueva-contrasena", "/mi-cuenta", "/mi-cuenta/**",
+						"/socios", "/carrito",
 						"/checkout",
 						"/mis-pedidos",
 						"/pedidos/**",
@@ -85,6 +88,11 @@ public class SecurityConfig {
 				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/storefront/resolve").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/membership-plans").permitAll()
+				.requestMatchers("/api/v1/stores/*/admin/membership-plans", "/api/v1/stores/*/admin/membership-plans/**")
+				.access(new TenantPermissionAuthorizationManager(TenantPermission.MANAGE_RADIO_PLANS))
+				.requestMatchers("/api/v1/stores/*/admin/paid-memberships", "/api/v1/stores/*/admin/paid-memberships/**")
+				.access(new TenantPermissionAuthorizationManager(TenantPermission.VIEW_RADIO_MEMBERSHIPS))
 				.requestMatchers("/api/v1/stores/*/settings").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/payment-methods").permitAll()
 				.requestMatchers(
@@ -138,6 +146,10 @@ public class SecurityConfig {
 					"/api/v1/auth/csrf",
 					"/api/v1/auth/login",
 					"/api/v1/auth/session").permitAll()
+				.requestMatchers(HttpMethod.POST,
+					"/api/v1/stores/*/member-registration",
+					"/api/v1/stores/*/account/password/forgot",
+					"/api/v1/stores/*/account/password/reset").permitAll()
 				.requestMatchers("/api/v1/superadmin", "/api/v1/superadmin/**")
 				.access(platformRoleAuthorizationManager)
 				.requestMatchers(
@@ -192,6 +204,7 @@ public class SecurityConfig {
 					"/api/v1/integrations/mercado-pago/oauth/callback")
 				.authenticated()
 				.anyRequest().authenticated())
+			.addFilterBefore(new com.comercioflex.identity.api.CredentialSessionFilter(controlJdbcTemplate), AnonymousAuthenticationFilter.class)
 			.addFilterAfter(tenantResolutionFilter, AnonymousAuthenticationFilter.class)
 			.build();
 	}

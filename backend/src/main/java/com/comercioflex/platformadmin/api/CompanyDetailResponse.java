@@ -1,5 +1,7 @@
 package com.comercioflex.platformadmin.api;
 
+import com.comercioflex.tenant.domain.TenantType;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -16,7 +18,8 @@ public record CompanyDetailResponse(
 	PrimaryAdministratorResponse primaryAdministrator,
 	String domain,
 	Instant createdAt,
-	Instant lastActivityAt) {
+	Instant lastActivityAt,
+	TenantType tenantType) {
 
 	static CompanyDetailResponse from(CompanyDetail company) {
 		return new CompanyDetailResponse(
@@ -29,6 +32,6 @@ public record CompanyDetailResponse(
 			PrimaryAdministratorResponse.from(company.primaryAdministrator()),
 			company.domain(),
 			company.createdAt(),
-			company.lastActivityAt());
+			company.lastActivityAt(), company.tenantType());
 	}
 }

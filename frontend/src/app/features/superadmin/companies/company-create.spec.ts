@@ -6,7 +6,7 @@ import { SuperAdminApiService } from '../super-admin-api.service';
 import { CompanyCreate } from './company-create';
 
 describe('CompanyCreate', () => {
-  it('validates and sends only business onboarding data', () => {
+  it.each(['ECOMMERCE', 'RADIO'] as const)('validates and sends onboarding data for %s', (tenantType) => {
     const createCompany = vi.fn().mockReturnValue(
       of({ id: 'company-1', slug: 'urban-clothes' }),
     );
@@ -29,7 +29,9 @@ describe('CompanyCreate', () => {
     const router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
+    expect(component.form.controls.tenantType.value).toBe('ECOMMERCE');
     component.form.setValue({
+      tenantType,
       name: 'Urban Clothes',
       slug: 'urban-clothes',
       industry: 'Indumentaria',
@@ -45,6 +47,7 @@ describe('CompanyCreate', () => {
     expect(createCompany).toHaveBeenCalledWith(
       expect.objectContaining({
         slug: 'urban-clothes',
+        tenantType,
         administratorPhone: null,
         domain: null,
       }),
