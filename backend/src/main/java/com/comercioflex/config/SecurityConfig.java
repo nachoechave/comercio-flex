@@ -80,7 +80,7 @@ public class SecurityConfig {
 						"/stores/*/payment-return/*",
 						"/payment-return/*",
 						"/registro", "/ingresar", "/olvide-contrasena", "/nueva-contrasena", "/mi-cuenta", "/mi-cuenta/**",
-						"/carrito",
+						"/socios", "/carrito",
 						"/checkout",
 						"/mis-pedidos",
 						"/pedidos/**",
@@ -88,6 +88,11 @@ public class SecurityConfig {
 				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/storefront/resolve").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/membership-plans").permitAll()
+				.requestMatchers("/api/v1/stores/*/admin/membership-plans", "/api/v1/stores/*/admin/membership-plans/**")
+				.access(new TenantPermissionAuthorizationManager(TenantPermission.MANAGE_RADIO_PLANS))
+				.requestMatchers("/api/v1/stores/*/admin/paid-memberships", "/api/v1/stores/*/admin/paid-memberships/**")
+				.access(new TenantPermissionAuthorizationManager(TenantPermission.VIEW_RADIO_MEMBERSHIPS))
 				.requestMatchers("/api/v1/stores/*/settings").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/payment-methods").permitAll()
 				.requestMatchers(

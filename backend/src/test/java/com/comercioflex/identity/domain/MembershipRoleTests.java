@@ -7,6 +7,18 @@ import org.junit.jupiter.api.Test;
 class MembershipRoleTests {
 
 	@Test
+	void radioCommercialPermissionsDoNotGrantAdministrativeMembershipManagement() {
+		for (TenantPermission permission : new TenantPermission[] {
+			TenantPermission.VIEW_RADIO_MEMBERSHIPS, TenantPermission.MANAGE_RADIO_PLANS }) {
+			assertThat(MembershipRole.OWNER.allows(permission)).isTrue();
+			assertThat(MembershipRole.ADMIN.allows(permission)).isTrue();
+			assertThat(MembershipRole.STAFF.allows(permission)).isFalse();
+		}
+		assertThat(MembershipRole.ADMIN.allows(TenantPermission.MANAGE_MEMBERSHIPS)).isFalse();
+		assertThat(MembershipRole.STAFF.allows(TenantPermission.MANAGE_MEMBERSHIPS)).isFalse();
+	}
+
+	@Test
 	void ownerCanUseEveryTenantPermission() {
 		assertThat(TenantPermission.values())
 			.allMatch(MembershipRole.OWNER::allows);

@@ -13,8 +13,11 @@ import { RadioContext } from './radio-context';
     <div class="radio-shell">
       <nav aria-label="Navegación de la radio">
         <a [routerLink]="context.link()">Inicio</a>
+        <a [routerLink]="context.link('socios')">Socios</a>
         @if (auth.isAuthenticated()) {
           <a [routerLink]="context.link('mi-cuenta')">Mi cuenta</a>
+          <a [routerLink]="context.link('mi-cuenta', 'plan')">Mi plan</a>
+          <a [routerLink]="context.link('mi-cuenta', 'cuotas')">Cuotas</a>
           <a [routerLink]="context.link('mi-cuenta', 'perfil')">Mi perfil</a>
           <button type="button" (click)="logout()" [disabled]="busy()">Cerrar sesión</button>
         } @else {
