@@ -75,6 +75,7 @@ public class SecurityConfig {
 				.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(
+						"/programas", "/nosotros", "/login", "/no-encontrado",
 						"/", "/index.html", "/*.js", "/*.css", "/*.ico", "/assets/**",
 						"/admin", "/admin/**", "/superadmin", "/superadmin/**", "/tiendas/**",
 						"/stores/*/payment-return/*",
@@ -206,7 +207,11 @@ public class SecurityConfig {
 					HttpMethod.GET,
 					"/api/v1/integrations/mercado-pago/oauth/callback")
 				.authenticated()
+				.requestMatchers(request -> ("GET".equals(request.getMethod()) || "HEAD".equals(request.getMethod()))
+					&& com.comercioflex.tenant.application.TenantPublicPaths.cleanPath(request.getRequestURI().substring(request.getContextPath().length())))
+				.permitAll()
 				.anyRequest().authenticated())
+
 			.addFilterBefore(new com.comercioflex.identity.api.CredentialSessionFilter(controlJdbcTemplate), AnonymousAuthenticationFilter.class)
 			.addFilterAfter(tenantResolutionFilter, AnonymousAuthenticationFilter.class)
 			.build();

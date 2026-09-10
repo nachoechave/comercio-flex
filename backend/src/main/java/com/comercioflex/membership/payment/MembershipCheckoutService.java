@@ -33,11 +33,12 @@ public class MembershipCheckoutService {
   identities.requireActive(user);boolean enabled=available(tenant);
   return tx.execute(s->{var member=members.member(user,false).orElse(null);if(member==null)return new CheckoutView(enabled,"NONE",null,"");var period=members.current(member.id(),memberships.currentMonth()).orElse(null);if(member.cancelledAt()!=null)return new CheckoutView(false,"CANCELLED_MEMBERSHIP",null,"La membresía está cancelada.");if(period==null)return new CheckoutView(enabled,"NONE",null,"");if("ACCREDITED".equals(period.accreditationStatus()))return new CheckoutView(enabled,"APPROVED",null,"Cuota pagada");return payments.forPeriod(period.publicId()).map(a->view(a,enabled,false)).orElse(new CheckoutView(enabled,"NOT_STARTED",null,enabled?"":"Mercado Pago no está disponible para esta radio."));});
  }
+ String returnUrl(ResolvedTenant tenant) { return domains.verifiedPrimaryHostname(tenant.id()).map(h->"https://"+h+"/mi-cuenta/pago-retorno").orElseGet(()->properties.frontendBaseUri().resolve(TenantPublicPaths.radio(tenant.slug())+"/mi-cuenta/pago-retorno").toString()); }
  public CheckoutView initiate(ResolvedTenant tenant,UUID user) {
   identities.requireActive(user);
   if(!available(tenant))throw new MembershipProblem(409,"Mercado Pago no está disponible para esta radio.");
   PaymentCredential credential=credentials.resolve(tenant.id(),tenant.slug());
-  String returnUrl=domains.verifiedPrimaryHostname(tenant.id()).map(h->"https://"+h+"/mi-cuenta/pago-retorno").orElseGet(()->properties.frontendBaseUri().resolve("/tiendas/"+tenant.slug()+"/mi-cuenta/pago-retorno").toString());
+  String returnUrl=returnUrl(tenant);
   Prepared prepared=tx.execute(s->{
    var member=members.member(user,true).orElseThrow(MembershipProblem::missing);
    if(member.cancelledAt()!=null)throw MembershipProblem.conflict("La membresía está cancelada.");

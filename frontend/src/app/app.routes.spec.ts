@@ -14,7 +14,7 @@ describe('application routes', () => {
     expect(await storefronts[1].loadChildren?.()).toEqual(RADIO_ROUTES);
     expect(RADIO_ROUTES.map(route => route.path)).toEqual(['']);
     expect(RADIO_ROUTES[0].children?.map(route => route.path)).toEqual([
-      '', 'programas', 'nosotros', 'registro', 'ingresar', 'olvide-contrasena', 'nueva-contrasena', 'socios', 'mi-cuenta', '**',
+      'login', '', 'programas', 'nosotros', 'registro', 'ingresar', 'olvide-contrasena', 'nueva-contrasena', 'socios', 'mi-cuenta', '**',
     ]);
     const account = RADIO_ROUTES[0].children?.find(route => route.path === 'mi-cuenta');
     expect(account?.canActivate).toHaveLength(1);

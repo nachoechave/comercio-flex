@@ -149,7 +149,7 @@ describe('RADIO forms and navigation', () => {
   });
   it('closes the existing session and redirects to RADIO login', () => {
     const fixture = TestBed.createComponent(RadioLayout); fixture.detectChanges(); fixture.componentInstance.logout();
-    expect(auth.logout).toHaveBeenCalledOnce(); expect(navigate).toHaveBeenCalledWith(['/tiendas', 'radio-a', 'ingresar']);
+    expect(auth.logout).toHaveBeenCalledOnce(); expect(navigate).toHaveBeenCalledWith(['/tiendas', 'radio-a']);
   });
 });
 
@@ -162,7 +162,7 @@ describe('RADIO authorization boundary', () => {
   it('redirects visitors to tenant login', async () => {
     setup(false);
     const result = await firstValueFrom(TestBed.runInInjectionContext(() => radioAccountGuard(snapshot, state)) as Observable<UrlTree>);
-    expect(TestBed.inject(Router).serializeUrl(result)).toBe('/tiendas/radio-a/ingresar');
+    expect(TestBed.inject(Router).serializeUrl(result)).toBe('/radio-a/login');
   });
   it('allows an ordinary identity into /mi-cuenta, but denies both admin areas', async () => {
     setup(true);

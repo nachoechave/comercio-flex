@@ -21,7 +21,7 @@ describe('tenant experience composition', () => {
     api.resolveStorefront.mockReset();
     api.resolveStorefront.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
     // Preserve the application's actual matching order and guards; replace only visual trees.
-    const publicRoutes = routes.filter(r => r.path === 'tiendas/:storeSlug' || (r.path === '' && r.canMatch));
+    const publicRoutes = routes.filter(r => r.path === ':storeSlug' || r.path === 'tiendas/:storeSlug' || (r.path === '' && r.canMatch));
     TestBed.configureTestingModule({ providers: [
       { provide: StorefrontApiService, useValue: api },
       provideRouter(publicRoutes.map(r => ({

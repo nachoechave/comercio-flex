@@ -41,7 +41,19 @@ const server = http.createServer((req, res) => {
   await page.getByRole('button', { name: 'Guardar', exact: true }).click();
   await page.getByRole('cell', { name: 'PLUS', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
-  await page.goto(origin + '/tiendas/radio-a/registro');
+  await page.goto(origin + '/radio-a/registro');
+  for (const width of [390,1366]) {
+   await page.setViewportSize({width,height:900});
+   await page.goto(origin + '/radio-a');
+   if(width===390) await page.getByRole('button',{name:'Menú',exact:true}).click();
+   await page.getByRole('link',{name:'Programas',exact:true}).click();
+   await page.waitForURL('**/radio-a/programas');
+   assert.equal(new URL(page.url()).pathname,'/radio-a/programas');
+   await page.reload();
+   await page.getByRole('heading',{name:'Programas',exact:true}).waitFor();
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+  }
+  await page.goto(origin + '/radio-a/registro');
   await page.getByLabel('Nombre', { exact: true }).fill('Ignacio');
   await page.getByLabel('Apellido', { exact: true }).fill('Echave');
   await page.getByLabel(/^(Email|Correo electrónico)$/).fill('browser-member@example.com');
@@ -49,9 +61,9 @@ const server = http.createServer((req, res) => {
   await page.getByLabel('Confirmar contraseña', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
   await page.getByText('Solicitud recibida.', { exact: false }).waitFor();
-  await page.goto(origin + '/tiendas/radio-a/socios');
+  await page.goto(origin + '/radio-a/socios');
   await page.getByRole('button', { name: 'Elegir plan', exact: true }).click();
-  await page.waitForURL('**/ingresar?next=socios');
+  await page.waitForURL('**/login?next=socios');
   await page.getByLabel(/^(Email|Correo electrónico)$/).fill('browser-member@example.com');
   await page.getByLabel('Contraseña', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
@@ -59,6 +71,7 @@ const server = http.createServer((req, res) => {
   await page.getByRole('button', { name: 'Elegir plan', exact: true }).click();
   await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   await page.waitForURL('**/mi-cuenta');
+  await page.reload();
   await page.getByRole('heading', { name: 'Hola, Ignacio' }).waitFor();
   assert.match(await page.locator('main').innerText(), /PLUS/);
   assert.match(await page.locator('main').innerText(), /PENDIENTE/);
@@ -70,6 +83,8 @@ const server = http.createServer((req, res) => {
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'Account width '+width);
   }
   await page.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
+  await page.waitForURL('**/radio-a');
+  await page.goto(origin + '/radio-a/login');
   await page.getByLabel(/^(Email|Correo electrónico)$/).fill('browser-member@example.com');
   await page.getByLabel('Contraseña', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();

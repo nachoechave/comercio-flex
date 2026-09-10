@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import { CanMatchFn } from '@angular/router';
+import { CanMatchFn, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { StorefrontApiService } from '../../features/storefront/storefront-api.service';
 import { StorefrontRoutingService } from '../../features/storefront/storefront-routing.service';
@@ -7,9 +7,17 @@ import { TenantType } from './tenant-type';
 
 // Failures propagate: an unavailable or unknown tenant never falls through to another experience.
 export function tenantExperienceGuard(type: TenantType): CanMatchFn {
-  return (_route, segments) => inject(StorefrontApiService).getSettings(segments[1].path).pipe(
-    map(settings => (settings.tenantType ?? 'ECOMMERCE') === type),
-  );
+  return (_route, segments) => {
+    const router = inject(Router);
+    return inject(StorefrontApiService).getSettings(segments[1].path).pipe(
+      map(settings => {
+        if ((settings.tenantType ?? 'ECOMMERCE') !== type) return false;
+        if (type !== 'RADIO') return true;
+        const current = router.getCurrentNavigation()?.extractedUrl;
+        return router.createUrlTree(['/', ...segments.slice(1).map(s => s.path === 'ingresar' ? 'login' : s.path)], { queryParams: current?.queryParams, fragment: current?.fragment ?? undefined });
+      }),
+    );
+  };
 }
 
 export const radioDomainGuard: CanMatchFn = (_route, segments) => {

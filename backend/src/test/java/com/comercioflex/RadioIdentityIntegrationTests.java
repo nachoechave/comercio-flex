@@ -285,7 +285,7 @@ class RadioIdentityIntegrationTests {
 	private String deliveredToken() throws Exception {
 		var message = sent.poll(5, TimeUnit.SECONDS);
 		assertThat(message).isNotNull();
-		assertThat(message.textBody()).contains("https://platform.example/tiendas/radio-a/nueva-contrasena#token=");
+		assertThat(message.textBody()).contains("https://platform.example/radio-a/nueva-contrasena#token=");
 		return message.textBody().split("#token=")[1].substring(0, 43);
 	}
 	private ResultActions write(String path, String body, Session session) throws Exception {

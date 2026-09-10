@@ -1,6 +1,7 @@
 import { adminTenantSettings, radioAdminGuard } from './core/tenant/admin-tenant';
 import { radioDomainGuard, tenantExperienceGuard } from './core/tenant/tenant-experience.guards';
 import { Routes } from '@angular/router';
+import { radioCleanGuard } from './core/tenant/radio-clean.guard';
 
 import {
   adminEntryGuard,
@@ -204,5 +205,7 @@ export const routes: Routes = [
     canMatch: [tenantExperienceGuard('RADIO')],
     loadChildren: () => import('./features/radio/radio.routes').then(m => m.RADIO_ROUTES),
   },
-  { path: '**', redirectTo: '' },
+  { path: 'no-encontrado', loadComponent: () => import('./core/routing/not-found-page').then(m => m.NotFoundPage) },
+  { path: ':storeSlug', canMatch: [radioCleanGuard], loadChildren: () => import('./features/radio/radio.routes').then(m => m.RADIO_ROUTES) },
+  { path: '**', loadComponent: () => import('./core/routing/not-found-page').then(m => m.NotFoundPage) },
 ];

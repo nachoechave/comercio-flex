@@ -108,6 +108,9 @@ public class CompanyProvisioningService {
 	}
 
 	private CreateCompanyCommand normalize(CreateCompanyCommand command) {
+		if (!com.comercioflex.tenant.application.TenantPublicPaths.validSlug(command.slug())) {
+			throw new IllegalArgumentException("El slug es inválido o está reservado.");
+		}
 		CompanyStatus requested = command.requestedStatus();
 		if (requested != CompanyStatus.ACTIVE && requested != CompanyStatus.INACTIVE) {
 			throw new IllegalArgumentException("Invalid initial company status");
