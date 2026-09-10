@@ -16,7 +16,7 @@ public class SpaForwardController {
 			"/stores/{slug}/payment-return/{returnToken}",
 			"/payment-return/{returnToken}",
 			"/registro", "/ingresar", "/olvide-contrasena", "/nueva-contrasena", "/mi-cuenta", "/mi-cuenta/**",
-			"/carrito",
+			"/socios", "/carrito",
 			"/checkout",
 			"/mis-pedidos",
 			"/pedidos/**",

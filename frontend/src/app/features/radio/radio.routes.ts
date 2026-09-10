@@ -11,8 +11,11 @@ export const RADIO_ROUTES: Routes = [
         path, data: { mode: ['register', 'login', 'forgot', 'reset'][index] },
         loadComponent: () => import('./radio-auth-page').then(m => m.RadioAuthPage),
       })),
+      { path: 'socios', loadComponent: () => import('./membership-plans-page').then(m => m.MembershipPlansPage) },
       { path: 'mi-cuenta', canActivate: [radioAccountGuard], canActivateChild: [radioAccountGuard], children: [
-        { path: '', pathMatch: 'full', loadComponent: () => import('./radio-private-page').then(m => m.RadioPrivatePage) },
+        { path: '', pathMatch: 'full', loadComponent: () => import('./membership-account-page').then(m => m.MembershipAccountPage) },
+        { path: 'plan', data: { membershipMode: 'plan' }, loadComponent: () => import('./membership-account-page').then(m => m.MembershipAccountPage) },
+        { path: 'cuotas', data: { membershipMode: 'history' }, loadComponent: () => import('./membership-account-page').then(m => m.MembershipAccountPage) },
         { path: 'perfil', data: { profile: true }, canActivate: [radioAccountGuard], loadComponent: () => import('./radio-private-page').then(m => m.RadioPrivatePage) },
       ] },
       { path: '**', redirectTo: '' },

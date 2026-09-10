@@ -80,7 +80,9 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 	}
 
 	private boolean isPublicIdentityResource(String resource) {
-		return resource.equals("/member-registration") || resource.equals("/me/profile")
+		return resource.equals("/membership-plans") || resource.equals("/me/membership")
+			|| resource.startsWith("/me/membership/")
+			|| resource.equals("/member-registration") || resource.equals("/me/profile")
 			|| resource.equals("/account/password/forgot") || resource.equals("/account/password/reset");
 	}
 

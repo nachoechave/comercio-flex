@@ -8,7 +8,7 @@ import {
   RouterLinkActive,
   RouterOutlet,
 } from '@angular/router';
-import { filter, finalize, map } from 'rxjs';
+import { filter, finalize, map, of } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { AdminIcon } from '../../shared/ui/admin-icon/admin-icon';
@@ -29,6 +29,8 @@ export class AdminLayout {
     { initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '' },
   );
 
+  private readonly tenantData = toSignal(this.route.data ?? of(this.route.snapshot.data ?? {}));
+  readonly isRadio = computed(() => this.tenantData()?.['tenantSettings']?.tenantType === 'RADIO');
   readonly membership = computed(() => this.auth.membershipFor(this.storeSlug()));
   readonly user = this.auth.user;
   readonly hasMultipleStores = computed(() => this.auth.memberships().length > 1);

@@ -1,3 +1,4 @@
+import { adminTenantSettings, radioAdminGuard } from './core/tenant/admin-tenant';
 import { radioDomainGuard, tenantExperienceGuard } from './core/tenant/tenant-experience.guards';
 import { Routes } from '@angular/router';
 
@@ -120,17 +121,19 @@ export const routes: Routes = [
   },
   {
     path: 'tiendas/:storeSlug/admin',
+    resolve: { tenantSettings: adminTenantSettings },
     canActivate: [authGuard, membershipGuard, allowedRolesGuard(ADMIN_ROLES)],
     canActivateChild: [authGuard, membershipGuard],
     loadComponent: () =>
       import('./layouts/admin-layout/admin-layout').then((module) => module.AdminLayout),
     children: [
+      ...(['socios', 'planes', 'cuotas'] as const).map((path, index) => ({ path, canActivate: [allowedRolesGuard(['OWNER', 'ADMIN']), radioAdminGuard], data: { membershipAdminMode: ['members', 'plans', 'periods'][index] }, loadComponent: () => import('./features/radio/membership-admin-page').then(m => m.MembershipAdminPage) })),
       {
         path: '',
         canActivate: [adminHomeGuard],
         loadComponent: () =>
-          import('./features/admin/dashboard/admin-dashboard').then(
-            (module) => module.AdminDashboard,
+          import('./features/radio/membership-admin-home').then(
+            (module) => module.MembershipAdminHome,
           ),
       },
       {

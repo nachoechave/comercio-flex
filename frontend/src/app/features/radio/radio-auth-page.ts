@@ -75,7 +75,7 @@ export class RadioAuthPage {
     request.pipe(finalize(() => this.busy.set(false))).subscribe({
       next: () => {
         this.form.controls.password.reset(); this.form.controls.confirmation.reset();
-        if (this.mode === 'login') void this.router.navigate(this.context.link('mi-cuenta'));
+        if (this.mode === 'login') void this.router.navigate(this.context.link(this.route.snapshot.queryParamMap?.get('next') === 'socios' ? 'socios' : 'mi-cuenta'));
         else if (this.mode === 'reset') {
           this.token = ''; this.auth.markAnonymous();
           this.message.set('Contraseña actualizada. Iniciá sesión con tu nueva contraseña.');
