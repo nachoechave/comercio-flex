@@ -32,7 +32,7 @@ public class JdbcCheckoutControlRepository implements CheckoutControlRepository 
 			tenant.database_key, route.environment,
 			BIN_TO_UUID(route.payment_intent_public_id) payment_intent_public_id,
 			route.expected_seller_account_id, route.provider_preference_id,
-			route.status, route.expires_at
+			route.status, route.expires_at, route.destination_type
 		FROM payment_webhook_routes route
 		JOIN tenants tenant ON tenant.id = route.tenant_id
 		""";
@@ -188,7 +188,7 @@ public class JdbcCheckoutControlRepository implements CheckoutControlRepository 
 				tenant.database_key, route.environment,
 				BIN_TO_UUID(route.payment_intent_public_id) payment_intent_public_id,
 				route.expected_seller_account_id, route.provider_preference_id,
-				route.status route_status, route.expires_at
+				route.status route_status, route.expires_at, route.destination_type
 			FROM payment_webhook_events event
 			JOIN payment_webhook_routes route ON route.id = event.route_id
 			JOIN tenants tenant ON tenant.id = route.tenant_id
@@ -327,7 +327,7 @@ public class JdbcCheckoutControlRepository implements CheckoutControlRepository 
 			UUID.fromString(resultSet.getString("payment_intent_public_id")),
 			resultSet.getString("expected_seller_account_id"),
 			resultSet.getString("provider_preference_id"), resultSet.getString("status"),
-			resultSet.getTimestamp("expires_at").toInstant());
+			resultSet.getTimestamp("expires_at").toInstant(), resultSet.getString("destination_type"));
 	}
 
 	private CheckoutRoute mapRouteFromAliased(ResultSet resultSet) throws SQLException {
@@ -341,6 +341,6 @@ public class JdbcCheckoutControlRepository implements CheckoutControlRepository 
 			resultSet.getString("expected_seller_account_id"),
 			resultSet.getString("provider_preference_id"),
 			resultSet.getString("route_status"),
-			resultSet.getTimestamp("expires_at").toInstant());
+			resultSet.getTimestamp("expires_at").toInstant(), resultSet.getString("destination_type"));
 	}
 }

@@ -32,6 +32,8 @@ public class PaymentWebhookWorker {
 	private final TransactionTemplate controlTransactions;
 	private final PaymentWebhookMetrics metrics;
 	private final Clock clock;
+ private com.comercioflex.membership.payment.MembershipPaymentWebhookHandler membershipHandler;
+ @Autowired public void membershipHandler(com.comercioflex.membership.payment.MembershipPaymentWebhookHandler handler) {this.membershipHandler=handler;}
 
 	@Autowired
 	public PaymentWebhookWorker(
@@ -87,7 +89,7 @@ public class PaymentWebhookWorker {
 	private void process(ClaimedWebhookEvent event) {
 		try {
 			CheckoutRoute route = event.route();
-			if (!"ACTIVE".equals(route.status()) || route.preferenceId() == null) {
+			if (!route.membership() && (!"ACTIVE".equals(route.status()) || route.preferenceId() == null)) {
 				throw new CheckoutPaymentException("CHECKOUT_ROUTE_NOT_READY", "La ruta aún no está lista.");
 			}
 			PaymentCredential credential = credentials.resolve(route.tenantId(), route.tenantSlug());
@@ -97,10 +99,10 @@ public class PaymentWebhookWorker {
 				throw new CheckoutPaymentException(
 					"WEBHOOK_CREDENTIAL_MISMATCH", "La credencial no coincide con la ruta.");
 			}
-			VerifiedProviderPayment payment = gateway.findPayment(
-				credential, event.providerResourceId());
+			VerifiedProviderPayment payment = route.membership() ? gateway.findMembershipPayment(credential,event.providerResourceId()) : gateway.findPayment(credential,event.providerResourceId());
 			try (TenantContext.Scope ignored = tenantContext.open(route.tenantDatabaseKey())) {
-				checkoutService.applyVerifiedPayment(route.paymentAttemptId(), payment);
+				if(route.membership()) membershipHandler.apply(route,credential,payment,event.providerResourceId());
+    else checkoutService.applyVerifiedPayment(route.paymentAttemptId(), payment);
 			}
 			Boolean changed = controlTransactions.execute(status ->
 				repository.markProcessed(
@@ -133,7 +135,7 @@ public class PaymentWebhookWorker {
 		}
 		return exception instanceof CheckoutPaymentException checkout
 			&& (checkout.code().equals("PAYMENT_LOOKUP_FAILED")
-				|| checkout.code().equals("CHECKOUT_ROUTE_NOT_READY"));
+				|| checkout.code().equals("CHECKOUT_ROUTE_NOT_READY") || checkout.code().equals("PREFERENCE_LOOKUP_FAILED"));
 	}
 
 	private Duration retryDelay(int attempt) {

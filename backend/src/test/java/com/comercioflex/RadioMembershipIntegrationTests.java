@@ -58,7 +58,7 @@ class RadioMembershipIntegrationTests {
   control.update("INSERT INTO tenants(public_id,slug,display_name,status,database_key,tenant_type) VALUES(UUID_TO_BIN(UUID()),'radio-a','Radio A','ACTIVE','tenant-a','RADIO'),(UUID_TO_BIN(UUID()),'radio-b','Radio B','ACTIVE','tenant-b','RADIO'),(UUID_TO_BIN(UUID()),'shop','Shop','ACTIVE','tenant-shop','ECOMMERCE')");
   for(String user:List.of("owner","admin","member","other","staff"))control.update("INSERT INTO platform_users(public_id,email_normalized,display_name,first_name,last_name,password_hash,status,platform_role) VALUES(UUID_TO_BIN(UUID()),?,?,?,'Prueba',?,'ACTIVE','USER')",user+"@example.com",user,user,HASH);
   for(String role:List.of("OWNER","ADMIN","STAFF"))control.update("INSERT INTO memberships(user_id,tenant_id,role,status) SELECT u.id,t.id,?,'ACTIVE' FROM platform_users u,tenants t WHERE u.email_normalized=? AND t.slug='radio-a'",role,role.toLowerCase()+"@example.com");
-  for(String db:List.of("tenant-a","tenant-b"))try(var ignored=context.open(db)) {tenant.update("DELETE FROM membership_periods");tenant.update("DELETE FROM paid_memberships");tenant.update("DELETE FROM membership_plans");tenant.update("DELETE FROM store_settings");tenant.update("INSERT INTO store_settings(store_name,currency_code,timezone) VALUES('Radio','ARS','America/Argentina/Buenos_Aires')");}
+  for(String db:List.of("tenant-a","tenant-b"))try(var ignored=context.open(db)) {tenant.update("DELETE FROM membership_payments");tenant.update("DELETE FROM membership_payment_attempts");tenant.update("DELETE FROM membership_periods");tenant.update("DELETE FROM paid_memberships");tenant.update("DELETE FROM membership_plans");tenant.update("DELETE FROM store_settings");tenant.update("INSERT INTO store_settings(store_name,currency_code,timezone) VALUES('Radio','ARS','America/Argentina/Buenos_Aires')");}
   owner=login("owner");admin=login("admin");member=login("member");other=login("other");staff=login("staff");
  }
  @Test void publicPlansAreRadioOnlyActiveOrderedAndWithoutInternalIds() throws Exception {
@@ -171,6 +171,14 @@ class RadioMembershipIntegrationTests {
   mvc.perform(get(me())).andExpect(status().isUnauthorized());
   for(String path:List.of(me(),me()+"/current-period",me()+"/cancel",base("radio-a")+"/admin/membership-plans"))mvc.perform(post(path).cookie(member.cookie()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
   control.update("UPDATE platform_users SET status='DISABLED' WHERE email_normalized='member@example.com'");mine(member).andExpect(status().isForbidden());
+ }
+
+ @Test void membershipCheckoutNeverAcceptsClientPriceOrIdentityAndNeedsCsrf() throws Exception {
+  mvc.perform(get(me()+"/current-period/payment").cookie(member.cookie())).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+  mvc.perform(post(me()+"/current-period/checkout-pro").cookie(member.cookie()).contentType(MediaType.APPLICATION_JSON).content("{\"amount\":1,\"currency\":\"USD\",\"userId\":\"forged\"}"))
+   .andExpect(status().isForbidden());
+  send(post(me()+"/current-period/checkout-pro"),member,Map.of("amount",1,"currency","USD","userId","forged"))
+   .andExpect(status().isBadRequest());
  }
 
  @Test @org.junit.jupiter.api.condition.EnabledIfSystemProperty(named="radio.browser",matches="true")

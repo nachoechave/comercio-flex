@@ -129,9 +129,14 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 		return loadPayment(credential, providerPaymentId, null).payment();
 	}
 
-	private ResolvedProviderPayment loadPayment(
+	@Override
+ public VerifiedProviderPayment findMembershipPayment(PaymentCredential credential,String id) {return loadPayment(credential,id,null,true).payment();}
+
+ private ResolvedProviderPayment loadPayment(PaymentCredential credential,String id,String preference) {return loadPayment(credential,id,preference,false);}
+
+ private ResolvedProviderPayment loadPayment(
 			PaymentCredential credential, String providerPaymentId,
-			String expectedPreferenceId) {
+			String expectedPreferenceId, boolean membership) {
 		long numericId;
 		try {
 			numericId = Long.parseLong(providerPaymentId);
@@ -201,9 +206,9 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 				payment.getCollectorId() == null ? null : payment.getCollectorId().toString(),
 				merchantOrder.getPreferenceId(), payment.getExternalReference(),
 				payment.getTransactionAmount(), payment.getCurrencyId(), payment.isLiveMode(),
-				mapStatus(payment.getStatus()),
+				membership && java.util.Set.of("refunded","charged_back").contains(payment.getStatus()) ? PaymentResultStatus.REJECTED : mapStatus(payment.getStatus()),
 				payment.getDateLastUpdated() == null ? null
-					: payment.getDateLastUpdated().toInstant()),
+					: payment.getDateLastUpdated().toInstant(), payment.getStatus().toUpperCase(Locale.ROOT), payment.getDateApproved()==null?null:payment.getDateApproved().toInstant()),
 			linkDiagnostics);
 	}
 
@@ -336,6 +341,24 @@ public final class MercadoPagoCheckoutProGateway implements CheckoutProGateway {
 			throw gatewayFailure("PREFERENCE_LOOKUP_FAILED", exception);
 		}
 	}
+
+ @Override
+ public Optional<CreatedCheckoutPreference> recoverMembershipPreference(PaymentCredential credential,CheckoutPreferenceCommand command) {
+  try {
+   var page=searchPreferences(credential,command.externalReference(),0);
+   if(page==null || page.getElements()==null)throw invalidProviderResponse();
+   var candidates=page.getElements().stream().filter(p->p!=null && command.externalReference().equals(p.getExternalReference())).toList();
+   if(candidates.isEmpty() && page.getTotal()==0)return Optional.empty();
+   if(candidates.size()!=1 || page.getTotal()!=1)throw new CheckoutPaymentException("MEMBERSHIP_PREFERENCE_AMBIGUOUS","La preferencia requiere revisión.");
+   var p=preferences.get(candidates.getFirst().getId(),options(credential));
+   if(p==null || !command.externalReference().equals(p.getExternalReference()) || p.getCollectorId()==null || !credential.sellerAccountId().equals(p.getCollectorId().toString()) || p.getItems()==null || p.getItems().size()!=1)throw invalidProviderResponse();
+   var item=p.getItems().getFirst();
+   if(!command.paymentAttemptId().toString().equals(item.getId()) || item.getQuantity()!=1 || item.getUnitPrice()==null || command.amount().compareTo(item.getUnitPrice())!=0 || !command.currencyCode().equals(item.getCurrencyId()))throw invalidProviderResponse();
+   String url=credential.environment()==PaymentEnvironment.TEST?p.getSandboxInitPoint():p.getInitPoint();
+   if(blank(url))throw invalidProviderResponse();
+   return Optional.of(new CreatedCheckoutPreference(p.getId(),URI.create(url),p.getCollectorId().toString()));
+  } catch(MPApiException|MPException e) {throw gatewayFailure("PREFERENCE_LOOKUP_FAILED",e);}
+ }
 
 	private MPElementsResourcesPage<MerchantOrder> searchMerchantOrders(
 			PaymentCredential credential, String preferenceId)

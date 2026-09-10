@@ -64,6 +64,7 @@ const server = http.createServer((req, res) => {
   assert.match(await page.locator('main').innerText(), /PENDIENTE/);
   assert.match(await page.locator('main').innerText(), /septiembre/);
   assert.match(await page.locator('main').innerText(), /6[.,]000/);
+  await page.getByText('Mercado Pago no está disponible', { exact: false }).waitFor();
   for(const width of [390,768,1366,1920]) {
    await page.setViewportSize({width,height:900});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'Account width '+width);
