@@ -1,9 +1,12 @@
-:host { display: block; color: #172033; }
+:host { display: block; color: var(--radio-text,#172033); }
 * { box-sizing: border-box; }
-.radio-shell { max-width: 72rem; margin: auto; padding: 1rem; }
-nav { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid #d8dfe8; }
-nav button { margin-left: auto; }
-main { padding-block: 2rem; }
+.radio-shell { max-width: 82rem; margin: auto; padding: 0 clamp(1rem,4vw,3rem); background:var(--radio-bg,#f5f7fa); }
+.radio-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1rem 0; border-bottom:1px solid color-mix(in srgb,var(--radio-text,#172033) 14%,transparent); position:relative; }
+.radio-brand { display:flex; align-items:center; gap:.65rem; color:var(--radio-text,#172033); text-decoration:none; font-size:1.1rem; } .radio-brand img { width:2.5rem; height:2.5rem; object-fit:contain; } .radio-brand span { width:2.5rem; height:2.5rem; display:grid; place-items:center; border-radius:50%; color:#fff; background:var(--radio-primary,#173b67); font-weight:800; }
+nav { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; } nav a { color:var(--radio-text,#172033); text-decoration:none; font-weight:650; } nav button { margin-left: .5rem; }
+.menu-toggle { display:none; min-height:42px; padding:.55rem .8rem; border:1px solid #9aa7b8; border-radius:.5rem; background:#fff; font:inherit; }
+main { padding-block: 0 2rem; min-height:60vh; }
+.radio-footer { display:grid; grid-template-columns:2fr 1fr auto; gap:2rem; padding:2.5rem 0 1.5rem; border-top:1px solid color-mix(in srgb,var(--radio-text,#172033) 14%,transparent); color:#607087; } .radio-footer strong { color:var(--radio-text,#172033); } .radio-footer p { max-width:28rem; } .socials { display:flex; flex-wrap:wrap; gap:1rem; align-content:start; } .socials a { color:var(--radio-text,#172033); }
 .account-card { max-width: 40rem; margin: auto; padding: clamp(1rem, 4vw, 2.5rem); background: #fff; border: 1px solid #d8dfe8; border-radius: 1rem; }
 h1 { font-size: clamp(1.5rem, 5vw, 2rem); line-height: 1.2; }
 form, label { display: grid; gap: .5rem; }
@@ -20,8 +23,11 @@ a { color: #204b83; text-underline-offset: .2em; padding-block: .5rem; }
 .error { color: #942626; }
 .hint { font-size: .9rem; color: #4e5b6f; }
 @media (max-width: 600px) {
+  .menu-toggle { display:block; }
+  .radio-header nav { display:none; position:absolute; z-index:5; inset:calc(100% + .5rem) 0 auto; padding:1rem; border-radius:.75rem; background:#fff; box-shadow:0 12px 30px rgba(16,32,51,.18); }
+  .radio-header nav.nav-open { display:grid; }
+  .radio-footer { grid-template-columns:1fr; gap:1rem; }
   .fields { grid-template-columns: 1fr; }
-  nav { gap: .5rem 1rem; }
   nav button { margin-left: 0; }
   .account-card { border-radius: .6rem; }
 }

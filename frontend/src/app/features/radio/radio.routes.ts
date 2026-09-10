@@ -6,7 +6,9 @@ export const RADIO_ROUTES: Routes = [
     path: '',
     loadComponent: () => import('./radio-layout').then(m => m.RadioLayout),
     children: [
-      { path: '', pathMatch: 'full', loadComponent: () => import('./radio-placeholder').then(m => m.RadioPlaceholder) },
+      { path: '', pathMatch: 'full', loadComponent: () => import('./radio-home-page').then(m => m.RadioHomePage) },
+      { path: 'programas', loadComponent: () => import('./radio-programs-page').then(m => m.RadioProgramsPage) },
+      { path: 'nosotros', loadComponent: () => import('./radio-about-page').then(m => m.RadioAboutPage) },
       ...(['registro', 'ingresar', 'olvide-contrasena', 'nueva-contrasena'] as const).map((path, index) => ({
         path, data: { mode: ['register', 'login', 'forgot', 'reset'][index] },
         loadComponent: () => import('./radio-auth-page').then(m => m.RadioAuthPage),

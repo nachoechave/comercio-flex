@@ -1,41 +1,58 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { NgIf } from '@angular/common';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
+import { StorefrontContextService } from '../storefront/storefront-context.service';
+import { RadioSite, RadioSiteApiService } from './radio-site-api.service';
 import { RadioContext } from './radio-context';
 
 @Component({
   selector: 'app-radio-layout',
-  imports: [RouterLink, RouterOutlet],
-  providers: [RadioContext],
+  imports: [RouterLink, RouterOutlet, NgIf],
+  providers: [RadioContext, StorefrontContextService],
   styleUrl: './radio-account.scss',
   template: `
-    <div class="radio-shell">
-      <nav aria-label="Navegación de la radio">
-        <a [routerLink]="context.link()">Inicio</a>
-        <a [routerLink]="context.link('socios')">Socios</a>
+    <div class="radio-shell" [style.--radio-primary]="primary()" [style.--radio-secondary]="secondary()" [style.--radio-bg]="background()" [style.--radio-text]="text()">
+      <header class="radio-header">
+        <a class="radio-brand" [routerLink]="context.link()" [attr.aria-label]="settings()?.storeName || 'Radio'"><img *ngIf="settings()?.branding?.logoUrl as logo" [src]="logo" [alt]="settings()?.storeName || 'Logo'" /><span *ngIf="!settings()?.branding?.logoUrl">{{ settings()?.storeName?.slice(0, 1) || 'R' }}</span><strong>{{ settings()?.storeName || 'Radio' }}</strong></a>
+        <button class="menu-toggle" type="button" (click)="menuOpen.update(v => !v)" [attr.aria-expanded]="menuOpen()">Menú</button>
+        <nav [class.nav-open]="menuOpen()" aria-label="Navegación de la radio">
+          <a [routerLink]="context.link()" (click)="menuOpen.set(false)">Inicio</a>
+          <a [routerLink]="context.link('programas')" (click)="menuOpen.set(false)">Programas</a>
+          <a [routerLink]="context.link('nosotros')" (click)="menuOpen.set(false)">Nosotros</a>
+          <a [routerLink]="context.link('socios')" (click)="menuOpen.set(false)">Socios</a>
+          <a *ngIf="site()?.settings?.youtubeUrl as youtube" class="youtube-link" [href]="youtube" target="_blank" rel="noopener">Ver en YouTube</a>
         @if (auth.isAuthenticated()) {
-          <a [routerLink]="context.link('mi-cuenta')">Mi cuenta</a>
-          <a [routerLink]="context.link('mi-cuenta', 'plan')">Mi plan</a>
-          <a [routerLink]="context.link('mi-cuenta', 'cuotas')">Cuotas</a>
-          <a [routerLink]="context.link('mi-cuenta', 'perfil')">Mi perfil</a>
+          <a [routerLink]="context.link('mi-cuenta')" (click)="menuOpen.set(false)">Mi cuenta</a>
           <button type="button" (click)="logout()" [disabled]="busy()">Cerrar sesión</button>
         } @else {
-          <a [routerLink]="context.link('ingresar')">Iniciar sesión</a>
-          <a [routerLink]="context.link('registro')">Crear cuenta</a>
+          <a [routerLink]="context.link('ingresar')" (click)="menuOpen.set(false)">Iniciar sesión</a>
         }
-      </nav>
+        </nav>
+      </header>
       @if (error()) { <p role="alert">{{ error() }}</p> }
       <main><router-outlet /></main>
+      <footer class="radio-footer"><div><strong>{{ settings()?.storeName || 'Radio' }}</strong><p>{{ site()?.settings?.description || 'Una comunidad que comparte pasión, historias y voces.' }}</p></div><div class="socials"><a *ngIf="site()?.settings?.youtubeUrl as youtube" [href]="youtube" target="_blank" rel="noopener">YouTube</a><a *ngIf="site()?.settings?.instagramUrl as instagram" [href]="instagram" target="_blank" rel="noopener">Instagram</a><a *ngIf="site()?.settings?.xUrl as x" [href]="x" target="_blank" rel="noopener">X</a><a *ngIf="site()?.settings?.whatsappUrl as whatsapp" [href]="whatsapp" target="_blank" rel="noopener">WhatsApp</a></div><small>© {{ year }} {{ settings()?.storeName || 'Radio' }}</small></footer>
     </div>`,
 })
 export class RadioLayout {
   readonly context = inject(RadioContext);
   readonly auth = inject(AuthService);
+  private readonly siteApi = inject(RadioSiteApiService);
+  private readonly storeContext = inject(StorefrontContextService, { optional: true });
   private readonly router = inject(Router);
+  readonly site = signal<RadioSite | null>(null);
+  readonly menuOpen = signal(false);
+  readonly year = new Date().getFullYear();
+  readonly settings = this.storeContext?.settings ?? signal(null);
+  readonly primary = computed(() => this.settings()?.branding?.primaryColor || '#173B67');
+  readonly secondary = computed(() => this.settings()?.branding?.secondaryColor || '#071A2D');
+  readonly background = computed(() => this.settings()?.branding?.backgroundColor || '#F5F7FA');
+  readonly text = computed(() => this.settings()?.branding?.textColor || '#102033');
   readonly busy = signal(false);
   readonly error = signal('');
-  constructor() { this.auth.loadSession().subscribe(); }
+  constructor() { const slug = this.context.slug(); if (slug) { this.storeContext?.load(slug); this.siteApi.get(slug).subscribe({ next: value => this.site.set(value), error: () => this.error.set('No pudimos cargar la configuración de la radio.') }); } this.auth.loadSession().subscribe(); }
   logout() {
     this.busy.set(true); this.error.set('');
     this.auth.logout().pipe(finalize(() => this.busy.set(false))).subscribe({

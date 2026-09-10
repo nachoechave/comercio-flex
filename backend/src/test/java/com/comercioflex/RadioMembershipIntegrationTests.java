@@ -58,7 +58,7 @@ class RadioMembershipIntegrationTests {
   control.update("INSERT INTO tenants(public_id,slug,display_name,status,database_key,tenant_type) VALUES(UUID_TO_BIN(UUID()),'radio-a','Radio A','ACTIVE','tenant-a','RADIO'),(UUID_TO_BIN(UUID()),'radio-b','Radio B','ACTIVE','tenant-b','RADIO'),(UUID_TO_BIN(UUID()),'shop','Shop','ACTIVE','tenant-shop','ECOMMERCE')");
   for(String user:List.of("owner","admin","member","other","staff"))control.update("INSERT INTO platform_users(public_id,email_normalized,display_name,first_name,last_name,password_hash,status,platform_role) VALUES(UUID_TO_BIN(UUID()),?,?,?,'Prueba',?,'ACTIVE','USER')",user+"@example.com",user,user,HASH);
   for(String role:List.of("OWNER","ADMIN","STAFF"))control.update("INSERT INTO memberships(user_id,tenant_id,role,status) SELECT u.id,t.id,?,'ACTIVE' FROM platform_users u,tenants t WHERE u.email_normalized=? AND t.slug='radio-a'",role,role.toLowerCase()+"@example.com");
-  for(String db:List.of("tenant-a","tenant-b"))try(var ignored=context.open(db)) {tenant.update("DELETE FROM membership_payments");tenant.update("DELETE FROM membership_payment_attempts");tenant.update("DELETE FROM membership_periods");tenant.update("DELETE FROM paid_memberships");tenant.update("DELETE FROM membership_plans");tenant.update("DELETE FROM store_settings");tenant.update("INSERT INTO store_settings(store_name,currency_code,timezone) VALUES('Radio','ARS','America/Argentina/Buenos_Aires')");}
+  for(String db:List.of("tenant-a","tenant-b"))try(var ignored=context.open(db)) {tenant.update("DELETE FROM membership_payments");tenant.update("DELETE FROM membership_payment_attempts");tenant.update("DELETE FROM membership_periods");tenant.update("DELETE FROM paid_memberships");tenant.update("DELETE FROM membership_plans");tenant.update("DELETE FROM radio_programs");tenant.update("DELETE FROM radio_team_members");tenant.update("DELETE FROM radio_sponsors");tenant.update("UPDATE radio_site_settings SET hero_title=NULL,hero_subtitle=NULL,description=NULL,youtube_url=NULL,instagram_url=NULL,x_url=NULL,whatsapp_url=NULL WHERE id=1");tenant.update("DELETE FROM store_settings");tenant.update("INSERT INTO store_settings(store_name,currency_code,timezone) VALUES('Radio','ARS','America/Argentina/Buenos_Aires')");}
   owner=login("owner");admin=login("admin");member=login("member");other=login("other");staff=login("staff");
  }
  @Test void publicPlansAreRadioOnlyActiveOrderedAndWithoutInternalIds() throws Exception {
@@ -179,6 +179,16 @@ class RadioMembershipIntegrationTests {
    .andExpect(status().isForbidden());
   send(post(me()+"/current-period/checkout-pro"),member,Map.of("amount",1,"currency","USD","userId","forged"))
    .andExpect(status().isBadRequest());
+ }
+
+ @Test void radioContentIsTenantScopedAndAdminOnly() throws Exception {
+  mvc.perform(get(base("radio-a")+"/radio-site")).andExpect(status().isOk()).andExpect(jsonPath("$.programs.length()").value(0));
+  send(put(base("radio-a")+"/admin/radio-site"),member,Map.of("heroTitle","No autorizado")).andExpect(status().isForbidden());
+  send(put(base("radio-a")+"/admin/radio-site"),admin,Map.of("heroTitle","Radio A en vivo","heroSubtitle","Comunidad","description","La voz del barrio","youtubeUrl","https://youtube.com/radio-a")).andExpect(status().isOk()).andExpect(jsonPath("$.settings.heroTitle").value("Radio A en vivo"));
+  send(post(base("radio-a")+"/admin/radio-site/programs"),admin,Map.of("name","Programa A","description","Historias","days","Lunes","schedule","18:00","active",true,"displayOrder",0)).andExpect(status().isOk());
+  mvc.perform(get(base("radio-a")+"/radio-site")).andExpect(jsonPath("$.programs[0].name").value("Programa A"));
+  mvc.perform(get(base("radio-b")+"/radio-site")).andExpect(jsonPath("$.settings.heroTitle").doesNotExist()).andExpect(jsonPath("$.programs.length()").value(0));
+  mvc.perform(get(base("shop")+"/radio-site")).andExpect(status().isNotFound());
  }
 
  @Test @org.junit.jupiter.api.condition.EnabledIfSystemProperty(named="radio.browser",matches="true")

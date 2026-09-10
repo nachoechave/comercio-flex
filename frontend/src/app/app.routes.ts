@@ -128,6 +128,7 @@ export const routes: Routes = [
       import('./layouts/admin-layout/admin-layout').then((module) => module.AdminLayout),
     children: [
       ...(['socios', 'planes', 'cuotas'] as const).map((path, index) => ({ path, canActivate: [allowedRolesGuard(['OWNER', 'ADMIN']), radioAdminGuard], data: { membershipAdminMode: ['members', 'plans', 'periods'][index] }, loadComponent: () => import('./features/radio/membership-admin-page').then(m => m.MembershipAdminPage) })),
+      { path: 'contenido', canActivate: [allowedRolesGuard(['OWNER', 'ADMIN']), radioAdminGuard], loadComponent: () => import('./features/radio/radio-content-admin-page').then(m => m.RadioContentAdminPage) },
       {
         path: '',
         canActivate: [adminHomeGuard],

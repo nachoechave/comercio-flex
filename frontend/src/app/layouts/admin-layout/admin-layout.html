@@ -25,9 +25,11 @@
         @if (isRadio()) {
           @if (currentMembership.role !== 'STAFF') {
             <p class="nav-group-label">RADIO</p>
+            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin']" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><app-admin-icon name="dashboard" /><span>Dashboard</span></a>
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'socios']" routerLinkActive="active"><app-admin-icon name="user" /><span>Socios</span></a>
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'planes']" routerLinkActive="active"><app-admin-icon name="categories" /><span>Planes</span></a>
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'cuotas']" routerLinkActive="active"><app-admin-icon name="orders" /><span>Cuotas</span></a>
+            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'contenido']" routerLinkActive="active"><app-admin-icon name="appearance" /><span>Programas y sponsors</span></a>
           }
         } @else {
         @if (currentMembership.role !== 'STAFF') {
