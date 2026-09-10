@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 public interface CheckoutProGateway {
+ default VerifiedProviderPayment findMembershipPayment(PaymentCredential credential,String id) {return findPayment(credential,id);}
+ default Optional<CreatedCheckoutPreference> recoverMembershipPreference(PaymentCredential credential,CheckoutPreferenceCommand command) {return Optional.empty();}
+
 
 	CreatedCheckoutPreference createPreference(
 		PaymentCredential credential,

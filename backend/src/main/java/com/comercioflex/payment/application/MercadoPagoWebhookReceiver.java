@@ -35,6 +35,8 @@ public class MercadoPagoWebhookReceiver {
 	private final TransactionTemplate transactions;
 	private final PaymentWebhookMetrics metrics;
 	private final Clock clock;
+ @org.springframework.beans.factory.annotation.Value("${app.payments.membership.signature-tolerance:PT5M}")
+ private java.time.Duration membershipSignatureTolerance=java.time.Duration.ofMinutes(5);
 
 	@Autowired
 	public MercadoPagoWebhookReceiver(
@@ -109,7 +111,8 @@ public class MercadoPagoWebhookReceiver {
 		boolean inserted = Objects.requireNonNull(transactions.execute(status -> {
 			CheckoutRoute route = repository.findRoute(sha256(routeToken), environment())
 				.orElseThrow(() -> invalid("INVALID_WEBHOOK_ROUTE", "La ruta no es válida."));
-			if (!route.expectedSellerAccountId().equals(userId)) {
+			if(route.membership())validateMembershipTimestamp(signature,now);
+   if (!route.expectedSellerAccountId().equals(userId)) {
 				throw invalid("WEBHOOK_SELLER_MISMATCH", "La notificación no pertenece al vendedor.");
 			}
 			return repository.insertWebhook(route, new ReceivedWebhook(
@@ -150,7 +153,17 @@ public class MercadoPagoWebhookReceiver {
 		}
 	}
 
-	private JsonNode parse(String rawBody) {
+	private void validateMembershipTimestamp(String header,Instant now) {
+  try {
+   var values=java.util.Arrays.stream(header.split(",")).map(String::trim).filter(v->v.startsWith("ts=")).toList();
+   if(values.size()!=1 || membershipSignatureTolerance.isZero() || membershipSignatureTolerance.isNegative())throw new IllegalArgumentException();
+   String timestamp=values.getFirst().substring(3);long value=Long.parseLong(timestamp);
+   Instant signed=timestamp.length()==10?Instant.ofEpochSecond(value):timestamp.length()==13?Instant.ofEpochMilli(value):null;
+   if(signed==null || java.time.Duration.between(signed,now).abs().compareTo(membershipSignatureTolerance)>0)throw new IllegalArgumentException();
+  }catch(RuntimeException e){throw invalid("INVALID_WEBHOOK_TIMESTAMP","La firma está fuera de la ventana permitida.");}
+ }
+
+ private JsonNode parse(String rawBody) {
 		if (rawBody == null || rawBody.isBlank() || rawBody.length() > 32_768) {
 			throw invalid("INVALID_WEBHOOK", "La notificación no es válida.");
 		}

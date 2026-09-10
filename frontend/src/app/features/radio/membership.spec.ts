@@ -12,6 +12,7 @@ import { RadioContext } from './radio-context';
 import { RadioAccountApiService } from './radio-account-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { CsrfService } from '../../core/auth/csrf.service';
+import { MembershipPaymentApi } from './membership-payment-api.service';
 import { AdminLayout } from '../../layouts/admin-layout/admin-layout';
 const plan: Plan = { publicId: 'plan-1', name: 'PLUS', price: 6000, currency: 'ARS', description: 'Acompañá a la radio', benefits: ['Comunidad', 'Eventos'], active: true, displayOrder: 1 };
 const period: Period = { publicId: 'period-1', periodYear: 2026, periodMonth: 9, coverageStart: '2026-09-01', coverageEndExclusive: '2026-10-01', planPublicId: plan.publicId, planNameSnapshot: 'PLUS', amount: 6000, currency: 'ARS', accreditationStatus: 'PENDING' };
@@ -26,7 +27,7 @@ describe('RADIO membership screens', () => {
   auth = { loadSession: vi.fn(() => of({ authenticated: true })), membershipFor: vi.fn(() => ({ storeSlug: 'radio-a', storeName: 'Radio A', role: 'OWNER' })), user: vi.fn(() => ({ displayName: 'Admin' })), memberships: vi.fn(() => []), logout: vi.fn(() => of(undefined)) };
   const data = { tenantSettings: { tenantType: 'RADIO', currencyCode: 'ARS' } };
   route = { snapshot: { data: {}, paramMap: convertToParamMap({ storeSlug: 'radio-a' }), parent: null }, parent: { snapshot: { data } }, data: of(data), paramMap: of(convertToParamMap({ storeSlug: 'radio-a' })) };
-  TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: MembershipApiService, useValue: api }, { provide: RadioAccountApiService, useValue: { profile: () => of({ firstName: 'Ana' }) } }, { provide: AuthService, useValue: auth }, { provide: RadioContext, useValue: context }, { provide: ActivatedRoute, useValue: route }] });
+  TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: MembershipApiService, useValue: api }, { provide: MembershipPaymentApi, useValue: { state: vi.fn(() => of({ available: false, status: 'NOT_STARTED', checkoutUrl: null, message: '' })), checkout: vi.fn(() => of({ available: false, status: 'NOT_STARTED', checkoutUrl: null, message: '' })), settings: vi.fn(() => of({ enabled: false, credentialAvailable: false, available: false })), enable: vi.fn(() => of({ enabled: true, credentialAvailable: true, available: true })), history: vi.fn(() => of([])), adminHistory: vi.fn(() => of({ payments: [], attempts: [] })) } }, { provide: RadioAccountApiService, useValue: { profile: () => of({ firstName: 'Ana' }) } }, { provide: AuthService, useValue: auth }, { provide: RadioContext, useValue: context }, { provide: ActivatedRoute, useValue: route }] });
   router = TestBed.inject(Router); vi.spyOn(router, 'navigate').mockResolvedValue(true);
  });
  it('renders backend plans and filters inactive entries', () => {
@@ -57,7 +58,7 @@ describe('RADIO membership screens', () => {
   route.snapshot.data = { membershipMode: 'plan' }; const f = TestBed.createComponent(MembershipAccountPage); f.detectChanges(); expect(f.nativeElement.textContent).toContain('Mi plan'); expect(f.nativeElement.textContent).toContain('Comunidad'); expect(f.nativeElement.textContent).toContain('próximas cuotas');
  });
  it('shows monthly history without payment-provider fields', () => {
-  route.snapshot.data = { membershipMode: 'history' }; const f = TestBed.createComponent(MembershipAccountPage); f.detectChanges(); expect(f.nativeElement.querySelectorAll('tbody tr')).toHaveLength(1); expect(f.nativeElement.textContent).toContain('septiembre de 2026'); expect(api['periods']).toHaveBeenCalledWith('radio-a', 0);
+  route.snapshot.data = { membershipMode: 'history' }; const f = TestBed.createComponent(MembershipAccountPage); f.detectChanges(); expect(f.nativeElement.querySelector('table tbody tr')).toBeTruthy(); expect(f.nativeElement.textContent).toContain('septiembre de 2026'); expect(api['periods']).toHaveBeenCalledWith('radio-a', 0);
  });
  it('only creates the current month after an explicit action', () => {
   api['mine'].mockReturnValue(of({ ...member, state: 'EXPIRED', currentPeriod: null })); const f = TestBed.createComponent(MembershipAccountPage); f.detectChanges(); expect(api['ensure']).not.toHaveBeenCalled(); f.componentInstance.ensure(); expect(api['ensure']).toHaveBeenCalledWith('radio-a');

@@ -40,7 +40,7 @@ public class JdbcMembershipRepository implements MembershipRepository {
   jdbc.update("INSERT INTO membership_periods(public_id,membership_id,period_year,period_month,coverage_start,coverage_end_exclusive,plan_id,plan_name_snapshot,amount_snapshot,currency_snapshot,created_at,updated_at) VALUES(UUID_TO_BIN(?),?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",UUID.randomUUID().toString(),member,month.getYear(),month.getMonthValue(),java.sql.Date.valueOf(month.atDay(1)),java.sql.Date.valueOf(month.plusMonths(1).atDay(1)),plan.id(),plan.name(),plan.price(),plan.currency(),Timestamp.from(now),Timestamp.from(now));
  }
  public void replacePending(long member,MembershipPlan plan,YearMonth month,Instant now) {
-  jdbc.update("UPDATE membership_periods SET plan_id=?,plan_name_snapshot=?,amount_snapshot=?,currency_snapshot=?,updated_at=? WHERE membership_id=? AND period_year=? AND period_month=? AND accreditation_status='PENDING' AND accredited_at IS NULL",plan.id(),plan.name(),plan.price(),plan.currency(),Timestamp.from(now),member,month.getYear(),month.getMonthValue());
+  jdbc.update("UPDATE membership_periods SET plan_id=?,plan_name_snapshot=?,amount_snapshot=?,currency_snapshot=?,updated_at=? WHERE membership_id=? AND period_year=? AND period_month=? AND accreditation_status='PENDING' AND accredited_at IS NULL AND payment_locked_at IS NULL",plan.id(),plan.name(),plan.price(),plan.currency(),Timestamp.from(now),member,month.getYear(),month.getMonthValue());
  }
  public List<PaidMembership> members(YearMonth month,MembershipState state,UUID plan,int offset) {
   String sql=MEMBER+"LEFT JOIN membership_periods cp ON cp.membership_id=m.id AND cp.period_year=? AND cp.period_month=? WHERE 1=1";
