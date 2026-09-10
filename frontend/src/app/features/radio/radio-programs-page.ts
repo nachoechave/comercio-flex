@@ -1,0 +1,6 @@
+import { NgIf } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
+import { RadioContext } from './radio-context';
+import { RadioProgram, RadioSiteApiService } from './radio-site-api.service';
+@Component({ selector: 'app-radio-programs-page', imports: [NgIf], styleUrl: './radio-public.scss', template: `<section class="page-intro"><p class="eyebrow">AGENDA</p><h1>Programas</h1><p>Encontrá nuestras voces, horarios y espacios para compartir.</p></section><section class="content-grid program-grid">@for (program of programs(); track program.publicId) { <article class="content-card"><img *ngIf="program.imageUrl" [src]="program.imageUrl" [alt]="program.name" loading="lazy" /><div><span class="tag">{{ program.days }} · {{ program.schedule }}</span><h2>{{ program.name }}</h2><p>{{ program.description }}</p>@if (program.hosts) { <p class="muted">Conduce: {{ program.hosts }}</p> }</div></article> } @empty { <p>No hay programas publicados todavía.</p> }</section>` })
+export class RadioProgramsPage { private readonly api = inject(RadioSiteApiService); private readonly context = inject(RadioContext); readonly programs = signal<RadioProgram[]>([]); constructor() { this.api.get(this.context.slug()!).subscribe({ next: site => this.programs.set(site.programs) }); } }

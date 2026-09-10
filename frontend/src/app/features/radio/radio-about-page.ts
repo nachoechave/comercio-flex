@@ -1,0 +1,6 @@
+import { NgIf } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
+import { RadioContext } from './radio-context';
+import { RadioSite, RadioSiteApiService } from './radio-site-api.service';
+@Component({ selector: 'app-radio-about-page', imports: [NgIf], styleUrl: './radio-public.scss', template: `<section class="page-intro"><p class="eyebrow">QUIÉNES SOMOS</p><h1>Nosotros</h1><p>{{ site()?.settings?.description || 'Una comunidad construida alrededor de la radio.' }}</p></section><section class="content-grid team-grid">@for (person of site()?.team; track person.publicId) { <article class="content-card person-card"><img *ngIf="person.photoUrl" [src]="person.photoUrl" [alt]="person.name" loading="lazy" /><div><h2>{{ person.name }}</h2><span class="tag">{{ person.role }}</span><p>{{ person.bio }}</p>@if (person.socialUrl) { <a [href]="person.socialUrl" target="_blank" rel="noopener">Ver redes</a> }</div></article> } @empty { <p>El equipo de la radio se publicará próximamente.</p> }</section>` })
+export class RadioAboutPage { private readonly api = inject(RadioSiteApiService); private readonly context = inject(RadioContext); readonly site = signal<RadioSite | null>(null); constructor() { this.api.get(this.context.slug()!).subscribe({ next: value => this.site.set(value) }); } }
