@@ -69,7 +69,8 @@ class RadioMembershipIntegrationTests {
   assertThat(context.currentDatabaseKey()).isEmpty();
  }
  @Test void administratorsCreateEditDisableAndValidatePlansButEndUsersCannot() throws Exception {
-  String id=body(send(post(base("radio-a")+"/admin/membership-plans"),admin,planInput("PLUS",6000,true,0)).andExpect(status().isOk())).get("publicId").asText();
+  var withImage=planInput("PLUS",6000,true,0);withImage.put("imageUrl","https://cdn.example.com/radio/plus.jpg");
+  String id=body(send(post(base("radio-a")+"/admin/membership-plans"),admin,withImage).andExpect(status().isOk()).andExpect(jsonPath("$.imageUrl").value("https://cdn.example.com/radio/plus.jpg"))).get("publicId").asText();
   send(put(base("radio-a")+"/admin/membership-plans/"+id),owner,planInput("ORO",8000,false,3)).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("ORO"));
   for(Session denied:List.of(member,other,staff))send(post(base("radio-a")+"/admin/membership-plans"),denied,planInput("X",1,true,0)).andExpect(status().isForbidden());
   for(Map<String,Object> invalid:List.of(planInput(" ",1,true,0),planInput("X",-1,true,0)))send(post(base("radio-a")+"/admin/membership-plans"),owner,invalid).andExpect(status().isBadRequest());
@@ -126,6 +127,11 @@ class RadioMembershipIntegrationTests {
   send(post(me()+"/current-period"),member,Map.of()).andExpect(status().isConflict());send(post(me()),member,Map.of("planPublicId",id)).andExpect(status().isConflict());
   assertThat(count("membership_periods")).isEqualTo(1);assertThat(count("paid_memberships")).isEqualTo(1);
  }
+ @Test void cancelledMemberCanExplicitlyReactivateWithAnActivePlan() throws Exception {
+  String first=plan("PLUS",6000,true,0),second=plan("ORO",8000,true,1);join(first);send(post(me()+"/cancel"),member,Map.of()).andExpect(status().isOk()).andExpect(jsonPath("$.state").value("CANCELLED"));
+  send(post(me()+"/reactivate"),member,Map.of("planPublicId",second)).andExpect(status().isOk()).andExpect(jsonPath("$.state").value("PENDING")).andExpect(jsonPath("$.plan.name").value("ORO")).andExpect(jsonPath("$.currentPeriod.amount").value(8000)).andExpect(jsonPath("$.cancelledAt").doesNotExist());
+  assertThat(count("paid_memberships")).isEqualTo(1);assertThat(count("membership_periods")).isEqualTo(1);
+ }
  @Test void tenantAndOwnerIsolationApplyToEveryLookupAndAdminHistory() throws Exception {
   String id=plan("PLUS",6000,true,0);String membershipId=body(join(id)).get("publicId").asText();
   mine(other).andExpect(jsonPath("$.state").value("NONE"));
@@ -169,7 +175,7 @@ class RadioMembershipIntegrationTests {
  }
  @Test void authenticationCsrfAndDisabledUserRemainEnforced() throws Exception {
   mvc.perform(get(me())).andExpect(status().isUnauthorized());
-  for(String path:List.of(me(),me()+"/current-period",me()+"/cancel",base("radio-a")+"/admin/membership-plans"))mvc.perform(post(path).cookie(member.cookie()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+  for(String path:List.of(me(),me()+"/current-period",me()+"/cancel",me()+"/reactivate",base("radio-a")+"/admin/membership-plans"))mvc.perform(post(path).cookie(member.cookie()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
   control.update("UPDATE platform_users SET status='DISABLED' WHERE email_normalized='member@example.com'");mine(member).andExpect(status().isForbidden());
  }
  @Test void cleanRadioPathsAndLegacyRedirectsAreTenantScoped() throws Exception {

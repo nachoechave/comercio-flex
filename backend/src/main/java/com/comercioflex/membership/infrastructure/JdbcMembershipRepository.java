@@ -23,8 +23,8 @@ public class JdbcMembershipRepository implements MembershipRepository {
  public UUID savePlan(UUID id, MembershipPlan p) {
   String benefits;
   try { benefits=json.writeValueAsString(p.benefits()); } catch(Exception e) { throw new IllegalStateException(e); }
-  if(id==null) { id=UUID.randomUUID(); jdbc.update("INSERT INTO membership_plans(public_id,name,description,price,currency,benefits,active,display_order) VALUES(UUID_TO_BIN(?),?,?,?,?,?,?,?)",id.toString(),p.name(),p.description(),p.price(),p.currency(),benefits,p.active(),p.displayOrder()); }
-  else if(jdbc.update("UPDATE membership_plans SET name=?,description=?,price=?,currency=?,benefits=?,active=?,display_order=?,updated_at=CURRENT_TIMESTAMP(6) WHERE public_id=UUID_TO_BIN(?)",p.name(),p.description(),p.price(),p.currency(),benefits,p.active(),p.displayOrder(),id.toString())!=1) throw MembershipProblem.missing();
+  if(id==null) { id=UUID.randomUUID(); jdbc.update("INSERT INTO membership_plans(public_id,name,description,image_url,price,currency,benefits,active,display_order) VALUES(UUID_TO_BIN(?),?,?,?,?,?,?,?,?)",id.toString(),p.name(),p.description(),p.imageUrl(),p.price(),p.currency(),benefits,p.active(),p.displayOrder()); }
+  else if(jdbc.update("UPDATE membership_plans SET name=?,description=?,image_url=?,price=?,currency=?,benefits=?,active=?,display_order=?,updated_at=CURRENT_TIMESTAMP(6) WHERE public_id=UUID_TO_BIN(?)",p.name(),p.description(),p.imageUrl(),p.price(),p.currency(),benefits,p.active(),p.displayOrder(),id.toString())!=1) throw MembershipProblem.missing();
   return id;
  }
  public Optional<PaidMembership> member(UUID user, boolean lock) { return jdbc.query(MEMBER+"WHERE platform_user_id=UUID_TO_BIN(?)"+(lock?" FOR UPDATE":""),this::memberRow,user.toString()).stream().findFirst(); }
@@ -33,6 +33,7 @@ public class JdbcMembershipRepository implements MembershipRepository {
   jdbc.update("INSERT INTO paid_memberships(public_id,platform_user_id,current_plan_id,started_at,created_at,updated_at) VALUES(UUID_TO_BIN(?),UUID_TO_BIN(?),?,?,?,?) ON DUPLICATE KEY UPDATE id=id",UUID.randomUUID().toString(),user.toString(),plan,Timestamp.from(now),Timestamp.from(now),Timestamp.from(now));
  }
  public void changePlan(long member,long plan,Instant now) { jdbc.update("UPDATE paid_memberships SET current_plan_id=?,updated_at=? WHERE id=?",plan,Timestamp.from(now),member); }
+ public void reactivate(long member,long plan,Instant now) { jdbc.update("UPDATE paid_memberships SET current_plan_id=?,cancelled_at=NULL,updated_at=? WHERE id=?",plan,Timestamp.from(now),member); }
  public void cancel(long member,Instant now) { jdbc.update("UPDATE paid_memberships SET cancelled_at=COALESCE(cancelled_at,?),updated_at=? WHERE id=?",Timestamp.from(now),Timestamp.from(now),member); }
  public Optional<MembershipPeriod> current(long member,YearMonth month) { return jdbc.query(PERIOD+"WHERE membership_id=? AND period_year=? AND period_month=? FOR UPDATE",this::periodRow,member,month.getYear(),month.getMonthValue()).stream().findFirst(); }
  public List<MembershipPeriod> periods(long member,int offset) { return jdbc.query(PERIOD+"WHERE membership_id=? ORDER BY period_year DESC,period_month DESC LIMIT 100 OFFSET ?",this::periodRow,member,offset); }
@@ -53,7 +54,7 @@ public class JdbcMembershipRepository implements MembershipRepository {
  private MembershipPlan planRow(ResultSet r,int n) throws SQLException {
   List<String> benefits;
   try { benefits=json.readValue(r.getString("benefits"),new TypeReference<List<String>>(){}); } catch(Exception e) { throw new IllegalStateException(e); }
-  return new MembershipPlan(r.getLong("id"),UUID.fromString(r.getString("uuid")),r.getString("name"),r.getString("description"),r.getBigDecimal("price"),r.getString("currency"),benefits,r.getBoolean("active"),r.getInt("display_order"),instant(r,"created_at"),instant(r,"updated_at"));
+  return new MembershipPlan(r.getLong("id"),UUID.fromString(r.getString("uuid")),r.getString("name"),r.getString("description"),r.getString("image_url"),r.getBigDecimal("price"),r.getString("currency"),benefits,r.getBoolean("active"),r.getInt("display_order"),instant(r,"created_at"),instant(r,"updated_at"));
  }
  private PaidMembership memberRow(ResultSet r,int n) throws SQLException { return new PaidMembership(r.getLong("id"),UUID.fromString(r.getString("uuid")),UUID.fromString(r.getString("user_uuid")),r.getLong("current_plan_id"),instant(r,"started_at"),instant(r,"cancelled_at"),instant(r,"created_at"),instant(r,"updated_at")); }
  private MembershipPeriod periodRow(ResultSet r,int n) throws SQLException { return new MembershipPeriod(UUID.fromString(r.getString("uuid")),r.getInt("period_year"),r.getInt("period_month"),r.getDate("coverage_start").toLocalDate(),r.getDate("coverage_end_exclusive").toLocalDate(),UUID.fromString(r.getString("plan_uuid")),r.getString("plan_name_snapshot"),r.getBigDecimal("amount_snapshot"),r.getString("currency_snapshot"),r.getString("accreditation_status"),instant(r,"accredited_at"),instant(r,"created_at"),instant(r,"updated_at")); }

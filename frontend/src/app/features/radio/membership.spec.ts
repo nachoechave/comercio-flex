@@ -17,7 +17,7 @@ import { AdminLayout } from '../../layouts/admin-layout/admin-layout';
 import { RadioHomePage } from './radio-home-page';
 import { RadioSiteApiService } from './radio-site-api.service';
 import { StorefrontContextService } from '../storefront/storefront-context.service';
-const plan: Plan = { publicId: 'plan-1', name: 'PLUS', price: 6000, currency: 'ARS', description: 'Acompañá a la radio', benefits: ['Comunidad', 'Eventos'], active: true, displayOrder: 1 };
+const plan: Plan = { publicId: 'plan-1', name: 'PLUS', price: 6000, currency: 'ARS', description: 'Acompañá a la radio', imageUrl: null, benefits: ['Comunidad', 'Eventos'], active: true, displayOrder: 1 };
 const period: Period = { publicId: 'period-1', periodYear: 2026, periodMonth: 9, coverageStart: '2026-09-01', coverageEndExclusive: '2026-10-01', planPublicId: plan.publicId, planNameSnapshot: 'PLUS', amount: 6000, currency: 'ARS', accreditationStatus: 'PENDING' };
 const member: Member = { publicId: 'member-1', state: 'PENDING', plan, currentPeriod: period, startedAt: '2026-09-15T12:00:00Z', cancelledAt: null };
 const row: AdminMember = { membership: member, identity: { firstName: 'Ana', lastName: 'Perez', email: 'ana@example.com' } };
@@ -26,7 +26,7 @@ describe('RADIO membership screens', () => {
  let api: Record<string, ReturnType<typeof vi.fn>>; let auth: Record<string, ReturnType<typeof vi.fn>>;
  let route: any; let router: Router;
  beforeEach(() => {
-  api = { plans: vi.fn(() => of([plan])), mine: vi.fn(() => of(member)), choose: vi.fn(() => of(member)), periods: vi.fn(() => of([period])), ensure: vi.fn(() => of(member)), cancel: vi.fn(() => of({ ...member, state: 'CANCELLED' })), savePlan: vi.fn(() => of(plan)), members: vi.fn(() => of([row])), history: vi.fn(() => of([period])) };
+  api = { plans: vi.fn(() => of([plan])), mine: vi.fn(() => of(member)), choose: vi.fn(() => of(member)), reactivate: vi.fn(() => of(member)), periods: vi.fn(() => of([period])), ensure: vi.fn(() => of(member)), cancel: vi.fn(() => of({ ...member, state: 'CANCELLED' })), savePlan: vi.fn(() => of(plan)), members: vi.fn(() => of([row])), history: vi.fn(() => of([period])) };
   auth = { loadSession: vi.fn(() => of({ authenticated: true })), membershipFor: vi.fn(() => ({ storeSlug: 'radio-a', storeName: 'Radio A', role: 'OWNER' })), user: vi.fn(() => ({ displayName: 'Admin' })), memberships: vi.fn(() => []), logout: vi.fn(() => of(undefined)) };
   const data = { tenantSettings: { tenantType: 'RADIO', currencyCode: 'ARS' } };
   route = { snapshot: { data: {}, paramMap: convertToParamMap({ storeSlug: 'radio-a' }), parent: null }, parent: { snapshot: { data } }, data: of(data), paramMap: of(convertToParamMap({ storeSlug: 'radio-a' })) };
@@ -93,6 +93,11 @@ describe('RADIO membership screens', () => {
  it('cancels logically and hides creation controls', () => {
   const f = TestBed.createComponent(MembershipAccountPage); f.componentInstance.cancel(); f.detectChanges(); expect(f.nativeElement.textContent).toContain('CANCELADO'); expect(f.nativeElement.textContent).not.toContain('Cambiar plan');
  });
+ it('offers an explicit reactivation path for cancelled memberships', () => {
+  api['mine'].mockReturnValue(of({ ...member, state: 'CANCELLED' })); const f = TestBed.createComponent(MembershipAccountPage); f.detectChanges();
+  expect(f.nativeElement.textContent).toContain('Reactivar membresía'); expect(f.nativeElement.textContent).not.toContain('Cancelar membresía');
+  const plans = TestBed.createComponent(MembershipPlansPage); plans.componentInstance.choose(plan); plans.componentInstance.confirm(); expect(api['reactivate']).toHaveBeenCalledWith('radio-a', 'plan-1');
+ });
  it('admin edits plans with validated fields and descriptive benefits', () => {
   route.snapshot.data = { membershipAdminMode: 'plans' }; const f = TestBed.createComponent(MembershipAdminPage); f.componentInstance.edit(plan); f.componentInstance.form.patchValue({ name: 'SOCIO ORO', price: 8000, benefits: 'Uno\nDos' }); f.componentInstance.save();
   expect(api['savePlan']).toHaveBeenCalledWith('radio-a', expect.objectContaining({ name: 'SOCIO ORO', price: 8000, benefits: ['Uno', 'Dos'] }), 'plan-1');
@@ -101,7 +106,7 @@ describe('RADIO membership screens', () => {
   route.snapshot.data = { membershipAdminMode: 'plans' }; const f = TestBed.createComponent(MembershipAdminPage); f.componentInstance.edit(plan); f.componentInstance.form.controls.price.setValue(-1); f.componentInstance.save(); expect(api['savePlan']).not.toHaveBeenCalled(); f.componentInstance.toggle(plan); expect(api['savePlan']).toHaveBeenCalledWith('radio-a', expect.objectContaining({ active: false }), 'plan-1');
  });
  it('admin lists identity, filters by state and plan, and opens history', () => {
-  const f = TestBed.createComponent(MembershipAdminPage); f.detectChanges(); expect(f.nativeElement.textContent).toContain('ana@example.com'); f.componentInstance.filterState('ACTIVE'); f.componentInstance.filterPlan('plan-1'); expect(api['members']).toHaveBeenLastCalledWith('radio-a', 'ACTIVE', 'plan-1', 0); f.componentInstance.history(row); expect(api['history']).toHaveBeenCalledWith('radio-a', 'member-1', 0);
+  const f = TestBed.createComponent(MembershipAdminPage); f.detectChanges(); expect(f.nativeElement.textContent).toContain('ana@example.com'); const paymentLink = f.nativeElement.querySelector('.payment-settings a'); expect(paymentLink.textContent).toContain('Conectar Mercado Pago'); expect(paymentLink.getAttribute('href')).toBe('/tiendas/radio-a/admin/configuracion/pagos'); f.componentInstance.filterState('ACTIVE'); f.componentInstance.filterPlan('plan-1'); expect(api['members']).toHaveBeenLastCalledWith('radio-a', 'ACTIVE', 'plan-1', 0); f.componentInstance.history(row); expect(api['history']).toHaveBeenCalledWith('radio-a', 'member-1', 0);
  });
  it.each(['RADIO', 'ECOMMERCE'])('composes %s navigation centrally', type => {
   route.data = of({ tenantSettings: { tenantType: type } }); const f = TestBed.createComponent(AdminLayout); f.detectChanges(); const text = f.nativeElement.querySelector('nav').textContent;

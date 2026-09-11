@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { switchMap } from 'rxjs';
 import { CsrfService } from '../../core/auth/csrf.service';
-export interface Plan { publicId: string; name: string; description: string; price: number; currency: string; benefits: string[]; active: boolean; displayOrder: number; }
+export interface Plan { publicId: string; name: string; description: string; imageUrl: string | null; price: number; currency: string; benefits: string[]; active: boolean; displayOrder: number; }
 export interface Period { publicId: string; periodYear: number; periodMonth: number; coverageStart: string; coverageEndExclusive: string; planPublicId: string; planNameSnapshot: string; amount: number; currency: string; accreditationStatus: 'PENDING' | 'ACCREDITED'; }
 export type MemberState = 'NONE' | 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
 export interface Member { publicId: string | null; state: MemberState; plan: Plan | null; currentPeriod: Period | null; startedAt: string | null; cancelledAt: string | null; }
@@ -20,6 +20,7 @@ export class MembershipApiService {
  mine(slug: string) { return this.http.get<Member>(this.base(slug) + '/me/membership'); }
  periods(slug: string, offset = 0) { return this.http.get<Period[]>(this.base(slug) + '/me/membership/periods', { params: { offset } }); }
  choose(slug: string, planPublicId: string, change: boolean) { return this.write<Member>(change ? 'PUT' : 'POST', this.base(slug) + '/me/membership' + (change ? '/plan' : ''), { planPublicId }); }
+ reactivate(slug: string, planPublicId: string) { return this.write<Member>('POST', this.base(slug) + '/me/membership/reactivate', { planPublicId }); }
  ensure(slug: string) { return this.write<Member>('POST', this.base(slug) + '/me/membership/current-period', {}); }
  cancel(slug: string) { return this.write<Member>('POST', this.base(slug) + '/me/membership/cancel', {}); }
  savePlan(slug: string, value: PlanInput, id?: string) { return this.write<Plan>(id ? 'PUT' : 'POST', this.base(slug) + '/admin/membership-plans' + (id ? '/' + encodeURIComponent(id) : ''), value); }

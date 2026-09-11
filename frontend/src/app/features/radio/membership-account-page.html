@@ -19,7 +19,7 @@
             <section class="membership-pass"><h2>Tu membresía</h2><div class="plan-line"><h3>{{ m.currentPeriod?.planNameSnapshot || m.plan?.name }}</h3><span class="status" [attr.data-state]="m.state">{{ labels[m.state] }}</span></div>
               @if (m.currentPeriod; as p) { <p class="pass-price">{{ p.amount | currency:p.currency:'symbol-narrow':'1.0-0' }} <small>/ mes</small></p><p>{{ period(p) }}</p><p>{{ p.accreditationStatus === 'ACCREDITED' ? 'Válido hasta' : 'Cuota correspondiente hasta' }} {{ end(p) }}</p> }
               @else { <p>No hay cuota para el mes actual.</p> }
-              <a class="member-button" [routerLink]="context.link('mi-cuenta','plan')">Gestionar membresía →</a>
+              @if (m.state === 'CANCELLED') { <a class="member-button" [routerLink]="context.link('socios')">Reactivar membresía →</a> } @else { <a class="member-button" [routerLink]="context.link('mi-cuenta','plan')">Gestionar membresía →</a> }
             </section>
             <section class="member-tile summary-tile"><span class="tile-symbol" aria-hidden="true">▦</span><h2>Cuota del mes</h2>
               @if (m.currentPeriod; as p) { <strong>{{ period(p) }}</strong><p>{{ p.amount | currency:p.currency:'symbol-narrow':'1.0-0' }}</p><span class="status" [attr.data-state]="p.accreditationStatus === 'ACCREDITED' ? 'ACTIVE' : 'PENDING'">{{ labels[p.accreditationStatus] }}</span> } @else { <p>Sin cuota generada</p> }
@@ -43,7 +43,10 @@
           @if (mode === 'plan') {
             <section class="member-tile manage-tile"><h2>Administrá tu plan</h2>
               @if (m.plan; as plan) { <p>Plan seleccionado para próximas cuotas: {{ plan.name }} · {{ plan.price | currency:plan.currency }}</p> }
-              @if (m.state !== 'CANCELLED') {
+              @if (m.state === 'CANCELLED') {
+                <p>Esta membresía está cancelada. Elegí un plan para reactivarla y volver a generar cuotas.</p>
+                <a class="member-button" [routerLink]="context.link('socios')">Reactivar membresía</a>
+              } @else {
                 <div class="actions"><a [routerLink]="context.link('socios')">Cambiar plan</a><button class="secondary" (click)="confirmCancel.set(true)" [disabled]="busy()">Cancelar membresía</button></div>
                 @if (confirmCancel()) { <p>La cancelación impide crear nuevas cuotas y conserva tu historial.</p><div class="actions"><button (click)="cancel()" [disabled]="busy()">Confirmar cancelación</button><button class="secondary" (click)="confirmCancel.set(false)">Volver</button></div> }
               }

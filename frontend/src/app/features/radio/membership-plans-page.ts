@@ -11,16 +11,16 @@ import { MembershipApiService, Plan, Member } from './membership-api.service';
  @if (loading()) { <p role="status">Cargando planes…</p> }
  <div class="plan-grid">
  @for (plan of plans(); track plan.publicId) {
- <article class="card"><h2>{{ plan.name }}</h2><p class="amount">{{ plan.price | currency:plan.currency }} / mes</p><p>{{ plan.description }}</p>
+ <article class="card">@if (plan.imageUrl) { <img class="plan-image" [src]="plan.imageUrl" [alt]="'Imagen del ' + plan.name" loading="lazy" /> } @else { <div class="plan-image plan-image-fallback" aria-hidden="true"><span>{{ plan.name }}</span></div> }<h2>{{ plan.name }}</h2><p class="amount">{{ plan.price | currency:plan.currency }} / mes</p><p>{{ plan.description }}</p>
  <ul>@for (benefit of plan.benefits; track $index) { <li>{{ benefit }}</li> }</ul>
  <button (click)="choose(plan)" [disabled]="busy()">Elegir plan</button></article>
  } @empty { @if (!loading()) { <p>No hay planes disponibles por el momento.</p> } }
  </div>
  @if (selected(); as plan) {
  <section class="card confirmation" aria-label="Confirmar plan"><h2>Elegiste {{ plan.name }}</h2><p>{{ plan.price | currency:plan.currency }} por mes</p>
- <p>Se generará una cuota mensual pendiente. El pago online estará disponible próximamente.</p>
+ <p>{{ member()?.state === 'CANCELLED' ? 'Se reactivará tu membresía y se generará una cuota mensual pendiente.' : 'Se generará una cuota mensual pendiente. El pago online estará disponible próximamente.' }}</p>
  @if (member()?.currentPeriod?.accreditationStatus === 'ACCREDITED') { <p>Tu cuota acreditada conserva su plan e importe. El cambio aplica a la próxima cuota.</p> }
- <button (click)="confirm()" [disabled]="busy()">{{ busy() ? 'Guardando…' : 'Confirmar' }}</button>
+ <button (click)="confirm()" [disabled]="busy()">{{ busy() ? 'Guardando…' : member()?.state === 'CANCELLED' ? 'Reactivar membresía' : 'Confirmar' }}</button>
  <button class="secondary" (click)="selected.set(null)" [disabled]="busy()">Volver</button></section>
  }</section>` })
 export class MembershipPlansPage {
@@ -41,6 +41,7 @@ export class MembershipPlansPage {
  confirm() {
   if (!this.selected() || !this.member() || this.busy()) return;
   this.busy.set(true); this.error.set('');
-  this.api.choose(this.context.slug()!, this.selected()!.publicId, this.member()!.state !== 'NONE').pipe(finalize(() => this.busy.set(false))).subscribe({ next: () => void this.router.navigate(this.context.link('mi-cuenta')), error: e => this.error.set(e.error?.detail || 'No pudimos confirmar el plan. Volvé a cargar los planes e intentá nuevamente.') });
+  const request = this.member()!.state === 'CANCELLED' ? this.api.reactivate(this.context.slug()!, this.selected()!.publicId) : this.api.choose(this.context.slug()!, this.selected()!.publicId, this.member()!.state !== 'NONE');
+  request.pipe(finalize(() => this.busy.set(false))).subscribe({ next: () => void this.router.navigate(this.context.link('mi-cuenta')), error: e => this.error.set(e.error?.detail || 'No pudimos confirmar el plan. Volvé a cargar los planes e intentá nuevamente.') });
  }
 }

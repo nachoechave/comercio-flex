@@ -54,6 +54,8 @@ h1 { font-size: clamp(3rem, 5.4vw, 4.7rem); font-weight: 950; font-style: italic
 .membership-intro > a { font-size: .8rem; }
 .plan-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
 .mini-plan { min-width: 0; position: relative; display: flex; flex-direction: column; padding: 1.3rem; background: #f9fcff; border: 1px solid #e0e7ee; border-radius: 6px; box-shadow: 0 3px 14px #09234808; }
+.mini-plan .plan-image { width: calc(100% + 2.6rem); aspect-ratio: 16 / 7; object-fit: cover; margin: -1.3rem -1.3rem 1rem; border-radius: 6px 6px 0 0; }
+.plan-image-fallback { display: grid; place-items: center; color: var(--radio-primary, #ffda16); background: linear-gradient(135deg, #061e3d, #173b67); font-size: 1.2rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .mini-plan h3 { text-align: center; font-size: 1rem; margin: 0 0 .8rem; font-weight: 400; }
 .mini-plan h3 strong { font-size: 1.2rem; }
 .plan-price { text-align: center; font-size: clamp(1.5rem, 2.2vw, 2rem); font-weight: 900; margin: 0 0 .6rem; }
