@@ -50,6 +50,7 @@
       @for (plan of plans().slice(0, 3); track plan.publicId; let i = $index) {
         <article class="mini-plan" [class.featured]="i === 1">
           @if (i === 1) { <span class="plan-ribbon">DESTACADO</span> }
+          @if (plan.imageUrl) { <img class="plan-image" [src]="plan.imageUrl" [alt]="'Imagen del ' + plan.name" loading="lazy" /> } @else { <div class="plan-image plan-image-fallback" aria-hidden="true"><span>{{ plan.name }}</span></div> }
           <h3>Plan <strong>{{ plan.name }}</strong></h3><p class="plan-price">{{ plan.price | currency:plan.currency:'symbol-narrow':'1.0-0' }} <small>/ mes</small></p>
           <p class="plan-description">{{ plan.description }}</p>
           <ul>@for (benefit of plan.benefits; track $index) { <li>{{ benefit }}</li> }</ul>

@@ -28,6 +28,7 @@ public class MembershipController {
  @GetMapping("/me/membership/current-period") MembershipPeriod current(@AuthenticationPrincipal PlatformPrincipal principal) { return service.mine(principal.publicId()).currentPeriod(); }
  @PostMapping("/me/membership/current-period") MembershipService.View ensure(@AuthenticationPrincipal PlatformPrincipal principal) { return service.ensureCurrent(principal.publicId()); }
  @PutMapping("/me/membership/plan") MembershipService.View change(@AuthenticationPrincipal PlatformPrincipal principal,@Valid @RequestBody Selection request) { return service.changePlan(principal.publicId(),request.planPublicId()); }
+ @PostMapping("/me/membership/reactivate") MembershipService.View reactivate(@AuthenticationPrincipal PlatformPrincipal principal,@Valid @RequestBody Selection request) { return service.reactivate(principal.publicId(),request.planPublicId()); }
  @PostMapping("/me/membership/cancel") MembershipService.View cancel(@AuthenticationPrincipal PlatformPrincipal principal) { return service.cancel(principal.publicId()); }
  @GetMapping("/me/membership/periods") List<MembershipPeriod> periods(@AuthenticationPrincipal PlatformPrincipal principal,@RequestParam(defaultValue="0") @Min(0) @Max(1000000) int offset) { return service.periods(principal.publicId(),offset); }
  @GetMapping("/admin/membership-plans") List<MembershipPlan> adminPlans() { return service.plans(false); }
@@ -41,11 +42,13 @@ public class MembershipController {
   @JsonAnySetter public void reject(String name,Object value) { throw new IllegalArgumentException("Campo no permitido."); }
  }
  public record PlanInput(@NotBlank @Size(max=120) String name,@NotNull @Size(max=2000) String description,
+  @Size(max=1000) String imageUrl,
   @NotNull @DecimalMin("0.00") @Digits(integer=10,fraction=2) BigDecimal price,
   @NotNull @Pattern(regexp="[A-Z]{3}") String currency,
   @NotNull @Size(max=30) List<@NotBlank @Size(max=240) String> benefits,
   @NotNull Boolean active,@Min(0) @Max(1000000) int displayOrder) {
   @JsonAnySetter public void reject(String name,Object value) { throw new IllegalArgumentException("Campo no permitido."); }
-  MembershipPlan plan() { return new MembershipPlan(0,null,name.strip(),description.strip(),price,currency,benefits.stream().map(String::strip).toList(),active,displayOrder,null,null); }
+  MembershipPlan plan() { return new MembershipPlan(0,null,name.strip(),description.strip(),clean(imageUrl),price,currency,benefits.stream().map(String::strip).toList(),active,displayOrder,null,null); }
  }
+ private static String clean(String value) { return value == null ? null : value.strip(); }
 }

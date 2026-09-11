@@ -11,6 +11,7 @@ public interface MembershipRepository {
  PaidMembership memberByPublicId(UUID id);
  void ensureMember(UUID user, long planId, Instant now);
  void changePlan(long membershipId, long planId, Instant now);
+ void reactivate(long membershipId, long planId, Instant now);
  void cancel(long membershipId, Instant now);
  Optional<MembershipPeriod> current(long memberId, YearMonth month);
  List<MembershipPeriod> periods(long memberId, int offset);

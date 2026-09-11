@@ -58,6 +58,19 @@ public class MembershipService {
    return view(locked(user),month);
   });
  }
+ public View reactivate(UUID user,UUID planId) {
+  identities.requireActive(user);
+  return tx.execute(s->{
+   PaidMembership member=locked(user);
+   if(member.cancelledAt()==null) throw MembershipProblem.conflict("La membresía no está cancelada.");
+   MembershipPlan plan=activePlan(planId);
+   repository.reactivate(member.id(),plan.id(),clock.instant());
+   YearMonth month=currentMonth();
+   repository.ensurePeriod(member.id(),plan,month,clock.instant());
+   repository.replacePending(member.id(),plan,month,clock.instant());
+   return view(locked(user),month);
+  });
+ }
  public View cancel(UUID user) { identities.requireActive(user);return tx.execute(s->{PaidMembership member=locked(user);repository.cancel(member.id(),clock.instant());return view(locked(user),currentMonth());}); }
  public List<MembershipPeriod> periods(UUID user,int offset) { identities.requireActive(user);return tx.execute(s->repository.member(user,false).map(m->repository.periods(m.id(),offset)).orElse(List.of())); }
  public List<MembershipPeriod> adminPeriods(UUID id,int offset) { return tx.execute(s->repository.periods(repository.memberByPublicId(id).id(),offset)); }
