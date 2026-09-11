@@ -3,13 +3,15 @@ package com.comercioflex.radio.domain;
 import java.util.List;
 import java.util.UUID;
 
-public record RadioSite(
+	public record RadioSite(
 	Settings settings,
 	List<Program> programs,
 	List<TeamMember> team,
 	List<Sponsor> sponsors) {
 	public record Settings(String heroTitle, String heroSubtitle, String description,
-			String youtubeUrl, String instagramUrl, String xUrl, String whatsappUrl) {}
+			String youtubeUrl, String youtubeChannelId, String instagramUrl, String xUrl, String whatsappUrl) {}
+	public record Video(String videoId, String title, String description, String publishedAt,
+			String thumbnailUrl, String videoUrl) {}
 	public record Program(UUID publicId, String name, String description, String days,
 			String schedule, String imageUrl, String hosts, int displayOrder, boolean active) {}
 	public record TeamMember(UUID publicId, String name, String role, String bio,

@@ -1,0 +1,62 @@
+<div class="member-layout">
+  <aside class="member-sidebar" aria-label="Navegación del socio">
+    <strong>Panel del socio</strong>
+    <a [class.selected]="mode === 'home'" [attr.aria-current]="mode === 'home' ? 'page' : null" [routerLink]="context.link('mi-cuenta')"><span aria-hidden="true">⌂</span> Inicio</a>
+    <a [class.selected]="mode === 'plan'" [attr.aria-current]="mode === 'plan' ? 'page' : null" [routerLink]="context.link('mi-cuenta','plan')"><span aria-hidden="true">♛</span> Mi plan</a>
+    <a [class.selected]="mode === 'history'" [attr.aria-current]="mode === 'history' ? 'page' : null" [routerLink]="context.link('mi-cuenta','cuotas')"><span aria-hidden="true">▤</span> Pagos</a>
+    <a [routerLink]="context.link('mi-cuenta','perfil')"><span aria-hidden="true">●</span> Mi perfil</a>
+    <div class="sidebar-art" aria-hidden="true"><span>La pasión<br>se comparte.</span></div>
+  </aside>
+  <div class="member-content">
+    <header class="member-welcome"><h1>{{ mode === 'history' ? 'Cuotas' : mode === 'return' ? 'Estado del pago' : mode === 'plan' ? 'Mi plan' : 'Hola, ' + name() }}</h1><p>Este es tu espacio como socio de la radio.</p></header>
+    @if (loading()) { <p role="status">Cargando membresía…</p> }
+    @if (error()) { <p role="alert">{{ error() }}</p> }
+    @if (member(); as m) {
+      @if (m.state === 'NONE') { <section class="member-tile"><h2>Formá parte de la comunidad</h2><p>No tenés un plan seleccionado.</p><a class="member-button" [routerLink]="context.link('socios')">Ver planes</a></section> }
+      @else {
+        @if (mode !== 'history') {
+          <div class="summary-grid">
+            <section class="membership-pass"><h2>Tu membresía</h2><div class="plan-line"><h3>{{ m.currentPeriod?.planNameSnapshot || m.plan?.name }}</h3><span class="status" [attr.data-state]="m.state">{{ labels[m.state] }}</span></div>
+              @if (m.currentPeriod; as p) { <p class="pass-price">{{ p.amount | currency:p.currency:'symbol-narrow':'1.0-0' }} <small>/ mes</small></p><p>{{ period(p) }}</p><p>{{ p.accreditationStatus === 'ACCREDITED' ? 'Válido hasta' : 'Cuota correspondiente hasta' }} {{ end(p) }}</p> }
+              @else { <p>No hay cuota para el mes actual.</p> }
+              <a class="member-button" [routerLink]="context.link('mi-cuenta','plan')">Gestionar membresía →</a>
+            </section>
+            <section class="member-tile summary-tile"><span class="tile-symbol" aria-hidden="true">▦</span><h2>Cuota del mes</h2>
+              @if (m.currentPeriod; as p) { <strong>{{ period(p) }}</strong><p>{{ p.amount | currency:p.currency:'symbol-narrow':'1.0-0' }}</p><span class="status" [attr.data-state]="p.accreditationStatus === 'ACCREDITED' ? 'ACTIVE' : 'PENDING'">{{ labels[p.accreditationStatus] }}</span> } @else { <p>Sin cuota generada</p> }
+            </section>
+            <section class="member-tile summary-tile"><span class="tile-symbol" aria-hidden="true">★</span><h2>Beneficios del plan</h2><strong>{{ m.plan?.benefits?.length || 0 }}</strong><a [routerLink]="context.link('mi-cuenta','plan')">Ver mi plan →</a></section>
+            <section class="member-tile summary-tile"><span class="tile-symbol" aria-hidden="true">▤</span><h2>Tus pagos</h2><p>Consultá tus cuotas y comprobá los pagos registrados.</p><a [routerLink]="context.link('mi-cuenta','cuotas')">Ver historial →</a></section>
+          </div>
+          <div class="member-lower">
+            <section class="member-tile benefits-tile"><h2>Tu comunidad, tus beneficios</h2>
+              @if (m.plan; as plan) { <p>{{ plan.description }}</p><div class="benefit-grid">@for (b of plan.benefits; track $index) { <article><span aria-hidden="true">★</span><h3>{{ b }}</h3></article> } @empty { <p>Este plan no tiene beneficios detallados.</p> }</div> }
+            </section>
+            <section class="member-tile payment-tile"><h2>Estado de tu cuota</h2>
+              @if(m.currentPeriod) { <app-membership-payment-panel [paid]="m.currentPeriod.accreditationStatus==='ACCREDITED'" [cancelled]="m.state==='CANCELLED'" (updated)="reload()"/> }
+              @else if(m.state !== 'CANCELLED') { <button class="member-button" (click)="ensure()" [disabled]="busy()">Generar cuota del mes</button> }
+              @if (m.state === 'CANCELLED') { <p>La membresía está cancelada. Tu historial se conserva.</p> }
+            </section>
+          </div>
+          @if (mode === 'home') {
+            <section class="member-tile manage-tile"><app-membership-payment-history [slug]="context.slug()!"/></section>
+          }
+          @if (mode === 'plan') {
+            <section class="member-tile manage-tile"><h2>Administrá tu plan</h2>
+              @if (m.plan; as plan) { <p>Plan seleccionado para próximas cuotas: {{ plan.name }} · {{ plan.price | currency:plan.currency }}</p> }
+              @if (m.state !== 'CANCELLED') {
+                <div class="actions"><a [routerLink]="context.link('socios')">Cambiar plan</a><button class="secondary" (click)="confirmCancel.set(true)" [disabled]="busy()">Cancelar membresía</button></div>
+                @if (confirmCancel()) { <p>La cancelación impide crear nuevas cuotas y conserva tu historial.</p><div class="actions"><button (click)="cancel()" [disabled]="busy()">Confirmar cancelación</button><button class="secondary" (click)="confirmCancel.set(false)">Volver</button></div> }
+              }
+            </section>
+          }
+        }
+        @if (mode === 'history') {
+          <section class="member-tile"><h2>Historial de cuotas</h2><div class="table-wrap"><table><thead><tr><th>Período</th><th>Plan</th><th>Importe</th><th>Estado</th><th>Cobertura hasta</th></tr></thead><tbody>
+            @for (p of periods(); track p.publicId) { <tr><td>{{ period(p) }}</td><td>{{ p.planNameSnapshot }}</td><td>{{ p.amount | currency:p.currency }}</td><td>{{ labels[p.accreditationStatus] }}</td><td>{{ end(p) }}</td></tr> }
+          </tbody></table></div><div class="actions"><button (click)="page(-100)" [disabled]="offset() === 0 || busy()">Anterior</button><button (click)="page(100)" [disabled]="periods().length < 100 || busy()">Siguiente</button></div></section>
+          <section class="member-tile"><app-membership-payment-history [slug]="context.slug()!"/></section>
+        }
+      }
+    }
+  </div>
+</div>

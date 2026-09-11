@@ -1,0 +1,70 @@
+@if (site(); as content) {
+  <section class="radio-hero" [style.background-image]="contentSettingsHero()">
+    <div class="hero-content">
+      <p class="eyebrow">Más que una radio</p>
+      <h1>{{ content.settings.heroTitle || 'Una voz que nos une.' }}</h1>
+      <p>{{ content.settings.heroSubtitle || 'Información, pasión y compañía todos los días.' }}</p>
+      <div class="hero-actions">
+        @if (content.settings.youtubeUrl; as youtube) {
+          <a class="button primary" [href]="youtube" target="_blank" rel="noopener"><span aria-hidden="true">▶</span> Ver en YouTube <span aria-hidden="true">›</span></a>
+        }
+        <a class="button ghost" [routerLink]="context.link(hasMembership() ? 'mi-cuenta' : 'socios')">{{ hasMembership() ? 'Mi membresía' : 'Hacete socio' }} <span aria-hidden="true">›</span></a>
+      </div>
+    </div>
+  </section>
+  @if (content.programs.length) {
+    <section class="home-section editorial-section">
+      <div class="programs-main">
+        <div class="section-heading"><h2>Programas destacados</h2><a [routerLink]="context.link('programas')">Ver todos →</a></div>
+        <div class="content-grid program-grid">
+          @for (program of content.programs.slice(0, 3); track program.publicId) {
+            <article class="content-card">
+              @if (program.imageUrl) { <img [src]="program.imageUrl" [alt]="program.name" loading="lazy" /> }
+              @else { <div class="program-art" aria-hidden="true"><span>AL AIRE</span><strong>{{ program.name }}</strong><i></i></div> }
+              <div class="program-copy"><span class="tag">{{ program.days }} · {{ program.schedule }}</span><h3>{{ program.name }}</h3><p>{{ program.description }}</p><small>{{ program.hosts }}</small><a [routerLink]="context.link('programas')">Más información →</a></div>
+            </article>
+          }
+        </div>
+      </div>
+      @if (content.programs[0]; as program) {
+        <aside class="broadcast-card"><h2>En nuestra radio</h2><p class="schedule">{{ program.days }} · {{ program.schedule }}</p><h3>{{ program.name }}</h3><p>{{ program.description }}</p><small>{{ program.hosts }}</small>
+          @if (content.settings.youtubeUrl; as youtube) { <a class="button primary" [href]="youtube" target="_blank" rel="noopener">▶ Ver en YouTube</a> }
+        </aside>
+      }
+    </section>
+  }
+  @if (videos().length) {
+    <section class="home-section latest-videos">
+      <div class="section-heading"><h2>Últimos videos</h2>@if (content.settings.youtubeUrl; as youtube) { <a [href]="youtube" target="_blank" rel="noopener">Ver canal →</a> }</div>
+      <div class="video-grid">@for (video of videos().slice(0, 4); track video.videoId) {
+        <a class="video-card" [href]="video.videoUrl" target="_blank" rel="noopener">
+          @if (video.thumbnailUrl) { <img [src]="video.thumbnailUrl" [alt]="video.title" loading="lazy" /> } @else { <div class="video-fallback" aria-hidden="true">▶</div> }
+          <div><small>{{ video.publishedAt | date:'dd/MM/yyyy' }}</small><h3>{{ video.title }}</h3><span>Ver en YouTube →</span></div>
+        </a>
+      }</div>
+    </section>
+  }
+  <section class="home-section membership-callout">
+    <div class="membership-intro"><h2>Sumate a la radio</h2><p>Formá parte de nuestra comunidad y disfrutá los beneficios de tu plan.</p><div class="community-line"><span aria-hidden="true">♥</span> Acompañá a la radio</div><div class="community-line"><span aria-hidden="true">★</span> Compartí nuestra pasión</div><a [routerLink]="context.link(hasMembership() ? 'mi-cuenta' : 'socios')">{{ hasMembership() ? 'Mi membresía' : 'Conocé los planes' }} →</a></div>
+    <div class="content-grid plan-grid">
+      @for (plan of plans().slice(0, 3); track plan.publicId; let i = $index) {
+        <article class="mini-plan" [class.featured]="i === 1">
+          @if (i === 1) { <span class="plan-ribbon">DESTACADO</span> }
+          <h3>Plan <strong>{{ plan.name }}</strong></h3><p class="plan-price">{{ plan.price | currency:plan.currency:'symbol-narrow':'1.0-0' }} <small>/ mes</small></p>
+          <p class="plan-description">{{ plan.description }}</p>
+          <ul>@for (benefit of plan.benefits; track $index) { <li>{{ benefit }}</li> }</ul>
+          <a class="button" [class.primary]="i === 1" [routerLink]="context.link(hasMembership() ? 'mi-cuenta' : 'socios')">{{ hasMembership() ? 'Mi membresía' : 'Ver plan' }}</a>
+        </article>
+      }
+    </div>
+  </section>
+  @if (content.sponsors.length) {
+    <section class="sponsors"><h2>Nuestros sponsors</h2><div class="sponsor-row">
+      @for (sponsor of content.sponsors; track sponsor.publicId) {
+        <a [class.sponsor-primary]="sponsor.level === 'PRIMARY'" [href]="sponsor.targetUrl || null" [attr.target]="sponsor.targetUrl ? '_blank' : null" rel="noopener">
+          @if (sponsor.logoUrl) { <img [src]="sponsor.logoUrl" [alt]="sponsor.name" loading="lazy" /> } @else { <span>{{ sponsor.name }}</span> }
+        </a>
+      }
+    </div></section>
+  }
+} @else { <p role="status">Cargando la radio…</p> }

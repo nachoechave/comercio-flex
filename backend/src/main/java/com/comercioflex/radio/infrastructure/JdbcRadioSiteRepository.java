@@ -25,10 +25,10 @@ public class JdbcRadioSiteRepository {
 
 	public void updateSettings(RadioSite.Settings value) {
 		jdbc.update("""
-			UPDATE radio_site_settings SET hero_title=?, hero_subtitle=?, description=?, youtube_url=?,
+			UPDATE radio_site_settings SET hero_title=?, hero_subtitle=?, description=?, youtube_url=?, youtube_channel_id=?,
 			instagram_url=?, x_url=?, whatsapp_url=?, updated_at=CURRENT_TIMESTAMP(6) WHERE id=1
 			""", value.heroTitle(), value.heroSubtitle(), value.description(), value.youtubeUrl(),
-			value.instagramUrl(), value.xUrl(), value.whatsappUrl());
+			value.youtubeChannelId(), value.instagramUrl(), value.xUrl(), value.whatsappUrl());
 	}
 
 	public UUID saveProgram(UUID id, RadioSite.Program value) {
@@ -82,10 +82,10 @@ public class JdbcRadioSiteRepository {
 	}
 
 	private RadioSite.Settings settings() {
-		return jdbc.query("SELECT hero_title,hero_subtitle,description,youtube_url,instagram_url,x_url,whatsapp_url FROM radio_site_settings WHERE id=1",
+		return jdbc.query("SELECT hero_title,hero_subtitle,description,youtube_url,youtube_channel_id,instagram_url,x_url,whatsapp_url FROM radio_site_settings WHERE id=1",
 			(ResultSet r, int n) -> new RadioSite.Settings(r.getString("hero_title"), r.getString("hero_subtitle"), r.getString("description"),
-				r.getString("youtube_url"), r.getString("instagram_url"), r.getString("x_url"), r.getString("whatsapp_url"))).stream()
-			.findFirst().orElse(new RadioSite.Settings(null, null, null, null, null, null, null));
+				r.getString("youtube_url"), r.getString("youtube_channel_id"), r.getString("instagram_url"), r.getString("x_url"), r.getString("whatsapp_url"))).stream()
+			.findFirst().orElse(new RadioSite.Settings(null, null, null, null, null, null, null, null));
 	}
 	private List<RadioSite.Program> programs(boolean activeOnly) {
 		return jdbc.query("SELECT BIN_TO_UUID(public_id) uuid,name,description,days,schedule,image_url,hosts,display_order,active FROM radio_programs "

@@ -14,6 +14,9 @@ import { AuthService } from '../../core/auth/auth.service';
 import { CsrfService } from '../../core/auth/csrf.service';
 import { MembershipPaymentApi } from './membership-payment-api.service';
 import { AdminLayout } from '../../layouts/admin-layout/admin-layout';
+import { RadioHomePage } from './radio-home-page';
+import { RadioSiteApiService } from './radio-site-api.service';
+import { StorefrontContextService } from '../storefront/storefront-context.service';
 const plan: Plan = { publicId: 'plan-1', name: 'PLUS', price: 6000, currency: 'ARS', description: 'Acompañá a la radio', benefits: ['Comunidad', 'Eventos'], active: true, displayOrder: 1 };
 const period: Period = { publicId: 'period-1', periodYear: 2026, periodMonth: 9, coverageStart: '2026-09-01', coverageEndExclusive: '2026-10-01', planPublicId: plan.publicId, planNameSnapshot: 'PLUS', amount: 6000, currency: 'ARS', accreditationStatus: 'PENDING' };
 const member: Member = { publicId: 'member-1', state: 'PENDING', plan, currentPeriod: period, startedAt: '2026-09-15T12:00:00Z', cancelledAt: null };
@@ -28,12 +31,36 @@ describe('RADIO membership screens', () => {
   const data = { tenantSettings: { tenantType: 'RADIO', currencyCode: 'ARS' } };
   route = { snapshot: { data: {}, paramMap: convertToParamMap({ storeSlug: 'radio-a' }), parent: null }, parent: { snapshot: { data } }, data: of(data), paramMap: of(convertToParamMap({ storeSlug: 'radio-a' })) };
   TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: MembershipApiService, useValue: api }, { provide: MembershipPaymentApi, useValue: { state: vi.fn(() => of({ available: false, status: 'NOT_STARTED', checkoutUrl: null, message: '' })), checkout: vi.fn(() => of({ available: false, status: 'NOT_STARTED', checkoutUrl: null, message: '' })), settings: vi.fn(() => of({ enabled: false, credentialAvailable: false, available: false })), enable: vi.fn(() => of({ enabled: true, credentialAvailable: true, available: true })), history: vi.fn(() => of([])), adminHistory: vi.fn(() => of({ payments: [], attempts: [] })) } }, { provide: RadioAccountApiService, useValue: { profile: () => of({ firstName: 'Ana' }) } }, { provide: AuthService, useValue: auth }, { provide: RadioContext, useValue: context }, { provide: ActivatedRoute, useValue: route }] });
+  TestBed.configureTestingModule({ providers: [
+   { provide: RadioSiteApiService, useValue: { get: () => of({ settings: { heroTitle: 'Nuestra radio' }, programs: [], sponsors: [], team: [] }) } },
+   { provide: StorefrontContextService, useValue: { settings: () => ({ branding: { heroImageUrl: '/configured-hero.jpg' } }) } },
+  ] });
   router = TestBed.inject(Router); vi.spyOn(router, 'navigate').mockResolvedValue(true);
  });
  it('renders backend plans and filters inactive entries', () => {
   api['plans'].mockReturnValue(of([plan, { ...plan, publicId: 'hidden', name: 'Oculto', active: false }]));
   const f = TestBed.createComponent(MembershipPlansPage); f.detectChanges();
   expect(f.nativeElement.textContent).toContain('PLUS'); expect(f.nativeElement.textContent).toContain('Comunidad'); expect(f.nativeElement.textContent).not.toContain('Oculto');
+ });
+ it.each(['NONE', 'PENDING', 'ACTIVE'] as const)('keeps home CTAs scoped to the real %s membership and renders plan benefits', state => {
+  api['mine'].mockReturnValue(of({ ...member, state }));
+  const f = TestBed.createComponent(RadioHomePage); f.detectChanges();
+  const cta = f.nativeElement.querySelector('.mini-plan a');
+  expect(cta.getAttribute('href')).toBe('/tiendas/radio-a/' + (state === 'NONE' ? 'socios' : 'mi-cuenta'));
+  expect(cta.textContent).toContain(state === 'NONE' ? 'Ver plan' : 'Mi membresía');
+  expect(f.nativeElement.querySelector('.mini-plan').textContent).toContain('Comunidad');
+  expect(f.nativeElement.querySelector('.radio-hero').style.backgroundImage).toContain('/configured-hero.jpg');
+  expect(f.nativeElement.querySelector('.editorial-section')).toBeNull();
+  expect(f.nativeElement.querySelector('.sponsors')).toBeNull();
+  expect(api['choose']).not.toHaveBeenCalled();
+ });
+ it('shows real dashboard benefits and an active navigation item without inventing paid data', () => {
+  const f = TestBed.createComponent(MembershipAccountPage); f.detectChanges();
+  expect(f.nativeElement.querySelector('.member-sidebar [aria-current="page"]').textContent).toContain('Inicio');
+  expect(f.nativeElement.querySelectorAll('.benefit-grid article')).toHaveLength(2);
+  expect(f.nativeElement.querySelector('.membership-pass .status').dataset.state).toBe('PENDING');
+  expect(f.nativeElement.querySelector('.membership-pass').textContent).not.toContain('Próximo cobro');
+  expect(f.nativeElement.textContent).not.toContain('Sorteos activos');
  });
  it('redirects a visitor to RADIO login with a bounded return destination', () => {
   auth['loadSession'].mockReturnValue(of({ authenticated: false })); const f = TestBed.createComponent(MembershipPlansPage); f.componentInstance.choose(plan);
@@ -48,7 +75,7 @@ describe('RADIO membership screens', () => {
   const f = TestBed.createComponent(MembershipPlansPage); f.componentInstance.choose(plan); f.componentInstance.confirm(); expect(api['choose']).toHaveBeenCalledWith('radio-a', 'plan-1', true);
  });
  it('shows the empty account without creating a commercial relation', () => {
-  api['mine'].mockReturnValue(of({ ...member, state: 'NONE', plan: null, currentPeriod: null })); const f = TestBed.createComponent(MembershipAccountPage); f.detectChanges(); expect(f.nativeElement.textContent).toContain('No tenés un plan seleccionado'); expect(f.nativeElement.querySelector('a').getAttribute('href')).toBe('/tiendas/radio-a/socios'); expect(api['choose']).not.toHaveBeenCalled();
+  api['mine'].mockReturnValue(of({ ...member, state: 'NONE', plan: null, currentPeriod: null })); const f = TestBed.createComponent(MembershipAccountPage); f.detectChanges(); expect(f.nativeElement.textContent).toContain('No tenés un plan seleccionado'); expect(f.nativeElement.querySelector('.member-content a').getAttribute('href')).toBe('/tiendas/radio-a/socios'); expect(api['choose']).not.toHaveBeenCalled();
  });
  it.each(['PENDING', 'ACTIVE'] as const)('renders %s using the current period snapshot', state => {
   api['mine'].mockReturnValue(of({ ...member, state, plan: { ...plan, name: 'NUEVO', price: 8000 }, currentPeriod: { ...period, accreditationStatus: state === 'ACTIVE' ? 'ACCREDITED' : 'PENDING' } })); const f = TestBed.createComponent(MembershipAccountPage); f.detectChanges();
