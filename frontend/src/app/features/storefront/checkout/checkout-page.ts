@@ -61,15 +61,9 @@ protected readonly storefrontRouting = inject(StorefrontRoutingService);
     return Math.min(50, Math.max(0, value));
   });
 
-  protected readonly bankTransferSubtotal = computed(() => {
-    const subtotal = Number(this.subtotal());
-    const discount = this.bankTransferDiscountPercentage();
-
-    const total =
-      Math.round((subtotal * (1 - discount / 100) + Number.EPSILON) * 100) / 100;
-
-    return total.toFixed(2);
-  });
+  protected readonly bankTransferSubtotal = computed(() =>
+    this.context.bankTransferPrice(this.subtotal()),
+  );
   protected readonly ready = computed(
     () => this.items().length > 0 && this.items().every((item) => item.status === 'AVAILABLE'),
   );

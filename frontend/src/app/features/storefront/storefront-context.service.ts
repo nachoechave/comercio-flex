@@ -50,6 +50,23 @@ export class StorefrontContextService {
     });
   }
 
+  bankTransferPrice(value: string | number): string {
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount < 0) return '0.00';
+
+    const settings = this.settings();
+    if (!settings?.bankTransferEnabled) return amount.toFixed(2);
+
+    const configuredDiscount = Number(settings.bankTransferDiscountPercentage ?? 0);
+    const discount = Number.isFinite(configuredDiscount)
+      ? Math.min(50, Math.max(0, configuredDiscount))
+      : 0;
+    const total =
+      Math.round((amount * (1 - discount / 100) + Number.EPSILON) * 100) / 100;
+
+    return total.toFixed(2);
+  }
+
   retry(): void {
     if (this.requestedSlug) this.load(this.requestedSlug, true);
   }

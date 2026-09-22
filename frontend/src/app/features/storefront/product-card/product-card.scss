@@ -97,6 +97,25 @@ h2 a::after {
   font-weight: 800;
 }
 
+.price-stack {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.transfer-price {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.transfer-price span {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
 .availability {
   color: #24724a;
   font-size: 0.82rem;
@@ -232,6 +251,15 @@ h2 a::after {
 
 .product-card--streetwear .price {
   font-size: 0.82rem;
+}
+
+.product-card--streetwear .transfer-price {
+  font-size: 0.78rem;
+}
+
+.product-card--streetwear .transfer-price span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
 }
 
 .product-card--streetwear .availability {

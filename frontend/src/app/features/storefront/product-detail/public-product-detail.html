@@ -68,6 +68,18 @@
           <h1 id="product-title">{{ currentProduct.name }}</h1>
           @if (featuredPrice(); as price) {
             <p class="featured-price">{{ price | storefrontMoney: context.currencyCode() }}</p>
+            @if (
+              context.settings()?.bankTransferEnabled &&
+              (context.settings()?.bankTransferDiscountPercentage ?? 0) > 0
+            ) {
+              <p class="featured-price transfer-price">
+                {{ context.bankTransferPrice(price) | storefrontMoney: context.currencyCode() }}
+                <small>
+                  con transferencia ·
+                  {{ context.settings()?.bankTransferDiscountPercentage }}% OFF
+                </small>
+              </p>
+            }
           }
           <p
             class="availability"

@@ -40,6 +40,15 @@ describe('CatalogPage', () => {
   const context = {
     settings,
     currencyCode: computed(() => settings()?.currencyCode ?? 'ARS'),
+    bankTransferPrice: (value: string | number) => {
+      const amount = Number(value);
+      const current = settings();
+      const discount =
+        current?.bankTransferEnabled === true
+          ? Math.min(50, Math.max(0, Number(current.bankTransferDiscountPercentage ?? 0)))
+          : 0;
+      return (Math.round((amount * (1 - discount / 100) + Number.EPSILON) * 100) / 100).toFixed(2);
+    },
   };
 
   beforeEach(async () => {
