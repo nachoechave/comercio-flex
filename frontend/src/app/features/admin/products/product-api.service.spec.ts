@@ -18,6 +18,18 @@ describe('ProductApiService', () => {
 
   afterEach(() => http.verify());
 
+  it('sends the whole gallery batch in one multipart request', () => {
+    const files = ['front', 'back'].map(
+      (name) => new File(['image'], name + '.png', { type: 'image/png' }),
+    );
+    service.uploadImages('tienda-a', 'product-1', files, 'Producto').subscribe();
+    const request = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/images');
+    expect(request.request.method).toBe('POST');
+    expect((request.request.body as FormData).getAll('images')).toEqual(files);
+    expect((request.request.body as FormData).get('altText')).toBe('Producto');
+    request.flush([]);
+  });
+
   it('sends pagination and optional filters when listing', () => {
     service
       .list('tienda-a', {
@@ -54,9 +66,7 @@ describe('ProductApiService', () => {
 
   it('updates product status with its optimistic version', () => {
     service.setStatus('tienda-a', 'product-1', 'PUBLISHED', 4).subscribe();
-    const request = http.expectOne(
-      '/api/v1/stores/tienda-a/admin/products/product-1/status',
-    );
+    const request = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/status');
     expect(request.request.method).toBe('PATCH');
     expect(request.request.body).toEqual({ status: 'PUBLISHED', version: 4 });
     request.flush({});
@@ -98,9 +108,7 @@ describe('ProductApiService', () => {
     expect(update.request.body.version).toBe(3);
     update.flush({});
 
-    service
-      .setVariantActive('tienda-a', 'product-1', 'variant-1', false, 4)
-      .subscribe();
+    service.setVariantActive('tienda-a', 'product-1', 'variant-1', false, 4).subscribe();
     const status = http.expectOne(
       '/api/v1/stores/tienda-a/admin/products/product-1/variants/variant-1/status',
     );

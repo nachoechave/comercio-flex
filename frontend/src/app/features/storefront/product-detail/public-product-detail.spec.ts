@@ -107,6 +107,43 @@ describe('PublicProductDetail', () => {
     fixture.detectChanges();
   }
 
+  it.each(['FASHION', 'FRESH', 'CATALOG'] as const)(
+    'supports gallery thumbnails in %s',
+    (template) => {
+      settings.update((value) => ({ ...value!, branding: { ...MODERN_BRANDING, template } }));
+      create();
+      const images = [0, 1, 2].map((position) => ({
+        id: String(position),
+        url: '/image/' + position,
+        thumbnailUrl: '/thumb/' + position,
+        altText: 'Imagen ' + position,
+        position,
+        primary: position === 1,
+      }));
+      http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul').flush({
+        id: 'product',
+        name: 'Producto',
+        slug: 'producto',
+        category: { id: 'category', name: 'Categoría' },
+        variants: [],
+        image: images[1],
+        images,
+      });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.visual img').getAttribute('src')).toBe(
+        '/image/1',
+      );
+      const buttons = fixture.nativeElement.querySelectorAll('.gallery-thumbnails button');
+      expect(buttons.length).toBe(3);
+      buttons[2].click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.visual img').getAttribute('src')).toBe(
+        '/image/2',
+      );
+      expect(buttons[2].getAttribute('aria-pressed')).toBe('true');
+    },
+  );
+
   it('renders the responsive product layout, image, price and generic option selectors', () => {
     create();
 
@@ -157,30 +194,21 @@ describe('PublicProductDetail', () => {
     expect(text).toContain('L');
     expect(text).toContain('Algodón suave.');
     expect(TestBed.inject(Title).getTitle()).toBe('Remera azul | Tienda A');
-    expect(
-      fixture.nativeElement.querySelector('.product-page--streetwear'),
-    ).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.product-page--streetwear')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.product-layout')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.product-media')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.product-purchase')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.quantity-control')).not.toBeNull();
-    expect(
-      fixture.nativeElement.querySelector('.featured-price').textContent,
-    ).toContain('$');
+    expect(fixture.nativeElement.querySelector('.featured-price').textContent).toContain('$');
 
-    expect(
-      fixture.nativeElement.querySelectorAll('.purchase-benefits li'),
-    ).toHaveLength(2);
+    expect(fixture.nativeElement.querySelectorAll('.purchase-benefits li')).toHaveLength(2);
 
     expect(text).not.toContain('Envíos a todo el país');
     expect(text).not.toContain('Cambios simples');
 
-    expect(
-      fixture.nativeElement.querySelector('.product-information'),
-    ).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.product-information')).not.toBeNull();
 
-    const image: HTMLImageElement =
-      fixture.nativeElement.querySelector('.product-media img');
+    const image: HTMLImageElement = fixture.nativeElement.querySelector('.product-media img');
 
     expect(image.getAttribute('src')).toBe('/media/image-1');
     expect(image.alt).toBe('Remera azul sobre fondo claro');
@@ -221,24 +249,17 @@ describe('PublicProductDetail', () => {
 
     fixture.detectChanges();
 
-    const addButton: HTMLButtonElement =
-      fixture.nativeElement.querySelector('.add-to-cart');
+    const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.add-to-cart');
 
     const chips = Array.from<HTMLButtonElement>(
       fixture.nativeElement.querySelectorAll('.option-chip'),
     );
 
-    const sizeM = chips.find(
-      (button) => button.textContent?.trim() === 'M',
-    )!;
+    const sizeM = chips.find((button) => button.textContent?.trim() === 'M')!;
 
-    const sizeL = chips.find(
-      (button) => button.textContent?.trim() === 'L',
-    )!;
+    const sizeL = chips.find((button) => button.textContent?.trim() === 'L')!;
 
-    const colorBlue = chips.find(
-      (button) => button.textContent?.trim() === 'Azul',
-    )!;
+    const colorBlue = chips.find((button) => button.textContent?.trim() === 'Azul')!;
 
     expect(addButton.disabled).toBe(true);
     expect(sizeL.disabled).toBe(true);
@@ -249,15 +270,13 @@ describe('PublicProductDetail', () => {
 
     expect(addButton.disabled).toBe(false);
 
-    const increaseButton: HTMLButtonElement =
-      fixture.nativeElement.querySelector(
-        '[aria-label="Aumentar cantidad"]',
-      );
+    const increaseButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '[aria-label="Aumentar cantidad"]',
+    );
 
-    const decreaseButton: HTMLButtonElement =
-      fixture.nativeElement.querySelector(
-        '[aria-label="Disminuir cantidad"]',
-      );
+    const decreaseButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '[aria-label="Disminuir cantidad"]',
+    );
 
     const quantity: HTMLInputElement =
       fixture.nativeElement.querySelector('.quantity-control input');
@@ -283,9 +302,7 @@ describe('PublicProductDetail', () => {
     expect(TestBed.inject(CartService).totalUnits('tienda-b')).toBe(0);
     expect(TestBed.inject(CartPreviewService).storeSlug()).toBe('tienda-a');
 
-    expect(fixture.nativeElement.textContent).toContain(
-      'Agregamos 2 unidades al carrito',
-    );
+    expect(fixture.nativeElement.textContent).toContain('Agregamos 2 unidades al carrito');
 
     expect(fixture.nativeElement.textContent).toContain('Ver carrito');
   });
@@ -337,17 +354,11 @@ describe('PublicProductDetail', () => {
       fixture.nativeElement.querySelectorAll('.option-chip'),
     );
 
-    const sizeM = chips.find(
-      (button) => button.textContent?.trim() === 'M',
-    )!;
+    const sizeM = chips.find((button) => button.textContent?.trim() === 'M')!;
 
-    const sizeL = chips.find(
-      (button) => button.textContent?.trim() === 'L',
-    )!;
+    const sizeL = chips.find((button) => button.textContent?.trim() === 'L')!;
 
-    const colorBlack = chips.find(
-      (button) => button.textContent?.trim() === 'Negro',
-    )!;
+    const colorBlack = chips.find((button) => button.textContent?.trim() === 'Negro')!;
 
     expect(sizeM.disabled).toBe(true);
     expect(sizeL.disabled).toBe(false);
@@ -357,12 +368,9 @@ describe('PublicProductDetail', () => {
     colorBlack.click();
     fixture.detectChanges();
 
-    expect(
-      fixture.nativeElement.querySelector('.featured-price').textContent,
-    ).toContain('2.700');
+    expect(fixture.nativeElement.querySelector('.featured-price').textContent).toContain('2.700');
 
-    const addButton: HTMLButtonElement =
-      fixture.nativeElement.querySelector('.add-to-cart');
+    const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.add-to-cart');
 
     addButton.click();
 
@@ -404,24 +412,19 @@ describe('PublicProductDetail', () => {
 
     fixture.detectChanges();
 
-    const addButton: HTMLButtonElement =
-      fixture.nativeElement.querySelector('.add-to-cart');
+    const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.add-to-cart');
 
     expect(addButton.disabled).toBe(false);
 
-    expect(
-      fixture.nativeElement.querySelector('.simple-variant').textContent,
-    ).toContain('Opción estándar');
+    expect(fixture.nativeElement.querySelector('.simple-variant').textContent).toContain(
+      'Opción estándar',
+    );
 
     expect(fixture.nativeElement.querySelector('.visual img')).toBeNull();
 
-    expect(
-      fixture.nativeElement.querySelector('.visual span').textContent.trim(),
-    ).toBe('P');
+    expect(fixture.nativeElement.querySelector('.visual span').textContent.trim()).toBe('P');
 
-    expect(
-      fixture.nativeElement.querySelector('.product-information'),
-    ).toBeNull();
+    expect(fixture.nativeElement.querySelector('.product-information')).toBeNull();
 
     expect(fixture.nativeElement.textContent).not.toContain(
       'Consultá las opciones y precios disponibles',
@@ -431,25 +434,19 @@ describe('PublicProductDetail', () => {
   it('renders a product-specific not-found state', () => {
     create();
 
-    http
-      .expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul')
-      .flush(
-        { detail: 'Producto no encontrado.' },
-        {
-          status: 404,
-          statusText: 'Not Found',
-        },
-      );
+    http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul').flush(
+      { detail: 'Producto no encontrado.' },
+      {
+        status: 404,
+        statusText: 'Not Found',
+      },
+    );
 
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain(
-      'No encontramos este producto',
-    );
+    expect(fixture.nativeElement.textContent).toContain('No encontramos este producto');
 
-    expect(fixture.nativeElement.textContent).toContain(
-      'Volver al catálogo',
-    );
+    expect(fixture.nativeElement.textContent).toContain('Volver al catálogo');
 
     expect(fixture.nativeElement.textContent).not.toContain('Reintentar');
   });
@@ -482,13 +479,11 @@ describe('PublicProductDetail', () => {
 
     fixture.detectChanges();
 
-    expect(TestBed.inject(Title).getTitle()).toBe(
-      'Producto | Comercio Flex',
-    );
+    expect(TestBed.inject(Title).getTitle()).toBe('Producto | Comercio Flex');
 
-    expect(
-      TestBed.inject(Meta).getTag('name="description"')?.content,
-    ).not.toContain('Algodón suave');
+    expect(TestBed.inject(Meta).getTag('name="description"')?.content).not.toContain(
+      'Algodón suave',
+    );
 
     settings.set({
       slug: 'tienda-a',
@@ -499,13 +494,9 @@ describe('PublicProductDetail', () => {
 
     fixture.detectChanges();
 
-    expect(TestBed.inject(Title).getTitle()).toBe(
-      'Remera azul | Tienda A',
-    );
+    expect(TestBed.inject(Title).getTitle()).toBe('Remera azul | Tienda A');
 
-    expect(
-      TestBed.inject(Meta).getTag('name="description"')?.content,
-    ).toBe('Algodón suave.');
+    expect(TestBed.inject(Meta).getTag('name="description"')?.content).toBe('Algodón suave.');
   });
 
   it('cleans product and metadata when switching tenant and keeps them neutral on 404', () => {
@@ -535,9 +526,7 @@ describe('PublicProductDetail', () => {
 
     fixture.detectChanges();
 
-    expect(TestBed.inject(Title).getTitle()).toBe(
-      'Producto A | Tienda A',
-    );
+    expect(TestBed.inject(Title).getTitle()).toBe('Producto A | Tienda A');
 
     settings.set(null);
 
@@ -552,37 +541,29 @@ describe('PublicProductDetail', () => {
 
     expect((fixture.componentInstance as any).product()).toBeNull();
 
-    expect(TestBed.inject(Title).getTitle()).toBe(
-      'Producto | Comercio Flex',
+    expect(TestBed.inject(Title).getTitle()).toBe('Producto | Comercio Flex');
+
+    expect(TestBed.inject(Meta).getTag('name="description"')?.content).not.toContain(
+      'Descripción privada de A',
     );
 
-    expect(
-      TestBed.inject(Meta).getTag('name="description"')?.content,
-    ).not.toContain('Descripción privada de A');
-
-    http
-      .expectOne('/api/v1/stores/tienda-b/catalog/products/producto-b')
-      .flush(
-        { detail: 'Producto no encontrado.' },
-        {
-          status: 404,
-          statusText: 'Not Found',
-        },
-      );
+    http.expectOne('/api/v1/stores/tienda-b/catalog/products/producto-b').flush(
+      { detail: 'Producto no encontrado.' },
+      {
+        status: 404,
+        statusText: 'Not Found',
+      },
+    );
 
     fixture.detectChanges();
 
-    expect(TestBed.inject(Title).getTitle()).toBe(
-      'Producto | Comercio Flex',
-    );
+    expect(TestBed.inject(Title).getTitle()).toBe('Producto | Comercio Flex');
   });
 
   it('cancels an in-flight detail request when switching from tenant A to B', () => {
     create();
 
-    const requestA = http.expectOne(
-      '/api/v1/stores/tienda-a/catalog/products/remera-azul',
-    );
+    const requestA = http.expectOne('/api/v1/stores/tienda-a/catalog/products/remera-azul');
 
     settings.set({
       slug: 'tienda-b',
@@ -627,8 +608,6 @@ describe('PublicProductDetail', () => {
 
     fixture.detectChanges();
 
-    expect(TestBed.inject(Title).getTitle()).toBe(
-      'Producto B | Tienda B',
-    );
+    expect(TestBed.inject(Title).getTitle()).toBe('Producto B | Tienda B');
   });
 });

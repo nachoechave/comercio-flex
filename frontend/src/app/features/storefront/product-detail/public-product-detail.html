@@ -7,7 +7,9 @@
   <nav class="breadcrumbs" aria-label="Migas de pan">
     <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')">Inicio</a>
     <span aria-hidden="true">/</span>
-    <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products">Productos</a>
+    <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products"
+      >Productos</a
+    >
     @if (product(); as currentProduct) {
       <span aria-hidden="true">/</span>
       <span>{{ currentProduct.name }}</span>
@@ -35,14 +37,29 @@
     </div>
   } @else if (product(); as currentProduct) {
     <div class="product-layout">
-      <div class="product-media">
-        <div class="visual" [attr.aria-hidden]="currentProduct.image ? null : 'true'">
-          @if (currentProduct.image; as image) {
+      <div class="product-media" (touchstart)="startSwipe($event)" (touchend)="endSwipe($event)">
+        <div class="visual" [attr.aria-hidden]="visibleImage() ? null : 'true'">
+          @if (visibleImage(); as image) {
             <img [src]="image.url" [alt]="image.altText" fetchpriority="high" />
           } @else {
             <span>{{ initial() }}</span>
           }
         </div>
+        @if (gallery().length > 1) {
+          <div class="gallery-thumbnails" aria-label="Imágenes del producto">
+            @for (image of gallery(); track image.id; let i = $index) {
+              <button
+                type="button"
+                [attr.aria-label]="'Ver imagen ' + (i + 1) + ' de ' + gallery().length"
+                [attr.aria-pressed]="visibleImage()?.id === image.id"
+                (click)="selectedImageId.set(image.id)"
+              >
+                <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" />
+              </button>
+            }
+          </div>
+          <p class="gallery-count">{{ gallery().length }} imágenes</p>
+        }
       </div>
 
       <div class="product-purchase">
@@ -159,7 +176,9 @@
           <p class="cart-feedback" aria-live="polite">
             {{ cartMessage() }}
             @if (cartMessage() && selectedVariant()?.available) {
-              <a [routerLink]="storefrontRouting.route(storeSlug() ?? '', 'carrito')">Ver carrito</a>
+              <a [routerLink]="storefrontRouting.route(storeSlug() ?? '', 'carrito')"
+                >Ver carrito</a
+              >
             }
           </p>
           <small>La disponibilidad final se verifica al confirmar el pedido.</small>

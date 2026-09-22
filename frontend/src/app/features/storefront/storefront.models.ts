@@ -49,6 +49,8 @@ export interface PublicCategory {
   name: string;
   slug: string;
   image: PublicProductImage | null;
+  images?: PublicProductImage[];
+  imageUrl?: string | null;
 }
 
 export interface PublicProductCategory {
@@ -58,6 +60,8 @@ export interface PublicProductCategory {
 }
 
 export interface PublicProductImage {
+  position?: number;
+  primary?: boolean;
   id: string;
   url: string;
   thumbnailUrl: string;
@@ -76,6 +80,8 @@ export interface PublicProductSummary {
   priceTo: string;
   available: boolean;
   image: PublicProductImage | null;
+  images?: PublicProductImage[];
+  imageUrl?: string | null;
 }
 
 export interface PublicProductPage {
@@ -93,7 +99,7 @@ export interface PublicProductVariant {
   color: string | null;
   options?: VariantOptionValue[];
   available: boolean;
-  availableQuantity: string;  
+  availableQuantity: string;
 }
 
 export interface PublicProductDetail {
@@ -104,6 +110,8 @@ export interface PublicProductDetail {
   category: PublicProductCategory;
   variants: PublicProductVariant[];
   image: PublicProductImage | null;
+  images?: PublicProductImage[];
+  imageUrl?: string | null;
 }
 
 export interface PublicProductQuery {

@@ -7,6 +7,7 @@ import {
   OnDestroy,
   signal,
   ViewChild,
+  untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -47,6 +48,7 @@ import { productErrorMessage } from '../product-errors';
 import {
   CreateProduct,
   ProductCategory,
+  ProductImage,
   ProductDetail,
   ProductStatus,
   ProductVariant,
@@ -172,12 +174,8 @@ export class ProductForm implements OnDestroy {
   private readonly variantDrafts = new Map<string, VariantDraft>();
   private readonly stockReceiptIntents = new Map<string, StockReceiptIntent>();
   private readonly optionChanges: Subscription;
-  private previewObjectUrl: string | null = null;
-  private imageRemovalTrigger?: HTMLButtonElement;
 
   @ViewChild('imageInput') private imageInput?: ElementRef<HTMLInputElement>;
-  @ViewChild('imageRemovalConfirm')
-  private imageRemovalConfirm?: ElementRef<HTMLButtonElement>;
 
   readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
     initialValue: routeParam(this.route.snapshot, 'storeSlug') ?? '',
@@ -194,11 +192,15 @@ export class ProductForm implements OnDestroy {
   readonly formError = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
   readonly pendingVariantId = signal<string | null>(null);
+  readonly pendingImages = signal<{ file: File; url: string }[]>([]);
+  readonly gallery = computed(
+    () => this.product()?.images ?? (this.product()?.image ? [this.product()!.image!] : []),
+  );
+  readonly imageCount = computed(() => this.gallery().length + this.pendingImages().length);
   readonly selectedImageFile = signal<File | null>(null);
   readonly imagePreviewUrl = signal<string | null>(null);
   readonly imageError = signal<string | null>(null);
   readonly imageBusy = signal(false);
-  readonly confirmingImageRemoval = signal(false);
   readonly creationIntent = signal<CreationIntent>('DRAFT');
   readonly publishWithoutImageWarning = signal(false);
   readonly statusBusy = signal(false);
@@ -620,8 +622,19 @@ export class ProductForm implements OnDestroy {
       'image',
       'No pudimos guardar la imagen seleccionada.',
       this.csrf.ensureToken().pipe(
-        switchMap(() => this.api.uploadImage(slug, product.id, file, altText)),
-        map((image) => ({ ...product, image })),
+        switchMap(() =>
+          this.api.uploadImages(
+            slug,
+            product.id,
+            this.pendingImages().map((item) => item.file),
+            altText,
+          ),
+        ),
+        map((images) => ({
+          ...product,
+          images,
+          image: images.find((image) => image.primary) ?? images[0] ?? null,
+        })),
         tap((updated) => this.product.set(updated)),
       ),
     );
@@ -799,27 +812,94 @@ export class ProductForm implements OnDestroy {
 
   selectImage(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.item(0) ?? null;
-    this.clearPreviewObjectUrl();
-    this.selectedImageFile.set(null);
-    this.imagePreviewUrl.set(this.product()?.image?.url ?? null);
+    if (this.archived() || this.imageBusy() || this.saving()) return;
+    const files = Array.from(input.files ?? []);
     this.imageError.set(null);
-    this.successMessage.set(null);
-    if (!file) return;
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+    if (this.imageCount() + files.length > 6) {
+      this.imageError.set('Podés cargar hasta 6 imágenes por producto.');
+      input.value = '';
+      return;
+    }
+    if (files.some((file) => !['image/jpeg', 'image/png'].includes(file.type))) {
       this.imageError.set('Elegí una imagen JPEG o PNG.');
       input.value = '';
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (files.some((file) => file.size > 5 * 1024 * 1024)) {
       this.imageError.set('La imagen no puede superar los 5 MiB.');
       input.value = '';
       return;
     }
-    this.selectedImageFile.set(file);
-    this.previewObjectUrl = URL.createObjectURL(file);
-    this.imagePreviewUrl.set(this.previewObjectUrl);
+    this.pendingImages.update((current) => [
+      ...current,
+      ...files.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    ]);
+    this.syncPendingImage();
     this.publishWithoutImageWarning.set(false);
+    input.value = '';
+  }
+
+  removePendingImage(index: number): void {
+    URL.revokeObjectURL(this.pendingImages()[index].url);
+    this.pendingImages.update((images) => images.filter((_, i) => i !== index));
+    this.syncPendingImage();
+  }
+
+  movePendingImage(index: number, direction: number): void {
+    const images = [...this.pendingImages()];
+    const target = index + direction;
+    if (target < 0 || target >= images.length) return;
+    [images[index], images[target]] = [images[target], images[index]];
+    this.pendingImages.set(images);
+    this.syncPendingImage();
+  }
+
+  private syncPendingImage(): void {
+    const first = this.pendingImages()[0];
+    this.selectedImageFile.set(first?.file ?? null);
+    this.imagePreviewUrl.set(first?.url ?? this.product()?.image?.url ?? null);
+  }
+
+  mutateGallery(action: 'delete' | 'primary' | 'order', image: ProductImage, direction = 0): void {
+    const product = this.product();
+    const slug = this.storeSlug();
+    if (!product || !slug || this.archived() || this.imageBusy() || this.saving()) return;
+    const ids = this.gallery().map((item) => item.id);
+    const index = ids.indexOf(image.id);
+    if (action === 'order') {
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= ids.length) return;
+      [ids[index], ids[target]] = [ids[target], ids[index]];
+    }
+    this.imageBusy.set(true);
+    this.imageError.set(null);
+    const request = () =>
+      action === 'delete'
+        ? this.api.removeGalleryImage(slug, product.id, image.id)
+        : action === 'primary'
+          ? this.api.primaryImage(slug, product.id, image.id)
+          : this.api.orderImages(slug, product.id, ids);
+    this.mutations.push(
+      this.csrf
+        .ensureToken()
+        .pipe(
+          switchMap(request),
+          finalize(() => this.imageBusy.set(false)),
+        )
+        .subscribe({
+          next: (images) => this.applyGallery(images),
+          error: (error) =>
+            this.imageError.set(productErrorMessage(error, 'No pudimos actualizar las imágenes.')),
+        }),
+    );
+  }
+
+  private applyGallery(images: ProductImage[]): void {
+    const image = images.find((item) => item.primary) ?? images[0] ?? null;
+    this.product.update((current) =>
+      current ? { ...current, images, image, imageUrl: image?.url ?? null } : current,
+    );
+    this.syncPendingImage();
   }
 
   uploadImage(): void {
@@ -840,15 +920,22 @@ export class ProductForm implements OnDestroy {
     const subscription = this.csrf
       .ensureToken()
       .pipe(
-        switchMap(() => this.api.uploadImage(slug, product.id, file, altText)),
+        switchMap(() =>
+          this.api.uploadImages(
+            slug,
+            product.id,
+            this.pendingImages().map((item) => item.file),
+            altText,
+          ),
+        ),
         finalize(() => this.imageBusy.set(false)),
       )
       .subscribe({
-        next: (image) => {
-          this.product.update((current) => (current ? { ...current, image } : current));
+        next: (images) => {
+          this.applyGallery(images);
           this.clearPreviewObjectUrl();
           this.selectedImageFile.set(null);
-          this.imagePreviewUrl.set(image.url);
+          this.imagePreviewUrl.set(this.product()?.image?.url ?? null);
           this.publishWithoutImageWarning.set(false);
           if (this.imageInput) this.imageInput.nativeElement.value = '';
           this.successMessage.set('La imagen del producto fue guardada.');
@@ -856,53 +943,6 @@ export class ProductForm implements OnDestroy {
         },
         error: (error: unknown) =>
           this.imageError.set(productErrorMessage(error, 'No pudimos guardar la imagen.')),
-      });
-    this.mutations.push(subscription);
-  }
-
-  requestImageRemoval(event: Event): void {
-    if (!this.archived() && this.product()?.image) {
-      this.imageRemovalTrigger = event.currentTarget as HTMLButtonElement;
-      this.confirmingImageRemoval.set(true);
-      queueMicrotask(() => this.imageRemovalConfirm?.nativeElement.focus());
-    }
-  }
-
-  cancelImageRemoval(event?: Event): void {
-    event?.preventDefault();
-    this.confirmingImageRemoval.set(false);
-    queueMicrotask(() => this.imageRemovalTrigger?.focus());
-  }
-
-  deleteImage(): void {
-    const slug = this.storeSlug();
-    const product = this.product();
-    if (!slug || !product?.image || this.imageBusy()) return;
-    this.confirmingImageRemoval.set(false);
-    this.imageError.set(null);
-    this.successMessage.set(null);
-    this.imageBusy.set(true);
-    const subscription = this.csrf
-      .ensureToken()
-      .pipe(
-        switchMap(() => this.api.deleteImage(slug, product.id)),
-        finalize(() => this.imageBusy.set(false)),
-      )
-      .subscribe({
-        next: () => {
-          this.product.update((current) => (current ? { ...current, image: null } : current));
-          this.clearPreviewObjectUrl();
-          this.selectedImageFile.set(null);
-          this.imagePreviewUrl.set(null);
-          this.imageAltText.setValue('');
-          if (this.imageInput) this.imageInput.nativeElement.value = '';
-          this.successMessage.set('La imagen del producto fue eliminada.');
-          queueMicrotask(() => this.imageInput?.nativeElement.focus());
-        },
-        error: (error: unknown) => {
-          this.imageError.set(productErrorMessage(error, 'No pudimos eliminar la imagen.'));
-          queueMicrotask(() => this.imageRemovalTrigger?.focus());
-        },
       });
     this.mutations.push(subscription);
   }
@@ -1231,7 +1271,6 @@ export class ProductForm implements OnDestroy {
     this.imageAltText.reset('');
     this.imageError.set(null);
     this.imageBusy.set(false);
-    this.confirmingImageRemoval.set(false);
     this.creationIntent.set('DRAFT');
     this.publishWithoutImageWarning.set(false);
     this.statusBusy.set(false);
@@ -1249,8 +1288,8 @@ export class ProductForm implements OnDestroy {
   }
 
   private clearPreviewObjectUrl(): void {
-    if (this.previewObjectUrl) URL.revokeObjectURL(this.previewObjectUrl);
-    this.previewObjectUrl = null;
+    for (const image of untracked(this.pendingImages)) URL.revokeObjectURL(image.url);
+    this.pendingImages.set([]);
   }
 
   ngOnDestroy(): void {
