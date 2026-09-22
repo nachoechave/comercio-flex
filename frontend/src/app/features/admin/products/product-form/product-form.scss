@@ -455,3 +455,27 @@ textarea:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+.gallery-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.gallery-editor article {
+  width: 150px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-content: start;
+}
+.gallery-editor img {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+.gallery-editor strong,
+.gallery-editor span {
+  width: 100%;
+}

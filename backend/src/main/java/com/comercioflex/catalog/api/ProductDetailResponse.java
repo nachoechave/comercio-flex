@@ -18,7 +18,7 @@ public record ProductDetailResponse(
 	List<ProductVariantResponse> variants,
 	long version,
 	Instant createdAt,
-	Instant updatedAt) {
+	Instant updatedAt, List<ProductImageResponse> images, String imageUrl) {
 
 	static ProductDetailResponse from(Product product, String storeSlug) {
 		return new ProductDetailResponse(
@@ -32,6 +32,8 @@ public record ProductDetailResponse(
 			product.variants().stream().map(ProductVariantResponse::from).toList(),
 			product.version(),
 			product.createdAt(),
-			product.updatedAt());
+			product.updatedAt(),
+			product.images().stream().map(image -> ProductImageResponse.admin(storeSlug, image)).toList(),
+			product.image() == null ? null : ProductImageResponse.admin(storeSlug, product.image()).url());
 	}
 }

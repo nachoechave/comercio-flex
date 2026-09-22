@@ -6,11 +6,7 @@
   --product-muted: color-mix(in srgb, var(--product-text) 62%, transparent);
   --product-border: color-mix(in srgb, var(--product-text) 14%, transparent);
   --product-surface: var(--store-background-color, #fff);
-  --product-media-surface: color-mix(
-    in srgb,
-    var(--product-text) 4%,
-    var(--product-surface)
-  );
+  --product-media-surface: color-mix(in srgb, var(--product-text) 4%, var(--product-surface));
   --product-success: #166534;
   --product-danger: #9a3412;
   --product-radius: var(--store-card-radius, 1rem);
@@ -217,21 +213,13 @@
 }
 
 .option-chip:hover:not(:disabled) {
-  border-color: color-mix(
-    in srgb,
-    var(--product-primary) 60%,
-    var(--product-border)
-  );
+  border-color: color-mix(in srgb, var(--product-primary) 60%, var(--product-border));
 }
 
 .option-chip--selected {
   border-color: var(--product-primary);
   color: var(--product-primary);
-  background: color-mix(
-    in srgb,
-    var(--product-primary) 8%,
-    var(--product-surface)
-  );
+  background: color-mix(in srgb, var(--product-primary) 8%, var(--product-surface));
   box-shadow: inset 0 0 0 1px var(--product-primary);
   font-weight: 750;
 }
@@ -255,8 +243,7 @@
 .quantity-control input:focus-visible,
 .add-to-cart:focus-visible,
 .state-actions button:focus-visible {
-  outline: 3px solid
-    color-mix(in srgb, var(--product-primary) 32%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--product-primary) 32%, transparent);
   outline-offset: 2px;
 }
 
@@ -364,8 +351,7 @@
   border-radius: var(--product-control-radius);
   color: var(--product-on-primary);
   background: var(--product-primary);
-  box-shadow: 0 0.65rem 1.35rem
-    color-mix(in srgb, var(--product-primary) 24%, transparent);
+  box-shadow: 0 0.65rem 1.35rem color-mix(in srgb, var(--product-primary) 24%, transparent);
   font: inherit;
   font-size: 0.82rem;
   font-weight: 850;
@@ -389,8 +375,7 @@
 
 .add-to-cart:hover:not(:disabled) {
   background: var(--product-primary-hover);
-  box-shadow: 0 0.8rem 1.65rem
-    color-mix(in srgb, var(--product-primary) 32%, transparent);
+  box-shadow: 0 0.8rem 1.65rem color-mix(in srgb, var(--product-primary) 32%, transparent);
   transform: translateY(-1px);
 }
 
@@ -689,4 +674,34 @@
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+.gallery-thumbnails {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding: 0.6rem 0;
+}
+.gallery-thumbnails button {
+  flex: 0 0 64px;
+  padding: 2px;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.gallery-thumbnails button[aria-pressed='true'] {
+  border-color: currentColor;
+}
+.gallery-thumbnails img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  display: block;
+}
+.gallery-count {
+  font-size: 0.85rem;
+}
+.product-media {
+  touch-action: pan-y;
 }

@@ -159,7 +159,7 @@ describe('ProductForm creation', () => {
     fillValidProduct();
     const file = new File(['image'], 'remera.png', { type: 'image/png' });
     const input = document.createElement('input');
-    Object.defineProperty(input, 'files', { value: { item: () => file } });
+    Object.defineProperty(input, 'files', { value: [file] });
     fixture.componentInstance.selectImage({ target: input } as unknown as Event);
     fixture.componentInstance.imageAltText.setValue('Remera negra');
     fixture.detectChanges();
@@ -170,14 +170,16 @@ describe('ProductForm creation', () => {
     fixture.componentInstance.submitProduct('DRAFT');
     http.expectOne('/api/v1/stores/tienda-a/admin/products').flush(productResponse());
     http.expectOne('/api/v1/auth/csrf').flush({});
-    const upload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image');
-    expect((upload.request.body as FormData).get('file')).toBe(file);
-    upload.flush({
-      id: 'image-1',
-      url: '/media/image-1',
-      thumbnailUrl: '/media/image-1/thumbnail',
-      altText: 'Remera negra',
-    });
+    const upload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/images');
+    expect((upload.request.body as FormData).get('images')).toBe(file);
+    upload.flush([
+      {
+        id: 'image-1',
+        url: '/media/image-1',
+        thumbnailUrl: '/media/image-1/thumbnail',
+        altText: 'Remera negra',
+      },
+    ]);
     expect(router.navigate).toHaveBeenCalled();
   });
 
@@ -361,13 +363,16 @@ describe('ProductForm creation', () => {
     fixture.componentInstance.selectedImageFile.set(
       new File(['image'], 'remera.png', { type: 'image/png' }),
     );
+    fixture.componentInstance.pendingImages.set([
+      { file: fixture.componentInstance.selectedImageFile()!, url: 'blob:pending' },
+    ]);
     fixture.componentInstance.imageAltText.setValue('Remera negra');
 
     fixture.componentInstance.submitProduct('DRAFT');
     http.expectOne('/api/v1/stores/tienda-a/admin/products').flush(productResponse());
     http.expectOne('/api/v1/auth/csrf').flush({});
     http
-      .expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image')
+      .expectOne('/api/v1/stores/tienda-a/admin/products/product-1/images')
       .flush({ detail: 'No se pudo almacenar la imagen.' }, { status: 503, statusText: 'Error' });
 
     expect(fixture.componentInstance.formError()).toContain('No se pudo almacenar la imagen.');
@@ -662,7 +667,7 @@ describe('ProductForm image management', () => {
   it('rejects unsupported files before sending a request', () => {
     const file = new File(['plain text'], 'producto.txt', { type: 'text/plain' });
     const input = document.createElement('input');
-    Object.defineProperty(input, 'files', { value: { item: () => file } });
+    Object.defineProperty(input, 'files', { value: [file] });
 
     fixture.componentInstance.selectImage({ target: input } as unknown as Event);
 
@@ -673,19 +678,22 @@ describe('ProductForm image management', () => {
   it('uploads a valid image with trimmed alternative text', () => {
     const file = new File(['image'], 'producto.png', { type: 'image/png' });
     fixture.componentInstance.selectedImageFile.set(file);
+    fixture.componentInstance.pendingImages.set([{ file, url: 'blob:pending' }]);
     fixture.componentInstance.imageAltText.setValue('  Remera azul  ');
 
     fixture.componentInstance.uploadImage();
     http.expectOne('/api/v1/auth/csrf').flush({});
-    const upload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image');
-    expect((upload.request.body as FormData).get('file')).toBe(file);
+    const upload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/images');
+    expect((upload.request.body as FormData).get('images')).toBe(file);
     expect((upload.request.body as FormData).get('altText')).toBe('Remera azul');
-    upload.flush({
-      id: 'image-1',
-      url: '/media/image-1',
-      thumbnailUrl: '/media/image-1/thumbnail',
-      altText: 'Remera azul',
-    });
+    upload.flush([
+      {
+        id: 'image-1',
+        url: '/media/image-1',
+        thumbnailUrl: '/media/image-1/thumbnail',
+        altText: 'Remera azul',
+      },
+    ]);
     fixture.detectChanges();
 
     expect(fixture.componentInstance.product()?.image?.id).toBe('image-1');
@@ -701,7 +709,7 @@ describe('ProductForm image management', () => {
       type: 'image/png',
     });
     const oversizedInput = document.createElement('input');
-    Object.defineProperty(oversizedInput, 'files', { value: { item: () => oversized } });
+    Object.defineProperty(oversizedInput, 'files', { value: [oversized] });
     fixture.componentInstance.selectImage({ target: oversizedInput } as unknown as Event);
     expect(fixture.componentInstance.selectedImageFile()).toBeNull();
     expect(fixture.componentInstance.imageError()).toContain('5 MiB');
@@ -710,7 +718,7 @@ describe('ProductForm image management', () => {
       type: 'image/png',
     });
     const exactInput = document.createElement('input');
-    Object.defineProperty(exactInput, 'files', { value: { item: () => exactFile } });
+    Object.defineProperty(exactInput, 'files', { value: [exactFile] });
     fixture.componentInstance.selectImage({ target: exactInput } as unknown as Event);
     expect(fixture.componentInstance.selectedImageFile()).toBe(exactFile);
     expect(fixture.componentInstance.imagePreviewUrl()).toBe('blob:preview');
@@ -719,44 +727,76 @@ describe('ProductForm image management', () => {
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:preview');
   });
 
-  it('deletes an image with CSRF protection and exposes an accessible confirmation', () => {
-    fixture.componentInstance.product.update((product) =>
-      product
-        ? {
-            ...product,
-            image: {
-              id: 'image-1',
-              url: '/media/image-1',
-              thumbnailUrl: '/media/image-1/thumbnail',
-              altText: 'Remera azul',
-            },
-          }
-        : product,
-    );
-    fixture.detectChanges();
-    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector(
-      '.image-actions button:not(.primary)',
-    );
-    fixture.componentInstance.requestImageRemoval({ currentTarget: trigger } as unknown as Event);
-    fixture.detectChanges();
-    const dialog: HTMLElement = fixture.nativeElement.querySelector('[role="alertdialog"]');
-    expect(dialog.getAttribute('aria-modal')).toBe('true');
-    expect(dialog.getAttribute('aria-describedby')).toBe('remove-image-description');
-
-    fixture.componentInstance.deleteImage();
+  it('deletes an image with CSRF protection', () => {
+    const image = fixture.componentInstance.product()!.image!;
+    fixture.componentInstance.mutateGallery('delete', image);
     http.expectOne('/api/v1/auth/csrf').flush({});
-    const removal = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image');
+    const removal = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/products/product-1/images/' + image.id,
+    );
     expect(removal.request.method).toBe('DELETE');
-    removal.flush(null);
+    removal.flush([]);
     fixture.detectChanges();
-
     expect(fixture.componentInstance.product()?.image).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('imagen del producto fue eliminada');
+    expect(fixture.nativeElement.textContent).toContain('0 de 6 imágenes');
+  });
+
+  it('selects multiple files, previews them and enforces the remaining capacity', () => {
+    let sequence = 0;
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn(() => 'blob:' + sequence++),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    const input = document.createElement('input');
+    const files = Array.from(
+      { length: 5 },
+      (_, i) => new File(['image'], i + '.png', { type: 'image/png' }),
+    );
+    Object.defineProperty(input, 'files', { configurable: true, value: files });
+    fixture.componentInstance.selectImage({ target: input } as unknown as Event);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('input[type=file]').multiple).toBe(true);
+    expect(fixture.nativeElement.querySelector('input[type=file]').disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('6 de 6 imágenes');
+    expect(fixture.nativeElement.querySelectorAll('.gallery-editor img').length).toBe(6);
+    Object.defineProperty(input, 'files', { value: [files[0]] });
+    fixture.componentInstance.selectImage({ target: input } as unknown as Event);
+    expect(fixture.componentInstance.imageError()).toContain('hasta 6');
+    fixture.componentInstance.movePendingImage(1, -1);
+    expect(fixture.componentInstance.pendingImages()[0].file).toBe(files[1]);
+    fixture.componentInstance.removePendingImage(0);
+    expect(fixture.componentInstance.imageCount()).toBe(5);
+  });
+
+  it('persists primary selection and order using the gallery IDs', () => {
+    const first = fixture.componentInstance.product()!.image!;
+    const second = { ...first, id: 'second', primary: false, position: 1 };
+    fixture.componentInstance.product.update((product) => ({
+      ...product!,
+      images: [first, second],
+    }));
+    fixture.componentInstance.mutateGallery('primary', second);
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/images/second/primary').flush([
+      { ...first, primary: false },
+      { ...second, primary: true },
+    ]);
+    expect(fixture.componentInstance.product()?.image?.id).toBe('second');
+    fixture.componentInstance.mutateGallery('order', second, -1);
+    const order = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/images/order');
+    expect(order.request.body).toEqual(['second', first.id]);
+    order.flush([
+      { ...second, primary: true, position: 0 },
+      { ...first, primary: false, position: 1 },
+    ]);
+    expect(fixture.componentInstance.gallery()[0].id).toBe('second');
   });
 
   it('keeps the selected file available for retry after an upload error', () => {
     const file = new File(['image'], 'producto.png', { type: 'image/png' });
     fixture.componentInstance.selectedImageFile.set(file);
+    fixture.componentInstance.pendingImages.set([{ file, url: 'blob:pending' }]);
     fixture.componentInstance.imageAltText.setValue('Remera azul');
     fixture.componentInstance.successMessage.set('Mensaje anterior');
 
@@ -764,7 +804,7 @@ describe('ProductForm image management', () => {
     expect(fixture.componentInstance.successMessage()).toBeNull();
     http.expectOne('/api/v1/auth/csrf').flush({});
     http
-      .expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image')
+      .expectOne('/api/v1/stores/tienda-a/admin/products/product-1/images')
       .flush(
         { detail: 'No se pudo almacenar la imagen.' },
         { status: 503, statusText: 'Unavailable' },
@@ -778,10 +818,11 @@ describe('ProductForm image management', () => {
   it('cancels an in-flight upload when the component is destroyed', () => {
     const file = new File(['image'], 'producto.png', { type: 'image/png' });
     fixture.componentInstance.selectedImageFile.set(file);
+    fixture.componentInstance.pendingImages.set([{ file, url: 'blob:pending' }]);
     fixture.componentInstance.imageAltText.setValue('Remera azul');
     fixture.componentInstance.uploadImage();
     http.expectOne('/api/v1/auth/csrf').flush({});
-    const upload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/image');
+    const upload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1/images');
 
     fixture.destroy();
 

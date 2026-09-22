@@ -3,6 +3,8 @@ import { VariantOptionValue } from '../../../shared/variant-options';
 export type ProductStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
 export interface ProductImage {
+  position?: number;
+  primary?: boolean;
   id: string;
   url: string;
   thumbnailUrl: string;
@@ -40,6 +42,8 @@ export interface ProductDetail {
   category: ProductCategory;
   variants: ProductVariant[];
   image: ProductImage | null;
+  images?: ProductImage[];
+  imageUrl?: string | null;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -56,6 +60,8 @@ export interface ProductSummary {
   priceFrom: string | null;
   priceTo: string | null;
   image: ProductImage | null;
+  images?: ProductImage[];
+  imageUrl?: string | null;
   version: number;
   updatedAt: string;
 }

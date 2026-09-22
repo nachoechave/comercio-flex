@@ -54,10 +54,12 @@ public class JdbcProductRepository implements ProductRepository {
 			category.name category_name,
 			category.status category_status,
 			BIN_TO_UUID(image.public_id) image_public_id,
-			image.alt_text image_alt_text
+			image.position image_position, image.is_primary image_primary, image.alt_text image_alt_text
 		FROM products product
 		JOIN categories category ON category.id = product.category_id
-		LEFT JOIN product_images image ON image.product_id = product.id
+		LEFT JOIN product_images image ON image.id = (
+			SELECT chosen.id FROM product_images chosen WHERE chosen.product_id = product.id
+			ORDER BY chosen.is_primary DESC, chosen.position, chosen.id LIMIT 1)
 		""";
 
 	private static final String VARIANT_COLUMNS = """
@@ -105,7 +107,7 @@ public class JdbcProductRepository implements ProductRepository {
 				category.name category_name,
 				category.status category_status,
 				BIN_TO_UUID(image.public_id) image_public_id,
-				image.alt_text image_alt_text,
+				image.position image_position, image.is_primary image_primary, image.alt_text image_alt_text,
 				(SELECT COUNT(*) FROM product_variants variant
 					WHERE variant.product_id = product.id) variant_count,
 				(SELECT COUNT(*) FROM product_variants variant
@@ -117,7 +119,9 @@ public class JdbcProductRepository implements ProductRepository {
 					WHERE variant.product_id = product.id) price_to
 			FROM products product
 			JOIN categories category ON category.id = product.category_id
-			LEFT JOIN product_images image ON image.product_id = product.id
+			LEFT JOIN product_images image ON image.id = (
+			SELECT chosen.id FROM product_images chosen WHERE chosen.product_id = product.id
+			ORDER BY chosen.is_primary DESC, chosen.position, chosen.id LIMIT 1)
 			""" + where + " ORDER BY product.updated_at DESC, product.id DESC LIMIT ? OFFSET ?";
 		parameters.add(search.size());
 		parameters.add(Math.multiplyExact((long) search.page(), search.size()));
@@ -160,7 +164,7 @@ public class JdbcProductRepository implements ProductRepository {
 				""",
 			variantMapper,
 			productId.toString());
-		return Optional.of(header.toProduct(withOptions(variants)));
+		return Optional.of(header.toProduct(withOptions(variants), gallery(productId)));
 	}
 
 	@Override
@@ -468,7 +472,7 @@ public class JdbcProductRepository implements ProductRepository {
 	private ProductImageReference mapImage(ResultSet resultSet) throws SQLException {
 		String id = resultSet.getString("image_public_id");
 		return id == null ? null : new ProductImageReference(
-			UUID.fromString(id), resultSet.getString("image_alt_text"));
+			UUID.fromString(id), resultSet.getString("image_alt_text"), resultSet.getInt("image_position"), resultSet.getBoolean("image_primary"));
 	}
 
 	private ProductVariant mapVariant(ResultSet resultSet, int rowNumber)
@@ -650,6 +654,16 @@ public class JdbcProductRepository implements ProductRepository {
 			"El slug, SKU o combinación de opciones ya existe.");
 	}
 
+
+	private List<ProductImageReference> gallery(UUID productId) {
+		return jdbcTemplate.query("""
+			SELECT BIN_TO_UUID(image.public_id) image_id, image.alt_text, image.position, image.is_primary
+			FROM product_images image JOIN products product ON product.id = image.product_id
+			WHERE product.public_id = UUID_TO_BIN(?) ORDER BY image.position
+			""", (rs, row) -> new ProductImageReference(UUID.fromString(rs.getString("image_id")),
+				rs.getString("alt_text"), rs.getInt("position"), rs.getBoolean("is_primary")), productId.toString());
+	}
+
 	private record ProductHeader(
 		UUID id,
 		String name,
@@ -662,7 +676,7 @@ public class JdbcProductRepository implements ProductRepository {
 		java.time.Instant createdAt,
 		java.time.Instant updatedAt) {
 
-		Product toProduct(List<ProductVariant> variants) {
+		Product toProduct(List<ProductVariant> variants, List<ProductImageReference> images) {
 			return new Product(
 				id,
 				name,
@@ -674,7 +688,7 @@ public class JdbcProductRepository implements ProductRepository {
 				variants,
 				version,
 				createdAt,
-				updatedAt);
+				updatedAt, images);
 		}
 	}
 }

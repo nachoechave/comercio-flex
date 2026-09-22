@@ -130,6 +130,50 @@ class ProductImageServiceTests {
 			"image/png", "png", 10, 10, "a".repeat(64));
 	}
 
+	@Test
+	void rejectsSevenFilesBeforeProcessingOrStoring() {
+		assertThatThrownBy(() -> service.add(UUID.randomUUID(), java.util.Collections.nCopies(7, new byte[] {1}), "Producto"))
+			.isInstanceOf(InvalidProductImageException.class).hasMessageContaining("máximo 6");
+		verify(processor, never()).process(any());
+		verify(storage, never()).store(any(), any(), any());
+	}
+
+	@Test
+	void rejectsOverflowBeforeStorageUnderProductLock() {
+		UUID productId = UUID.randomUUID();
+		when(repository.lockProduct(productId)).thenReturn(Optional.of(new LockedImageProduct(7, false)));
+		when(repository.findAll(productId)).thenReturn(java.util.Collections.nCopies(5, image(UUID.randomUUID())));
+		assertThatThrownBy(() -> service.add(productId, java.util.List.of(new byte[] {1}, new byte[] {2}), "Producto"))
+			.isInstanceOf(InvalidProductImageException.class).hasMessageContaining("máximo 6");
+		verify(storage, never()).store(any(), any(), any());
+	}
+
+	@Test
+	void compensatesEveryObjectWhenLaterImageStorageFails() {
+		UUID productId = UUID.randomUUID();
+		when(repository.lockProduct(productId)).thenReturn(Optional.of(new LockedImageProduct(7, false)));
+		when(repository.findAll(productId)).thenReturn(java.util.List.of());
+		when(processor.process(any())).thenReturn(processed());
+		doNothing().doNothing().doThrow(new ProductImageStorageException("Unavailable", new IllegalStateException()))
+			.when(storage).store(any(), any(), any());
+		try (TenantContext.Scope ignored = tenantContext.open("tenant-a")) {
+			assertThatThrownBy(() -> service.add(productId, java.util.List.of(new byte[] {1}, new byte[] {2}), "Producto"))
+				.isInstanceOf(ProductImageStorageException.class);
+		}
+		verify(storage, org.mockito.Mockito.times(3)).delete(org.mockito.ArgumentMatchers.startsWith("tenant-a/products/"));
+	}
+
+	@Test
+	void deletingPrimaryRemovesBothStoredRepresentationsAfterTransaction() {
+		ProductImage image = image(UUID.randomUUID());
+		when(repository.lockProduct(image.productId())).thenReturn(Optional.of(new LockedImageProduct(7, false)));
+		when(repository.findAll(image.productId())).thenReturn(java.util.List.of(image), java.util.List.of());
+		assertThat(service.delete(image.productId(), image.id())).isEmpty();
+		verify(repository).deleteImage(image.productId(), image.id());
+		verify(storage).delete(image.displayStorageKey());
+		verify(storage).delete(image.thumbnailStorageKey());
+	}
+
 	private ProductImage image(UUID id) {
 		return new ProductImage(id, UUID.randomUUID(), "display", "thumbnail", "image/png",
 			1, 1, 10, 10, "Producto", "a".repeat(64), 0, Instant.now());

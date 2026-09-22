@@ -12,5 +12,8 @@ public record PublicProductDetail(
 	String description,
 	PublicCategory category,
 	ProductImageReference image,
-	List<PublicVariant> variants) {
+	List<PublicVariant> variants, List<ProductImageReference> images) {
+	public PublicProductDetail(UUID id, String name, String slug, String description, PublicCategory category, ProductImageReference image, List<PublicVariant> variants) {
+		this(id, name, slug, description, category, image, variants, image == null ? List.of() : List.of(image));
+	}
 }

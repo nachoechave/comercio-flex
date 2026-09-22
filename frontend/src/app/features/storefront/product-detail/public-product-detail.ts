@@ -40,19 +40,38 @@ export class PublicProductDetail {
   private readonly meta = inject(Meta);
   private readonly retryVersion = signal(0);
 
-  protected readonly storeSlug = toSignal(
-    this.storefrontRouting.storeSlug(this.route),
-    {
-      initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
-    },
-  );
-  protected readonly productSlug = toSignal(
-    inheritedRouteParam(this.route, 'productSlug'),
-    {
-      initialValue: '',
-    },
-  );
+  protected readonly storeSlug = toSignal(this.storefrontRouting.storeSlug(this.route), {
+    initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
+  });
+  protected readonly productSlug = toSignal(inheritedRouteParam(this.route, 'productSlug'), {
+    initialValue: '',
+  });
   protected readonly product = signal<PublicProductDetailModel | null>(null);
+  protected readonly selectedImageId = signal<string | null>(null);
+  protected readonly gallery = computed(
+    () => this.product()?.images ?? (this.product()?.image ? [this.product()!.image!] : []),
+  );
+  protected readonly visibleImage = computed(
+    () =>
+      this.gallery().find((image) => image.id === this.selectedImageId()) ??
+      this.gallery().find((image) => image.primary) ??
+      this.product()?.image ??
+      this.gallery()[0] ??
+      null,
+  );
+  private touchStartX = 0;
+  protected startSwipe(event: TouchEvent): void {
+    this.touchStartX = event.changedTouches[0].clientX;
+  }
+  protected endSwipe(event: TouchEvent): void {
+    const delta = event.changedTouches[0].clientX - this.touchStartX;
+    if (Math.abs(delta) < 50 || this.gallery().length < 2) return;
+    const images = this.gallery();
+    const index = images.findIndex((image) => image.id === this.visibleImage()?.id);
+    this.selectedImageId.set(
+      images[(index + (delta < 0 ? 1 : -1) + images.length) % images.length].id,
+    );
+  }
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly notFound = signal(false);
@@ -122,6 +141,7 @@ export class PublicProductDetail {
       const productSlug = this.productSlug();
       this.retryVersion();
       this.product.set(null);
+      this.selectedImageId.set(null);
       this.errorMessage.set(null);
       this.notFound.set(false);
       this.selectedVariantId.set(null);
@@ -257,9 +277,7 @@ export class PublicProductDetail {
       return;
     }
     if (this.quantity() > this.maxQuantity()) {
-      this.cartMessage.set(
-        `Solo hay ${this.maxQuantity()} unidades disponibles.`,
-      );
+      this.cartMessage.set(`Solo hay ${this.maxQuantity()} unidades disponibles.`);
       return;
     }
 

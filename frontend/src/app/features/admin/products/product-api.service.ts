@@ -46,10 +46,10 @@ export class ProductApiService {
     status: ProductStatus,
     version: number,
   ): Observable<ProductDetail> {
-    return this.http.patch<ProductDetail>(
-      `${this.productUrl(storeSlug, productId)}/status`,
-      { status, version },
-    );
+    return this.http.patch<ProductDetail>(`${this.productUrl(storeSlug, productId)}/status`, {
+      status,
+      version,
+    });
   }
 
   uploadImage(
@@ -64,6 +64,42 @@ export class ProductApiService {
     return this.http.put<ProductImage>(`${this.productUrl(storeSlug, productId)}/image`, body);
   }
 
+  uploadImages(
+    storeSlug: string,
+    productId: string,
+    files: File[],
+    altText: string,
+  ): Observable<ProductImage[]> {
+    const body = new FormData();
+    for (const file of files) body.append('images', file);
+    body.append('altText', altText);
+    return this.http.post<ProductImage[]>(this.productUrl(storeSlug, productId) + '/images', body);
+  }
+
+  removeGalleryImage(
+    storeSlug: string,
+    productId: string,
+    imageId: string,
+  ): Observable<ProductImage[]> {
+    return this.http.delete<ProductImage[]>(
+      this.productUrl(storeSlug, productId) + '/images/' + encodeURIComponent(imageId),
+    );
+  }
+
+  primaryImage(storeSlug: string, productId: string, imageId: string): Observable<ProductImage[]> {
+    return this.http.put<ProductImage[]>(
+      this.productUrl(storeSlug, productId) + '/images/' + encodeURIComponent(imageId) + '/primary',
+      {},
+    );
+  }
+
+  orderImages(storeSlug: string, productId: string, ids: string[]): Observable<ProductImage[]> {
+    return this.http.put<ProductImage[]>(
+      this.productUrl(storeSlug, productId) + '/images/order',
+      ids,
+    );
+  }
+
   deleteImage(storeSlug: string, productId: string): Observable<void> {
     return this.http.delete<void>(`${this.productUrl(storeSlug, productId)}/image`);
   }
@@ -73,10 +109,7 @@ export class ProductApiService {
     productId: string,
     body: SaveVariant,
   ): Observable<ProductVariant> {
-    return this.http.post<ProductVariant>(
-      this.variantCollectionUrl(storeSlug, productId),
-      body,
-    );
+    return this.http.post<ProductVariant>(this.variantCollectionUrl(storeSlug, productId), body);
   }
 
   updateVariant(
@@ -85,10 +118,7 @@ export class ProductApiService {
     variantId: string,
     body: UpdateVariant,
   ): Observable<ProductVariant> {
-    return this.http.put<ProductVariant>(
-      this.variantUrl(storeSlug, productId, variantId),
-      body,
-    );
+    return this.http.put<ProductVariant>(this.variantUrl(storeSlug, productId, variantId), body);
   }
 
   setVariantActive(
