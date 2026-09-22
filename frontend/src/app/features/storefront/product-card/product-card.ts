@@ -2,6 +2,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { PublicProductSummary } from '../storefront.models';
+import { StorefrontContextService } from '../storefront-context.service';
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
 import { StorefrontRoutingService } from '../storefront-routing.service';
 
@@ -12,6 +13,7 @@ import { StorefrontRoutingService } from '../storefront-routing.service';
   styleUrl: './product-card.scss',
 })
 export class ProductCard {
+  protected readonly context = inject(StorefrontContextService);
   protected readonly storefrontRouting = inject(StorefrontRoutingService);
   readonly product = input.required<PublicProductSummary>();
   readonly storeSlug = input.required<string>();
