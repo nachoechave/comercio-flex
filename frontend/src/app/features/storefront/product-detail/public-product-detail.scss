@@ -133,6 +133,19 @@
   letter-spacing: -0.025em;
 }
 
+.featured-price.transfer-price {
+  color: var(--product-primary);
+  font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+}
+
+.featured-price.transfer-price small {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
 .availability {
   display: inline-flex;
   align-items: center;
