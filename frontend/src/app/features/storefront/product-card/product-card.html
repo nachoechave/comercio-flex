@@ -27,13 +27,29 @@
       </a>
     </h2>
     <div class="footer">
-      <p class="price">
-        @if (product().priceFrom === product().priceTo) {
-          {{ product().priceFrom | storefrontMoney: currencyCode() }}
-        } @else {
-          Desde {{ product().priceFrom | storefrontMoney: currencyCode() }}
+      <div class="price-stack">
+        <p class="price">
+          @if (product().priceFrom === product().priceTo) {
+            {{ product().priceFrom | storefrontMoney: currencyCode() }}
+          } @else {
+            Desde {{ product().priceFrom | storefrontMoney: currencyCode() }}
+          }
+        </p>
+        @if (
+          context.settings()?.bankTransferEnabled &&
+          (context.settings()?.bankTransferDiscountPercentage ?? 0) > 0
+        ) {
+          <p class="transfer-price">
+            @if (product().priceFrom === product().priceTo) {
+              {{ context.bankTransferPrice(product().priceFrom) | storefrontMoney: currencyCode() }}
+            } @else {
+              Desde
+              {{ context.bankTransferPrice(product().priceFrom) | storefrontMoney: currencyCode() }}
+            }
+            <span>con transferencia</span>
+          </p>
         }
-      </p>
+      </div>
       <p class="availability" [class.availability--out]="!product().available">
         {{ product().available ? 'Disponible' : 'Sin stock' }}
       </p>
