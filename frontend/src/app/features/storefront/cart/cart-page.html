@@ -121,6 +121,17 @@
         <p class="eyebrow">Resumen</p>
         <h2 id="summary-title">Subtotal disponible</h2>
         <strong class="subtotal">{{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
+        @if (
+          context.settings()?.bankTransferEnabled &&
+          (context.settings()?.bankTransferDiscountPercentage ?? 0) > 0
+        ) {
+          <p>
+            <strong>
+              {{ context.bankTransferPrice(subtotal()) | storefrontMoney: context.currencyCode() }}
+            </strong>
+            con transferencia ({{ context.settings()?.bankTransferDiscountPercentage }}% OFF).
+          </p>
+        }
         <p>
           Los productos sin confirmar o sin stock no se incluyen. Precio y stock se verificarán
           nuevamente al confirmar el pedido.
