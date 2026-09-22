@@ -1,6 +1,8 @@
 package com.comercioflex.media.api;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.CacheControl;
@@ -9,7 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -20,6 +24,7 @@ import com.comercioflex.identity.application.TenantPermissionGuard;
 import com.comercioflex.identity.domain.TenantPermission;
 import com.comercioflex.media.application.InvalidProductImageException;
 import com.comercioflex.media.application.ProductImageService;
+import com.comercioflex.media.domain.ProductImage;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -35,6 +40,51 @@ public class AdminProductImageController {
 			TenantPermissionGuard permissionGuard) {
 		this.service = service;
 		this.permissionGuard = permissionGuard;
+	}
+
+
+	@PostMapping(path = "/products/{productId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	List<ProductImageResponse> add(@PathVariable String storeSlug, @PathVariable UUID productId,
+			@RequestPart("images") List<MultipartFile> images,
+			@RequestParam("altText") String altText, HttpServletRequest request) {
+		permissionGuard.require(request, TenantPermission.MANAGE_CATALOG);
+		if (images.isEmpty() || images.size() > 6) {
+			throw new InvalidProductImageException("El producto puede tener como máximo 6 imágenes.");
+		}
+		try {
+			var sources = new ArrayList<byte[]>();
+			for (var file : images) sources.add(file.getBytes());
+			return responses(storeSlug, service.add(productId, sources, altText));
+		}
+		catch (IOException exception) {
+			throw new InvalidProductImageException("No pudimos leer las imágenes seleccionadas.");
+		}
+	}
+
+	@DeleteMapping("/products/{productId}/images/{imageId}")
+	List<ProductImageResponse> deleteImage(@PathVariable String storeSlug,
+			@PathVariable UUID productId, @PathVariable UUID imageId, HttpServletRequest request) {
+		permissionGuard.require(request, TenantPermission.MANAGE_CATALOG);
+		return responses(storeSlug, service.delete(productId, imageId));
+	}
+
+	@PutMapping("/products/{productId}/images/{imageId}/primary")
+	List<ProductImageResponse> primary(@PathVariable String storeSlug,
+			@PathVariable UUID productId, @PathVariable UUID imageId, HttpServletRequest request) {
+		permissionGuard.require(request, TenantPermission.MANAGE_CATALOG);
+		return responses(storeSlug, service.primary(productId, imageId));
+	}
+
+	@PutMapping("/products/{productId}/images/order")
+	List<ProductImageResponse> order(@PathVariable String storeSlug, @PathVariable UUID productId,
+			@RequestBody List<UUID> ids, HttpServletRequest request) {
+		permissionGuard.require(request, TenantPermission.MANAGE_CATALOG);
+		return responses(storeSlug, service.reorder(productId, ids));
+	}
+
+	private List<ProductImageResponse> responses(String slug,
+			List<ProductImage> images) {
+		return images.stream().map(image -> ProductImageResponse.admin(slug, image)).toList();
 	}
 
 	@PutMapping(path = "/products/{productId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

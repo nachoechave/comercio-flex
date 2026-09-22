@@ -20,6 +20,9 @@ public record ProductSummaryResponse(
 	long version,
 	Instant updatedAt) {
 
+	@com.fasterxml.jackson.annotation.JsonProperty("imageUrl")
+	public String imageUrl() { return image == null ? null : image.url(); }
+
 	static ProductSummaryResponse from(ProductSummary product, String storeSlug) {
 		return new ProductSummaryResponse(
 			product.id().toString(),

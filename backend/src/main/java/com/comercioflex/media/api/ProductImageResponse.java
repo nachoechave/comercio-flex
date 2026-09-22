@@ -13,24 +13,24 @@ public record ProductImageResponse(
 	String altText,
 	Integer width,
 	Integer height,
-	Instant updatedAt) {
+	Instant updatedAt, int position, boolean primary) {
 
 	public static ProductImageResponse admin(String storeSlug, ProductImage image) {
 		String base = adminBase(storeSlug, image.id());
 		return new ProductImageResponse(image.id().toString(), base + "/display",
-			base + "/thumbnail", image.altText(), image.width(), image.height(), image.updatedAt());
+			base + "/thumbnail", image.altText(), image.width(), image.height(), image.updatedAt(), image.position(), image.primaryImage());
 	}
 
 	public static ProductImageResponse admin(String storeSlug, ProductImageReference image) {
 		String base = adminBase(storeSlug, image.id());
 		return new ProductImageResponse(image.id().toString(), base + "/display",
-			base + "/thumbnail", image.altText(), null, null, null);
+			base + "/thumbnail", image.altText(), null, null, null, image.position(), image.primaryImage());
 	}
 
 	public static ProductImageResponse publicView(String storeSlug, ProductImageReference image) {
 		String base = "/api/v1/stores/" + storeSlug + "/media/product-images/" + image.id();
 		return new ProductImageResponse(image.id().toString(), base + "/display",
-			base + "/thumbnail", image.altText(), null, null, null);
+			base + "/thumbnail", image.altText(), null, null, null, image.position(), image.primaryImage());
 	}
 
 	private static String adminBase(String storeSlug, UUID imageId) {

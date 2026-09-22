@@ -13,6 +13,9 @@ public record PublicProductSummaryResponse(
 	String priceTo,
 	boolean available) {
 
+	@com.fasterxml.jackson.annotation.JsonProperty("imageUrl")
+	public String imageUrl() { return image == null ? null : image.url(); }
+
 	static PublicProductSummaryResponse from(PublicProductSummary product, String storeSlug) {
 		return new PublicProductSummaryResponse(
 			product.id().toString(),

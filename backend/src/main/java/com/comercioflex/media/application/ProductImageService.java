@@ -1,11 +1,14 @@
 package com.comercioflex.media.application;
 
-import java.time.Instant;
-import java.util.Locale;
-import java.util.UUID;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HexFormat;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,6 +94,97 @@ public class ProductImageService {
 			return repository.delete(productId).orElseThrow(ProductImageNotFoundException::new);
 		});
 		deleteObjectsQuietly(removed);
+	}
+
+	public List<ProductImage> add(UUID productId, List<byte[]> sources, String rawAltText) {
+		if (sources == null || sources.isEmpty() || sources.size() > 6) throw limit();
+		String altText = normalizeAltText(rawAltText);
+		List<String> storedKeys = new ArrayList<>();
+		try {
+			return transactions.execute(status -> {
+				LockedImageProduct product = repository.lockProduct(productId)
+					.orElseThrow(ProductImageNotFoundException::new);
+				requireEditable(product);
+				var existing = repository.findAll(productId);
+				if (existing.size() + sources.size() > 6) throw limit();
+				if (!existing.isEmpty() && existing.stream().noneMatch(ProductImage::primaryImage)) {
+					repository.arrange(productId, existing.stream().map(ProductImage::id).toList(), existing.getFirst().id());
+				}
+				String tenantKey = tenantContext.currentDatabaseKey().orElseThrow();
+				int position = existing.size();
+				for (byte[] source : sources) {
+					var processed = processor.process(source);
+					UUID id = UUID.randomUUID();
+					String prefix = tenantKey + "/products/" + productId + "/" + id;
+					String display = prefix + "/display." + processed.extension();
+					String thumbnail = prefix + "/thumbnail." + processed.extension();
+					storedKeys.add(display);
+					storage.store(display, processed.displayBytes(), processed.contentType());
+					storedKeys.add(thumbnail);
+					storage.store(thumbnail, processed.thumbnailBytes(), processed.contentType());
+					var image = new ProductImage(id, productId, display, thumbnail, processed.contentType(),
+						processed.displayBytes().length, processed.thumbnailBytes().length,
+						processed.width(), processed.height(), altText, processed.sha256(), 0, Instant.EPOCH);
+					repository.insert(product.internalId(), image, position, position == 0);
+					position++;
+				}
+				return repository.findAll(productId);
+			});
+		}
+		catch (RuntimeException exception) {
+			storedKeys.forEach(this::deleteQuietly);
+			throw exception;
+		}
+	}
+
+	public List<ProductImage> delete(UUID productId, UUID imageId) {
+		ProductImage[] removed = new ProductImage[1];
+		var result = transactions.execute(status -> {
+			var images = editableImages(productId);
+			removed[0] = images.stream().filter(image -> image.id().equals(imageId))
+				.findFirst().orElseThrow(ProductImageNotFoundException::new);
+			repository.deleteImage(productId, imageId);
+			var remaining = images.stream().filter(image -> !image.id().equals(imageId)).toList();
+			UUID primary = remaining.isEmpty() ? null : remaining.stream().filter(ProductImage::primaryImage)
+				.findFirst().orElse(remaining.getFirst()).id();
+			repository.arrange(productId, remaining.stream().map(ProductImage::id).toList(), primary);
+			return repository.findAll(productId);
+		});
+		deleteObjectsQuietly(removed[0]);
+		return result;
+	}
+
+	public List<ProductImage> primary(UUID productId, UUID imageId) {
+		return transactions.execute(status -> {
+			var images = editableImages(productId);
+			if (images.stream().noneMatch(image -> image.id().equals(imageId))) throw new ProductImageNotFoundException();
+			repository.arrange(productId, images.stream().map(ProductImage::id).toList(), imageId);
+			return repository.findAll(productId);
+		});
+	}
+
+	public List<ProductImage> reorder(UUID productId, List<UUID> ids) {
+		return transactions.execute(status -> {
+			var images = editableImages(productId);
+			if (ids == null || ids.size() != images.size() || ids.stream().anyMatch(java.util.Objects::isNull)
+					|| !new HashSet<>(ids).equals(new HashSet<>(images.stream().map(ProductImage::id).toList()))) {
+				throw new InvalidProductImageException("El orden debe incluir todas las imágenes del producto, sin repetirlas.");
+			}
+			UUID primary = images.isEmpty() ? null : images.stream().filter(ProductImage::primaryImage)
+				.findFirst().orElse(images.getFirst()).id();
+			repository.arrange(productId, ids, primary);
+			return repository.findAll(productId);
+		});
+	}
+
+	private List<ProductImage> editableImages(UUID productId) {
+		var product = repository.lockProduct(productId).orElseThrow(ProductImageNotFoundException::new);
+		requireEditable(product);
+		return repository.findAll(productId);
+	}
+
+	private InvalidProductImageException limit() {
+		return new InvalidProductImageException("El producto puede tener como máximo 6 imágenes.");
 	}
 
 	public ImageContent load(UUID imageId, ImageSize size, boolean requirePublished) {

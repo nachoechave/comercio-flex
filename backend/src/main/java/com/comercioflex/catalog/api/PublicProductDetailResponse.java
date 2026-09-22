@@ -12,7 +12,7 @@ public record PublicProductDetailResponse(
 	String description,
 	PublicCategoryResponse category,
 	ProductImageResponse image,
-	List<PublicVariantResponse> variants) {
+	List<PublicVariantResponse> variants, List<ProductImageResponse> images, String imageUrl) {
 
 	static PublicProductDetailResponse from(PublicProductDetail product, String storeSlug) {
 		return new PublicProductDetailResponse(
@@ -22,6 +22,8 @@ public record PublicProductDetailResponse(
 			product.description(),
 			PublicCategoryResponse.from(product.category()),
 			product.image() == null ? null : ProductImageResponse.publicView(storeSlug, product.image()),
-			product.variants().stream().map(PublicVariantResponse::from).toList());
+			product.variants().stream().map(PublicVariantResponse::from).toList(),
+			product.images().stream().map(image -> ProductImageResponse.publicView(storeSlug, image)).toList(),
+			product.image() == null ? null : ProductImageResponse.publicView(storeSlug, product.image()).url());
 	}
 }

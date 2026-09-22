@@ -132,6 +132,140 @@ class ProductManagementIntegrationTests {
 		insertCategory(TENANT_B_DATABASE, CATEGORY_B, "Remeras", "remeras", "ACTIVE");
 	}
 
+
+	@Test
+	void gallerySupportsEmptySingleMultipleSixAndRejectsOverflowAtomically() throws Exception {
+		Auth owner = login("owner@example.com");
+		JsonNode product = createProduct("tienda-a", CATEGORY_A, "Galería", "GALLERY", "10", owner);
+		String base = products("tienda-a") + "/" + product.get("id").asText();
+		mockMvc.perform(auth(get(base), owner)).andExpect(jsonPath("$.images.length()").value(0));
+		JsonNode one = uploadGallery(base, owner, 1, 200);
+		assertThat(one.size()).isEqualTo(1);
+		assertThat(one.get(0).get("primary").asBoolean()).isTrue();
+		assertThat(uploadGallery(base, owner, 4, 200).size()).isEqualTo(5);
+		uploadGallery(base, owner, 2, 400);
+		mockMvc.perform(auth(get(base), owner)).andExpect(jsonPath("$.images.length()").value(5));
+		assertThat(uploadGallery(base, owner, 1, 200).size()).isEqualTo(6);
+		uploadGallery(base, owner, 1, 400);
+		uploadGallery(base, owner, 7, 400);
+		JsonNode detail = json(mockMvc.perform(auth(get(base), owner)).andExpect(status().isOk()).andReturn().getResponse());
+		assertThat(detail.get("images").size()).isEqualTo(6);
+		assertThat(detail.get("imageUrl").asText()).isEqualTo(detail.at("/image/url").asText());
+		mockMvc.perform(auth(get(products("tienda-a")), owner)).andExpect(jsonPath("$.items.length()").value(1));
+		String secondBase = products("tienda-a") + "/" + createProduct("tienda-a", CATEGORY_A, "Seis", "SIX", "10", owner).get("id").asText();
+		assertThat(uploadGallery(secondBase, owner, 6, 200).size()).isEqualTo(6);
+	}
+
+	@Test
+	void galleryReordersChangesPrimaryDeletesAndRejectsForeignIds() throws Exception {
+		Auth owner = login("owner@example.com");
+		JsonNode product = createProduct("tienda-a", CATEGORY_A, "Galería", "GALLERY", "10", owner);
+		String base = products("tienda-a") + "/" + product.get("id").asText();
+		JsonNode images = uploadGallery(base, owner, 3, 200);
+		String first = images.get(0).get("id").asText();
+		String second = images.get(1).get("id").asText();
+		String third = images.get(2).get("id").asText();
+		mockMvc.perform(auth(put(base + "/images/" + second + "/primary"), owner)).andExpect(status().isOk());
+		String order = objectMapper.writeValueAsString(List.of(third, first, second));
+		JsonNode reordered = json(mockMvc.perform(auth(put(base + "/images/order"), owner)
+			.contentType(MediaType.APPLICATION_JSON).content(order)).andExpect(status().isOk()).andReturn().getResponse());
+		assertThat(reordered.get(0).get("id").asText()).isEqualTo(third);
+		assertThat(reordered.get(2).get("primary").asBoolean()).isTrue();
+		assertThat(count(TENANT_A_DATABASE, "SELECT COUNT(*) FROM product_images WHERE is_primary = TRUE")).isEqualTo(1);
+		org.assertj.core.api.Assertions.assertThatThrownBy(() -> execute(TENANT_A_DATABASE,
+			"UPDATE product_images SET is_primary = TRUE WHERE public_id = UUID_TO_BIN('" + first + "')"))
+			.isInstanceOf(SQLException.class);
+		mockMvc.perform(auth(put(base + "/images/order"), owner).contentType(MediaType.APPLICATION_JSON)
+			.content(objectMapper.writeValueAsString(List.of(first, first, third)))).andExpect(status().isBadRequest());
+		String otherProduct = createProduct("tienda-a", CATEGORY_A, "Otro", "OTHER", "10", owner).get("id").asText();
+		String foreignBase = products("tienda-a") + "/" + otherProduct;
+		mockMvc.perform(auth(delete(foreignBase + "/images/" + first), owner)).andExpect(status().isNotFound());
+		mockMvc.perform(auth(put(foreignBase + "/images/" + first + "/primary"), owner)).andExpect(status().isNotFound());
+		String tenantB = base.replace("tienda-a", "tienda-b");
+		mockMvc.perform(auth(delete(tenantB + "/images/" + first), owner)).andExpect(status().isNotFound());
+		mockMvc.perform(auth(put(tenantB + "/images/" + first + "/primary"), owner)).andExpect(status().isNotFound());
+		mockMvc.perform(auth(put(tenantB + "/images/order"), owner).contentType(MediaType.APPLICATION_JSON).content(order))
+			.andExpect(status().isNotFound());
+		uploadGallery(tenantB, owner, 1, 404);
+		JsonNode afterDelete = json(mockMvc.perform(auth(delete(base + "/images/" + second), owner))
+			.andExpect(status().isOk()).andReturn().getResponse());
+		assertThat(afterDelete.size()).isEqualTo(2);
+		assertThat(afterDelete.get(0).get("id").asText()).isEqualTo(third);
+		assertThat(afterDelete.get(0).get("primary").asBoolean()).isTrue();
+		assertThat(afterDelete.get(1).get("position").asInt()).isEqualTo(1);
+		mockMvc.perform(auth(delete(base + "/images/" + first), owner)).andExpect(status().isOk());
+		mockMvc.perform(auth(delete(base + "/images/" + third), owner)).andExpect(status().isOk());
+		mockMvc.perform(auth(get(base), owner)).andExpect(jsonPath("$.images.length()").value(0))
+			.andExpect(jsonPath("$.image").doesNotExist());
+	}
+
+	@Test
+	void galleryRollsBackInvalidBatchAndSerializesConcurrentUploads() throws Exception {
+		Auth owner = login("owner@example.com");
+		String base = products("tienda-a") + "/" + createProduct("tienda-a", CATEGORY_A, "Lotes", "BATCH", "10", owner).get("id").asText();
+		var invalid = multipart(base + "/images")
+			.file(new MockMultipartFile("images", "valid.png", "image/png", imageFile().getBytes()))
+			.file(new MockMultipartFile("images", "fake.png", "image/png", new byte[] {1, 2, 3})).param("altText", "Producto");
+		mockMvc.perform(auth(invalid, owner)).andExpect(status().isBadRequest());
+		mockMvc.perform(auth(get(base), owner)).andExpect(jsonPath("$.images.length()").value(0));
+		uploadGallery(base, owner, 5, 200);
+		var executor = Executors.newFixedThreadPool(2);
+		try {
+			Callable<Integer> upload = () -> mockMvc.perform(auth(multipart(base + "/images")
+				.file(new MockMultipartFile("images", "test.png", "image/png", imageFile().getBytes()))
+				.param("altText", "Producto"), owner)).andReturn().getResponse().getStatus();
+			var results = executor.invokeAll(List.of(upload, upload));
+			assertThat(List.of(results.get(0).get(), results.get(1).get())).containsExactlyInAnyOrder(200, 400);
+		} finally { executor.shutdownNow(); }
+		assertThat(count(TENANT_A_DATABASE, "SELECT COUNT(*) FROM product_images WHERE is_primary = TRUE")).isEqualTo(1);
+		mockMvc.perform(auth(get(base), owner)).andExpect(jsonPath("$.images.length()").value(6));
+		// Legacy replacement still replaces just the primary, keeping the gallery at six.
+		mockMvc.perform(auth(multipartPut(base + "/image", imageFile()).param("altText", "Reemplazo"), owner))
+			.andExpect(status().isOk());
+		mockMvc.perform(auth(get(base), owner)).andExpect(jsonPath("$.images.length()").value(6));
+	}
+
+	@Test
+	void galleryRequiresRoleCsrfAndPublishedProductForPublicAccess() throws Exception {
+		Auth owner = login("owner@example.com");
+		Auth staff = login("staff@example.com");
+		String base = products("tienda-a") + "/" + createProduct("tienda-a", CATEGORY_A, "Privado", "PRIVATE", "10", owner).get("id").asText();
+		uploadGallery(base, staff, 1, 403);
+		mockMvc.perform(multipart(base + "/images").file(new MockMultipartFile("images", "test.png", "image/png", imageFile().getBytes()))
+			.param("altText", "Producto").cookie(owner.session())).andExpect(status().isForbidden());
+		JsonNode images = uploadGallery(base, owner, 2, 200);
+		String publicUrl = "/api/v1/stores/tienda-a/media/product-images/" + images.get(1).get("id").asText() + "/display";
+		mockMvc.perform(get(publicUrl)).andExpect(status().isNotFound());
+		mockMvc.perform(auth(patch(base + "/status"), owner).contentType(MediaType.APPLICATION_JSON)
+			.content("{\"status\":\"PUBLISHED\",\"version\":0}")).andExpect(status().isOk());
+		mockMvc.perform(get(publicUrl)).andExpect(status().isOk());
+		mockMvc.perform(get(publicUrl.replace("tienda-a", "tienda-b"))).andExpect(status().isNotFound());
+		mockMvc.perform(get("/api/v1/stores/tienda-a/catalog/products/privado"))
+			.andExpect(status().isOk()).andExpect(jsonPath("$.images.length()").value(2))
+			.andExpect(jsonPath("$.imageUrl").isString());
+	}
+
+	@Test
+	void galleryFallsBackToFirstPositionAndRepairsMissingPrimaryOnUpload() throws Exception {
+		Auth owner = login("owner@example.com");
+		String base = products("tienda-a") + "/" + createProduct("tienda-a", CATEGORY_A, "Fallback", "FALLBACK", "10", owner).get("id").asText();
+		JsonNode images = uploadGallery(base, owner, 2, 200);
+		execute(TENANT_A_DATABASE, "UPDATE product_images SET is_primary = FALSE");
+		mockMvc.perform(auth(get(base), owner)).andExpect(status().isOk())
+			.andExpect(jsonPath("$.image.id").value(images.get(0).get("id").asText()))
+			.andExpect(jsonPath("$.imageUrl").value(images.get(0).get("url").asText()));
+		JsonNode repaired = uploadGallery(base, owner, 1, 200);
+		assertThat(repaired.get(0).get("primary").asBoolean()).isTrue();
+		assertThat(count(TENANT_A_DATABASE, "SELECT COUNT(*) FROM product_images WHERE is_primary = TRUE")).isEqualTo(1);
+	}
+
+	private JsonNode uploadGallery(String base, Auth owner, int count, int expected) throws Exception {
+		var request = multipart(base + "/images");
+		request.param("altText", "Producto");
+		for (int i = 0; i < count; i++) request.file(new MockMultipartFile("images", "image.png", "image/png", imageFile().getBytes()));
+		return json(mockMvc.perform(auth(request, owner)).andExpect(status().is(expected)).andReturn().getResponse());
+	}
+
 	@Test
 	void createsAggregateAtomicallyAndReturnsCanonicalPricesAndOpaqueIds() throws Exception {
 		Auth owner = login("owner@example.com");
