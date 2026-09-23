@@ -36,6 +36,7 @@ export interface TenantBranding {
   backgroundColor: string;
   textColor: string;
   font: BrandFont;
+  heroEyebrow: string | null;
   heroTitle: string | null;
   heroSubtitle: string | null;
   template: StorefrontTemplate;
