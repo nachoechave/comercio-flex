@@ -8,7 +8,7 @@
   @if (isModern()) {
     <header class="streetwear-hero">
       <div class="hero-copy">
-        <p class="eyebrow">Colección destacada</p>
+        <p class="eyebrow">{{ heroEyebrow() }}</p>
         <h1 id="catalog-title">{{ heroTitle() }}</h1>
         <p>{{ heroSubtitle() }}</p>
         <div class="hero-actions">
@@ -80,7 +80,7 @@
   } @else if (isFresh()) {
     <header class="fresh-hero">
       <div class="fresh-hero-copy">
-        <p class="eyebrow">Calidad de todos los días</p>
+        <p class="eyebrow">{{ heroEyebrow() }}</p>
         <h1 id="catalog-title">{{ heroTitle() }}</h1>
         <p>{{ heroSubtitle() }}</p>
         <a
@@ -113,7 +113,7 @@
     }
   } @else {
     <header class="hero">
-      <p class="eyebrow">{{ isMinimal() ? 'Selección' : 'Catálogo online' }}</p>
+      <p class="eyebrow">{{ heroEyebrow() }}</p>
       <h1 id="catalog-title">{{ isMinimal() ? heroTitle() : context.settings()?.storeName }}</h1>
       <p>
         {{
