@@ -13,7 +13,12 @@
         <p>{{ heroSubtitle() }}</p>
         <div class="hero-actions">
           <a class="hero-primary" [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Nueva colección →</a>
+          <a class="hero-secondary" hidden [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="category-section" queryParamsHandling="preserve">Comprar por categoría</a>
         </div>
+        <nav class="campaign-grid" hidden aria-hidden="true">
+          <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Ver novedades</a>
+          <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Ver colección</a>
+        </nav>
       </div>
       <span class="fashion-scribble" aria-hidden="true">Good people<br />bigger tides</span>
     </header>
