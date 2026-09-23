@@ -9,6 +9,7 @@ public record CompanyBrandingResponse(
 	String backgroundColor,
 	String textColor,
 	String font,
+	String heroEyebrow,
 	String heroTitle,
 	String heroSubtitle,
 	String template,
@@ -20,7 +21,7 @@ public record CompanyBrandingResponse(
 		var branding = company.branding();
 		return new CompanyBrandingResponse(
 			branding.primaryColor(), branding.secondaryColor(), branding.backgroundColor(),
-			branding.textColor(), branding.font().name(), branding.heroTitle(),
+			branding.textColor(), branding.font().name(), branding.heroEyebrow(), branding.heroTitle(),
 			branding.heroSubtitle(), branding.template().name(),
 			url(company.slug(), "logo", branding.logo()),
 			url(company.slug(), "favicon", branding.favicon()),
