@@ -10,14 +10,34 @@ import { StoreSettings, TenantBranding } from '../../storefront.models';
   imports: [RouterLink, RouterOutlet, CartPreview],
   template: `
     <a class="store-skip-link" href="#main-content">Saltar al contenido</a>
-    <aside class="fresh-promo"><span>Productos frescos</span><span>Stock actualizado</span><span>Compra directa al comercio</span></aside>
-    <header class="site-header site-header--fresh"><div class="fresh-brand-row">
-      <a class="brand" [routerLink]="storefrontRouting.route(settings().slug)">@if (branding().logoUrl; as logo) { <img class="brand-logo" [src]="logo" [alt]="'Logo de ' + settings().storeName" /> } @else { <span class="brand-mark">{{ settings().storeName.slice(0, 1) }}</span> }<span class="brand-copy"><strong>{{ settings().storeName }}</strong><small>Mercado de confianza</small></span></a>
-      <a class="fresh-search" [routerLink]="storefrontRouting.route(settings().slug)" fragment="catalog-search">⌕ <span>Buscar productos</span></a><a class="cart-link fresh-cart" [routerLink]="storefrontRouting.route(settings().slug, 'carrito')">Mi carrito <span>{{ cartUnits() }}</span></a><button class="mobile-menu" type="button" (click)="toggleMenu()" [attr.aria-expanded]="menuOpen()" aria-label="Abrir navegación">Menú</button>
-    </div><nav [class.nav-open]="menuOpen()" aria-label="Navegación principal"><a [routerLink]="storefrontRouting.route(settings().slug)">Inicio</a><a [routerLink]="storefrontRouting.route(settings().slug)" fragment="category-section">Categorías</a><a [routerLink]="storefrontRouting.route(settings().slug)" fragment="catalog-products">Productos</a><a [routerLink]="storefrontRouting.route(settings().slug, 'mis-pedidos')">Mis pedidos</a>@if (whatsAppUrl(); as url) { <a class="whatsapp-link" [href]="url" target="_blank" rel="noopener">WhatsApp</a> }</nav></header>
-    <app-cart-preview [storeSlug]="settings().slug" /><main id="main-content"><router-outlet /></main>
-    <footer class="site-footer site-footer--fresh"><div class="footer-brand"><strong>{{ settings().storeName }}</strong><p>Calidad, cercanía y atención de siempre.</p>@if (settings().pickupAddress) { <span>{{ settings().pickupAddress }}</span> }</div><div><strong>Comprar</strong><a [routerLink]="storefrontRouting.route(settings().slug)">Todos los productos</a><a [routerLink]="storefrontRouting.route(settings().slug, 'carrito')">Carrito</a></div><div><strong>Ayuda</strong><a [routerLink]="storefrontRouting.route(settings().slug, 'mis-pedidos')">Mis pedidos</a>@if (settings().contactPhone) { <a [href]="'tel:' + settings().contactPhone">Llamanos</a> }</div><div><strong>Comercio Flex</strong><small>Tienda online del comercio</small></div></footer>
+    <aside class="fresh-topbar"><span>Envíos a todo el país</span><span>3 y 6 cuotas sin interés</span><span>Buenas compras, mejor vibra ✦</span></aside>
+    <header class="fresh-header">
+      <a class="fresh-brand" [routerLink]="storefrontRouting.route(settings().slug)">
+        @if (branding().logoUrl; as logo) { <img class="brand-logo" [src]="logo" [alt]="'Logo de ' + settings().storeName" /> }
+        @else { <span class="fresh-wave">≈</span><strong>{{ settings().storeName }}</strong> }
+      </a>
+      <nav [class.nav-open]="menuOpen()" aria-label="Navegación principal">
+        <a [routerLink]="storefrontRouting.route(settings().slug)" fragment="catalog-products">Novedades</a>
+        <a [routerLink]="storefrontRouting.route(settings().slug)" fragment="category-section">Categorías</a>
+        <a [routerLink]="storefrontRouting.route(settings().slug)" fragment="catalog-products">Productos</a>
+        <a class="fresh-offers" [routerLink]="storefrontRouting.route(settings().slug)" fragment="catalog-products">Ofertas</a>
+      </nav>
+      <a class="fresh-search" [routerLink]="storefrontRouting.route(settings().slug)" fragment="catalog-search">⌕ <span>¿Qué estás buscando?</span></a>
+      <a class="fresh-account" [routerLink]="storefrontRouting.route(settings().slug, 'mis-pedidos')" aria-label="Mis pedidos">☺</a>
+      <a class="fresh-cart" [routerLink]="storefrontRouting.route(settings().slug, 'carrito')" [attr.aria-label]="'Carrito, ' + cartUnits() + ' unidades'">🛒<span>{{ cartUnits() }}</span></a>
+      <button class="mobile-menu" type="button" (click)="toggleMenu()" [attr.aria-expanded]="menuOpen()" aria-label="Abrir navegación">Menú</button>
+    </header>
+    <app-cart-preview [storeSlug]="settings().slug" />
+    <main id="main-content"><router-outlet /></main>
+    <section class="fresh-benefits"><span>✦ Envíos rápidos</span><span>▣ Cuotas disponibles</span><span>♡ Compra simple</span><span>☻ Atención cercana</span></section>
+    <footer class="fresh-footer">
+      <a class="fresh-footer__brand" [routerLink]="storefrontRouting.route(settings().slug)"><span>≈</span><strong>{{ settings().storeName }}</strong></a>
+      <div><a [routerLink]="storefrontRouting.route(settings().slug)">Nosotros</a><a [routerLink]="storefrontRouting.route(settings().slug, 'mis-pedidos')">Mis pedidos</a><a [routerLink]="storefrontRouting.route(settings().slug, 'carrito')">Carrito</a></div>
+      @if (whatsAppUrl(); as url) { <a class="fresh-whatsapp" [href]="url" target="_blank" rel="noopener">WhatsApp ↗</a> }
+      <small>Buenas personas, mejores compras ♡</small>
+    </footer>
   `,
+  styleUrl: './fresh-storefront-shell.scss',
 })
 export class FreshStorefrontShell {
   protected readonly storefrontRouting = inject(StorefrontRoutingService);
