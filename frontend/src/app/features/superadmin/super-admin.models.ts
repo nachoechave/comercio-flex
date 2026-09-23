@@ -112,7 +112,7 @@ export interface CompanyBranding {
   backgroundColor: string;
   textColor: string;
   font: BrandFont;
-  heroEyebrow: string | null;
+  heroEyebrow?: string | null;
   heroTitle: string | null;
   heroSubtitle: string | null;
   template: StorefrontTemplate;
