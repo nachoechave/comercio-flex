@@ -12,30 +12,66 @@
         <h1 id="catalog-title">{{ heroTitle() }}</h1>
         <p>{{ heroSubtitle() }}</p>
         <div class="hero-actions">
-          <a class="hero-primary" [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Nueva colección →</a>
-          <a class="hero-secondary" hidden [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="category-section" queryParamsHandling="preserve">Comprar por categoría</a>
+          <a
+            class="hero-primary"
+            [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
+            fragment="catalog-products"
+            queryParamsHandling="preserve"
+            >Comprar ahora</a
+          >
+          <a
+            class="hero-secondary"
+            [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
+            fragment="category-section"
+            queryParamsHandling="preserve"
+            >Ver colección</a
+          >
         </div>
-        <nav class="campaign-grid" hidden aria-hidden="true">
-          <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Ver novedades</a>
-          <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Ver colección</a>
-        </nav>
       </div>
-      <span class="fashion-scribble" aria-hidden="true">Good people<br />bigger tides</span>
     </header>
+
+    <section class="trust-strip" aria-label="Beneficios de la tienda">
+      <article>
+        <span aria-hidden="true">↗</span>
+        <p><strong>Compra online</strong><small>Desde cualquier dispositivo</small></p>
+      </article>
+      <article>
+        <span aria-hidden="true">↻</span>
+        <p><strong>Stock actualizado</strong><small>Disponibilidad por opción</small></p>
+      </article>
+      <article>
+        <span aria-hidden="true">◇</span>
+        <p><strong>Compra segura</strong><small>Pagos protegidos</small></p>
+      </article>
+      <article>
+        <span aria-hidden="true">◎</span>
+        <p><strong>Estamos para ayudarte</strong><small>Atención personalizada</small></p>
+      </article>
+    </section>
 
     @if (categories().length > 0) {
       <section id="category-section" class="category-showcase" aria-labelledby="category-title">
-        <h2 id="category-title" hidden>Comprá por categoría</h2>
+        <p class="section-kicker">Elegí tu estilo</p>
+        <h2 id="category-title">Comprá por categoría</h2>
         <div class="category-grid">
-          @for (category of categories().slice(0, 4); track category.id) {
-            <a class="category-card" [routerLink]="storefrontRouting.route(storeSlug() ?? '')" [queryParams]="{ categoria: category.slug }">
+          @for (category of categories().slice(0, 5); track category.id) {
+            <a
+              class="category-card"
+              [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
+              [queryParams]="{ categoria: category.slug }"
+            >
               @if (category.image; as image) {
                 <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" />
               } @else {
-                <span class="category-monogram" aria-hidden="true">{{ category.name.slice(0, 1) }}</span>
+                <span class="category-monogram" aria-hidden="true">{{
+                  category.name.slice(0, 1)
+                }}</span>
               }
               <span class="category-shade"></span>
-              <span class="category-copy"><strong>{{ category.name }}</strong><small>Ver más →</small></span>
+              <span class="category-copy"
+                ><strong>{{ category.name }}</strong
+                ><small>Ver productos →</small></span
+              >
             </a>
           }
         </div>
@@ -121,11 +157,12 @@
   } @else {
     <div id="catalog-products" class="results-heading">
       <div>
-        <p class="eyebrow">{{ isModern() ? 'Novedades' : isFresh() ? 'Lo más vendido' : 'La colección' }}</p>
+        <p class="eyebrow">{{ isModern() ? 'Nueva temporada' : isFresh() ? 'Lo más vendido' : 'La colección' }}</p>
         @if (isModern()) { <h2>Nuevos ingresos</h2> }
         @else if (isFresh()) { <h2>Lo más vendido</h2> }
         @else { <h2>Catálogo</h2><small>{{ page().totalItems }} productos</small> }
       </div>
+      @if (isModern()) { <span class="result-count">{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span> }
       @if (isMinimal()) { <div class="catalog-sort">Ordenar por: <span>Más populares⌄</span></div> }
       @if (query() || selectedCategory()) { <button class="text-button" type="button" (click)="clearFilters()">Limpiar filtros</button> }
     </div>
@@ -141,7 +178,18 @@
     }
 
     @if (isModern()) {
-      <section class="fashion-banner" aria-label="Mensaje de marca"><span>OCÉANO<br />PERSONAS REALES<br />MEJORES DÍAS</span><strong>{{ context.settings()?.storeName }}</strong></section>
+      <section class="campaign-grid" aria-label="Campañas destacadas">
+        <article class="campaign campaign--dark">
+          <p>Selección del comercio</p>
+          <h2>Encontrá eso<br />que buscabas.</h2>
+          <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Ver productos</a>
+        </article>
+        <article class="campaign campaign--photo">
+          <p>Novedades</p>
+          <h2>Conocé lo nuevo<br />de la tienda.</h2>
+          <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Explorar ahora</a>
+        </article>
+      </section>
     } @else if (isFresh()) {
       <section class="fresh-benefit-row"><span>🚚 <b>Envíos a todo el país</b><small>Rápidos y seguros</small></span><span>▣ <b>3 y 6 cuotas sin interés</b><small>Con todas las tarjetas</small></span><span>♧ <b>Compras con impacto</b><small>Elegí mejor</small></span><span>☺ <b>Una comunidad real</b><small>Siempre cerca</small></span></section>
     }
