@@ -62,6 +62,13 @@ export class CatalogPage {
   protected readonly isMinimal = computed(
     () => this.context.settings()?.branding?.template === 'CATALOG',
   );
+  protected readonly heroEyebrow = computed(() => {
+    const configured = this.context.settings()?.branding?.heroEyebrow;
+    if (configured) return configured;
+    if (this.isModern()) return 'Colección destacada';
+    if (this.isFresh()) return 'Calidad de todos los días';
+    return this.isMinimal() ? 'Selección' : 'Catálogo online';
+  });
   protected readonly heroTitle = computed(
     () => this.context.settings()?.branding?.heroTitle || 'Una tienda con identidad propia.',
   );
