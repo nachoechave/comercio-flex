@@ -41,6 +41,7 @@ export class StoreBrandingPage {
     backgroundColor: ['#F7F5EF', [Validators.required, Validators.pattern(/^#[0-9A-Fa-f]{6}$/)]],
     textColor: ['#20241F', [Validators.required, Validators.pattern(/^#[0-9A-Fa-f]{6}$/)]],
     font: ['SYSTEM' as BrandFont, Validators.required],
+    heroEyebrow: ['', Validators.maxLength(80)],
     heroTitle: ['', Validators.maxLength(160)],
     heroSubtitle: ['', Validators.maxLength(300)],
     template: ['CATALOG' as StorefrontTemplate, Validators.required],
@@ -84,6 +85,7 @@ export class StoreBrandingPage {
     this.api
       .updateBranding(slug, {
         ...value,
+        heroEyebrow: value.heroEyebrow.trim() || null,
         heroTitle: value.heroTitle.trim() || null,
         heroSubtitle: value.heroSubtitle.trim() || null,
       })
@@ -146,6 +148,7 @@ export class StoreBrandingPage {
       backgroundColor: branding.backgroundColor,
       textColor: branding.textColor,
       font: branding.font,
+      heroEyebrow: branding.heroEyebrow ?? '',
       heroTitle: branding.heroTitle ?? '',
       heroSubtitle: branding.heroSubtitle ?? '',
       template: branding.template,
