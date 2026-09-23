@@ -117,7 +117,7 @@
     <div id="catalog-products" class="results-heading">
       <div>
         <p class="eyebrow">{{ isModern() ? 'Novedades' : isFresh() ? 'Lo más vendido' : 'La colección' }}</p>
-        @if (isModern()) { <h2>Novedades</h2> }
+        @if (isModern()) { <h2>Nuevos ingresos</h2> }
         @else if (isFresh()) { <h2>Lo más vendido</h2> }
         @else { <h2>Catálogo</h2><small>{{ page().totalItems }} productos</small> }
       </div>
