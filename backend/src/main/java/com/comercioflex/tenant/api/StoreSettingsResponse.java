@@ -33,6 +33,7 @@ public record StoreSettingsResponse(
 		String backgroundColor,
 		String textColor,
 		String font,
+		String heroEyebrow,
 		String heroTitle,
 		String heroSubtitle,
 		String template,
@@ -43,7 +44,7 @@ public record StoreSettingsResponse(
 		static BrandingResponse from(String slug, com.comercioflex.tenant.domain.TenantBranding branding) {
 			return new BrandingResponse(
 				branding.primaryColor(), branding.secondaryColor(), branding.backgroundColor(),
-				branding.textColor(), branding.font().name(), branding.heroTitle(),
+				branding.textColor(), branding.font().name(), branding.heroEyebrow(), branding.heroTitle(),
 				branding.heroSubtitle(), branding.template().name(),
 				url(slug, "logo", branding.logo()),
 				url(slug, "favicon", branding.favicon()),

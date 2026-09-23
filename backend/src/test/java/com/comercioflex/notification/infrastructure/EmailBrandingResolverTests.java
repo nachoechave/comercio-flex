@@ -214,6 +214,7 @@ class EmailBrandingResolverTests {
                         BrandFont.SYSTEM,
                         null,
                         null,
+                        null,
                         StorefrontTemplate.CATALOG,
                         logo,
                         null,

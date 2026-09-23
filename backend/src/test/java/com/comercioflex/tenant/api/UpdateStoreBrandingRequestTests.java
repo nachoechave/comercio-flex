@@ -27,13 +27,13 @@ class UpdateStoreBrandingRequestTests {
 	void rejectsInvalidColorsAndOversizedHeroCopy() {
 		var request = new UpdateStoreBrandingRequest(
 			"green", "#112233", "#FFFFFF", "#111111", BrandFont.SANS,
-			"x".repeat(161), "y".repeat(301), StorefrontTemplate.FRESH);
-		assertThat(validator.validate(request)).hasSize(3);
+			"z".repeat(81), "x".repeat(161), "y".repeat(301), StorefrontTemplate.FRESH);
+		assertThat(validator.validate(request)).hasSize(4);
 	}
 
 	private UpdateStoreBrandingRequest validRequest(StorefrontTemplate template) {
 		return new UpdateStoreBrandingRequest(
 			"#315A46", "#17352A", "#F7F5EF", "#20241F", BrandFont.SYSTEM,
-			"Una tienda con identidad", "Productos elegidos para vos", template);
+			"Colección destacada", "Una tienda con identidad", "Productos elegidos para vos", template);
 	}
 }

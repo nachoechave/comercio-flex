@@ -9,6 +9,7 @@ public record UpdateTenantBrandingCommand(
 	String backgroundColor,
 	String textColor,
 	BrandFont font,
+	String heroEyebrow,
 	String heroTitle,
 	String heroSubtitle,
 	StorefrontTemplate template) {

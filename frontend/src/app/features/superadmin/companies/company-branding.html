@@ -28,6 +28,7 @@
         <legend>Tipografía y presentación</legend>
         <label>Tipografía<select formControlName="font">@for (font of fonts; track font.value) { <option [value]="font.value">{{ font.label }}</option> }</select></label>
         <label>Plantilla<select formControlName="template">@for (template of templates; track template.value) { <option [value]="template.value">{{ template.name }}</option> }</select></label>
+        <label>Texto superior<input formControlName="heroEyebrow" maxlength="80" placeholder="Colección destacada" /></label>
         <label>Título hero<input formControlName="heroTitle" maxlength="160" /></label>
         <label>Subtítulo hero<textarea formControlName="heroSubtitle" rows="3" maxlength="300"></textarea></label>
       </fieldset>
@@ -56,6 +57,7 @@
       </header>
       <section [style.background-color]="form.controls.secondaryColor.value" [style.background-image]="branding()?.heroImageUrl ? 'url(' + branding()?.heroImageUrl + ')' : null">
         <div>
+          <small>{{ form.controls.heroEyebrow.value || 'Colección destacada' }}</small>
           <h2>{{ form.controls.heroTitle.value || 'Una experiencia con identidad propia' }}</h2>
           <p>{{ form.controls.heroSubtitle.value || 'Presentá tus productos con una estética consistente.' }}</p>
           <button type="button" [style.background]="form.controls.primaryColor.value">Ver productos</button>

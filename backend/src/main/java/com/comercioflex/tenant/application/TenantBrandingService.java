@@ -30,7 +30,7 @@ public class TenantBrandingService {
 			command.secondaryColor().toUpperCase(java.util.Locale.ROOT),
 			command.backgroundColor().toUpperCase(java.util.Locale.ROOT),
 			command.textColor().toUpperCase(java.util.Locale.ROOT),
-			command.font(), nullIfBlank(command.heroTitle()),
+			command.font(), nullIfBlank(command.heroEyebrow()), nullIfBlank(command.heroTitle()),
 			nullIfBlank(command.heroSubtitle()), command.template());
 		return transactions.execute(status -> {
 			if (repository.findCurrent().isEmpty()) throw new TenantNotFoundException();

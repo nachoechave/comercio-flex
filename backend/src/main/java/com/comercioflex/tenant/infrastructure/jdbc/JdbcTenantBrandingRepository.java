@@ -30,7 +30,7 @@ public class JdbcTenantBrandingRepository implements TenantBrandingRepository {
 	public Optional<TenantBranding> findCurrent() {
 		return jdbcTemplate.query("""
 			SELECT primary_color, secondary_color, background_color, text_color,
-			       brand_font, hero_title, hero_subtitle, storefront_template,
+			       brand_font, hero_eyebrow, hero_title, hero_subtitle, storefront_template,
 			       logo_storage_key, logo_content_type, logo_etag,
 			       favicon_storage_key, favicon_content_type, favicon_etag,
 			       hero_storage_key, hero_content_type, hero_etag
@@ -45,12 +45,12 @@ public class JdbcTenantBrandingRepository implements TenantBrandingRepository {
 		jdbcTemplate.update("""
 			UPDATE store_settings
 			SET primary_color = ?, secondary_color = ?, background_color = ?,
-			    text_color = ?, brand_font = ?, hero_title = ?, hero_subtitle = ?,
+			    text_color = ?, brand_font = ?, hero_eyebrow = ?, hero_title = ?, hero_subtitle = ?,
 			    storefront_template = ?
 			ORDER BY id
 			LIMIT 1
 			""", command.primaryColor(), command.secondaryColor(), command.backgroundColor(),
-			command.textColor(), command.font().name(), command.heroTitle(),
+			command.textColor(), command.font().name(), command.heroEyebrow(), command.heroTitle(),
 			command.heroSubtitle(), command.template().name());
 	}
 
@@ -90,6 +90,7 @@ public class JdbcTenantBrandingRepository implements TenantBrandingRepository {
 			resultSet.getString("background_color"),
 			resultSet.getString("text_color"),
 			BrandFont.valueOf(resultSet.getString("brand_font")),
+			resultSet.getString("hero_eyebrow"),
 			resultSet.getString("hero_title"),
 			resultSet.getString("hero_subtitle"),
 			StorefrontTemplate.valueOf(resultSet.getString("storefront_template")),

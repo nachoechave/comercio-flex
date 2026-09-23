@@ -34,6 +34,7 @@
         </div></fieldset>
         <fieldset><legend>Contenido de portada</legend>
           <label>Tipografía<select formControlName="font">@for (font of fonts; track font.value) { <option [value]="font.value">{{ font.label }}</option> }</select></label>
+          <label>Texto superior<input formControlName="heroEyebrow" maxlength="80" placeholder="Colección destacada" /></label>
           <label>Título principal<input formControlName="heroTitle" maxlength="160" placeholder="Una selección hecha para vos" /></label>
           <label>Subtítulo<textarea formControlName="heroSubtitle" rows="3" maxlength="300" placeholder="Contá qué hace especial a tu comercio"></textarea></label>
         </fieldset>
