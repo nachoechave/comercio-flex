@@ -52,7 +52,7 @@ public class JdbcQrOrderRepository implements QrOrderRepository {
 	@Override
 	public Optional<CheckoutOrder> lockOrder(UUID orderId, byte[] lookupTokenHash) {
 		return jdbcTemplate.query("""
-			SELECT id, BIN_TO_UUID(public_id) public_id, status, subtotal,
+			SELECT id, BIN_TO_UUID(public_id) public_id, status, total AS subtotal,
 				currency_code, reservation_expires_at
 			FROM orders
 			WHERE public_id = UUID_TO_BIN(?) AND lookup_token_hash = ?

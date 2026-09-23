@@ -1,3 +1,5 @@
+import { By } from '@angular/platform-browser';
+import { ShippingSelector } from '../../shipping/shipping-selector';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { computed, signal } from '@angular/core';
@@ -90,7 +92,9 @@ describe('CheckoutPage', () => {
                 current?.bankTransferEnabled === true
                   ? Math.min(50, Math.max(0, Number(current.bankTransferDiscountPercentage ?? 0)))
                   : 0;
-              return (Math.round((amount * (1 - discount / 100) + Number.EPSILON) * 100) / 100).toFixed(2);
+              return (
+                Math.round((amount * (1 - discount / 100) + Number.EPSILON) * 100) / 100
+              ).toFixed(2);
             },
           },
         },
@@ -144,7 +148,7 @@ describe('CheckoutPage', () => {
     expect(radios[0].checked).toBe(true);
     expect(fixture.nativeElement.textContent).not.toContain('Transferencia bancaria');
     expect(submitButton().textContent).toContain('Continuar a Mercado Pago');
-    expect(submitButton().disabled).toBe(false);
+    expect(submitButton().disabled).toBe(true);
   });
 
   it('shows and selects only bank transfer when it is the sole enabled method', () => {
@@ -156,7 +160,7 @@ describe('CheckoutPage', () => {
     expect(radios[0].checked).toBe(true);
     expect(fixture.nativeElement.textContent).not.toContain('Mercado Pago');
     expect(submitButton().textContent).toContain('Confirmar pedido y pagar por transferencia');
-    expect(submitButton().disabled).toBe(false);
+    expect(submitButton().disabled).toBe(true);
   });
 
   it('fails closed when no payment method is enabled', () => {
@@ -191,7 +195,7 @@ describe('CheckoutPage', () => {
     respondMethods({ mercadoPago: false, bankTransfer: true });
 
     expect(component().selectedPaymentMethod()).toBe('BANK_TRANSFER');
-    expect(submitButton().disabled).toBe(false);
+    expect(submitButton().disabled).toBe(true);
   });
 
   it('creates the order and starts Checkout Pro when Mercado Pago is selected', async () => {
@@ -210,6 +214,7 @@ describe('CheckoutPage', () => {
       customerPhone: '11 5555 1234',
       customerEmail: 'ana@example.com',
       paymentMethod: 'MERCADO_PAGO',
+      shipping: { methodId: 'pickup', expectedTotal: '5000.00' },
       notes: 'Cortado fino',
       items: [{ variantId: 'variant-1', quantity: '2' }],
     });
@@ -327,6 +332,23 @@ describe('CheckoutPage', () => {
     retry.flush({ detail: 'Todavía no disponible.' }, { status: 503, statusText: 'Unavailable' });
   });
 
+  it('requires a fresh quote after a tariff changes during checkout', () => {
+    respondMethods({ mercadoPago: true, bankTransfer: false });
+    fillValidForm();
+    component().submit();
+    http.expectOne('/api/v1/auth/csrf').flush({});
+    expectOrderRequest().flush(
+      { code: 'SHIPPING_CONFLICT', detail: 'El importe cambió. Consultá nuevamente.' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('El importe cambió');
+    expect(submitButton().disabled).toBe(true);
+    const selector = fixture.debugElement.query(By.directive(ShippingSelector))
+      .componentInstance as ShippingSelector;
+    expect(selector.current()).toBeNull();
+  });
+
   function component(): CheckoutComponentAccess {
     return fixture.componentInstance as unknown as CheckoutComponentAccess;
   }
@@ -355,8 +377,32 @@ describe('CheckoutPage', () => {
       customerEmail: 'ana@example.com',
       notes: 'Cortado fino',
     });
+    selectPickup();
   }
 
+  function selectPickup(): void {
+    fixture.detectChanges();
+    const selector = fixture.debugElement.query(By.directive(ShippingSelector))
+      .componentInstance as ShippingSelector;
+    selector.quote();
+    const q = {
+      methodId: 'pickup',
+      name: 'Retiro',
+      description: null,
+      type: 'PICKUP' as const,
+      shippingAmount: '0.00',
+      freeShipping: false,
+      listSubtotal: '5000.00',
+      discountAmount: '0.00',
+      subtotal: '5000.00',
+      total: '5000.00',
+      pickupAddress: 'Calle 123',
+      instructions: null,
+    };
+    http.expectOne('/api/v1/stores/tienda-a/shipping/quote').flush([q]);
+    selector.select(q);
+    fixture.detectChanges();
+  }
   function expectOrderRequest() {
     return http.expectOne('/api/v1/stores/tienda-a/orders');
   }

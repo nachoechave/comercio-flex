@@ -49,6 +49,9 @@
         }
         @if (currentMembership.role !== 'STAFF') {
           <p class="nav-group-label">Tienda</p>
+          @if(!isRadio()){
+           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'envios']" routerLinkActive="active"><app-admin-icon name="commerce" /><span>Envíos</span></a>
+          }
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'comercio']" routerLinkActive="active"><app-admin-icon name="commerce" /><span>Comercio</span></a>
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'apariencia']" routerLinkActive="active"><app-admin-icon name="appearance" /><span>Apariencia</span></a>
         }

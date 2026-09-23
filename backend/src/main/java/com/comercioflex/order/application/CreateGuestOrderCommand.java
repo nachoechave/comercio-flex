@@ -12,5 +12,14 @@ public record CreateGuestOrderCommand(
         String customerEmail,
         String notes,
         OrderPaymentMethod paymentMethod,
-        List<OrderItemCommand> items) {
+        List<OrderItemCommand> items,
+com.comercioflex.shipping.domain.ShippingModels.Selection shipping) {
+ public CreateGuestOrderCommand(UUID idempotencyKey,
+        String customerName,
+        String customerPhone,
+        String customerEmail,
+        String notes,
+        OrderPaymentMethod paymentMethod,
+        List<OrderItemCommand> items) { this(idempotencyKey,customerName,customerPhone,customerEmail,notes,paymentMethod,items,null); }
+
 }

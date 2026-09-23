@@ -15,7 +15,7 @@ public record CreateGuestOrderItemRequest(
 		message = "debe ser un entero entre 1 y 99")
 	String quantity) {
 
-	BigDecimal decimalQuantity() {
+	public BigDecimal decimalQuantity() {
 		return new BigDecimal(quantity);
 	}
 }

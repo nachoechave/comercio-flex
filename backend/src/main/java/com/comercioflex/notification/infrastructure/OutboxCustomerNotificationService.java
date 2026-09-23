@@ -76,6 +76,14 @@ class OutboxCustomerNotificationService implements CustomerNotificationPublisher
 				rendered.html(), rendered.text()));
 	}
 
+ @Override public void orderShipped(com.comercioflex.shipping.domain.ShippingModels.Shipment shipment) {
+  var order=orders.findDetail(shipment.orderId()).orElseThrow(AdminOrderNotFoundException::new);
+  if(!hasRecipient(order)) return;
+  var store=stores.findCurrent().orElseThrow();
+  var rendered=templates.orderShipped(order,shipment,branding.resolve(store));
+  outbox.enqueue("ORDER_SHIPPED:"+order.id(),"ORDER_SHIPPED",order.id(),null,
+   new TransactionalEmail(order.customerEmail(),rendered.subject(),rendered.html(),rendered.text()));
+ }
 	private boolean hasRecipient(AdminOrderDetail order) {
 		return order.customerEmail() != null && !order.customerEmail().isBlank();
 	}

@@ -91,7 +91,7 @@ class EmailTemplateRenderer {
 
         values.put(
                 "fulfillment",
-                pickup(store));
+                fulfillment(order,store));
 
         values.put(
                 "eventDate",
@@ -220,7 +220,7 @@ class EmailTemplateRenderer {
         values.put(
                 "total",
                 money(
-                        order.subtotal(),
+                        order.total(),
                         order.currencyCode()));
 
         return values;
@@ -269,112 +269,38 @@ class EmailTemplateRenderer {
                 text);
     }
 
-    private String pricingHtml(
-            AdminOrderDetail order) {
 
-        if (order.paymentMethod()
-                        == OrderPaymentMethod.BANK_TRANSFER
-                && order.discountAmount()
-                                .compareTo(
-                                        BigDecimal.ZERO)
-                        > 0) {
-
-            return """
-                    <tr>
-                      <td style="padding:16px 0 6px;font-size:15px;line-height:22px;">
-                        Precio de lista
-                      </td>
-                      <td align="right" style="padding:16px 0 6px 12px;white-space:nowrap;font-size:15px;line-height:22px;">
-                        %s
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding:6px 0;font-size:15px;line-height:22px;">
-                        Descuento por transferencia (%s%%)
-                      </td>
-                      <td align="right" style="padding:6px 0 6px 12px;white-space:nowrap;font-size:15px;line-height:22px;">
-                        -%s
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding:12px 0 28px;font-size:16px;line-height:24px;font-weight:bold;">
-                        Total
-                      </td>
-                      <td align="right" style="padding:12px 0 28px 12px;white-space:nowrap;font-size:22px;line-height:28px;font-weight:bold;">
-                        %s
-                      </td>
-                    </tr>
-                    """
-                    .formatted(
-                            escapeHtml(
-                                    money(
-                                            order.listSubtotal(),
-                                            order.currencyCode())),
-                            order.discountPercentage()
-                                    .stripTrailingZeros()
-                                    .toPlainString(),
-                            escapeHtml(
-                                    money(
-                                            order.discountAmount(),
-                                            order.currencyCode())),
-                            escapeHtml(
-                                    money(
-                                            order.subtotal(),
-                                            order.currencyCode())));
-        }
-
-        return """
-                <tr>
-                  <td style="padding:20px 0 28px;font-size:16px;line-height:24px;font-weight:bold;">
-                    Total
-                  </td>
-                  <td align="right" style="padding:20px 0 28px 12px;white-space:nowrap;font-size:22px;line-height:28px;font-weight:bold;">
-                    %s
-                  </td>
-                </tr>
-                """
-                .formatted(
-                        escapeHtml(
-                                money(
-                                        order.subtotal(),
-                                        order.currencyCode())));
+    private String fulfillment(AdminOrderDetail order,StoreSettings store) {
+     if(order.shipping()==null) return pickup(store);
+     var s=order.shipping();
+     return s.type()==com.comercioflex.shipping.domain.ShippingModels.MethodType.PICKUP
+      ? s.name()+" — "+s.pickupAddress()+" "+java.util.Objects.toString(s.instructions(),"")
+      : "Envío a domicilio — "+s.address().display();
     }
-
-    private String pricingText(
-            AdminOrderDetail order) {
-
-        if (order.paymentMethod()
-                        == OrderPaymentMethod.BANK_TRANSFER
-                && order.discountAmount()
-                                .compareTo(
-                                        BigDecimal.ZERO)
-                        > 0) {
-
-            return """
-                    Precio de lista: %s
-                    Descuento por transferencia (%s%%): -%s
-                    Total: %s
-                    """
-                    .formatted(
-                            money(
-                                    order.listSubtotal(),
-                                    order.currencyCode()),
-                            order.discountPercentage()
-                                    .stripTrailingZeros()
-                                    .toPlainString(),
-                            money(
-                                    order.discountAmount(),
-                                    order.currencyCode()),
-                            money(
-                                    order.subtotal(),
-                                    order.currencyCode()))
-                    .stripTrailing();
-        }
-
-        return "Total: "
-                + money(
-                        order.subtotal(),
-                        order.currencyCode());
+    RenderedEmail orderShipped(AdminOrderDetail order,
+      com.comercioflex.shipping.domain.ShippingModels.Shipment shipment,EmailBranding branding) {
+     Map<String,String> values=common(order,branding);
+     values.put("carrier",shipment.carrierName()==null || shipment.carrierName().isBlank() ? "A informar" : shipment.carrierName());
+     values.put("tracking",shipment.trackingNumber()==null || shipment.trackingNumber().isBlank() ? "El comercio te informará los datos de seguimiento cuando estén disponibles." : shipment.trackingNumber());
+     values.put("trackingUrl",java.util.Objects.toString(shipment.trackingUrl(),""));
+     values.put("address",order.shipping().address().display());
+     return render("order-shipped","Tu pedido fue despachado",values);
+    }
+    private String pricingHtml(AdminOrderDetail order) {
+     return pricingRow("Precio de lista",order.listSubtotal(),order)
+      + pricingRow("Descuento por transferencia ("+order.discountPercentage().stripTrailingZeros().toPlainString()+"%)",order.discountAmount().negate(),order)
+      + pricingRow("Envío",order.shippingAmount(),order)
+      + pricingRow("Total",order.total(),order);
+    }
+    private String pricingRow(String label,BigDecimal amount,AdminOrderDetail order) {
+     return "<tr><td style='padding:8px 0'>"+label+"</td><td align='right'>"
+      +escapeHtml(money(amount,order.currencyCode()))+"</td></tr>";
+    }
+    private String pricingText(AdminOrderDetail order) {
+     return "Precio de lista: "+money(order.listSubtotal(),order.currencyCode())
+      +"\nDescuento por transferencia ("+order.discountPercentage().stripTrailingZeros().toPlainString()+"%): -"+money(order.discountAmount(),order.currencyCode())
+      +"\nEnvío: "+money(order.shippingAmount(),order.currencyCode())
+      +"\nTotal: "+money(order.total(),order.currencyCode());
     }
 
     private String itemsHtml(

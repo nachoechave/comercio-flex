@@ -21,5 +21,19 @@ public record AdminOrderSummary(
         BigDecimal discountPercentage,
         BigDecimal discountAmount,
         BigDecimal subtotal,
-        Instant createdAt) {
+        Instant createdAt,BigDecimal shippingAmount) {
+ public AdminOrderSummary(UUID id,
+        long number,
+        OrderStatus status,
+        FulfillmentType fulfillmentType,
+        OrderPaymentMethod paymentMethod,
+        String customerName,
+        String customerPhone,
+        String currencyCode,
+        BigDecimal listSubtotal,
+        BigDecimal discountPercentage,
+        BigDecimal discountAmount,
+        BigDecimal subtotal,
+        Instant createdAt) {this(id,number,status,fulfillmentType,paymentMethod,customerName,customerPhone,currencyCode,listSubtotal,discountPercentage,discountAmount,subtotal,createdAt,BigDecimal.ZERO.setScale(2));}
+public BigDecimal total(){return subtotal.add(shippingAmount); }
 }

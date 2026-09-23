@@ -71,7 +71,7 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 				list_subtotal,
 				discount_percentage,
 				discount_amount,
-				subtotal,
+				subtotal, shipping_amount,
 				created_at
 			FROM orders
 			""" + where + " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
@@ -139,7 +139,7 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 				list_subtotal,
 				discount_percentage,
 				discount_amount,
-				subtotal,
+				subtotal, shipping_amount, shipping_snapshot,
 				reservation_expires_at,
 				created_at,
 				version
@@ -156,7 +156,7 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 	public Optional<LockedAdminOrder> lockOrder(UUID orderId) {
 		return jdbcTemplate.query("""
 			SELECT id, BIN_TO_UUID(public_id) public_id, status,
-				reservation_expires_at, version
+				reservation_expires_at, version, fulfillment_type
 			FROM orders
 			WHERE public_id = UUID_TO_BIN(?)
 			FOR UPDATE
@@ -166,7 +166,7 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 				UUID.fromString(resultSet.getString("public_id")),
 				OrderStatus.valueOf(resultSet.getString("status")),
 				resultSet.getTimestamp("reservation_expires_at").toInstant(),
-				resultSet.getLong("version")),
+				resultSet.getLong("version"),FulfillmentType.valueOf(resultSet.getString("fulfillment_type"))),
 			orderId.toString())
 			.stream()
 			.findFirst();
@@ -381,7 +381,7 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 					resultSet.getBigDecimal("discount_percentage"),
 					resultSet.getBigDecimal("discount_amount"),
 					resultSet.getBigDecimal("subtotal"),
-					resultSet.getTimestamp("created_at").toInstant());
+					resultSet.getTimestamp("created_at").toInstant(),resultSet.getBigDecimal("shipping_amount"));
 	}
 
 	private AdminOrderDetail mapDetail(ResultSet resultSet) throws SQLException {
@@ -406,7 +406,7 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 					resultSet.getTimestamp("created_at").toInstant(),
 					resultSet.getLong("version"),
 					findItems(internalId),
-					findHistory(internalId));
+					findHistory(internalId), resultSet.getBigDecimal("shipping_amount"), readShipping(resultSet.getString("shipping_snapshot")));
 	}
 
 	private List<GuestOrderItem> findItems(long orderInternalId) {
@@ -464,4 +464,9 @@ public class JdbcAdminOrderRepository implements AdminOrderRepository {
 	private String nullable(String value) {
 		return value == null || value.isEmpty() ? null : value;
 	}
+ private com.comercioflex.shipping.domain.ShippingModels.Snapshot readShipping(String value) {
+if(value==null) return null;
+try { return new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,com.comercioflex.shipping.domain.ShippingModels.Snapshot.class); }
+catch(com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalStateException("Invalid shipping snapshot",e); }
+}
 }

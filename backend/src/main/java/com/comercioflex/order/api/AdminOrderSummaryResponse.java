@@ -20,7 +20,7 @@ public record AdminOrderSummaryResponse(
         String listSubtotal,
         String discountPercentage,
         String discountAmount,
-        String subtotal,
+        String subtotal, String shippingAmount, String total,
         Instant createdAt) {
 
         static AdminOrderSummaryResponse from(AdminOrderSummary order) {
@@ -36,7 +36,7 @@ public record AdminOrderSummaryResponse(
                         order.listSubtotal().toPlainString(),
                         order.discountPercentage().toPlainString(),
                         order.discountAmount().toPlainString(),
-                        order.subtotal().toPlainString(),
+                        order.subtotal().toPlainString(),order.shippingAmount().toPlainString(),order.total().toPlainString(),
                         order.createdAt());
         }
 }

@@ -53,7 +53,7 @@ public class GuestOrderController {
 				.map(item -> new OrderItemCommand(
 					item.variantId(),
 					item.decimalQuantity()))
-				.toList()));
+				.toList(), body.shipping()));
 		HttpStatus status = creation.replayed() ? HttpStatus.OK : HttpStatus.CREATED;
 		URI location = URI.create(
 			"/api/v1/stores/%s/orders/%s".formatted(

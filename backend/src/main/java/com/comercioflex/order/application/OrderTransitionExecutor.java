@@ -75,6 +75,9 @@ class OrderTransitionExecutor {
 			repository.expireOrder(order.internalId());
 			return OrderTransitionExecution.expiration();
 		}
+        if(order.fulfillmentType()==com.comercioflex.order.domain.FulfillmentType.SHIPPING
+          && command.targetStatus()==OrderStatus.READY_FOR_PICKUP)
+         throw new InvalidOrderTransitionException("Este pedido se gestiona desde el panel de envío.");
 		if (!ALLOWED.getOrDefault(order.status(), Set.of())
 				.contains(command.targetStatus())) {
 			throw new InvalidOrderTransitionException(

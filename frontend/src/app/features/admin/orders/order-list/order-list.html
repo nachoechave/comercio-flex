@@ -130,7 +130,7 @@
 
               <td>
                 {{
-                  order.subtotal
+                  (order.total ?? order.subtotal)
                     | storefrontMoney: order.currencyCode
                 }}
               </td>

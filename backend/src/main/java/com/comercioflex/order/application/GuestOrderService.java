@@ -37,18 +37,21 @@ public class GuestOrderService {
 	private final GuestOrderRepository repository;
 	private final TransactionTemplate transactionTemplate;
 	private final Clock clock;
+ private final com.comercioflex.shipping.application.ShippingService shipping;
 
 	@Autowired
 	public GuestOrderService(
 			GuestOrderRepository repository,
-			@Qualifier("tenantTransactionTemplate") TransactionTemplate transactionTemplate) {
-		this(repository, transactionTemplate, Clock.systemUTC());
+			@Qualifier("tenantTransactionTemplate") TransactionTemplate transactionTemplate,
+ com.comercioflex.shipping.application.ShippingService shipping) {
+		this(repository, transactionTemplate, Clock.systemUTC(),shipping);
 	}
 
 	GuestOrderService(
 			GuestOrderRepository repository,
 			TransactionTemplate transactionTemplate,
-			Clock clock) {
+			Clock clock,com.comercioflex.shipping.application.ShippingService shipping) {
+ this.shipping=shipping;
 		this.repository = repository;
 		this.transactionTemplate = transactionTemplate;
 		this.clock = clock;
@@ -97,9 +100,64 @@ public class GuestOrderService {
 			return replay(existing.get(), fingerprint, lookupToken);
 		}
 
+        PricedCart cart=priceCart(command.items(),command.paymentMethod());
+        var items=cart.items();
+        var listSubtotal=cart.listSubtotal();
+        var discountPercentage=cart.discountPercentage();
+        var discountAmount=cart.discountAmount();
+        var finalSubtotal=cart.subtotal();
+        var snapshot=shipping.select(command.shipping(),listSubtotal,discountAmount);
+
+		Instant expiresAt = clock.instant().plus(RESERVATION_DURATION);
+		UUID orderId = UUID.randomUUID();
+
+		long internalId = repository.insertOrder(
+				orderId,
+				command.idempotencyKey(),
+				fingerprint,
+				tokenHash,
+				command.customerName(),
+				command.customerPhone(),
+				command.customerEmail(),
+				command.notes(),
+				repository.findCurrencyCode(),
+				command.paymentMethod(),
+				listSubtotal,
+				discountPercentage,
+				discountAmount,
+				finalSubtotal,
+				expiresAt);
+
+		shipping.attach(internalId,snapshot);
+		repository.insertInitialHistory(internalId);
+		repository.insertItemsAndReservations(internalId, items, expiresAt);
+
+		return new GuestOrderCreation(
+				repository.findByInternalId(internalId),
+				lookupToken,
+				false);
+		}
+
+ public List<com.comercioflex.shipping.domain.ShippingModels.Quote> quote(
+   List<OrderItemCommand> requestedItems, com.comercioflex.order.domain.OrderPaymentMethod method,
+   String city,String postalCode) {
+  if(method==null || requestedItems==null || requestedItems.isEmpty() || requestedItems.size()>50)
+   throw new InvalidGuestOrderException("Indicá productos y medio de pago.");
+  Set<UUID> variants=new HashSet<>();
+  List<OrderItemCommand> items=requestedItems.stream().map(i->validateItem(i,variants))
+    .sorted(Comparator.comparing(i->i.variantId().toString())).toList();
+  return transactionTemplate.execute(s->{
+   PricedCart cart=priceCart(items,method);
+   return shipping.quotes(cart.listSubtotal(),cart.discountAmount(),city,postalCode);
+  });
+ }
+ private record PricedCart(List<ReservedOrderItem> items,BigDecimal listSubtotal,
+  BigDecimal discountPercentage,BigDecimal discountAmount,BigDecimal subtotal) {}
+ private PricedCart priceCart(List<OrderItemCommand> requestedItems,
+   com.comercioflex.order.domain.OrderPaymentMethod paymentMethod) {
 		List<ReservedOrderItem> items = new ArrayList<>();
 		BigDecimal subtotal = BigDecimal.ZERO.setScale(2);
-		for (OrderItemCommand requested : command.items()) {
+		for (OrderItemCommand requested : requestedItems) {
 			LockedOrderVariant variant = repository.lockVariant(requested.variantId())
 				.orElseThrow(OrderUnavailableException::new);
 			if (!variant.sellable()
@@ -129,7 +187,7 @@ public class GuestOrderService {
 		BigDecimal discountPercentage = BigDecimal.ZERO.setScale(2);
 		BigDecimal discountAmount = BigDecimal.ZERO.setScale(2);
 
-		if (command.paymentMethod()
+		if (paymentMethod
 				== com.comercioflex.order.domain.OrderPaymentMethod.BANK_TRANSFER) {
 
 				if (!paymentPricing.bankTransferEnabled()) {
@@ -151,34 +209,8 @@ public class GuestOrderService {
 				.subtract(discountAmount)
 				.setScale(2, RoundingMode.HALF_UP);
 
-		Instant expiresAt = clock.instant().plus(RESERVATION_DURATION);
-		UUID orderId = UUID.randomUUID();
-
-		long internalId = repository.insertOrder(
-				orderId,
-				command.idempotencyKey(),
-				fingerprint,
-				tokenHash,
-				command.customerName(),
-				command.customerPhone(),
-				command.customerEmail(),
-				command.notes(),
-				repository.findCurrencyCode(),
-				command.paymentMethod(),
-				listSubtotal,
-				discountPercentage,
-				discountAmount,
-				finalSubtotal,
-				expiresAt);
-
-		repository.insertInitialHistory(internalId);
-		repository.insertItemsAndReservations(internalId, items, expiresAt);
-
-		return new GuestOrderCreation(
-				repository.findByInternalId(internalId),
-				lookupToken,
-				false);
-		}
+  return new PricedCart(items,listSubtotal,discountPercentage,discountAmount,finalSubtotal);
+ }
 
 	private GuestOrderCreation replay(
 			UUID idempotencyKey,
@@ -240,7 +272,7 @@ public class GuestOrderService {
 				email,
 				notes,
 				command.paymentMethod(),
-				items);
+				items,command.shipping());
 	}
 
 	private OrderItemCommand validateItem(
@@ -309,6 +341,7 @@ public class GuestOrderService {
 					.append(Objects.toString(command.notes(), "")).append('\n')
 					.append(command.paymentMethod().name());
 
+			if(command.shipping()!=null) canonical.append("\nshipping:").append(command.shipping());
 			command.items().forEach(item -> canonical
 					.append('\n')
 					.append(item.variantId())

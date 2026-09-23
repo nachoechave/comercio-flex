@@ -1,3 +1,5 @@
+import { ShippingSelector } from '../../shipping/shipping-selector';
+import { ShippingSelection, ShippingQuote } from '../../shipping/shipping.models';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -24,7 +26,13 @@ type CheckoutPaymentMethod = 'MERCADO_PAGO' | 'BANK_TRANSFER';
 
 @Component({
   selector: 'app-checkout-page',
-  imports: [QuantityFormatPipe, ReactiveFormsModule, RouterLink, StorefrontMoneyPipe],
+  imports: [
+    ShippingSelector,
+    QuantityFormatPipe,
+    ReactiveFormsModule,
+    RouterLink,
+    StorefrontMoneyPipe,
+  ],
   templateUrl: './checkout-page.html',
   styleUrl: './checkout-page.scss',
 })
@@ -38,19 +46,22 @@ export class CheckoutPage {
   private readonly paymentRecovery = inject(PaymentRecoveryService);
   private readonly guestOrders = inject(GuestOrderHistoryService);
   private readonly route = inject(ActivatedRoute);
-protected readonly storefrontRouting = inject(StorefrontRoutingService);
+  protected readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly router = inject(Router);
   protected readonly context = inject(StorefrontContextService);
+  protected readonly shippingSelection = signal<ShippingSelection | null>(null);
+  protected readonly shippingRefreshVersion = signal(0);
+  protected readonly shippingQuote = signal<ShippingQuote | null>(null);
+  protected readonly shippingItems = computed(() =>
+    this.items().map((item) => ({ variantId: item.variantId, quantity: String(item.quantity) })),
+  );
   private intentFingerprint: string | null = null;
   private idempotencyKey: string | null = null;
   private paymentIdempotencyKey: string | null = null;
 
-  protected readonly storeSlug = toSignal(
-    this.storefrontRouting.storeSlug(this.route),
-    {
-      initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
-    },
-  );
+  protected readonly storeSlug = toSignal(this.storefrontRouting.storeSlug(this.route), {
+    initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
+  });
   protected readonly items = computed(() => this.cart.items(this.storeSlug() ?? ''));
   protected readonly subtotal = computed(() => this.cart.availableSubtotal(this.storeSlug() ?? ''));
   protected readonly bankTransferDiscountPercentage = computed(() => {
@@ -144,6 +155,11 @@ protected readonly storefrontRouting = inject(StorefrontRoutingService);
       return;
     }
 
+    const delivery = this.shippingSelection();
+    if (!delivery) {
+      this.errorMessage.set('Consultá y elegí un método de entrega.');
+      return;
+    }
     const value = this.form.getRawValue();
     const body: CreateGuestOrder = {
       customerName: value.customerName.trim(),
@@ -151,6 +167,7 @@ protected readonly storefrontRouting = inject(StorefrontRoutingService);
       customerEmail: value.customerEmail.trim(),
       ...(value.notes.trim() ? { notes: value.notes.trim() } : {}),
       paymentMethod: selectedPaymentMethod,
+      shipping: delivery,
       items: this.items().map((item) => ({
         variantId: item.variantId,
         quantity: String(item.quantity),
@@ -226,6 +243,11 @@ protected readonly storefrontRouting = inject(StorefrontRoutingService);
             void this.navigateToRecoverableOrder(storeSlug, createdOrder, result);
             return;
           }
+          if (error instanceof HttpErrorResponse && error.error?.code === 'SHIPPING_CONFLICT') {
+            this.shippingSelection.set(null);
+            this.shippingQuote.set(null);
+            this.shippingRefreshVersion.update((value) => value + 1);
+          }
           const uncertain =
             error instanceof HttpErrorResponse && (error.status === 0 || error.status >= 500);
           this.uncertainResult.set(uncertain);
@@ -243,13 +265,10 @@ protected readonly storefrontRouting = inject(StorefrontRoutingService);
     order: { id: string; lookupToken: string },
     payment: 'failed' | 'not-enabled',
   ): Promise<boolean> {
-    return this.router.navigate(
-      this.storefrontRouting.route(storeSlug, 'pedidos', order.id),
-      {
-        queryParams: { token: order.lookupToken, payment },
-        replaceUrl: true,
-      },
-    );
+    return this.router.navigate(this.storefrontRouting.route(storeSlug, 'pedidos', order.id), {
+      queryParams: { token: order.lookupToken, payment },
+      replaceUrl: true,
+    });
   }
 
   private navigateToOrder(

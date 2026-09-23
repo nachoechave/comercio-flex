@@ -29,7 +29,7 @@
 
       <strong class="total">
         {{
-          current.subtotal
+          (current.total ?? current.subtotal)
             | storefrontMoney: current.currencyCode
         }}
       </strong>
@@ -70,7 +70,7 @@
 
             <div>
               <dt>Entrega</dt>
-              <dd>Retiro en el comercio</dd>
+              <dd>{{current.fulfillmentType === "SHIPPING" ? "Envío a domicilio" : "Retiro en el comercio"}}</dd>
             </div>
           </dl>
 
@@ -82,6 +82,18 @@
           }
         </section>
 
+
+        @if(current.shipping;as delivery){
+          <section class="card"><h2>{{delivery.name}}</h2>
+          @if(delivery.address;as a){<p>{{a.street}} {{a.number}} {{a.apartment}}<br>{{a.city}}, {{a.province}} · CP {{a.postalCode}}</p>}
+          @else{<p>{{delivery.pickupAddress}}</p>}
+          <p>{{delivery.instructions}}</p>
+          <p>Envío: {{current.shippingAmount ?? '0' | storefrontMoney:current.currencyCode}}</p>
+          @if(current.fulfillmentType==='SHIPPING'){
+            <app-shipment-panel [storeSlug]="storeSlug() ?? ''" [orderId]="current.id" />
+          }
+          </section>
+        }
         <section class="card">
           <h2>Pago</h2>
 
@@ -129,7 +141,7 @@
               <dd>
                 <strong>
                   {{
-                    current.subtotal
+                    (current.total ?? current.subtotal)
                       | storefrontMoney: current.currencyCode
                   }}
                 </strong>

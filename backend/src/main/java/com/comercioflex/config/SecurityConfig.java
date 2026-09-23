@@ -58,6 +58,7 @@ public class SecurityConfig {
 				.csrfTokenRepository(csrfTokenRepository)
 				.ignoringRequestMatchers(
 					postMatcher("/api/v1/stores/*/orders"),
+ postMatcher("/api/v1/stores/*/shipping/quote"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/checkout-pro"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/checkout-pro/reconcile"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/qr"),
@@ -88,6 +89,7 @@ public class SecurityConfig {
 						"/productos/**")
 				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+				.requestMatchers(HttpMethod.POST, "/api/v1/stores/*/shipping/quote").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/storefront/resolve").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/membership-plans").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/radio-site").permitAll()

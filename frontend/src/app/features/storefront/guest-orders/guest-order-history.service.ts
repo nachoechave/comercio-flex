@@ -29,7 +29,7 @@ export class GuestOrderHistoryService {
       lookupToken,
       createdAt: order.createdAt,
       lastKnownStatus: order.status,
-      total: order.subtotal,
+      total: order.total ?? order.subtotal,
       currencyCode: order.currencyCode,
     };
     if (!isEntry(entry)) throw new Error('Los datos de recuperación del pedido no son válidos.');

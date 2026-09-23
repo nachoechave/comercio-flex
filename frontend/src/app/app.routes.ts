@@ -139,6 +139,11 @@ export const routes: Routes = [
           ),
       },
       {
+        path:'configuracion/envios',
+        canActivate:[allowedRolesGuard(['OWNER','ADMIN'])],
+        loadComponent:()=>import('./features/shipping/shipping-settings-page').then(m=>m.ShippingSettingsPage),
+      },
+      {
         path: 'configuracion/comercio',
         canActivate: [allowedRolesGuard(['OWNER', 'ADMIN'])],
         loadComponent: () =>
