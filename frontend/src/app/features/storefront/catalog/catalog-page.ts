@@ -25,7 +25,7 @@ const EMPTY_PAGE: PublicProductPage = {
   selector: 'app-catalog-page',
   imports: [ReactiveFormsModule, RouterLink, ProductCard],
   templateUrl: './catalog-page.html',
-  styleUrl: './catalog-page.scss',
+  styleUrls: ['./catalog-page.scss', './catalog-page-v2.scss'],
 })
 export class CatalogPage {
   private readonly api = inject(StorefrontApiService);
@@ -38,12 +38,9 @@ export class CatalogPage {
   private readonly meta = inject(Meta);
   private readonly retryVersion = signal(0);
 
-  protected readonly storeSlug = toSignal(
-    this.storefrontRouting.storeSlug(this.route),
-    {
-      initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
-    },
-  );
+  protected readonly storeSlug = toSignal(this.storefrontRouting.storeSlug(this.route), {
+    initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
+  });
   private readonly queryParams = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });
@@ -53,34 +50,31 @@ export class CatalogPage {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly query = signal('');
   protected readonly selectedCategory = signal('');
-  protected readonly isModern = computed(
-    () => this.context.settings()?.branding?.template === 'FASHION',
-  );
-  protected readonly isFresh = computed(
-    () => this.context.settings()?.branding?.template === 'FRESH',
-  );
-  protected readonly isMinimal = computed(
-    () => this.context.settings()?.branding?.template === 'CATALOG',
-  );
+  protected readonly isModern = computed(() => this.context.settings()?.branding?.template === 'FASHION');
+  protected readonly isFresh = computed(() => this.context.settings()?.branding?.template === 'FRESH');
+  protected readonly isMinimal = computed(() => this.context.settings()?.branding?.template === 'CATALOG');
   protected readonly heroEyebrow = computed(() => {
     const configured = this.context.settings()?.branding?.heroEyebrow;
     if (configured) return configured;
-    if (this.isModern()) return 'Colección destacada';
-    if (this.isFresh()) return 'Calidad de todos los días';
-    return this.isMinimal() ? 'Selección' : 'Catálogo online';
+    if (this.isModern()) return 'Nueva colección';
+    if (this.isFresh()) return 'Más que productos, buena vibra';
+    return 'Catálogo';
   });
-  protected readonly heroTitle = computed(
-    () => this.context.settings()?.branding?.heroTitle || 'Una tienda con identidad propia.',
-  );
-  protected readonly heroSubtitle = computed(
-    () =>
-      this.context.settings()?.branding?.heroSubtitle ||
-      'Descubrí productos seleccionados y encontrá tu próxima elección.',
-  );
-  protected readonly filters = this.formBuilder.nonNullable.group({
-    q: [''],
-    category: [''],
+  protected readonly heroTitle = computed(() => {
+    const configured = this.context.settings()?.branding?.heroTitle;
+    if (configured) return configured;
+    if (this.isModern()) return 'Más que productos, un estilo de vida.';
+    if (this.isFresh()) return 'Descubrí lo nuevo';
+    return 'Encontrá lo que buscás.';
   });
+  protected readonly heroSubtitle = computed(() => {
+    const configured = this.context.settings()?.branding?.heroSubtitle;
+    if (configured) return configured;
+    if (this.isModern()) return 'Una selección con identidad propia, pensada para destacar tu marca.';
+    if (this.isFresh()) return 'Productos para una experiencia simple, alegre y cercana.';
+    return 'Buscá, filtrá y compará productos de forma rápida.';
+  });
+  protected readonly filters = this.formBuilder.nonNullable.group({ q: [''], category: [''] });
   protected readonly currencyCode = this.context.currencyCode;
 
   constructor() {
@@ -131,9 +125,7 @@ export class CatalogPage {
         },
         error: (error: unknown) => {
           this.loading.set(false);
-          this.errorMessage.set(
-            storefrontErrorMessage(error, 'No pudimos cargar los productos. Intentá nuevamente.'),
-          );
+          this.errorMessage.set(storefrontErrorMessage(error, 'No pudimos cargar los productos. Intentá nuevamente.'));
         },
       });
       onCleanup(() => subscription.unsubscribe());
@@ -145,16 +137,10 @@ export class CatalogPage {
       const settingsSlug = this.context.settings()?.slug;
       if (storeName && settingsSlug === slug) {
         this.title.setTitle(`Productos | ${storeName}`);
-        this.meta.updateTag({
-          name: 'description',
-          content: `Explorá el catálogo de ${storeName}, sus precios y opciones disponibles.`,
-        });
+        this.meta.updateTag({ name: 'description', content: `Explorá el catálogo de ${storeName}, sus precios y opciones disponibles.` });
       } else {
         this.title.setTitle('Catálogo | Comercio Flex');
-        this.meta.updateTag({
-          name: 'description',
-          content: 'Explorá productos y opciones disponibles en Comercio Flex.',
-        });
+        this.meta.updateTag({ name: 'description', content: 'Explorá productos y opciones disponibles en Comercio Flex.' });
       }
     });
   }
@@ -163,20 +149,13 @@ export class CatalogPage {
     const value = this.filters.getRawValue();
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: {
-        q: value.q.trim() || null,
-        categoria: value.category || null,
-        page: null,
-      },
+      queryParams: { q: value.q.trim() || null, categoria: value.category || null, page: null },
     });
   }
 
   protected clearFilters(): void {
     this.filters.reset({ q: '', category: '' });
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { q: null, categoria: null, page: null },
-    });
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { q: null, categoria: null, page: null } });
   }
 
   protected goToPage(page: number): void {

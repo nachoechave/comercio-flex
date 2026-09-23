@@ -13,21 +13,24 @@ export const STOREFRONT_TEMPLATES: readonly StorefrontTemplateOption[] = [
     value: 'FASHION',
     name: 'Editorial Moda',
     shortName: 'Fashion',
-    description: 'Visual, elegante y pensada para indumentaria y marcas.',
-    bestFor: 'Moda · Calzado · Accesorios · Belleza',
+    description:
+      'Editorial, premium y visual. Hero fotográfico, tipografía elegante y foco en marca y colección.',
+    bestFor: 'Moda · Calzado · Accesorios · Marcas premium',
   },
   {
     value: 'FRESH',
     name: 'Mercado Fresco',
     shortName: 'Fresh',
-    description: 'Cálida y comercial, pensada para alimentos y negocios de cercanía.',
-    bestFor: 'Alimentos · Panadería · Granja · Gourmet',
+    description:
+      'Colorida, joven y dinámica. Tarjetas redondeadas, promos visibles y una experiencia cercana.',
+    bestFor: 'Emprendimientos · Indumentaria · Lifestyle · Regalos',
   },
   {
     value: 'CATALOG',
     name: 'Catálogo Versátil',
     shortName: 'Catalog',
-    description: 'Limpia, flexible y preparada para comercios con muchos tipos de productos.',
-    bestFor: 'Hogar · Tecnología · Bazar · Librería',
+    description:
+      'Práctica y orientada a conversión. Búsqueda protagonista, filtros y grilla densa de productos.',
+    bestFor: 'Catálogos grandes · Tecnología · Hogar · Multirrubro',
   },
 ];
