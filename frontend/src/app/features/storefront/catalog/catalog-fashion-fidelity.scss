@@ -1,0 +1,220 @@
+/* Final visual pass for the FASHION storefront.
+   This intentionally overrides only the FASHION composition so FRESH and CATALOG remain unchanged. */
+
+.catalog--streetwear {
+  --fashion-page-width: 82rem;
+  background: #f7f3ec;
+}
+
+.catalog--streetwear .streetwear-hero {
+  min-height: clamp(30rem, 38vw, 36rem);
+  padding: clamp(3rem, 5vw, 5rem) max(2.5rem, calc((100% - var(--fashion-page-width)) / 2));
+  align-items: center;
+  background:
+    linear-gradient(90deg, rgba(247, 239, 228, 0.96) 0%, rgba(247, 239, 228, 0.86) 24%, rgba(247, 239, 228, 0.48) 43%, rgba(247, 239, 228, 0.05) 67%),
+    var(--store-hero-image) center 44% / cover no-repeat;
+}
+
+.catalog--streetwear .hero-copy {
+  width: min(43rem, 48vw);
+  max-width: 43rem;
+}
+
+.catalog--streetwear .hero-copy .eyebrow {
+  margin-bottom: 1.05rem;
+  color: #1e1b18;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.27em;
+}
+
+.catalog--streetwear .hero-copy h1 {
+  max-width: 41rem;
+  margin-bottom: 1rem;
+  color: #111;
+  font-size: clamp(3.7rem, 5.4vw, 5.9rem);
+  line-height: 0.93;
+  letter-spacing: -0.055em;
+}
+
+.catalog--streetwear .hero-copy > p:not(.eyebrow) {
+  max-width: 31rem;
+  color: #28231f;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.catalog--streetwear .hero-actions {
+  margin-top: 1.45rem;
+}
+
+.catalog--streetwear .hero-primary {
+  min-height: 2.85rem;
+  align-items: center;
+  padding: 0.85rem 1.35rem;
+  background: #161616;
+  letter-spacing: 0.09em;
+}
+
+/* The hero may only contain merchant-selected photography plus configurable eyebrow/title/subtitle. */
+.catalog--streetwear .fashion-scribble {
+  display: none !important;
+}
+
+/* Keep legacy internal-link hooks for tests without exposing extra mockup-inaccurate UI. */
+.catalog--streetwear .hero-secondary[hidden],
+.catalog--streetwear .campaign-grid[hidden] {
+  display: none !important;
+}
+
+.catalog--streetwear .category-showcase {
+  width: min(100% - 3rem, var(--fashion-page-width));
+  margin: 0 auto;
+}
+
+.catalog--streetwear .category-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.catalog--streetwear .category-card {
+  min-height: 12rem;
+  background: #ddd3c7;
+}
+
+.catalog--streetwear .category-card:nth-child(n + 4) {
+  display: none;
+}
+
+.catalog--streetwear .category-card img {
+  filter: saturate(0.82) contrast(0.96);
+}
+
+.catalog--streetwear .category-shade {
+  background: linear-gradient(90deg, rgba(18, 15, 13, 0.38), rgba(18, 15, 13, 0.05) 68%);
+}
+
+.catalog--streetwear .category-copy {
+  left: 1.45rem;
+  bottom: 1.25rem;
+}
+
+.catalog--streetwear .category-copy strong {
+  font-size: clamp(1.45rem, 2vw, 2rem);
+}
+
+/* The approved FASHION mockup goes straight from editorial categories to new arrivals. */
+.catalog--streetwear .filters {
+  display: none;
+}
+
+.catalog--streetwear .results-heading {
+  width: min(100% - 3rem, var(--fashion-page-width));
+  margin: 1.1rem auto 0.8rem;
+  align-items: center;
+}
+
+.catalog--streetwear .results-heading .eyebrow {
+  margin: 0 0 0.2rem;
+  color: #191919;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.catalog--streetwear .results-heading h2 {
+  margin: 0;
+  color: #121212;
+  font-size: 0;
+}
+
+.catalog--streetwear .results-heading h2::after {
+  content: 'Novedades';
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.8rem, 2.5vw, 2.45rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+
+.catalog--streetwear .product-grid {
+  width: min(100% - 3rem, var(--fashion-page-width));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.catalog--streetwear .fashion-banner {
+  min-height: 7.5rem;
+  margin-top: 2.2rem;
+  padding: 1.4rem max(2.5rem, calc((100% - var(--fashion-page-width)) / 2));
+  background:
+    linear-gradient(90deg, rgba(8, 8, 8, 0.48), rgba(8, 8, 8, 0.12)),
+    var(--store-hero-image) center 70% / cover no-repeat;
+}
+
+.catalog--streetwear .fashion-banner span {
+  font-size: 0.72rem;
+  letter-spacing: 0.17em;
+}
+
+.catalog--streetwear .fashion-banner strong {
+  font-size: 1.55rem;
+}
+
+.catalog--streetwear .pagination {
+  width: min(100% - 3rem, var(--fashion-page-width));
+}
+
+@media (max-width: 76rem) {
+  .catalog--streetwear .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 58rem) {
+  .catalog--streetwear .streetwear-hero {
+    min-height: 30rem;
+    padding: 2.7rem 1.5rem;
+    background:
+      linear-gradient(90deg, rgba(247, 239, 228, 0.93) 0%, rgba(247, 239, 228, 0.72) 55%, rgba(247, 239, 228, 0.22) 100%),
+      var(--store-hero-image) center / cover no-repeat;
+  }
+
+  .catalog--streetwear .hero-copy {
+    width: min(34rem, 92%);
+  }
+
+  .catalog--streetwear .hero-copy h1 {
+    font-size: clamp(3rem, 12vw, 4.8rem);
+  }
+
+  .catalog--streetwear .category-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .catalog--streetwear .category-card:nth-child(n + 4) {
+    display: none;
+  }
+
+  .catalog--streetwear .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 34rem) {
+  .catalog--streetwear .streetwear-hero {
+    min-height: 27rem;
+  }
+
+  .catalog--streetwear .category-showcase,
+  .catalog--streetwear .results-heading,
+  .catalog--streetwear .product-grid,
+  .catalog--streetwear .pagination {
+    width: min(100% - 2rem, var(--fashion-page-width));
+  }
+
+  .catalog--streetwear .product-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+  }
+}
