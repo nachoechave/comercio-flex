@@ -31,7 +31,7 @@ export const routes: Routes = [
   {
     path: '',
     canMatch: [radioDomainGuard],
-    loadChildren: () => import('./features/radio/radio.routes').then(m => m.RADIO_ROUTES),
+    loadChildren: () => import('./features/radio/radio.routes').then((m) => m.RADIO_ROUTES),
   },
   {
     path: '',
@@ -41,21 +41,19 @@ export const routes: Routes = [
         (module) => module.LandingPage,
       ),
   },
-
-{
-  path: 'admin/login',
-  loadComponent: () =>
-    import('./features/auth/login/login').then((module) => module.Login),
-},
-{
-  path: 'admin/comercios',
-  canActivate: [authGuard, membershipSelectionGuard],
-  loadComponent: () =>
-    import('./features/admin/store-selector/store-selector').then(
-      (module) => module.StoreSelector,
-    ),
-},
-
+  {
+    path: 'admin/login',
+    loadComponent: () =>
+      import('./features/auth/login/login').then((module) => module.Login),
+  },
+  {
+    path: 'admin/comercios',
+    canActivate: [authGuard, membershipSelectionGuard],
+    loadComponent: () =>
+      import('./features/admin/store-selector/store-selector').then(
+        (module) => module.StoreSelector,
+      ),
+  },
   {
     path: 'admin',
     pathMatch: 'full',
@@ -128,8 +126,19 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./layouts/admin-layout/admin-layout').then((module) => module.AdminLayout),
     children: [
-      ...(['socios', 'planes', 'cuotas'] as const).map((path, index) => ({ path, canActivate: [allowedRolesGuard(['OWNER', 'ADMIN']), radioAdminGuard], data: { membershipAdminMode: ['members', 'plans', 'periods'][index] }, loadComponent: () => import('./features/radio/membership-admin-page').then(m => m.MembershipAdminPage) })),
-      { path: 'contenido', canActivate: [allowedRolesGuard(['OWNER', 'ADMIN']), radioAdminGuard], loadComponent: () => import('./features/radio/radio-content-admin-page').then(m => m.RadioContentAdminPage) },
+      ...(['socios', 'planes', 'cuotas'] as const).map((path, index) => ({
+        path,
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN']), radioAdminGuard],
+        data: { membershipAdminMode: ['members', 'plans', 'periods'][index] },
+        loadComponent: () =>
+          import('./features/radio/membership-admin-page').then((m) => m.MembershipAdminPage),
+      })),
+      {
+        path: 'contenido',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN']), radioAdminGuard],
+        loadComponent: () =>
+          import('./features/radio/radio-content-admin-page').then((m) => m.RadioContentAdminPage),
+      },
       {
         path: '',
         canActivate: [adminHomeGuard],
@@ -139,9 +148,20 @@ export const routes: Routes = [
           ),
       },
       {
-        path:'configuracion/envios',
-        canActivate:[allowedRolesGuard(['OWNER','ADMIN'])],
-        loadComponent:()=>import('./features/shipping/shipping-settings-page').then(m=>m.ShippingSettingsPage),
+        path: 'configuracion/envios',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/shipping/shipping-settings-page').then(
+            (m) => m.ShippingSettingsPage,
+          ),
+      },
+      {
+        path: 'configuracion/envios/andreani',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/shipping/carrier-settings-page').then(
+            (m) => m.CarrierSettingsPage,
+          ),
       },
       {
         path: 'configuracion/comercio',
@@ -203,14 +223,28 @@ export const routes: Routes = [
         (module) => module.StorefrontLayout,
       ),
     loadChildren: () =>
-      import('./features/storefront/storefront.routes').then((module) => module.STOREFRONT_ROUTES),
+      import('./features/storefront/storefront.routes').then(
+        (module) => module.STOREFRONT_ROUTES,
+      ),
   },
   {
     path: 'tiendas/:storeSlug',
     canMatch: [tenantExperienceGuard('RADIO')],
-    loadChildren: () => import('./features/radio/radio.routes').then(m => m.RADIO_ROUTES),
+    loadChildren: () => import('./features/radio/radio.routes').then((m) => m.RADIO_ROUTES),
   },
-  { path: 'no-encontrado', loadComponent: () => import('./core/routing/not-found-page').then(m => m.NotFoundPage) },
-  { path: ':storeSlug', canMatch: [radioCleanGuard], loadChildren: () => import('./features/radio/radio.routes').then(m => m.RADIO_ROUTES) },
-  { path: '**', loadComponent: () => import('./core/routing/not-found-page').then(m => m.NotFoundPage) },
+  {
+    path: 'no-encontrado',
+    loadComponent: () =>
+      import('./core/routing/not-found-page').then((m) => m.NotFoundPage),
+  },
+  {
+    path: ':storeSlug',
+    canMatch: [radioCleanGuard],
+    loadChildren: () => import('./features/radio/radio.routes').then((m) => m.RADIO_ROUTES),
+  },
+  {
+    path: '**',
+    loadComponent: () =>
+      import('./core/routing/not-found-page').then((m) => m.NotFoundPage),
+  },
 ];

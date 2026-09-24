@@ -1,7 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, effect, inject, input, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ShippingQuote, ShippingSelection } from './shipping.models';
+import {
+  CarrierDocumentType,
+  ShippingQuote,
+  ShippingSelection,
+} from './shipping.models';
 import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
 
 @Component({
@@ -89,8 +93,14 @@ import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
                   <strong>{{ option.name }}</strong>
                   <strong>{{ option.shippingAmount | storefrontMoney: currency() }}</strong>
                 </span>
+                @if (option.provider) {
+                  <span class="provider-badge">Cotizado por {{ option.provider }}</span>
+                }
                 @if (option.freeShipping) {
                   <span class="free-badge">Envío gratis</span>
+                }
+                @if (option.estimatedDays) {
+                  <span>Entrega estimada: {{ option.estimatedDays }} días.</span>
                 }
                 @if (option.description) {
                   <span>{{ option.description }}</span>
@@ -105,6 +115,37 @@ import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
             </label>
           }
         </div>
+      }
+
+      @if (mode() === 'SHIPPING' && hasCarrierOptions()) {
+        <section class="carrier-document" [formGroup]="carrierDocument">
+          <div>
+            <strong>Documento del destinatario</strong>
+            <p>Andreani lo requiere para generar la etiqueta y el seguimiento del envío.</p>
+          </div>
+          <label>
+            <span>Tipo</span>
+            <select formControlName="type" (change)="invalidateSelection()">
+              <option value="DNI">DNI</option>
+              <option value="CUIT">CUIT</option>
+              <option value="CUIL">CUIL</option>
+            </select>
+          </label>
+          <label>
+            <span>Número</span>
+            <input
+              formControlName="number"
+              inputmode="numeric"
+              autocomplete="off"
+              maxlength="20"
+              placeholder="Solo números"
+              (input)="invalidateSelection()"
+            />
+            @if (carrierDocument.controls.number.touched && carrierDocument.controls.number.invalid) {
+              <small>Ingresá entre 7 y 20 dígitos.</small>
+            }
+          </label>
+        </section>
       }
 
       @if (current(); as q) {
@@ -169,10 +210,11 @@ import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
         gap: 4px;
       }
       .mode-card small,
-      .option-copy > span:not(.option-heading):not(.free-badge) {
+      .option-copy > span:not(.option-heading):not(.free-badge):not(.provider-badge) {
         color: #667085;
       }
-      .address {
+      .address,
+      .carrier-document {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
         gap: 12px;
@@ -180,13 +222,25 @@ import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
         border-radius: 14px;
         background: #f8fafc;
       }
-      .address label {
+      .carrier-document {
+        align-items: end;
+        border: 1px solid #e3e8ef;
+      }
+      .carrier-document > div p {
+        margin: 5px 0 0;
+        color: #667085;
+        font-size: 0.86rem;
+        line-height: 1.45;
+      }
+      .address label,
+      .carrier-document label {
         display: grid;
         gap: 6px;
         font-size: 0.9rem;
         font-weight: 600;
       }
-      input:not([type='radio']) {
+      input:not([type='radio']),
+      select {
         width: 100%;
         box-sizing: border-box;
         padding: 11px 12px;
@@ -227,14 +281,21 @@ import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
         justify-content: space-between;
         gap: 12px;
       }
-      .free-badge {
+      .free-badge,
+      .provider-badge {
         width: fit-content;
         padding: 3px 8px;
         border-radius: 999px;
-        background: #e8f7ee;
-        color: #18794e;
         font-size: 0.78rem;
         font-weight: 700;
+      }
+      .free-badge {
+        background: #e8f7ee;
+        color: #18794e;
+      }
+      .provider-badge {
+        background: #eef2ff;
+        color: #3949ab;
       }
       .summary {
         display: grid;
@@ -279,6 +340,7 @@ import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
 })
 export class ShippingSelector {
   private readonly http = inject(HttpClient);
+  private readonly fb = inject(FormBuilder);
   storeSlug = input.required<string>();
   items = input.required<{ variantId: string; quantity: string }[]>();
   paymentMethod = input<string | null>(null);
@@ -293,13 +355,17 @@ export class ShippingSelector {
   selected = signal<string | null>(null);
   current = signal<ShippingQuote | null>(null);
   private generation = 0;
-  address = inject(FormBuilder).nonNullable.group({
+  address = this.fb.nonNullable.group({
     street: ['', Validators.required],
     number: ['', Validators.required],
     apartment: [''],
     city: ['', Validators.required],
     province: ['', Validators.required],
     postalCode: ['', Validators.required],
+  });
+  carrierDocument = this.fb.nonNullable.group({
+    type: ['DNI' as CarrierDocumentType, Validators.required],
+    number: ['', [Validators.required, Validators.pattern(/^[0-9]{7,20}$/)]],
   });
   fields = [
     { key: 'street' as const, label: 'Calle', autocomplete: 'address-line1', max: 160 },
@@ -331,20 +397,28 @@ export class ShippingSelector {
     return this.options().filter((q) => (q.type === 'PICKUP') === (this.mode() === 'PICKUP'));
   }
 
+  hasCarrierOptions() {
+    return this.visibleOptions().some((q) => q.type === 'CARRIER');
+  }
+
   setMode(mode: 'PICKUP' | 'SHIPPING') {
     this.mode.set(mode);
     this.invalidate();
+  }
+
+  invalidateSelection() {
+    this.selected.set(null);
+    this.current.set(null);
+    this.error.set('');
+    this.selection.emit(null);
+    this.quoted.emit(null);
   }
 
   invalidate() {
     this.generation++;
     this.loading.set(false);
     this.options.set([]);
-    this.selected.set(null);
-    this.current.set(null);
-    this.error.set('');
-    this.selection.emit(null);
-    this.quoted.emit(null);
+    this.invalidateSelection();
   }
 
   quote() {
@@ -395,10 +469,10 @@ export class ShippingSelector {
             this.error.set('No hay métodos disponibles para este destino.');
           }
         },
-        error: () => {
+        error: (response) => {
           if (generation !== this.generation) return;
           this.loading.set(false);
-          this.error.set('No pudimos calcular el envío. Reintentá.');
+          this.error.set(response.error?.message ?? 'No pudimos calcular el envío. Reintentá.');
         },
       });
   }
@@ -409,14 +483,29 @@ export class ShippingSelector {
       this.error.set('Completá la dirección de entrega antes de elegir el envío.');
       return;
     }
+    if (q.type === 'CARRIER') {
+      this.carrierDocument.markAllAsTouched();
+      if (this.carrierDocument.invalid || !q.quoteToken) {
+        this.error.set('Completá el documento del destinatario antes de elegir Andreani.');
+        return;
+      }
+    }
     this.error.set('');
     this.selected.set(q.methodId);
     this.current.set(q);
     this.quoted.emit(q);
+    const document = this.carrierDocument.getRawValue();
     this.selection.emit({
       methodId: q.methodId,
       expectedTotal: q.total,
       ...(q.type === 'PICKUP' ? {} : { address: this.address.getRawValue() }),
+      ...(q.type === 'CARRIER'
+        ? {
+            quoteToken: q.quoteToken ?? undefined,
+            documentType: document.type,
+            documentNumber: document.number,
+          }
+        : {}),
     });
   }
 }

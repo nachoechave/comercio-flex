@@ -1,5 +1,7 @@
 package com.comercioflex.shipping.domain;
 
+import com.comercioflex.shipping.domain.CarrierModels.DocumentType;
+import com.comercioflex.shipping.domain.CarrierModels.Parcel;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
@@ -14,7 +16,8 @@ public final class ShippingModels {
     PICKUP,
     FIXED_RATE,
     LOCATION_RATE,
-    POSTAL_CODE_RATE
+    POSTAL_CODE_RATE,
+    CARRIER
   }
 
   public enum Status {
@@ -66,7 +69,7 @@ public final class ShippingModels {
       return street
           + " "
           + number
-          + (apartment == null ? "" : " " + apartment)
+          + (apartment == null || apartment.isBlank() ? "" : " " + apartment)
           + ", "
           + city
           + ", "
@@ -80,7 +83,14 @@ public final class ShippingModels {
   public record Selection(
       @NotNull UUID methodId,
       @Valid Address address,
-      @NotNull @DecimalMin("0") BigDecimal expectedTotal) {}
+      @NotNull @DecimalMin("0") BigDecimal expectedTotal,
+      UUID quoteToken,
+      DocumentType documentType,
+      @Size(max = 20) String documentNumber) {
+    public Selection(UUID methodId, Address address, BigDecimal expectedTotal) {
+      this(methodId, address, expectedTotal, null, null, null);
+    }
+  }
 
   public record Snapshot(
       UUID methodId,
@@ -89,7 +99,39 @@ public final class ShippingModels {
       BigDecimal cost,
       String pickupAddress,
       String instructions,
-      Address address) {}
+      Address address,
+      String provider,
+      String serviceCode,
+      UUID quoteToken,
+      DocumentType documentType,
+      String documentNumber,
+      Parcel parcel,
+      BigDecimal providerCost) {
+    public Snapshot(
+        UUID methodId,
+        String name,
+        MethodType type,
+        BigDecimal cost,
+        String pickupAddress,
+        String instructions,
+        Address address) {
+      this(
+          methodId,
+          name,
+          type,
+          cost,
+          pickupAddress,
+          instructions,
+          address,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null);
+    }
+  }
 
   public record Quote(
       UUID methodId,
@@ -113,7 +155,43 @@ public final class ShippingModels {
               shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING)
           BigDecimal total,
       String pickupAddress,
-      String instructions) {}
+      String instructions,
+      String provider,
+      String serviceCode,
+      Integer estimatedDays,
+      UUID quoteToken) {
+    public Quote(
+        UUID methodId,
+        String name,
+        String description,
+        MethodType type,
+        BigDecimal shippingAmount,
+        boolean freeShipping,
+        BigDecimal listSubtotal,
+        BigDecimal discountAmount,
+        BigDecimal subtotal,
+        BigDecimal total,
+        String pickupAddress,
+        String instructions) {
+      this(
+          methodId,
+          name,
+          description,
+          type,
+          shippingAmount,
+          freeShipping,
+          listSubtotal,
+          discountAmount,
+          subtotal,
+          total,
+          pickupAddress,
+          instructions,
+          null,
+          null,
+          null,
+          null);
+    }
+  }
 
   public record Shipment(
       UUID id,
@@ -128,7 +206,53 @@ public final class ShippingModels {
       Instant shippedAt,
       Instant deliveredAt,
       String notes,
-      long version) {}
+      long version,
+      BigDecimal providerCost,
+      String externalReference,
+      String labelReference,
+      String providerStatus,
+      Instant lastSyncedAt,
+      String providerError) {
+    public Shipment(
+        UUID id,
+        UUID orderId,
+        String provider,
+        Status status,
+        String carrierName,
+        String trackingNumber,
+        String trackingUrl,
+        BigDecimal shippingCost,
+        Instant createdAt,
+        Instant shippedAt,
+        Instant deliveredAt,
+        String notes,
+        long version) {
+      this(
+          id,
+          orderId,
+          provider,
+          status,
+          carrierName,
+          trackingNumber,
+          trackingUrl,
+          shippingCost,
+          createdAt,
+          shippedAt,
+          deliveredAt,
+          notes,
+          version,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null);
+    }
+
+    public boolean labelAvailable() {
+      return labelReference != null && !labelReference.isBlank();
+    }
+  }
 
   public record UpdateShipment(
       @NotNull Status status,

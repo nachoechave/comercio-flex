@@ -1,5 +1,6 @@
 package com.comercioflex.shipping.api;
 
+import com.comercioflex.shipping.application.CarrierUnavailableException;
 import com.comercioflex.shipping.application.ShippingException;
 import java.util.Map;
 import org.springframework.http.*;
@@ -21,6 +22,12 @@ public class ShippingErrorHandler {
   ResponseEntity<?> unavailable(RuntimeException e) {
     return ResponseEntity.status(409)
         .body(Map.of("message", "Los productos ya no están disponibles."));
+  }
+
+  @ExceptionHandler(CarrierUnavailableException.class)
+  ResponseEntity<?> carrier(CarrierUnavailableException e) {
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .body(Map.of("code", "CARRIER_UNAVAILABLE", "message", e.getMessage()));
   }
 
   @ExceptionHandler(ShippingException.class)

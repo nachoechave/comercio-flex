@@ -196,7 +196,6 @@ public class GuestOrderService {
     BigDecimal discountAmount = BigDecimal.ZERO.setScale(2);
 
     if (paymentMethod == com.comercioflex.order.domain.OrderPaymentMethod.BANK_TRANSFER) {
-
       if (!paymentPricing.bankTransferEnabled()) {
         throw new InvalidGuestOrderException(
             "La transferencia bancaria no está habilitada para esta tienda.");
@@ -342,6 +341,11 @@ public class GuestOrderService {
       canonical.append("\nshipping:");
       fingerprintValue(canonical, selection.methodId().toString());
       fingerprintValue(canonical, selection.expectedTotal().stripTrailingZeros().toPlainString());
+      fingerprintValue(
+          canonical, selection.quoteToken() == null ? null : selection.quoteToken().toString());
+      fingerprintValue(
+          canonical, selection.documentType() == null ? null : selection.documentType().name());
+      fingerprintValue(canonical, selection.documentNumber());
       var address = selection.address();
       canonical.append(address == null ? "no-address" : "address");
       if (address != null) {

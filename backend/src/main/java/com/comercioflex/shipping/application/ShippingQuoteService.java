@@ -6,6 +6,7 @@ import com.comercioflex.order.domain.OrderPaymentMethod;
 import com.comercioflex.shipping.domain.ShippingModels.Quote;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -14,23 +15,26 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-/**
- * Advisory, read-only shipping quote pricing.
- *
- * <p>This path deliberately avoids SELECT ... FOR UPDATE. Order creation remains authoritative and
- * recalculates prices, availability and shipping while holding the existing transactional locks.
- */
+/** Advisory, read-only shipping pricing. Order creation remains authoritative. */
 @Service
 public class ShippingQuoteService {
   private static final BigDecimal MAX_SUBTOTAL = new BigDecimal("9999999999999.99");
 
   private final JdbcTemplate jdbc;
   private final ShippingService shipping;
+  private final CarrierShippingService carrier;
 
   public ShippingQuoteService(
-      @Qualifier("tenantJdbcTemplate") JdbcTemplate jdbc, ShippingService shipping) {
+      @Qualifier("tenantJdbcTemplate") JdbcTemplate jdbc,
+      ShippingService shipping,
+      CarrierShippingService carrier) {
     this.jdbc = jdbc;
     this.shipping = shipping;
+    this.carrier = carrier;
+  }
+
+  public ShippingQuoteService(JdbcTemplate jdbc, ShippingService shipping) {
+    this(jdbc, shipping, null);
   }
 
   public record Item(UUID variantId, BigDecimal quantity) {}
@@ -54,6 +58,7 @@ public class ShippingQuoteService {
 
     Set<UUID> variants = new HashSet<>();
     BigDecimal listSubtotal = BigDecimal.ZERO.setScale(2);
+    BigDecimal units = BigDecimal.ZERO;
 
     for (Item item : requestedItems) {
       validateItem(item, variants);
@@ -70,13 +75,28 @@ public class ShippingQuoteService {
       BigDecimal lineTotal =
           variant.unitPrice().multiply(item.quantity()).setScale(2, RoundingMode.HALF_UP);
       listSubtotal = listSubtotal.add(lineTotal);
+      units = units.add(item.quantity());
       if (listSubtotal.compareTo(MAX_SUBTOTAL) > 0) {
         throw new InvalidGuestOrderException("El total del pedido supera el máximo permitido.");
       }
     }
 
     BigDecimal discountAmount = discount(listSubtotal, paymentMethod);
-    return shipping.quotes(listSubtotal, discountAmount, city, postalCode);
+    List<Quote> result = new ArrayList<>(shipping.quotes(listSubtotal, discountAmount, city, postalCode));
+    if (carrier != null) {
+      try {
+        result.addAll(
+            carrier.quotes(
+                listSubtotal,
+                discountAmount,
+                shipping.settings().freeShippingThreshold(),
+                postalCode,
+                units));
+      } catch (CarrierUnavailableException e) {
+        if (result.isEmpty()) throw e;
+      }
+    }
+    return List.copyOf(result);
   }
 
   private VariantPrice findVariant(UUID variantId) {
