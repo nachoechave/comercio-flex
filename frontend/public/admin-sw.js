@@ -1,4 +1,4 @@
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL_CACHE = `comercio-flex-admin-shell-${VERSION}`;
 const STATIC_CACHE = `comercio-flex-admin-static-${VERSION}`;
 const ADMIN_PATH = /^\/admin(?:\/|$)|^\/tiendas\/[^/]+\/admin(?:\/|$)|^\/superadmin(?:\/|$)/;
@@ -44,8 +44,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (isSafeStaticAsset(request, url)) {
+  if (isAdminBrandAsset(url)) {
     event.respondWith(cacheFirstStatic(request));
+    return;
+  }
+
+  if (isRuntimeStaticAsset(request)) {
+    event.respondWith(networkFirstStatic(request));
   }
 });
 
@@ -66,9 +71,27 @@ async function networkFirstAdminNavigation(request) {
   }
 }
 
-function isSafeStaticAsset(request, url) {
-  if (url.pathname.startsWith('/assets/comercio-flex/')) return true;
+function isAdminBrandAsset(url) {
+  return url.pathname.startsWith('/assets/comercio-flex/');
+}
+
+function isRuntimeStaticAsset(request) {
   return ['script', 'style', 'font'].includes(request.destination);
+}
+
+async function networkFirstStatic(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(STATIC_CACHE);
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    throw new Error('Static asset unavailable');
+  }
 }
 
 async function cacheFirstStatic(request) {
