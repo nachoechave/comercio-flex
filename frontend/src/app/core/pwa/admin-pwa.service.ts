@@ -10,7 +10,11 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function isAdminPwaPath(pathname: string): boolean {
-  return /^\/admin(?:\/|$)/.test(pathname) || /^\/tiendas\/[^/]+\/admin(?:\/|$)/.test(pathname);
+  return (
+    /^\/admin(?:\/|$)/.test(pathname) ||
+    /^\/tiendas\/[^/]+\/admin(?:\/|$)/.test(pathname) ||
+    /^\/superadmin(?:\/|$)/.test(pathname)
+  );
 }
 
 @Injectable({ providedIn: 'root' })
