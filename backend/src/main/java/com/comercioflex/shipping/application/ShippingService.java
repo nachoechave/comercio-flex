@@ -5,6 +5,7 @@ import com.comercioflex.shipping.domain.ShippingModels.*;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -18,6 +19,7 @@ public class ShippingService {
   private final TransactionTemplate tx;
   private final CustomerNotificationPublisher notifications;
 
+  @Autowired
   public ShippingService(
       ShippingRepository repository,
       ShippingProvider provider,
