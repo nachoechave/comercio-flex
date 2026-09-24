@@ -1,7 +1,7 @@
-import { DOCUMENT } from '@angular/common';
 import { Component, computed, effect, inject, ViewEncapsulation } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { FaviconService } from '../../core/branding/favicon.service';
 import { StorefrontRoutingService } from '../../features/storefront/storefront-routing.service';
 
 import { StorefrontContextService } from '../../features/storefront/storefront-context.service';
@@ -37,7 +37,7 @@ export class StorefrontLayout {
   private readonly route = inject(ActivatedRoute);
   private readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly cart = inject(CartService);
-  private readonly document = inject(DOCUMENT);
+  private readonly favicons = inject(FaviconService);
   protected readonly context = inject(StorefrontContextService);
   protected readonly storeSlug = toSignal(
     this.storefrontRouting.storeSlug(this.route),
@@ -60,34 +60,10 @@ export class StorefrontLayout {
       }
     });
 
-    effect(() => {
-       const faviconUrl = this.context.settings()?.branding?.faviconUrl;
-
-       const faviconLinks = Array.from(
-        this.document.head.querySelectorAll<HTMLLinkElement>('link[rel="icon"]'),
-      );
-
-      let link = faviconLinks[0];
-
-      if (!link) {
-       link = this.document.createElement('link');
-       link.rel = 'icon';
-       this.document.head.appendChild(link);
-      }
-
-    faviconLinks.slice(1).forEach((extraLink) => {
-       extraLink.remove();
-    });
-
-      if (faviconUrl) {
-        link.href = faviconUrl;
-        link.removeAttribute('type');
-        link.dataset['tenantFavicon'] = 'true';
-      } else {
-        link.href = '/favicon.ico';
-        link.type = 'image/x-icon';
-        delete link.dataset['tenantFavicon'];
-        }
+    effect((onCleanup) => {
+      const branding = this.context.settings()?.branding;
+      this.favicons.useTenant(branding?.faviconUrl, branding?.logoUrl);
+      onCleanup(() => this.favicons.usePlatform());
     });
   }
 

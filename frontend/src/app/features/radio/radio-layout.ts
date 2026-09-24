@@ -1,9 +1,9 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { DOCUMENT } from '@angular/common';
 import { NgIf } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
+import { FaviconService } from '../../core/branding/favicon.service';
 import { StorefrontContextService } from '../storefront/storefront-context.service';
 import { RadioSite, RadioSiteApiService } from './radio-site-api.service';
 import { RadioContext } from './radio-context';
@@ -38,13 +38,11 @@ import { RadioContext } from './radio-context';
     </div>`,
 })
 export class RadioLayout {
-  private readonly document = inject(DOCUMENT);
-  private readonly brandingEffect = effect(() => {
+  private readonly favicons = inject(FaviconService);
+  private readonly brandingEffect = effect((onCleanup) => {
     const branding = this.settings()?.branding;
-    let icon = this.document.head.querySelector<HTMLLinkElement>('link[rel="icon"]');
-    if (!icon) { icon = this.document.createElement('link'); icon.rel = 'icon'; this.document.head.appendChild(icon); }
-    icon.href = branding?.faviconUrl || '/favicon.ico';
-    icon.removeAttribute('type');
+    this.favicons.useTenant(branding?.faviconUrl, branding?.logoUrl);
+    onCleanup(() => this.favicons.usePlatform());
   });
   readonly context = inject(RadioContext);
   readonly auth = inject(AuthService);

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tienda">
+  <rect width="64" height="64" rx="16" fill="#f3f4f6"/>
+  <path d="M14 26h36l-3-10H17l-3 10Z" fill="#475569"/>
+  <path d="M18 28v20h28V28" fill="#64748b"/>
+  <path d="M27 35h10v13H27z" fill="#e2e8f0"/>
+</svg>
