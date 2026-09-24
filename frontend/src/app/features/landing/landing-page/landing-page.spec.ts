@@ -122,28 +122,62 @@ describe('LandingPage', () => {
     expect(element.querySelector('#landing-mobile-menu')).toBeNull();
   });
 
-  it('sets the landing SEO title, description, OpenGraph and canonical URL', () => {
+  it('sets complete landing SEO, social and canonical metadata', () => {
     const title = TestBed.inject(Title);
     const meta = TestBed.inject(Meta);
 
-    expect(title.getTitle()).toBe('Comercio Flex | Ecommerce y gestión para comercios');
-    expect(meta.getTag("name='description'")?.content).toContain('productos, inventario, pedidos');
+    expect(title.getTitle()).toBe('Comercio Flex | Tienda online y gestión para comercios');
+    expect(meta.getTag("name='description'")?.content).toContain(
+      'productos, stock, pedidos, pagos y envíos',
+    );
+    expect(meta.getTag("name='robots'")?.content).toContain('index, follow');
+    expect(meta.getTag("property='og:site_name'")?.content).toBe('Comercio Flex');
+    expect(meta.getTag("property='og:locale'")?.content).toBe('es_AR');
     expect(meta.getTag("property='og:type'")?.content).toBe('website');
     expect(meta.getTag("property='og:url'")?.content).toBe('https://comercioflex.com.ar/');
+    expect(meta.getTag("property='og:image'")?.content).toBe(
+      'https://comercioflex.com.ar/assets/comercio-flex/icon-512x512.png',
+    );
+    expect(meta.getTag("name='twitter:card'")?.content).toBe('summary');
+    expect(meta.getTag("name='twitter:title'")?.content).toContain('Comercio Flex');
     expect(document.head.querySelector<HTMLLinkElement>("link[rel='canonical']")?.href).toBe(
       'https://comercioflex.com.ar/',
     );
   });
 
-  it('removes landing-only OpenGraph and canonical metadata when leaving the route', () => {
+  it('publishes structured data for the platform without unsupported commercial claims', () => {
+    const script = document.head.querySelector<HTMLScriptElement>(
+      "script[type='application/ld+json'][data-landing-seo='true']",
+    );
+    expect(script).not.toBeNull();
+
+    const schema = JSON.parse(script?.textContent ?? '{}') as {
+      '@graph': Array<Record<string, unknown>>;
+    };
+    expect(schema['@graph']).toHaveLength(2);
+    expect(schema['@graph'][0]['@type']).toBe('Organization');
+    expect(schema['@graph'][1]['@type']).toBe('SoftwareApplication');
+    expect(schema['@graph'][1]['applicationCategory']).toBe('BusinessApplication');
+    expect(schema['@graph'][1]).not.toHaveProperty('offers');
+    expect(schema['@graph'][1]).not.toHaveProperty('aggregateRating');
+  });
+
+  it('removes landing-only social, robots, schema and canonical metadata when leaving the route', () => {
     const meta = TestBed.inject(Meta);
 
     fixture.destroy();
 
+    expect(meta.getTag("name='robots'")).toBeNull();
+    expect(meta.getTag("property='og:site_name'")).toBeNull();
+    expect(meta.getTag("property='og:locale'")).toBeNull();
     expect(meta.getTag("property='og:title'")).toBeNull();
     expect(meta.getTag("property='og:description'")).toBeNull();
     expect(meta.getTag("property='og:type'")).toBeNull();
     expect(meta.getTag("property='og:url'")).toBeNull();
+    expect(meta.getTag("property='og:image'")).toBeNull();
+    expect(meta.getTag("name='twitter:card'")).toBeNull();
+    expect(meta.getTag("name='twitter:title'")).toBeNull();
+    expect(document.head.querySelector("script[data-landing-seo='true']")).toBeNull();
     expect(document.head.querySelector("link[rel='canonical']")).toBeNull();
   });
 });
