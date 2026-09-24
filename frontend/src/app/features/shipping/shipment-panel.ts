@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize, switchMap } from 'rxjs';
 import { CsrfService } from '../../core/auth/csrf.service';
@@ -69,6 +69,7 @@ import { Shipment, ShippingStatus } from './shipping.models';
   ],
 })
 export class ShipmentPanel {
+  changed = output<Shipment>();
   private http = inject(HttpClient);
   private csrf = inject(CsrfService);
   storeSlug = input.required<string>();
@@ -91,7 +92,10 @@ export class ShipmentPanel {
       const sub = this.http.get<Shipment | null>(url).subscribe({
         next: (s) => {
           this.shipment = s;
-          if (s) this.original.set(s.status);
+          if (s) {
+            this.original.set(s.status);
+            this.changed.emit(s);
+          }
         },
         error: () => this.error.set('No pudimos cargar el envío.'),
       });
@@ -132,6 +136,7 @@ export class ShipmentPanel {
         next: (s) => {
           this.shipment = s;
           this.original.set(s.status);
+          this.changed.emit(s);
           this.notice.set('Envío actualizado.');
         },
         error: (e) => this.error.set(e.error?.message ?? 'No pudimos actualizar el envío.'),

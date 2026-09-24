@@ -1,4 +1,4 @@
-import { ShipmentPanel } from "../../../shipping/shipment-panel";
+import { ShipmentPanel } from '../../../shipping/shipment-panel';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -22,7 +22,14 @@ import {
 
 @Component({
   selector: 'app-order-detail',
-  imports: [ShipmentPanel, CommerceDatePipe, QuantityFormatPipe, ReactiveFormsModule, RouterLink, StorefrontMoneyPipe],
+  imports: [
+    ShipmentPanel,
+    CommerceDatePipe,
+    QuantityFormatPipe,
+    ReactiveFormsModule,
+    RouterLink,
+    StorefrontMoneyPipe,
+  ],
   templateUrl: './order-detail.html',
   styleUrl: './order-detail.scss',
 })
@@ -45,7 +52,16 @@ export class OrderDetail {
   readonly loading = signal(true);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
-  readonly actions = computed(() => (ORDER_TRANSITIONS[this.order()?.status ?? 'EXPIRED'] ?? []).filter(s=>this.order()?.fulfillmentType!=='SHIPPING' || s!=='READY_FOR_PICKUP'));
+  readonly shipmentStatus = signal<string | null>(null);
+  readonly actions = computed<OrderStatus[]>(() => {
+    const order = this.order();
+    if (order?.fulfillmentType === 'SHIPPING' && order.status === 'CONFIRMED') {
+      if (this.shipmentStatus() === 'DELIVERED') return ['COMPLETED'];
+      if (this.shipmentStatus() === 'SHIPPED') return [];
+      return ['CANCELLED'];
+    }
+    return ORDER_TRANSITIONS[order?.status ?? 'EXPIRED'] ?? [];
+  });
   readonly form = this.formBuilder.nonNullable.group({
     note: ['', Validators.maxLength(500)],
   });

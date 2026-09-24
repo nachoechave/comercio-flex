@@ -114,4 +114,34 @@ describe('ShippingSelector', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.current()).toBeNull();
   });
+  it.skipIf(navigator.userAgent.includes('jsdom'))(
+    'fits a mobile viewport with delivery address and rates',
+    async () => {
+      const { page } = await import('vitest/browser');
+      await page.viewport(390, 844);
+      try {
+        fixture.componentInstance.setMode('SHIPPING');
+        fixture.componentInstance.address.setValue({
+          street: 'Calle 123',
+          number: '456',
+          apartment: '',
+          city: 'La Plata',
+          province: 'Buenos Aires',
+          postalCode: '1900',
+        });
+        respond({
+          ...pickup,
+          type: 'FIXED_RATE',
+          name: 'Envío estándar',
+          shippingAmount: '3000.00',
+          total: '8000.00',
+        });
+        const panel = fixture.nativeElement.querySelector('fieldset') as HTMLElement;
+        expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth + 1);
+        expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth + 1);
+      } finally {
+        await page.viewport(1024, 768);
+      }
+    },
+  );
 });

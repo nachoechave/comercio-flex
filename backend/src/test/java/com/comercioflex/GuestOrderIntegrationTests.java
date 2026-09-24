@@ -128,6 +128,7 @@ class GuestOrderIntegrationTests {
 
 	@DynamicPropertySource
 	static void configureDatabases(DynamicPropertyRegistry registry) {
+		registry.add("app.payments.receipt-storage.local-root", () -> "target/test-payment-receipts");
 		registry.add("spring.datasource.url", CONTROL_DATABASE::getJdbcUrl);
 		registry.add("spring.datasource.username", CONTROL_DATABASE::getUsername);
 		registry.add("spring.datasource.password", CONTROL_DATABASE::getPassword);
@@ -142,6 +143,7 @@ class GuestOrderIntegrationTests {
 
  @Autowired private ShippingService shipping;
  @Autowired private com.comercioflex.payment.application.BankTransferRepository bankTransfers;
+ @Autowired private com.comercioflex.payment.application.BankTransferPaymentService bankTransferService;
 	@BeforeEach
 	void seed() throws SQLException {
 		execute(CONTROL_DATABASE, "DELETE FROM memberships");
@@ -1225,6 +1227,10 @@ class GuestOrderIntegrationTests {
    assertThatThrownBy(()->shipping.update(id,new UpdateShipment(Status.PREPARING,null,null,null,null,repeated.version()))).isInstanceOf(ShippingException.class);
    var delivered=shipping.update(id,new UpdateShipment(Status.DELIVERED,"Transporte","123","https://example.com/tracking/123",null,repeated.version()));
    assertThat(delivered.deliveredAt()).isNotNull();
+   assertThatThrownBy(()->adminOrderService.transition(new OrderTransitionCommand(id,UUID.randomUUID(),OrderStatus.CANCELLED,null,OPERATOR_ID,"Operador")))
+    .isInstanceOf(InvalidOrderTransitionException.class);
+   assertThat(adminOrderService.transition(new OrderTransitionCommand(id,UUID.randomUUID(),OrderStatus.COMPLETED,null,OPERATOR_ID,"Operador")).status())
+    .isEqualTo(OrderStatus.COMPLETED);
    assertThatThrownBy(()->shipping.update(id,new UpdateShipment(Status.DELIVERED,null,null,"javascript:alert(1)",null,delivered.version()))).isInstanceOf(ShippingException.class);
   }
   assertThat(count(TENANT_A_DATABASE,"SELECT COUNT(*) FROM transactional_email_outbox WHERE event_type='ORDER_SHIPPED'")).isEqualTo(1);
@@ -1263,7 +1269,22 @@ class GuestOrderIntegrationTests {
   try(var scope=tenantContext.open("tenant-a")){
    var order=tenantTransactionTemplate.execute(tx->bankTransfers.lockOrder(UUID.fromString(created.at("/order/id").asText()),sha256(created.at("/lookupToken").asText())).orElseThrow());
    assertThat(order.amount()).isEqualByComparingTo("7500");
+   UUID orderId=UUID.fromString(created.at("/order/id").asText());
+   String token=created.at("/lookupToken").asText();
+   var started=bankTransferService.initiate("tienda-a",orderId,token);
+   assertThat(started.payment().amount()).isEqualByComparingTo("7500");
+   bankTransferService.upload("tienda-a",orderId,token,started.payment().id(),"comprobante.pdf","application/pdf",
+    "%PDF-1.4\n%%EOF".getBytes(StandardCharsets.US_ASCII));
+   var approved=bankTransferService.approve(started.payment().id(),9001L);
+   assertThat(approved.amount()).isEqualByComparingTo("7500");
+   bankTransferService.approve(started.payment().id(),9001L);
+   var preparing=shipping.update(orderId,new UpdateShipment(Status.PREPARING,null,null,null,null,0));
+   shipping.update(orderId,new UpdateShipment(Status.SHIPPED,null,null,null,null,preparing.version()));
   }
+  assertThat(text(TENANT_A_DATABASE,"SELECT status FROM inventory_reservations")).isEqualTo("CONSUMED");
+  assertThat(count(TENANT_A_DATABASE,"SELECT COUNT(*) FROM transactional_email_outbox WHERE event_type='ORDER_SHIPPED'")).isEqualTo(1);
+  assertThat(text(TENANT_A_DATABASE,"SELECT text_body FROM transactional_email_outbox WHERE event_type='ORDER_SHIPPED'"))
+   .contains("El comercio te informará");
  }
  @Test void shippingConfigurationRequiresMembershipPermissionAndCsrf() throws Exception {
   var auth=UsernamePasswordAuthenticationToken.authenticated(operatorPrincipal(),null,List.of());
@@ -1453,6 +1474,7 @@ class GuestOrderIntegrationTests {
 	private static void resetTenant(
 			MySQLContainer<?> database,
 			String storeName) throws SQLException {
+        execute(database, "DELETE FROM bank_transfer_payments");
 		execute(database, "DELETE FROM payment_transactions");
 		execute(database, "DELETE FROM payment_intents");
 		execute(database, "DELETE FROM order_status_history");

@@ -45,10 +45,10 @@ existentes son JUnit/MockMvc/Testcontainers con MySQL 8.4 y Angular/Vitest; CI
 ejecuta suites y builds. La validación de esta fase debe cubrir migración,
 aislamiento, concurrencia, inventario, pagos y RADIO además del nuevo recorrido.
 
-## Estado del commit de avance — 23/09/2026
+## Implementación final — 23/09/2026
 
-El usuario pidió hacer commit y push hasta el avance actual. **Esta entrega es un
-checkpoint, no la finalización de la fase 1.** No se realizó deploy ni merge.
+El checkpoint d7cc7e5 fue publicado antes de continuar el cierre de la fase.
+Esta documentación describe el resultado final. No se realizó deploy ni merge.
 
 ### Implementado
 
@@ -110,46 +110,80 @@ Los modelos Angular están en features/shipping/shipping.models.ts. El checkout
 invalida la selección al cambiar destino, carrito o medio de pago; ignora
 respuestas obsoletas y exige una cotización nueva después de un conflicto.
 
-### Validación realizada y pendiente
+### Ciclo comercial y logístico
 
-- Build frontend producción pasó en una versión intermedia del avance. Advertencia
-  preexistente de presupuesto de catalog-page-v2.scss. Repetir para el commit final.
-- Última suite frontend completa ejecutada: 369 pruebas aprobadas en 67 archivos.
-  Después se agregó una prueba y el reinicio de cotización tras conflicto; falta
-  volver a ejecutar la suite sobre ese último ajuste.
-- Se agregó cobertura de quote, dirección, retiro, reglas, umbral, respuestas
-  obsoletas, formularios administrativos, tracking, estados y CSRF del frontend.
-- Backend compiló en la ejecución limpia con Testcontainers. La suite completa
-  fue interrumpida para atender el pedido de checkpoint: no se declara aprobada.
-- GuestOrderIntegrationTests completó 29 pruebas sin fallos ni errores, incluidos
-  los nuevos recorridos de envío, pagos, stock, permisos y despacho.
-- Se agregaron ShippingCoreTests, ShippingMigrationTests y recorridos a
-  GuestOrderIntegrationTests para aislamiento, importes, snapshot, inventario,
-  permisos, cambios de tarifas y despacho. Completar y revisar sus resultados.
-- Primeras ejecuciones fallaron por Docker apagado y luego por numeración V031
-  duplicada; se inició Docker y se cambió la migración nueva a V032.
-- El intento de tests Chromium no ejecutó casos: falta el ejecutable de
-  Playwright chromium_headless_shell-1243. No se declara validación visual/mobile.
-- Prettier aplicado a componentes nuevos y checkout; repetir check tras los
-  últimos ajustes. No hay formateador Java configurado en el proyecto.
-- No se realizaron cobros reales ni envío real de emails. La validación de pagos
-  utiliza las infraestructuras de prueba existentes.
+Un pedido SHIPPING confirmado pasa a COMPLETED sólo cuando el envío está
+DELIVERED. No utiliza READY_FOR_PICKUP. Una vez SHIPPED o DELIVERED se bloquea
+la cancelación comercial para impedir reponer stock de mercadería despachada.
+Cancelar/rechazar el pedido cancela su envío pendiente o en preparación; al
+consultar un envío de un pedido vencido también se sincroniza CANCELLED.
+Cancelar el shipment por sí solo no anula ni reembolsa el pedido: el comerciante
+debe gestionar la cancelación comercial con el flujo existente.
 
-### Trabajo restante y límites
+Las escrituras de estados bloquean primero el pedido y después el shipment.
+La versión protege la edición concurrente de tracking. Una URL de seguimiento
+requiere HTTP/HTTPS, host y ausencia de credenciales; no se consulta remotamente.
 
-Completar suite backend, pruebas de integración, suite frontend final, build
-backend/frontend final, formato y revisión del diff. Revisar el recorrido completo
-con navegador disponible y actualizar este documento con evidencia final.
-Revisar también los mensajes de estado para pedidos SHIPPING y el ciclo de
-cancelación/vencimiento frente al shipment operativo antes de considerar la fase
-productiva. Hoy los estados comerciales y logísticos permanecen separados.
-La configuración de retiro de envíos pasa a ser la fuente del snapshot; conviene
-revisar la UX del campo histórico pickupAddress en configuración general.
-No se añadieron indicadores de dashboard ni historial específico de cambios de
-tracking. El dashboard conserva sus agregados comerciales existentes.
+### Validación final
 
-La outbox evita encolados duplicados; SMTP conserva su semántica existente de
-entrega al menos una vez. No se promete exactamente una entrega en caso de caída
-después de enviar. Fase 2 deberá ampliar el puerto con las capacidades de crear/
-cancelar envíos, etiquetas y seguimiento remoto sin sustituir los snapshots ni
-confiar en importes del navegador.
+- Suite backend completa: 501 casos, 0 fallos, 0 errores, 1 omitido. La omisión
+  corresponde a RadioMembershipIntegrationTests condicionado a radio.browser.
+  Incluye regresiones de pagos, reservas, tenants, outbox y RADIO.
+- Tras los últimos ajustes: ShippingCoreTests, ShippingMigrationTests y
+  GuestOrderIntegrationTests aprobados (39 casos). Maven package: BUILD SUCCESS.
+- Suite frontend completa: 370 aprobadas y 1 omitida (responsive exige navegador),
+  en 67 archivos. Chromium: 21 aprobadas en 3 archivos, incluida la prueba mobile
+  a 390 × 844.
+- Build frontend de producción aprobado. Advertencia preexistente:
+  catalog-page-v2.scss ocupa 13,59 kB frente al presupuesto de 12 kB.
+- La prueba de migración aplica V032 sobre V031 con pedido y transferencia
+  existentes: conserva sus importes y agrega envío cero sin borrar datos.
+- Integración del recorrido: configuración → quote → creación/reserva → pago
+  confirmado → preparación → tracking → SHIPPED/outbox → DELIVERED → COMPLETED.
+  Transferencia incluye comprobante PDF y aprobación repetida sin duplicar stock.
+  Mercado Pago se verifica con sus lectores de importe y la infraestructura de
+  pruebas del proyecto; no se realizaron cobros externos reales.
+- Email de despacho probado con y sin tracking y sin duplicar el evento al repetir
+  SHIPPED. Se verifica outbox y contenido, no entrega SMTP a una casilla real.
+- Formato Java con google-java-format; frontend con Prettier; git diff --check.
+- Docker/Testcontainers usa MySQL real. La suite completa finalizó BUILD SUCCESS
+  con advertencias de cierre de contextos/pools después de detener contenedores.
+  Un intento posterior sin Docker falló en inicialización y se repitió al iniciarlo.
+
+### Archivos y operación
+
+Backend nuevo: shipping/{api,application,domain,infrastructure},
+order/application/OrderFulfillmentPolicy y migración tenant V032.
+Adaptaciones: GuestOrderService, modelos/repositorios/respuestas de order,
+lectores JDBC de payment, TenantResolutionFilter, SecurityConfig,
+CustomerNotificationPublisher, OutboxCustomerNotificationService y templates.
+Frontend: features/shipping/{shipping.models,shipping-selector,
+shipping-settings-page,shipment-panel}, checkout, confirmación/historial de
+pedidos, listado/detalle administrativo, navegación y rutas.
+Las pruebas se encuentran en ShippingCoreTests, ShippingMigrationTests,
+GuestOrderIntegrationTests y los specs de shipping y checkout.
+
+El administrador configura tarifas en /admin/configuracion/envios. El cliente
+completa contacto y dirección, elige medio de pago y consulta opciones (el medio
+puede cambiar el descuento). Al seleccionar una opción ve productos, descuento,
+envío y total. Confirmar vuelve a resolver precios, stock y tarifas en backend;
+si cambian, el checkout exige cotizar de nuevo. El snapshot queda inmutable.
+
+### Límites, riesgos y Fase 2
+
+La dirección de retiro se copia de la configuración existente durante V032.
+En comercios nuevos o sin dirección previa, el administrador debe completarla
+en Envíos; el retiro inicial gratuito se mantiene por compatibilidad. Cambiar el
+campo histórico de configuración general no modifica los métodos ni snapshots.
+Consolidar ambos campos de configuración queda como deuda de UX.
+
+No hay rangos de CP, geocodificación, historial específico de cambios de tracking
+ni nuevos indicadores de dashboard. No se añadieron transportistas externos,
+etiquetas, tracking automático ni devoluciones. Los estados de logística no
+realizan reembolsos. La outbox evita encolados duplicados; SMTP conserva entrega
+al menos una vez ante una caída posterior al envío.
+
+ShippingProvider separa la cotización del core; InternalShippingProvider es la
+única implementación. Fase 2 puede agregar adaptadores y capacidades de crear/
+cancelar envíos, etiquetas y tracking remoto conservando snapshots, transacciones
+por tenant y cálculo de importes en backend.

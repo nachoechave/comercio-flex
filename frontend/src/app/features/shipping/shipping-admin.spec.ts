@@ -62,18 +62,16 @@ describe('Shipping administration', () => {
     fixture.componentRef.setInput('orderId', 'order-1');
     fixture.detectChanges();
     const url = '/api/v1/stores/tienda-a/admin/orders/order-1/shipment';
-    http
-      .expectOne(url)
-      .flush({
-        id: 'shipment-1',
-        orderId: 'order-1',
-        status: 'PREPARING',
-        version: 1,
-        carrierName: null,
-        trackingNumber: null,
-        trackingUrl: null,
-        notes: null,
-      });
+    http.expectOne(url).flush({
+      id: 'shipment-1',
+      orderId: 'order-1',
+      status: 'PREPARING',
+      version: 1,
+      carrierName: null,
+      trackingNumber: null,
+      trackingUrl: null,
+      notes: null,
+    });
     expect(fixture.componentInstance.allowed()).toEqual(['PREPARING', 'SHIPPED', 'CANCELLED']);
     Object.assign(fixture.componentInstance.shipment!, {
       status: 'SHIPPED',

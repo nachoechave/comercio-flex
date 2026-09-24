@@ -161,12 +161,10 @@ export class ShippingSettingsPage {
     effect((onCleanup) => {
       const slug = this.slug();
       if (!slug) return;
-      const sub = this.http
-        .get<ShippingSettings>(this.url(slug))
-        .subscribe({
-          next: (s) => (this.settings = s),
-          error: () => this.error.set('No pudimos cargar envíos.'),
-        });
+      const sub = this.http.get<ShippingSettings>(this.url(slug)).subscribe({
+        next: (s) => (this.settings = s),
+        error: () => this.error.set('No pudimos cargar envíos.'),
+      });
       onCleanup(() => sub.unsubscribe());
     });
   }
