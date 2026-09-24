@@ -13,7 +13,7 @@ export interface AdminOrderSummary {
   id: string;
   number: string;
   status: OrderStatus;
-  fulfillmentType: 'PICKUP';
+  fulfillmentType: 'PICKUP' | 'SHIPPING';
   paymentMethod: OrderPaymentMethod;
   customerName: string;
   customerPhone: string;
@@ -22,6 +22,9 @@ export interface AdminOrderSummary {
   discountPercentage: string;
   discountAmount: string;
   subtotal: string;
+  shippingAmount?: string;
+  total?: string;
+  shipping?: import("../../shipping/shipping.models").ShippingSnapshot | null;
   createdAt: string;
 }
 

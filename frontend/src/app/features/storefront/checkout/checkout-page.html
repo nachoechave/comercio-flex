@@ -8,7 +8,7 @@
   <header>
     <p class="eyebrow">Último paso</p>
     <h1 id="checkout-title">Confirmá tu pedido</h1>
-    <p>El pedido se retira en {{ context.settings()?.pickupAddress || 'el comercio' }}.</p>
+    <p>Elegí cómo recibir y pagar tu pedido.</p>
   </header>
 
   @if (!ready()) {
@@ -24,12 +24,7 @@
           <legend>Datos de contacto</legend>
           <label>
             Nombre y apellido
-            <input
-              formControlName="customerName"
-              autocomplete="name"
-              maxlength="160"
-              required
-            />
+            <input formControlName="customerName" autocomplete="name" maxlength="160" required />
             @if (form.controls.customerName.touched && form.controls.customerName.invalid) {
               <small class="field-error">Ingresá tu nombre.</small>
             }
@@ -60,16 +55,16 @@
           </label>
         </fieldset>
 
-        <fieldset>
-          <legend>Entrega</legend>
-          <div class="pickup-option">
-            <strong>Retiro en el comercio</strong>
-            <span>{{ context.settings()?.pickupAddress || 'Dirección a coordinar con el comercio.' }}</span>
-            @if (context.settings()?.pickupInstructions; as instructions) {
-              <span>{{ instructions }}</span>
-            }
-          </div>
-        </fieldset>
+        <app-shipping-selector
+          [storeSlug]="storeSlug() ?? ''"
+          [items]="shippingItems()"
+          [refreshVersion]="shippingRefreshVersion()"
+          [paymentMethod]="selectedPaymentMethod()"
+          [currency]="context.currencyCode()"
+          [disabled]="submitting()"
+          (selection)="shippingSelection.set($event)"
+          (quoted)="shippingQuote.set($event)"
+        />
 
         <fieldset class="payment-selection">
           <legend>¿Cómo querés pagar?</legend>
@@ -121,9 +116,7 @@
 
                   @if (bankTransferDiscountPercentage() > 0) {
                     <span>
-                      {{ bankTransferDiscountPercentage() }}% OFF ·
-                      Pagás
-                      {{ bankTransferSubtotal() | storefrontMoney: context.currencyCode() }}
+                      {{ bankTransferDiscountPercentage() }}% OFF · Descuento sobre productos
                     </span>
                   } @else {
                     <span>Transferí y enviá el comprobante</span>
@@ -153,7 +146,12 @@
 
         <button
           type="submit"
-          [disabled]="submitting() || paymentMethodsLoading() || !selectedPaymentMethod()"
+          [disabled]="
+            submitting() ||
+            paymentMethodsLoading() ||
+            !selectedPaymentMethod() ||
+            !shippingSelection()
+          "
         >
           {{ submitLabel() }}
         </button>
@@ -170,31 +168,25 @@
             </li>
           }
         </ul>
-        @if (
-          selectedPaymentMethod() === 'BANK_TRANSFER' &&
-          bankTransferDiscountPercentage() > 0
-        ) {
+        @if (shippingQuote(); as quote) {
           <div class="total">
-            <span>Precio de lista</span>
-            <strong>{{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
+            <span>Subtotal productos</span
+            ><strong>{{ quote.listSubtotal | storefrontMoney: context.currencyCode() }}</strong>
           </div>
-
           <div class="total">
-            <span>Descuento por transferencia</span>
-            <strong>-{{ bankTransferDiscountPercentage() }}%</strong>
+            <span>Descuento</span
+            ><strong>{{ quote.discountAmount | storefrontMoney: context.currencyCode() }}</strong>
           </div>
-
           <div class="total">
-            <span>Total por transferencia</span>
-            <strong>
-              {{ bankTransferSubtotal() | storefrontMoney: context.currencyCode() }}
-            </strong>
+            <span>Envío</span
+            ><strong>{{ quote.shippingAmount | storefrontMoney: context.currencyCode() }}</strong>
+          </div>
+          <div class="total">
+            <span>Total</span
+            ><strong>{{ quote.total | storefrontMoney: context.currencyCode() }}</strong>
           </div>
         } @else {
-          <div class="total">
-            <span>Subtotal</span>
-            <strong>{{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
-          </div>
+          <p>Consultá las opciones de entrega para conocer el total.</p>
         }
         <small>El backend verificará nuevamente precios y stock al confirmar.</small>
       </aside>

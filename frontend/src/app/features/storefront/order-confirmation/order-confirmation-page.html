@@ -43,21 +43,25 @@
             </li>
           }
         </ul>
+        <div class="total"><span>Productos</span><strong>{{currentOrder.listSubtotal | storefrontMoney:currentOrder.currencyCode}}</strong></div>
+        <div class="total"><span>Descuento</span><strong>{{currentOrder.discountAmount | storefrontMoney:currentOrder.currencyCode}}</strong></div>
+        <div class="total"><span>Envío</span><strong>{{currentOrder.shippingAmount ?? '0' | storefrontMoney:currentOrder.currencyCode}}</strong></div>
         <div class="total">
-          <span>Subtotal</span>
-          <strong>{{ currentOrder.subtotal | storefrontMoney: currentOrder.currencyCode }}</strong>
+          <span>Total</span>
+          <strong>{{ (currentOrder.total ?? currentOrder.subtotal) | storefrontMoney: currentOrder.currencyCode }}</strong>
         </div>
       </section>
 
       <aside>
-        <h2>Retiro en el comercio</h2>
-        @if (context.settings()?.pickupAddress; as address) {
-          <p>
-            <strong>{{ address }}</strong>
-          </p>
-        }
-        @if (context.settings()?.pickupInstructions; as instructions) {
-          <p>{{ instructions }}</p>
+
+        @if(currentOrder.shipping;as delivery){
+          <h2>{{delivery.name}}</h2>
+          @if(delivery.address;as a){<p>{{a.street}} {{a.number}} {{a.apartment}}<br>{{a.city}}, {{a.province}} · CP {{a.postalCode}}</p>}
+          @else{<p>{{delivery.pickupAddress}}</p>}
+          <p>{{delivery.instructions}}</p>
+        } @else {
+          <h2>Retiro en el comercio</h2><p>{{context.settings()?.pickupAddress}}</p>
+          <p>{{context.settings()?.pickupInstructions}}</p>
         }
         @if (context.settings()?.contactPhone; as phone) {
           <p>

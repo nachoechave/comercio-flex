@@ -60,7 +60,7 @@ public class JdbcPaymentRepository implements PaymentRepository {
 	public Optional<LockedPaymentOrder> lockOrder(UUID orderId) {
 			return jdbcTemplate.query("""
 					SELECT id, BIN_TO_UUID(public_id) public_id, status,
-							payment_method, subtotal, currency_code,
+							payment_method, total AS subtotal, currency_code,
 							reservation_expires_at
 					FROM orders
 					WHERE public_id = UUID_TO_BIN(?)

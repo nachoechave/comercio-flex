@@ -125,6 +125,7 @@ export interface PublicProductQuery {
 export type OrderPaymentMethod = 'MERCADO_PAGO' | 'BANK_TRANSFER';
 
 export interface CreateGuestOrder {
+ shipping?: import("../shipping/shipping.models").ShippingSelection;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -162,7 +163,7 @@ export interface GuestOrder {
   id: string;
   number: string;
   status: GuestOrderStatus;
-  fulfillmentType: 'PICKUP';
+  fulfillmentType: 'PICKUP' | 'SHIPPING';
   paymentMethod: OrderPaymentMethod;
   customerName: string;
   contactHint: string;
@@ -171,6 +172,9 @@ export interface GuestOrder {
   discountPercentage: string;
   discountAmount: string;
   subtotal: string;
+  shippingAmount?: string;
+  total?: string;
+  shipping?: import("../shipping/shipping.models").ShippingSnapshot | null;
   reservationExpiresAt: string;
   createdAt: string;
   items: GuestOrderItem[];

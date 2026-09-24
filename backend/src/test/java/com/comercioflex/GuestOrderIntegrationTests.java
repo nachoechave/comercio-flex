@@ -10,6 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import java.math.BigDecimal;
+import com.comercioflex.shipping.application.ShippingService;
+import com.comercioflex.shipping.application.ShippingException;
+import com.comercioflex.shipping.domain.ShippingModels.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -123,6 +128,7 @@ class GuestOrderIntegrationTests {
 
 	@DynamicPropertySource
 	static void configureDatabases(DynamicPropertyRegistry registry) {
+		registry.add("app.payments.receipt-storage.local-root", () -> "target/test-payment-receipts");
 		registry.add("spring.datasource.url", CONTROL_DATABASE::getJdbcUrl);
 		registry.add("spring.datasource.username", CONTROL_DATABASE::getUsername);
 		registry.add("spring.datasource.password", CONTROL_DATABASE::getPassword);
@@ -135,6 +141,9 @@ class GuestOrderIntegrationTests {
 		registerTenant(registry, "tenant-b", TENANT_B_DATABASE);
 	}
 
+ @Autowired private ShippingService shipping;
+ @Autowired private com.comercioflex.payment.application.BankTransferRepository bankTransfers;
+ @Autowired private com.comercioflex.payment.application.BankTransferPaymentService bankTransferService;
 	@BeforeEach
 	void seed() throws SQLException {
 		execute(CONTROL_DATABASE, "DELETE FROM memberships");
@@ -1184,6 +1193,128 @@ class GuestOrderIntegrationTests {
 		assertThat(count(TENANT_A_DATABASE, "SELECT COUNT(*) FROM orders")).isEqualTo(1);
 	}
 
+
+ @Test void shippingQuoteRecalculationSnapshotPaymentStockAndDispatch() throws Exception {
+  UUID method=configureFixedShipping("3000");
+  var request=objectMapper.createObjectNode().put("paymentMethod","MERCADO_PAGO").put("city","La Plata").put("postalCode","1900");
+  request.set("items",objectMapper.readTree(body("2")).get("items"));
+  var quotes=objectMapper.readTree(mockMvc.perform(post("/api/v1/stores/tienda-a/shipping/quote")
+   .contentType(MediaType.APPLICATION_JSON).content(request.toString())).andExpect(status().isOk())
+   .andReturn().getResponse().getContentAsString());
+  assertThat(quotes.get(0).get("total").asText()).isEqualTo("8000.00");
+  var orderBody=shippingBody(method,"8000.00","MERCADO_PAGO");
+  orderBody.put("shippingAmount",1); // An untrusted amount never drives calculation.
+  UUID key=UUID.randomUUID();
+  JsonNode created=objectMapper.readTree(mockMvc.perform(post(orders("tienda-a"))
+   .header("Idempotency-Key",key).contentType(MediaType.APPLICATION_JSON).content(orderBody.toString()))
+   .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+  UUID id=UUID.fromString(created.at("/order/id").asText());
+  assertThat(created.at("/order/fulfillmentType").asText()).isEqualTo("SHIPPING");
+  assertThat(created.at("/order/subtotal").asText()).isEqualTo("5000.00");
+  assertThat(created.at("/order/shippingAmount").asText()).isEqualTo("3000.00");
+  assertThat(created.at("/order/total").asText()).isEqualTo("8000.00");
+  assertThat(decimal(TENANT_A_DATABASE,"SELECT total FROM orders")).isEqualTo("8000.00");
+  assertThat(decimal(TENANT_A_DATABASE,"SELECT quantity FROM inventory_reservations")).isEqualTo("2.000");
+  try(var scope=tenantContext.open("tenant-a")){
+   assertThat(tenantTransactionTemplate.<BigDecimal>execute(tx->checkoutRepository.lockOrder(id,sha256(created.at("/lookupToken").asText())).orElseThrow().amount()))
+    .isEqualByComparingTo("8000");
+   assertThatThrownBy(()->shipping.update(id,new UpdateShipment(Status.PREPARING,null,null,null,null,0))).isInstanceOf(ShippingException.class);
+   paymentService(PaymentResultStatus.APPROVED).initiate(new PaymentCommand(id,UUID.randomUUID()));
+   var preparing=shipping.update(id,new UpdateShipment(Status.PREPARING,"Transporte","123",null,null,0));
+   var shipped=shipping.update(id,new UpdateShipment(Status.SHIPPED,"Transporte","123","https://example.com/tracking/123",null,preparing.version()));
+   var repeated=shipping.update(id,new UpdateShipment(Status.SHIPPED,"Transporte","123","https://example.com/tracking/123",null,shipped.version()));
+   assertThat(shipped.shippedAt()).isNotNull();
+   assertThatThrownBy(()->shipping.update(id,new UpdateShipment(Status.PREPARING,null,null,null,null,repeated.version()))).isInstanceOf(ShippingException.class);
+   var delivered=shipping.update(id,new UpdateShipment(Status.DELIVERED,"Transporte","123","https://example.com/tracking/123",null,repeated.version()));
+   assertThat(delivered.deliveredAt()).isNotNull();
+   assertThatThrownBy(()->adminOrderService.transition(new OrderTransitionCommand(id,UUID.randomUUID(),OrderStatus.CANCELLED,null,OPERATOR_ID,"Operador")))
+    .isInstanceOf(InvalidOrderTransitionException.class);
+   assertThat(adminOrderService.transition(new OrderTransitionCommand(id,UUID.randomUUID(),OrderStatus.COMPLETED,null,OPERATOR_ID,"Operador")).status())
+    .isEqualTo(OrderStatus.COMPLETED);
+   assertThatThrownBy(()->shipping.update(id,new UpdateShipment(Status.DELIVERED,null,null,"javascript:alert(1)",null,delivered.version()))).isInstanceOf(ShippingException.class);
+  }
+  assertThat(count(TENANT_A_DATABASE,"SELECT COUNT(*) FROM transactional_email_outbox WHERE event_type='ORDER_SHIPPED'")).isEqualTo(1);
+  assertThat(text(TENANT_A_DATABASE,"SELECT text_body FROM transactional_email_outbox WHERE event_type='ORDER_SHIPPED'")).contains("123","La Plata","despachado");
+  assertThat(text(TENANT_A_DATABASE,"SELECT status FROM inventory_reservations")).isEqualTo("CONSUMED");
+  execute(TENANT_A_DATABASE,"UPDATE shipping_methods SET price=5500,name='Nuevo nombre'");
+  mockMvc.perform(get(order("tienda-a",id.toString())).param("token",created.at("/lookupToken").asText()))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.shippingAmount").value("3000.00"))
+   .andExpect(jsonPath("$.shipping.name").value("Envío estándar"));
+  mockMvc.perform(post(orders("tienda-a")).header("Idempotency-Key",key).contentType(MediaType.APPLICATION_JSON).content(orderBody.toString()))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.order.total").value("8000.00"));
+  try(var scope=tenantContext.open("tenant-b")){
+   assertThat(shipping.shipment(id)).isNull();
+   assertThatThrownBy(()->shipping.select(new Selection(method,null,new BigDecimal("8000")),new BigDecimal("5000"),BigDecimal.ZERO)).isInstanceOf(ShippingException.class);
+  }
+ }
+ @Test void shippingRejectsChangedTariffOrMissingAddressWithoutReservingStock() throws Exception {
+  UUID method=configureFixedShipping("3000");
+  var request=shippingBody(method,"5001.00","MERCADO_PAGO");
+  mockMvc.perform(post(orders("tienda-a")).header("Idempotency-Key",UUID.randomUUID())
+   .contentType(MediaType.APPLICATION_JSON).content(request.toString())).andExpect(status().isConflict());
+  ((com.fasterxml.jackson.databind.node.ObjectNode)request.get("shipping")).put("expectedTotal","8000.00").remove("address");
+  mockMvc.perform(post(orders("tienda-a")).header("Idempotency-Key",UUID.randomUUID())
+   .contentType(MediaType.APPLICATION_JSON).content(request.toString())).andExpect(status().isConflict());
+  assertThat(count(TENANT_A_DATABASE,"SELECT COUNT(*) FROM inventory_reservations")).isZero();
+  assertThat(count(TENANT_A_DATABASE,"SELECT COUNT(*) FROM orders")).isZero();
+ }
+ @Test void shippingBankTransferUsesDiscountedProductsPlusShipping() throws Exception {
+  UUID method=configureFixedShipping("3000");
+  execute(TENANT_A_DATABASE,"UPDATE store_settings SET bank_transfer_enabled=TRUE,bank_transfer_discount_percentage=10");
+  var request=shippingBody(method,"7500.00","BANK_TRANSFER");
+  JsonNode created=objectMapper.readTree(mockMvc.perform(post(orders("tienda-a")).header("Idempotency-Key",UUID.randomUUID())
+   .contentType(MediaType.APPLICATION_JSON).content(request.toString())).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+  assertThat(created.at("/order/discountAmount").asText()).isEqualTo("500.00");
+  assertThat(created.at("/order/total").asText()).isEqualTo("7500.00");
+  try(var scope=tenantContext.open("tenant-a")){
+   var order=tenantTransactionTemplate.execute(tx->bankTransfers.lockOrder(UUID.fromString(created.at("/order/id").asText()),sha256(created.at("/lookupToken").asText())).orElseThrow());
+   assertThat(order.amount()).isEqualByComparingTo("7500");
+   UUID orderId=UUID.fromString(created.at("/order/id").asText());
+   String token=created.at("/lookupToken").asText();
+   var started=bankTransferService.initiate("tienda-a",orderId,token);
+   assertThat(started.payment().amount()).isEqualByComparingTo("7500");
+   bankTransferService.upload("tienda-a",orderId,token,started.payment().id(),"comprobante.pdf","application/pdf",
+    "%PDF-1.4\n%%EOF".getBytes(StandardCharsets.US_ASCII));
+   var approved=bankTransferService.approve(started.payment().id(),9001L);
+   assertThat(approved.amount()).isEqualByComparingTo("7500");
+   bankTransferService.approve(started.payment().id(),9001L);
+   var preparing=shipping.update(orderId,new UpdateShipment(Status.PREPARING,null,null,null,null,0));
+   shipping.update(orderId,new UpdateShipment(Status.SHIPPED,null,null,null,null,preparing.version()));
+  }
+  assertThat(text(TENANT_A_DATABASE,"SELECT status FROM inventory_reservations")).isEqualTo("CONSUMED");
+  assertThat(count(TENANT_A_DATABASE,"SELECT COUNT(*) FROM transactional_email_outbox WHERE event_type='ORDER_SHIPPED'")).isEqualTo(1);
+  assertThat(text(TENANT_A_DATABASE,"SELECT text_body FROM transactional_email_outbox WHERE event_type='ORDER_SHIPPED'"))
+   .contains("El comercio te informará");
+ }
+ @Test void shippingConfigurationRequiresMembershipPermissionAndCsrf() throws Exception {
+  var auth=UsernamePasswordAuthenticationToken.authenticated(operatorPrincipal(),null,List.of());
+  String url="/api/v1/stores/tienda-a/admin/shipping";
+  mockMvc.perform(get(url)).andExpect(status().isUnauthorized());
+  mockMvc.perform(get(url).with(authentication(auth))).andExpect(status().isForbidden());
+  execute(CONTROL_DATABASE,"UPDATE memberships SET role='OWNER' WHERE user_id=9001");
+  mockMvc.perform(get(url).with(authentication(auth))).andExpect(status().isOk());
+  mockMvc.perform(put(url).with(authentication(auth)).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(java.util.Map.of("version",0,"methods",List.of()))))
+   .andExpect(status().isForbidden());
+  mockMvc.perform(put(url).with(authentication(auth)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(java.util.Map.of("version",0,"methods",List.of()))))
+   .andExpect(status().isOk());
+  mockMvc.perform(get("/api/v1/stores/tienda-b/admin/shipping").with(authentication(auth))).andExpect(status().isForbidden());
+ }
+ private UUID configureFixedShipping(String price) {
+  UUID id=UUID.randomUUID();
+  try(var scope=tenantContext.open("tenant-a")){
+   var current=shipping.settings();
+   shipping.save(new Settings(null,current.version(),List.of(new Method(id,"Envío estándar",null,MethodType.FIXED_RATE,new BigDecimal(price),true,null,null,List.of()))));
+  }
+  return id;
+ }
+ private com.fasterxml.jackson.databind.node.ObjectNode shippingBody(UUID method,String total,String payment) throws Exception {
+  var request=(com.fasterxml.jackson.databind.node.ObjectNode)objectMapper.readTree(body("2"));
+  request.put("paymentMethod",payment);
+  var selection=request.putObject("shipping").put("methodId",method.toString()).put("expectedTotal",total);
+  selection.putObject("address").put("street","Calle 1").put("number","123").put("city","La Plata").put("province","Buenos Aires").put("postalCode","1900");
+  return request;
+ }
+
 	private JsonNode create(UUID key, String quantity, int status) throws Exception {
 		MockHttpServletResponse response = mockMvc.perform(post(orders("tienda-a"))
 				.with(csrf())
@@ -1343,13 +1474,19 @@ class GuestOrderIntegrationTests {
 	private static void resetTenant(
 			MySQLContainer<?> database,
 			String storeName) throws SQLException {
+        execute(database, "DELETE FROM bank_transfer_payments");
 		execute(database, "DELETE FROM payment_transactions");
 		execute(database, "DELETE FROM payment_intents");
 		execute(database, "DELETE FROM order_status_history");
 		execute(database, "DELETE FROM inventory_movements");
 		execute(database, "DELETE FROM inventory_reservations");
 		execute(database, "DELETE FROM order_items");
-		execute(database, "DELETE FROM orders");
+		execute(database,"DELETE FROM shipments");
+  execute(database,"DELETE FROM shipping_rules");
+  execute(database,"DELETE FROM shipping_methods");
+  execute(database,"UPDATE shipping_settings SET free_shipping_threshold=NULL,version=0");
+  execute(database,"INSERT INTO shipping_methods(id,name,type,price,active,pickup_address) VALUES(UUID(),'Retiro','PICKUP',0,TRUE,'Calle 123')");
+  execute(database, "DELETE FROM orders");
 		execute(database, "DELETE FROM inventory_balances");
 		execute(database, "DELETE FROM product_variant_option_values");
 		execute(database, "DELETE FROM product_option_values");

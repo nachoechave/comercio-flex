@@ -17,5 +17,6 @@ public record CreateGuestOrderRequest(
 	@NotBlank @Email @Size(max = 254) String customerEmail,
 	@Size(max = 1000) String notes,
 	@NotNull OrderPaymentMethod paymentMethod,
-	@NotEmpty @Size(max = 50) List<@Valid CreateGuestOrderItemRequest> items) {
+	@NotEmpty @Size(max = 50) List<@Valid CreateGuestOrderItemRequest> items,
+ @Valid com.comercioflex.shipping.domain.ShippingModels.Selection shipping) {
 }

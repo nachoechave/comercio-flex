@@ -22,6 +22,7 @@ public record GuestOrderResponse(
         String discountPercentage,
         String discountAmount,
         String subtotal,
+ String shippingAmount, String total, com.comercioflex.shipping.domain.ShippingModels.Snapshot shipping,
         Instant reservationExpiresAt,
         Instant createdAt,
         List<GuestOrderItemResponse> items) {
@@ -40,6 +41,7 @@ public record GuestOrderResponse(
                         order.discountPercentage().toPlainString(),
                         order.discountAmount().toPlainString(),
                         order.subtotal().toPlainString(),
+ order.shippingAmount().toPlainString(),order.total().toPlainString(),order.shipping(),
                         order.reservationExpiresAt(),
                         order.createdAt(),
                         order.items().stream()

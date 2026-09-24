@@ -29,7 +29,7 @@ public class JdbcBankTransferRepository implements BankTransferRepository {
 		SELECT payment.id, BIN_TO_UUID(payment.public_id) public_id,
 			payment.order_id, BIN_TO_UUID(order_record.public_id) order_public_id,
 			order_record.id order_number, order_record.customer_name,
-			order_record.subtotal, order_record.currency_code,
+			order_record.total AS subtotal, order_record.currency_code,
 			order_record.reservation_expires_at, payment.attempt_number,
 			payment.status, payment.receipt_object_key,
 			payment.receipt_original_filename, payment.receipt_content_type,
@@ -73,7 +73,7 @@ public class JdbcBankTransferRepository implements BankTransferRepository {
 	public Optional<BankTransferOrder> lockOrder(UUID orderId, byte[] lookupTokenHash) {
 		return jdbcTemplate.query("""
 				SELECT id, BIN_TO_UUID(public_id) public_id, status,
-					payment_method, customer_name, subtotal,
+					payment_method, customer_name, total AS subtotal,
 					currency_code, reservation_expires_at
 				FROM orders
 				WHERE public_id = UUID_TO_BIN(?)

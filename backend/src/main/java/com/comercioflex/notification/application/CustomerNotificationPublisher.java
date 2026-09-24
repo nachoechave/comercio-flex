@@ -7,6 +7,7 @@ import com.comercioflex.order.application.AdminOrderDetail;
 import com.comercioflex.payment.application.BankTransferPayment;
 
 public interface CustomerNotificationPublisher {
+ default void orderShipped(com.comercioflex.shipping.domain.ShippingModels.Shipment shipment) {}
 	void orderConfirmed(AdminOrderDetail order, Instant confirmedAt, String paymentMethod);
 	default void orderConfirmed(AdminOrderDetail order, Instant confirmedAt) {
 		orderConfirmed(order, confirmedAt, "Pago registrado");

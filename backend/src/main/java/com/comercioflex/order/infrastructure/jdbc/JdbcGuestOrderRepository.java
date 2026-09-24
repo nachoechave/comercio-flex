@@ -47,7 +47,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 					order_record.list_subtotal,
 					order_record.discount_percentage,
 					order_record.discount_amount,
-					order_record.subtotal,
+					order_record.subtotal, order_record.shipping_amount, order_record.shipping_snapshot,
 					order_record.reservation_expires_at,
 					order_record.created_at
 			FROM orders order_record
@@ -462,7 +462,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				resultSet.getBigDecimal("subtotal"),
 				resultSet.getTimestamp("reservation_expires_at").toInstant(),
 				resultSet.getTimestamp("created_at").toInstant(),
-				items);
+				items, resultSet.getBigDecimal("shipping_amount"), readShipping(resultSet.getString("shipping_snapshot")));
 	}
 
 	private GuestOrderItem mapItem(ResultSet resultSet, int rowNumber)
@@ -487,4 +487,9 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 	private String emptyOption(String value) {
 		return value == null ? "" : value;
 	}
+ private com.comercioflex.shipping.domain.ShippingModels.Snapshot readShipping(String value) {
+if(value==null) return null;
+try { return new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,com.comercioflex.shipping.domain.ShippingModels.Snapshot.class); }
+catch(com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalStateException("Invalid shipping snapshot",e); }
+}
 }
