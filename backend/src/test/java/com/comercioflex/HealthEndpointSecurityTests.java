@@ -67,7 +67,7 @@ class HealthEndpointSecurityTests {
 
 			mockMvc.perform(get("/superadmin/empresas/bc979239-95a1-11f1-9748-8234a5e60875"))
 					.andExpect(status().isOk())
-					.andExpect(forwardedUrl("/index.html"));
+					.andExpect(forwardedUrl("/admin-index.html"));
 
 			mockMvc.perform(get("/stores/tienda-a/payment-return/opaque-token")
 							.queryParam("status", "approved")
@@ -82,7 +82,11 @@ class HealthEndpointSecurityTests {
 
 			mockMvc.perform(get("/admin/login"))
 					.andExpect(status().isOk())
-					.andExpect(forwardedUrl("/index.html"));
+					.andExpect(forwardedUrl("/admin-index.html"));
+
+			mockMvc.perform(get("/tiendas/la-ola-madre/admin/pedidos"))
+					.andExpect(status().isOk())
+					.andExpect(forwardedUrl("/admin-index.html"));
 	}
 
 	@Test
