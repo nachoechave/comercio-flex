@@ -2,7 +2,7 @@
   "id": "/admin",
   "name": "Comercio Flex Admin",
   "short_name": "Comercio Flex",
-  "description": "Administrá pedidos, productos, stock, pagos y envíos de tu comercio desde el celular.",
+  "description": "Administrá comercios, pedidos, productos, stock, pagos, envíos y la operación de Comercio Flex desde el celular.",
   "start_url": "/admin?source=pwa",
   "scope": "/",
   "display": "standalone",
@@ -34,6 +34,11 @@
       "name": "Mis comercios",
       "short_name": "Comercios",
       "url": "/admin/comercios"
+    },
+    {
+      "name": "SuperAdmin",
+      "short_name": "SuperAdmin",
+      "url": "/superadmin"
     }
   ]
 }
