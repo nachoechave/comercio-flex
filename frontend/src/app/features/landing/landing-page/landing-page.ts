@@ -109,6 +109,8 @@ export class LandingPage implements OnInit, OnDestroy {
       this.canonicalElement.rel = 'canonical';
       this.document.head.appendChild(this.canonicalElement);
       this.canonicalCreated = true;
+    } else if (this.canonicalElement.dataset['platformSeo'] === 'true') {
+      this.canonicalCreated = true;
     } else {
       this.previousCanonical = this.canonicalElement.href;
     }
@@ -117,7 +119,10 @@ export class LandingPage implements OnInit, OnDestroy {
   }
 
   private setStructuredData(): void {
-    this.structuredDataElement = this.document.createElement('script');
+    const existingPlatformSchema = this.document.head.querySelector<HTMLScriptElement>(
+      "script[type='application/ld+json'][data-platform-seo='true']",
+    );
+    this.structuredDataElement = existingPlatformSchema ?? this.document.createElement('script');
     this.structuredDataElement.type = 'application/ld+json';
     this.structuredDataElement.dataset['landingSeo'] = 'true';
     this.structuredDataElement.textContent = JSON.stringify({
@@ -145,6 +150,8 @@ export class LandingPage implements OnInit, OnDestroy {
         },
       ],
     });
-    this.document.head.appendChild(this.structuredDataElement);
+    if (!existingPlatformSchema) {
+      this.document.head.appendChild(this.structuredDataElement);
+    }
   }
 }
