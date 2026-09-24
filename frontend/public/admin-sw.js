@@ -1,7 +1,7 @@
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `comercio-flex-admin-shell-${VERSION}`;
 const STATIC_CACHE = `comercio-flex-admin-static-${VERSION}`;
-const ADMIN_PATH = /^\/admin(?:\/|$)|^\/tiendas\/[^/]+\/admin(?:\/|$)/;
+const ADMIN_PATH = /^\/admin(?:\/|$)|^\/tiendas\/[^/]+\/admin(?:\/|$)|^\/superadmin(?:\/|$)/;
 const PRECACHE = [
   '/admin',
   '/admin-offline.html',
