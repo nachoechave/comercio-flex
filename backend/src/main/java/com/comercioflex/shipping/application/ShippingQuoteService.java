@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class ShippingQuoteService {
   private final ShippingService shipping;
   private final CarrierShippingService carrier;
 
+  @Autowired
   public ShippingQuoteService(
       @Qualifier("tenantJdbcTemplate") JdbcTemplate jdbc,
       ShippingService shipping,
