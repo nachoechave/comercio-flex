@@ -117,9 +117,10 @@ export class AdminPwaService {
 
   private syncStandaloneState(): void {
     const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
-    this.standalone.set(
-      window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true,
-    );
+    const displayModeStandalone =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(display-mode: standalone)').matches;
+    this.standalone.set(displayModeStandalone || navigatorWithStandalone.standalone === true);
   }
 
   private currentPath(): string {
