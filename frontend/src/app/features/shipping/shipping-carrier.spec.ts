@@ -89,6 +89,11 @@ describe('Carrier shipping phase 2', () => {
     fixture.componentRef.setInput('items', [{ variantId: 'variant-1', quantity: '1' }]);
     fixture.componentRef.setInput('paymentMethod', 'MERCADO_PAGO');
     fixture.detectChanges();
+    http.expectOne('/api/v1/stores/tienda-a/shipping/availability').flush({
+      pickupAvailable: false,
+      shippingAvailable: true,
+    });
+    fixture.detectChanges();
     fixture.componentInstance.setMode('SHIPPING');
     fixture.componentInstance.address.setValue({
       street: 'Calle',

@@ -19,6 +19,8 @@ public class ShippingService {
   private final TransactionTemplate tx;
   private final CustomerNotificationPublisher notifications;
 
+  public record Availability(boolean pickupAvailable, boolean shippingAvailable) {}
+
   @Autowired
   public ShippingService(
       ShippingRepository repository,
@@ -44,6 +46,18 @@ public class ShippingService {
 
   public Settings settings() {
     return tx == null ? repository.settings(false) : tx.execute(s -> repository.settings(false));
+  }
+
+  public Availability availability() {
+    Settings settings = settings();
+    boolean pickupAvailable =
+        settings.methods().stream().anyMatch(m -> m.active() && m.type() == MethodType.PICKUP);
+    boolean shippingAvailable =
+        settings.methods().stream().anyMatch(m -> m.active() && m.type() != MethodType.PICKUP);
+    if (!shippingAvailable && carrier != null) {
+      shippingAvailable = carrier.settings().enabled();
+    }
+    return new Availability(pickupAvailable, shippingAvailable);
   }
 
   public Settings save(

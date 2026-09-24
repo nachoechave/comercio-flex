@@ -32,6 +32,11 @@ describe('ShippingSelector', () => {
     fixture.componentRef.setInput('items', [{ variantId: 'variant-1', quantity: '2' }]);
     fixture.componentRef.setInput('paymentMethod', 'MERCADO_PAGO');
     fixture.detectChanges();
+    http.expectOne('/api/v1/stores/tienda-a/shipping/availability').flush({
+      pickupAvailable: true,
+      shippingAvailable: true,
+    });
+    fixture.detectChanges();
   });
 
   afterEach(() => http.verify());
@@ -46,6 +51,17 @@ describe('ShippingSelector', () => {
     fixture.componentInstance.select(q);
     fixture.detectChanges();
   }
+
+  it('hides delivery when the store only enables pickup', () => {
+    fixture.componentInstance.availability.set({ pickupAvailable: true, shippingAvailable: false });
+    fixture.componentInstance.mode.set('PICKUP');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Retiro en local');
+    expect(fixture.nativeElement.textContent).not.toContain('Envío a domicilio');
+    expect(fixture.nativeElement.textContent).not.toContain('Código postal');
+    expect(fixture.nativeElement.textContent).toContain('Confirmar retiro');
+  });
 
   it('allows pickup without an address and shows backend total', () => {
     const emitted = vi.fn();
