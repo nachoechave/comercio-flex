@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, effect, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -277,6 +277,8 @@ import {
 export class CarrierSettingsPage {
   private readonly http = inject(HttpClient);
   private readonly csrf = inject(CsrfService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+
   slug = toSignal(inheritedRouteParam(inject(ActivatedRoute), 'storeSlug'), { initialValue: '' });
   draft: (CarrierSettings & {
     origin: NonNullable<CarrierSettings['origin']>;
@@ -335,6 +337,7 @@ export class CarrierSettingsPage {
     this.username = '';
     this.password = '';
     this.clearCredentials = false;
+    this.changeDetector.markForCheck();
   }
 
   save() {

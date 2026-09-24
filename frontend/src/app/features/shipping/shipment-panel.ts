@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize, switchMap } from 'rxjs';
 import { CsrfService } from '../../core/auth/csrf.service';
@@ -116,8 +116,10 @@ import { Shipment, ShippingStatus } from './shipping.models';
 })
 export class ShipmentPanel {
   changed = output<Shipment>();
-  private http = inject(HttpClient);
-  private csrf = inject(CsrfService);
+  private readonly http = inject(HttpClient);
+  private readonly csrf = inject(CsrfService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+
   storeSlug = input.required<string>();
   orderId = input.required<string>();
   shipment: Shipment | null = null;
@@ -138,19 +140,20 @@ export class ShipmentPanel {
     effect((onCleanup) => {
       const url = this.url();
       const sub = this.http.get<Shipment | null>(url).subscribe({
-        next: (s) => this.accept(s),
+        next: (shipment) => this.accept(shipment),
         error: () => this.error.set('No pudimos cargar el envío.'),
       });
       onCleanup(() => sub.unsubscribe());
     });
   }
 
-  private accept(s: Shipment | null) {
-    this.shipment = s;
-    if (s) {
-      this.original.set(s.status);
-      this.changed.emit(s);
+  private accept(shipment: Shipment | null) {
+    this.shipment = shipment;
+    if (shipment) {
+      this.original.set(shipment.status);
+      this.changed.emit(shipment);
     }
+    this.changeDetector.markForCheck();
   }
 
   private url() {
@@ -168,14 +171,14 @@ export class ShipmentPanel {
   }
 
   allowed(): ShippingStatus[] {
-    const s = this.original();
-    return s === 'PENDING'
-      ? [s, 'PREPARING', 'CANCELLED']
-      : s === 'PREPARING'
-        ? [s, 'SHIPPED', 'CANCELLED']
-        : s === 'SHIPPED'
-          ? [s, 'DELIVERED']
-          : [s];
+    const status = this.original();
+    return status === 'PENDING'
+      ? [status, 'PREPARING', 'CANCELLED']
+      : status === 'PREPARING'
+        ? [status, 'SHIPPED', 'CANCELLED']
+        : status === 'SHIPPED'
+          ? [status, 'DELIVERED']
+          : [status];
   }
 
   provision() {
@@ -190,8 +193,8 @@ export class ShipmentPanel {
         finalize(() => this.provisioning.set(false)),
       )
       .subscribe({
-        next: (s) => {
-          this.accept(s);
+        next: (shipment) => {
+          this.accept(shipment);
           this.notice.set('Envío generado en Andreani. Ya podés descargar la etiqueta.');
         },
         error: (response) =>
@@ -211,8 +214,8 @@ export class ShipmentPanel {
         finalize(() => this.saving.set(false)),
       )
       .subscribe({
-        next: (s) => {
-          this.accept(s);
+        next: (shipment) => {
+          this.accept(shipment);
           this.notice.set('Envío actualizado.');
         },
         error: (response) =>
