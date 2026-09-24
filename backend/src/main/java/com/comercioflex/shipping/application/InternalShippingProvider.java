@@ -26,7 +26,7 @@ public class InternalShippingProvider implements ShippingProvider {
       String postalCode) {
     List<Quote> result = new ArrayList<>();
     for (Method m : settings.methods()) {
-      if (!m.active()) continue;
+      if (!m.active() || m.type() == MethodType.CARRIER) continue;
       BigDecimal price =
           switch (m.type()) {
             case PICKUP, FIXED_RATE -> m.price();
@@ -41,6 +41,7 @@ public class InternalShippingProvider implements ShippingProvider {
                     .map(Rule::price)
                     .findFirst()
                     .orElse(null);
+            case CARRIER -> null;
           };
       if (price == null) continue;
       boolean free =

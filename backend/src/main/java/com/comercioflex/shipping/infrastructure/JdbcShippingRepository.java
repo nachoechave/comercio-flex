@@ -12,6 +12,15 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JdbcShippingRepository implements ShippingRepository {
+  private final JdbcTemplate jdbc;
+  private final ObjectMapper json;
+
+  public JdbcShippingRepository(
+      @Qualifier("tenantJdbcTemplate") JdbcTemplate jdbc, ObjectMapper json) {
+    this.jdbc = jdbc;
+    this.json = json;
+  }
+
   @Override
   public void cancelPending(UUID orderId) {
     jdbc.update(
@@ -21,15 +30,6 @@ public class JdbcShippingRepository implements ShippingRepository {
         WHERE o.public_id=UUID_TO_BIN(?) AND s.status IN ('PENDING','PREPARING')
         """,
         orderId.toString());
-  }
-
-  private final JdbcTemplate jdbc;
-  private final ObjectMapper json;
-
-  public JdbcShippingRepository(
-      @Qualifier("tenantJdbcTemplate") JdbcTemplate jdbc, ObjectMapper json) {
-    this.jdbc = jdbc;
-    this.json = json;
   }
 
   public Settings settings(boolean lock) {
@@ -53,8 +53,7 @@ public class JdbcShippingRepository implements ShippingRepository {
                                 m.getString("pickup_address"),
                                 m.getString("instructions"),
                                 jdbc.query(
-                                    "SELECT destination,price FROM shipping_rules WHERE method_id=?"
-                                        + " ORDER BY destination",
+                                    "SELECT destination,price FROM shipping_rules WHERE method_id=? ORDER BY destination",
                                     (r, k) -> new Rule(r.getString(1), r.getBigDecimal(2)),
                                     m.getString("id"))))))
         .getFirst();
@@ -96,10 +95,12 @@ public class JdbcShippingRepository implements ShippingRepository {
           orderId);
       if (snapshot.type() != MethodType.PICKUP)
         jdbc.update(
-            "INSERT INTO shipments(id,order_id,shipping_cost) VALUES (?,?,?)",
+            "INSERT INTO shipments(id,order_id,provider,shipping_cost,provider_cost) VALUES (?,?,?,?,?)",
             UUID.randomUUID().toString(),
             orderId,
-            snapshot.cost());
+            snapshot.provider(),
+            snapshot.cost(),
+            snapshot.providerCost());
     } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
       throw new IllegalStateException(e);
     }
@@ -119,8 +120,7 @@ public class JdbcShippingRepository implements ShippingRepository {
   public Shipment shipment(UUID orderId, boolean lock) {
     return jdbc
         .query(
-            "SELECT s.* FROM shipments s JOIN orders o ON o.id=s.order_id WHERE"
-                + " o.public_id=UUID_TO_BIN(?)"
+            "SELECT s.* FROM shipments s JOIN orders o ON o.id=s.order_id WHERE o.public_id=UUID_TO_BIN(?)"
                 + (lock ? " FOR UPDATE" : ""),
             (r, n) ->
                 new Shipment(
@@ -136,7 +136,13 @@ public class JdbcShippingRepository implements ShippingRepository {
                     instant(r.getTimestamp("shipped_at")),
                     instant(r.getTimestamp("delivered_at")),
                     r.getString("notes"),
-                    r.getLong("version")),
+                    r.getLong("version"),
+                    r.getBigDecimal("provider_cost"),
+                    r.getString("external_reference"),
+                    r.getString("label_reference"),
+                    r.getString("provider_status"),
+                    instant(r.getTimestamp("last_synced_at")),
+                    r.getString("provider_error")),
             orderId.toString())
         .stream()
         .findFirst()
