@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { finalize } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { AdminPwaService } from '../../core/pwa/admin-pwa.service';
 
 @Component({
   selector: 'app-super-admin-layout',
@@ -13,10 +14,15 @@ import { AuthService } from '../../core/auth/auth.service';
 export class SuperAdminLayout {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  readonly pwa = inject(AdminPwaService);
 
   readonly user = this.auth.user;
   readonly loggingOut = signal(false);
   readonly logoutError = signal<string | null>(null);
+
+  installApp(): void {
+    void this.pwa.install();
+  }
 
   logout(): void {
     this.loggingOut.set(true);
