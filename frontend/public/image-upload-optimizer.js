@@ -17,7 +17,7 @@
 
   function updateHelp(message = defaultHelpText) {
     const help = document.getElementById(HELP_ID);
-    if (help) help.textContent = message;
+    if (help && help.textContent !== message) help.textContent = message;
   }
 
   function updateRenderedHelp() {
