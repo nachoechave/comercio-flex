@@ -73,16 +73,20 @@ public class ShippingService {
         });
   }
 
+  /** Public/advisory quote. It must not serialize checkout traffic with configuration locks. */
   public List<Quote> quotes(
       BigDecimal subtotal, BigDecimal discount, String city, String postalCode) {
-    return provider.quote(repository.settings(true), subtotal, discount, city, postalCode);
+    return provider.quote(repository.settings(false), subtotal, discount, city, postalCode);
   }
 
   public Snapshot select(
       @jakarta.validation.Valid Selection selection, BigDecimal subtotal, BigDecimal discount) {
     Address address = selection == null ? null : selection.address();
+    // Order creation is authoritative: keep the settings row locked in the existing tenant
+    // transaction so a concurrent admin edit cannot change the tariff between selection and attach.
     List<Quote> quotes =
-        quotes(
+        provider.quote(
+            repository.settings(true),
             subtotal,
             discount,
             address == null ? null : address.city(),

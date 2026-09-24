@@ -1,23 +1,27 @@
 package com.comercioflex.shipping.api;
 
 import com.comercioflex.order.api.CreateGuestOrderItemRequest;
-import com.comercioflex.order.application.GuestOrderService;
-import com.comercioflex.order.application.OrderItemCommand;
 import com.comercioflex.order.domain.OrderPaymentMethod;
+import com.comercioflex.shipping.application.ShippingQuoteService;
 import com.comercioflex.shipping.domain.ShippingModels.Quote;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/stores/{storeSlug}/shipping")
 public class ShippingQuoteController {
-  private final GuestOrderService orders;
+  private final ShippingQuoteService quotes;
 
-  public ShippingQuoteController(GuestOrderService orders) {
-    this.orders = orders;
+  public ShippingQuoteController(ShippingQuoteService quotes) {
+    this.quotes = quotes;
   }
 
   public record Request(
@@ -33,9 +37,12 @@ public class ShippingQuoteController {
     return ResponseEntity.ok()
         .cacheControl(org.springframework.http.CacheControl.noStore())
         .body(
-            orders.quote(
+            quotes.quote(
                 body.items().stream()
-                    .map(i -> new OrderItemCommand(i.variantId(), i.decimalQuantity()))
+                    .map(
+                        item ->
+                            new ShippingQuoteService.Item(
+                                item.variantId(), item.decimalQuantity()))
                     .toList(),
                 body.paymentMethod(),
                 body.city(),

@@ -1,9 +1,33 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><title>Pedido despachado</title></head>
-<body style="font-family:Arial,sans-serif;color:#172033;background:#f5f6fa;padding:24px">
-<main style="max-width:600px;margin:auto;background:white;padding:24px">
-{{logoHtml}}<p>{{storeName}}</p><h1>Tu pedido fue despachado</h1>
-<p>Hola, {{customerName}}.</p><p>Tu pedido {{orderNumber}} ya fue despachado.</p>
-<p>Transportista: {{carrier}}</p><p>Número de seguimiento: {{tracking}}</p>
-<p>Seguimiento: {{trackingUrl}}</p><p>Dirección: {{address}}</p>
-<p>Gracias por tu compra.</p></main></body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Pedido despachado</title>
+</head>
+<body style="margin:0;background:#f4f6f8;padding:24px;font-family:Arial,sans-serif;color:#172033;">
+  <main style="max-width:620px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="padding:28px 28px 12px;">
+      {{logoHtml}}
+      <p style="margin:0 0 6px;color:#64748b;font-size:13px;font-weight:bold;letter-spacing:.06em;text-transform:uppercase;">{{storeName}}</p>
+      <h1 style="margin:0;font-size:28px;line-height:1.2;color:#172033;">Tu pedido fue despachado</h1>
+      <p style="margin:12px 0 0;color:#475569;line-height:1.6;">Hola, {{customerName}}. El pedido <strong>{{orderNumber}}</strong> ya salió del comercio.</p>
+    </div>
+
+    <div style="padding:16px 28px 28px;">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+        <p style="margin:0 0 10px;"><strong>Transportista:</strong> {{carrier}}</p>
+        <p style="margin:0 0 10px;"><strong>Número de seguimiento:</strong> {{tracking}}</p>
+        <p style="margin:0;"><strong>Dirección de entrega:</strong> {{address}}</p>
+      </div>
+
+      <p style="margin:20px 0 8px;color:#475569;">Seguimiento online</p>
+      <p style="margin:0;word-break:break-all;">
+        <a href="{{trackingUrl}}" style="color:#1d4ed8;text-decoration:underline;">{{trackingUrl}}</a>
+      </p>
+
+      <p style="margin:26px 0 0;color:#64748b;line-height:1.6;">Si todavía no aparece un enlace de seguimiento, el comercio te informará los datos cuando estén disponibles.</p>
+      <p style="margin:18px 0 0;color:#475569;">Gracias por tu compra.</p>
+    </div>
+  </main>
+</body>
+</html>

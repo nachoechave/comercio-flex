@@ -20,6 +20,7 @@ describe('ShippingSelector', () => {
     pickupAddress: 'Calle 123',
     instructions: 'De 9 a 18',
   };
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [ShippingSelector],
@@ -32,7 +33,9 @@ describe('ShippingSelector', () => {
     fixture.componentRef.setInput('paymentMethod', 'MERCADO_PAGO');
     fixture.detectChanges();
   });
+
   afterEach(() => http.verify());
+
   function respond(q: ShippingQuote = pickup) {
     fixture.componentInstance.quote();
     const request = http.expectOne('/api/v1/stores/tienda-a/shipping/quote');
@@ -43,6 +46,7 @@ describe('ShippingSelector', () => {
     fixture.componentInstance.select(q);
     fixture.detectChanges();
   }
+
   it('allows pickup without an address and shows backend total', () => {
     const emitted = vi.fn();
     fixture.componentInstance.selection.subscribe(emitted);
@@ -51,6 +55,26 @@ describe('ShippingSelector', () => {
     expect(fixture.nativeElement.textContent).toContain('Calle 123');
     expect(fixture.nativeElement.textContent).toContain('5.000,00');
   });
+
+  it('switches to delivery when the quote has no pickup option', () => {
+    fixture.componentInstance.quote();
+    const request = http.expectOne('/api/v1/stores/tienda-a/shipping/quote');
+    request.flush([
+      {
+        ...pickup,
+        methodId: 'delivery',
+        name: 'Envío estándar',
+        type: 'FIXED_RATE',
+        shippingAmount: '3000.00',
+        total: '8000.00',
+        pickupAddress: null,
+      },
+    ]);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.mode()).toBe('SHIPPING');
+    expect(fixture.nativeElement.textContent).toContain('Envío estándar');
+  });
+
   it('requires an address for delivery', () => {
     fixture.componentInstance.setMode('SHIPPING');
     fixture.componentInstance.quote();
@@ -58,6 +82,7 @@ describe('ShippingSelector', () => {
     http.expectNone('/api/v1/stores/tienda-a/shipping/quote');
     expect(fixture.nativeElement.textContent).toContain('Completá la dirección');
   });
+
   it('quotes locality and postal code and displays free shipping', () => {
     fixture.componentInstance.setMode('SHIPPING');
     fixture.componentInstance.address.setValue({
@@ -76,6 +101,7 @@ describe('ShippingSelector', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Envío gratis');
   });
+
   it('invalidates the quote when locality or postal code changes', () => {
     respond();
     fixture.componentInstance.setMode('SHIPPING');
@@ -91,6 +117,7 @@ describe('ShippingSelector', () => {
       expect(fixture.componentInstance.selected()).toBeNull();
     }
   });
+
   it('discards a response for an obsolete destination', () => {
     fixture.componentInstance.quote();
     const req = http.expectOne('/api/v1/stores/tienda-a/shipping/quote');
@@ -98,6 +125,7 @@ describe('ShippingSelector', () => {
     req.flush([pickup]);
     expect(fixture.componentInstance.options()).toEqual([]);
   });
+
   it('shows quote errors and supports retry', () => {
     fixture.componentInstance.quote();
     http
@@ -108,12 +136,14 @@ describe('ShippingSelector', () => {
     respond();
     expect(fixture.componentInstance.error()).toBe('');
   });
+
   it('invalidates a selection when the payment method changes', () => {
     respond();
     fixture.componentRef.setInput('paymentMethod', 'BANK_TRANSFER');
     fixture.detectChanges();
     expect(fixture.componentInstance.current()).toBeNull();
   });
+
   it.skipIf(navigator.userAgent.includes('jsdom'))(
     'fits a mobile viewport with delivery address and rates',
     async () => {
