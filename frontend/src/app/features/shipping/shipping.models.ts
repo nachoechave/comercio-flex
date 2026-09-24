@@ -1,9 +1,5 @@
-export type ShippingType =
-  | 'PICKUP'
-  | 'FIXED_RATE'
-  | 'LOCATION_RATE'
-  | 'POSTAL_CODE_RATE'
-  | 'CARRIER';
+export type ShippingType = 'PICKUP' | 'FIXED_RATE' | 'LOCATION_RATE' | 'POSTAL_CODE_RATE';
+export type FulfillmentShippingType = ShippingType | 'CARRIER';
 export type CarrierDocumentType = 'DNI' | 'CUIT' | 'CUIL';
 export type CarrierEnvironment = 'SANDBOX' | 'PRODUCTION';
 export interface ShippingAddress {
@@ -26,7 +22,7 @@ export interface ShippingQuote {
   methodId: string;
   name: string;
   description: string | null;
-  type: ShippingType;
+  type: FulfillmentShippingType;
   shippingAmount: string;
   freeShipping: boolean;
   listSubtotal: string;
@@ -49,7 +45,7 @@ export interface CarrierParcel {
 export interface ShippingSnapshot {
   methodId: string;
   name: string;
-  type: ShippingType;
+  type: FulfillmentShippingType;
   cost: string;
   pickupAddress: string | null;
   instructions: string | null;
@@ -66,7 +62,7 @@ export interface ShippingMethod {
   id: string | null;
   name: string;
   description: string | null;
-  type: Exclude<ShippingType, 'CARRIER'>;
+  type: ShippingType;
   price: number;
   active: boolean;
   pickupAddress: string | null;
