@@ -72,7 +72,10 @@
         <button type="button" class="icon-button menu-button" (click)="toggleMobileNavigation()" [attr.aria-expanded]="mobileNavigationOpen()" aria-controls="admin-navigation" aria-label="Abrir navegación">
           <app-admin-icon name="menu" />
         </button>
-        <a class="storefront-link" [routerLink]="['/tiendas', currentMembership.storeSlug]">Ver tienda</a>
+        <a class="storefront-link" [routerLink]="['/tiendas', currentMembership.storeSlug]" target="_blank" rel="noopener">Ver tienda</a>
+        @if (pwaInstallAvailable() && !pwaStandalone()) {
+          <button type="button" class="install-app-button" (click)="installAdminApp()">Instalar app</button>
+        }
         <div class="user-context">
           <span class="user-avatar" aria-hidden="true"><app-admin-icon name="user" /></span>
           <span class="user-copy"><strong>{{ user()?.displayName || 'Mi cuenta' }}</strong><small>{{ user()?.email }}</small></span>

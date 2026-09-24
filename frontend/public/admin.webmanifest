@@ -1,0 +1,44 @@
+{
+  "id": "/admin",
+  "name": "Comercio Flex Admin",
+  "short_name": "Comercio Flex",
+  "description": "Administrá comercios, pedidos, productos, stock, pagos, envíos y la operación de Comercio Flex desde el celular.",
+  "start_url": "/admin?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f8fb",
+  "theme_color": "#0b4ddb",
+  "categories": ["business", "productivity", "shopping"],
+  "icons": [
+    {
+      "src": "/assets/comercio-flex/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/comercio-flex/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Administración",
+      "short_name": "Admin",
+      "url": "/admin"
+    },
+    {
+      "name": "Mis comercios",
+      "short_name": "Comercios",
+      "url": "/admin/comercios"
+    },
+    {
+      "name": "SuperAdmin",
+      "short_name": "SuperAdmin",
+      "url": "/superadmin"
+    }
+  ]
+}

@@ -9,6 +9,9 @@
   <div class="session">
     <span>{{ user()?.displayName }}</span>
     <span class="role">SuperAdmin</span>
+    @if (pwa.canInstall() && !pwa.standalone()) {
+      <button type="button" class="install-app" (click)="installApp()">Instalar app</button>
+    }
     <button type="button" (click)="logout()" [disabled]="loggingOut()">
       {{ loggingOut() ? 'Saliendo…' : 'Cerrar sesión' }}
     </button>

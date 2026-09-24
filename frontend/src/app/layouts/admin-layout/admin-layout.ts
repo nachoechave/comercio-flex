@@ -11,6 +11,7 @@ import {
 import { filter, finalize, map, of } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { AdminPwaService } from '../../core/pwa/admin-pwa.service';
 import { AdminIcon } from '../../shared/ui/admin-icon/admin-icon';
 
 @Component({
@@ -24,6 +25,7 @@ export class AdminLayout {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly adminPwa = inject(AdminPwaService);
   private readonly storeSlug = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('storeSlug') ?? '')),
     { initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '' },
@@ -39,6 +41,8 @@ export class AdminLayout {
   readonly mobileNavigationOpen = signal(false);
   readonly compactNavigation = signal(false);
   readonly currentUrl = signal(this.router.url);
+  readonly pwaInstallAvailable = this.adminPwa.canInstall;
+  readonly pwaStandalone = this.adminPwa.standalone;
   readonly ordersNavigationActive = computed(
     () => this.currentUrl().includes('/admin/pedidos') && !this.currentUrl().includes('/transferencias'),
   );
@@ -66,6 +70,10 @@ export class AdminLayout {
 
   closeMobileNavigation(): void {
     this.mobileNavigationOpen.set(false);
+  }
+
+  async installAdminApp(): Promise<void> {
+    await this.adminPwa.install();
   }
 
   @HostListener('document:keydown.escape')
