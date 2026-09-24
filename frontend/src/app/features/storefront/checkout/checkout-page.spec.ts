@@ -201,6 +201,8 @@ describe('CheckoutPage', () => {
   it('creates the order and starts Checkout Pro when Mercado Pago is selected', async () => {
     respondMethods({ mercadoPago: true, bankTransfer: true });
     component().selectPaymentMethod('MERCADO_PAGO');
+    fixture.detectChanges();
+    flushAvailabilityIfPresent();
     fillValidForm();
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
@@ -261,6 +263,8 @@ describe('CheckoutPage', () => {
   it('creates the order and starts bank transfer without redirecting to Mercado Pago', async () => {
     respondMethods({ mercadoPago: true, bankTransfer: true });
     component().selectPaymentMethod('BANK_TRANSFER');
+    fixture.detectChanges();
+    flushAvailabilityIfPresent();
     fillValidForm();
     fixture.detectChanges();
     expect(submitButton().textContent).toContain('Confirmar pedido y pagar por transferencia');
@@ -299,6 +303,7 @@ describe('CheckoutPage', () => {
 
   it('requires the customer name and a valid email before creating the order', () => {
     respondMethods({ mercadoPago: true, bankTransfer: false });
+    flushAvailabilityIfPresent();
     component().form.patchValue({
       customerName: '   ',
       customerPhone: '11 5555 1234',
@@ -317,6 +322,7 @@ describe('CheckoutPage', () => {
 
   it('keeps the order idempotency key when the outcome is uncertain', () => {
     respondMethods({ mercadoPago: true, bankTransfer: false });
+    flushAvailabilityIfPresent();
     fillValidForm();
     component().submit();
     http.expectOne('/api/v1/auth/csrf').flush({});
@@ -334,6 +340,7 @@ describe('CheckoutPage', () => {
 
   it('requires a fresh quote after a tariff changes during checkout', () => {
     respondMethods({ mercadoPago: true, bankTransfer: false });
+    flushAvailabilityIfPresent();
     fillValidForm();
     component().submit();
     http.expectOne('/api/v1/auth/csrf').flush({});
@@ -357,6 +364,15 @@ describe('CheckoutPage', () => {
     const request = http.expectOne('/api/v1/stores/tienda-a/payment-methods');
     expect(request.request.method).toBe('GET');
     request.flush(methods);
+    fixture.detectChanges();
+    flushAvailabilityIfPresent();
+  }
+
+  function flushAvailabilityIfPresent(): void {
+    const requests = http.match('/api/v1/stores/tienda-a/shipping/availability');
+    for (const request of requests) {
+      request.flush({ pickupAvailable: true, shippingAvailable: false });
+    }
     fixture.detectChanges();
   }
 
@@ -382,6 +398,7 @@ describe('CheckoutPage', () => {
 
   function selectPickup(): void {
     fixture.detectChanges();
+    flushAvailabilityIfPresent();
     const selector = fixture.debugElement.query(By.directive(ShippingSelector))
       .componentInstance as ShippingSelector;
     selector.quote();
@@ -403,6 +420,7 @@ describe('CheckoutPage', () => {
     selector.select(q);
     fixture.detectChanges();
   }
+
   function expectOrderRequest() {
     return http.expectOne('/api/v1/stores/tienda-a/orders');
   }
