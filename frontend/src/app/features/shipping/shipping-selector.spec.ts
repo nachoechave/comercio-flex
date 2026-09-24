@@ -147,8 +147,10 @@ describe('ShippingSelector', () => {
   it.skipIf(navigator.userAgent.includes('jsdom'))(
     'fits a mobile viewport with delivery address and rates',
     async () => {
-      const { page } = await import('vitest/browser');
-      await page.viewport(390, 844);
+      const browser = (await import('vitest/browser')) as unknown as {
+        page: { viewport(width: number, height: number): Promise<void> };
+      };
+      await browser.page.viewport(390, 844);
       try {
         fixture.componentInstance.setMode('SHIPPING');
         fixture.componentInstance.address.setValue({
@@ -170,7 +172,7 @@ describe('ShippingSelector', () => {
         expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth + 1);
         expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth + 1);
       } finally {
-        await page.viewport(1024, 768);
+        await browser.page.viewport(1024, 768);
       }
     },
   );
