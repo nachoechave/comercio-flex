@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class SpaForwardController {
 	private static final String INDEX = "forward:/index.html";
 	private static final String ADMIN_INDEX = "forward:/admin-index.html";
+	private static final String PLATFORM_INDEX = "forward:/platform-index.html";
 
 	private final com.comercioflex.tenant.application.TenantResolver tenants;
 	public SpaForwardController(com.comercioflex.tenant.application.TenantResolver tenants) { this.tenants = tenants; }
@@ -32,8 +33,13 @@ public class SpaForwardController {
 		return ADMIN_INDEX;
 	}
 
+	@GetMapping("/")
+	public String forwardRootToAngular(jakarta.servlet.http.HttpServletRequest request) {
+		return PlatformSeoController.isPlatformHost(request) ? PLATFORM_INDEX : INDEX;
+	}
+
 	@GetMapping({
-			"/programas", "/nosotros", "/login", "/no-encontrado", "/",
+			"/programas", "/nosotros", "/login", "/no-encontrado",
 			"/stores/{slug}/payment-return/{returnToken}",
 			"/payment-return/{returnToken}",
 			"/registro", "/ingresar", "/olvide-contrasena", "/nueva-contrasena", "/mi-cuenta", "/mi-cuenta/**",
