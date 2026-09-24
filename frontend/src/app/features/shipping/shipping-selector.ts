@@ -8,70 +8,95 @@ import {
 } from './shipping.models';
 import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
 
+interface ShippingAvailability {
+  pickupAvailable: boolean;
+  shippingAvailable: boolean;
+}
+
 @Component({
   selector: 'app-shipping-selector',
   imports: [ReactiveFormsModule, StorefrontMoneyPipe],
   template: `
     <fieldset class="delivery-panel">
       <legend>Método de entrega</legend>
-      <div class="mode-grid">
-        <label class="mode-card" [class.selected]="mode() === 'PICKUP'">
-          <input
-            type="radio"
-            name="fulfillment"
-            [checked]="mode() === 'PICKUP'"
-            (change)="setMode('PICKUP')"
-            [disabled]="disabled()"
-          />
-          <span>
-            <strong>Retiro en local</strong>
-            <small>Coordiná el retiro directamente con el comercio.</small>
-          </span>
-        </label>
-        <label class="mode-card" [class.selected]="mode() === 'SHIPPING'">
-          <input
-            type="radio"
-            name="fulfillment"
-            [checked]="mode() === 'SHIPPING'"
-            (change)="setMode('SHIPPING')"
-            [disabled]="disabled()"
-          />
-          <span>
-            <strong>Envío a domicilio</strong>
-            <small>Ingresá tu dirección para calcular las opciones disponibles.</small>
-          </span>
-        </label>
-      </div>
 
-      @if (mode() === 'SHIPPING') {
-        <div [formGroup]="address" class="address">
-          @for (field of fields; track field.key) {
-            <label>
-              <span>{{ field.label }}</span>
+      @if (availability(); as modes) {
+        <div
+          class="mode-grid"
+          [class.single-mode]="!(modes.pickupAvailable && modes.shippingAvailable)"
+        >
+          @if (modes.pickupAvailable) {
+            <label class="mode-card" [class.selected]="mode() === 'PICKUP'">
               <input
-                [formControlName]="field.key"
-                [attr.data-address-field]="field.key"
-                [readonly]="disabled()"
-                [attr.autocomplete]="field.autocomplete"
-                [attr.maxlength]="field.max"
-                (input)="invalidate()"
+                type="radio"
+                name="fulfillment"
+                [checked]="mode() === 'PICKUP'"
+                (change)="setMode('PICKUP')"
+                [disabled]="disabled()"
               />
-              @if (address.controls[field.key].touched && address.controls[field.key].invalid) {
-                <small>Completá este campo.</small>
-              }
+              <span>
+                <strong>Retiro en local</strong>
+                <small>Coordiná el retiro directamente con el comercio.</small>
+              </span>
+            </label>
+          }
+          @if (modes.shippingAvailable) {
+            <label class="mode-card" [class.selected]="mode() === 'SHIPPING'">
+              <input
+                type="radio"
+                name="fulfillment"
+                [checked]="mode() === 'SHIPPING'"
+                (change)="setMode('SHIPPING')"
+                [disabled]="disabled()"
+              />
+              <span>
+                <strong>Envío a domicilio</strong>
+                <small>Ingresá tu dirección para calcular las opciones disponibles.</small>
+              </span>
             </label>
           }
         </div>
-      }
 
-      <button
-        class="quote-button"
-        type="button"
-        (click)="quote()"
-        [disabled]="loading() || disabled() || !paymentMethod()"
-      >
-        {{ loading() ? 'Calculando…' : 'Consultar opciones de entrega' }}
-      </button>
+        @if (mode() === 'SHIPPING' && modes.shippingAvailable) {
+          <div [formGroup]="address" class="address">
+            @for (field of fields; track field.key) {
+              <label>
+                <span>{{ field.label }}</span>
+                <input
+                  [formControlName]="field.key"
+                  [attr.data-address-field]="field.key"
+                  [readonly]="disabled()"
+                  [attr.autocomplete]="field.autocomplete"
+                  [attr.maxlength]="field.max"
+                  (input)="invalidate()"
+                />
+                @if (address.controls[field.key].touched && address.controls[field.key].invalid) {
+                  <small>Completá este campo.</small>
+                }
+              </label>
+            }
+          </div>
+        }
+
+        @if (modes.pickupAvailable || modes.shippingAvailable) {
+          <button
+            class="quote-button"
+            type="button"
+            (click)="quote()"
+            [disabled]="loading() || disabled() || !paymentMethod()"
+          >
+            {{
+              loading()
+                ? 'Calculando…'
+                : modes.shippingAvailable
+                  ? 'Consultar opciones de entrega'
+                  : 'Confirmar retiro'
+            }}
+          </button>
+        }
+      } @else if (availabilityLoading()) {
+        <p class="availability-loading">Cargando métodos de entrega…</p>
+      }
 
       @if (error()) {
         <p class="message error" role="alert">{{ error() }}</p>
@@ -185,6 +210,10 @@ import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
       }
+      .mode-grid.single-mode {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: 520px;
+      }
       .mode-card,
       .option {
         border: 1px solid #dfe4ea;
@@ -210,8 +239,12 @@ import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
         gap: 4px;
       }
       .mode-card small,
-      .option-copy > span:not(.option-heading):not(.free-badge):not(.provider-badge) {
+      .option-copy > span:not(.option-heading):not(.free-badge):not(.provider-badge),
+      .availability-loading {
         color: #667085;
+      }
+      .availability-loading {
+        margin: 0;
       }
       .address,
       .carrier-document {
@@ -349,6 +382,8 @@ export class ShippingSelector {
   selection = output<ShippingSelection | null>();
   quoted = output<ShippingQuote | null>();
   mode = signal<'PICKUP' | 'SHIPPING'>('PICKUP');
+  availability = signal<ShippingAvailability | null>(null);
+  availabilityLoading = signal(true);
   loading = signal(false);
   error = signal('');
   options = signal<ShippingQuote[]>([]);
@@ -382,6 +417,38 @@ export class ShippingSelector {
   ];
 
   constructor() {
+    effect((onCleanup) => {
+      const slug = this.storeSlug();
+      this.availability.set(null);
+      this.availabilityLoading.set(true);
+      if (!slug) {
+        this.availabilityLoading.set(false);
+        return;
+      }
+      const sub = this.http
+        .get<ShippingAvailability>(
+          '/api/v1/stores/' + encodeURIComponent(slug) + '/shipping/availability',
+        )
+        .subscribe({
+          next: (modes) => {
+            this.availability.set(modes);
+            this.availabilityLoading.set(false);
+            if (modes.pickupAvailable && !modes.shippingAvailable) {
+              this.mode.set('PICKUP');
+            } else if (!modes.pickupAvailable && modes.shippingAvailable) {
+              this.mode.set('SHIPPING');
+            } else if (!modes.pickupAvailable && !modes.shippingAvailable) {
+              this.error.set('Este comercio no tiene métodos de entrega habilitados.');
+            }
+          },
+          error: () => {
+            this.availabilityLoading.set(false);
+            this.error.set('No pudimos cargar los métodos de entrega. Reintentá.');
+          },
+        });
+      onCleanup(() => sub.unsubscribe());
+    });
+
     effect(() => {
       this.storeSlug();
       this.items();
@@ -402,6 +469,9 @@ export class ShippingSelector {
   }
 
   setMode(mode: 'PICKUP' | 'SHIPPING') {
+    const modes = this.availability();
+    if (mode === 'PICKUP' && modes && !modes.pickupAvailable) return;
+    if (mode === 'SHIPPING' && modes && !modes.shippingAvailable) return;
     this.mode.set(mode);
     this.invalidate();
   }
@@ -422,6 +492,11 @@ export class ShippingSelector {
   }
 
   quote() {
+    const modes = this.availability();
+    if (!modes) return;
+    if (this.mode() === 'PICKUP' && !modes.pickupAvailable) return;
+    if (this.mode() === 'SHIPPING' && !modes.shippingAvailable) return;
+
     if (this.mode() === 'SHIPPING') {
       this.address.markAllAsTouched();
       if (this.address.invalid) {
@@ -453,14 +528,8 @@ export class ShippingSelector {
           const pickupAvailable = options.some((option) => option.type === 'PICKUP');
           const shippingAvailable = options.some((option) => option.type !== 'PICKUP');
 
-          if (this.mode() === 'PICKUP' && !pickupAvailable) {
+          if (this.mode() === 'PICKUP' && !pickupAvailable && shippingAvailable) {
             this.mode.set('SHIPPING');
-            if (this.address.invalid && !shippingAvailable) {
-              this.error.set(
-                'Este comercio trabaja con envío. Completá tu dirección para consultar las opciones disponibles.',
-              );
-              return;
-            }
           } else if (this.mode() === 'SHIPPING' && !shippingAvailable && pickupAvailable) {
             this.mode.set('PICKUP');
           }
