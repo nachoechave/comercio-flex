@@ -59,14 +59,19 @@ export class AdminPwaService {
   }
 
   async install(): Promise<boolean> {
-    const prompt = this.deferredPrompt;
-    if (!prompt || this.standalone()) return false;
+    if (this.standalone()) return false;
 
-    await prompt.prompt();
-    const choice = await prompt.userChoice;
-    this.deferredPrompt = null;
-    this.canInstall.set(false);
-    return choice.outcome === 'accepted';
+    const prompt = this.deferredPrompt;
+    if (prompt) {
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      this.deferredPrompt = null;
+      this.canInstall.set(!this.standalone() && isAdminPwaPath(window.location.pathname));
+      return choice.outcome === 'accepted';
+    }
+
+    this.showManualInstallInstructions();
+    return false;
   }
 
   private syncRoute(pathname: string): void {
@@ -74,7 +79,9 @@ export class AdminPwaService {
     if (admin) {
       this.ensureManifest();
       void this.registerServiceWorker();
-      this.canInstall.set(Boolean(this.deferredPrompt) && !this.standalone());
+      // Keep the install action discoverable even when Chromium does not expose
+      // beforeinstallprompt. In that case install() explains the browser-native path.
+      this.canInstall.set(!this.standalone());
     } else {
       this.removeManifest();
       this.canInstall.set(false);
@@ -117,6 +124,30 @@ export class AdminPwaService {
     } catch {
       // La PWA es una mejora progresiva: un fallo de registro no debe romper el Admin.
     }
+  }
+
+  private showManualInstallInstructions(): void {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const ios = /iphone|ipad|ipod/.test(userAgent);
+    const android = /android/.test(userAgent);
+
+    if (ios) {
+      window.alert(
+        'Para instalar Comercio Flex Admin: tocá Compartir y elegí “Agregar a pantalla de inicio”.',
+      );
+      return;
+    }
+
+    if (android) {
+      window.alert(
+        'Para instalar Comercio Flex Admin: abrí el menú ⋮ del navegador y elegí “Instalar aplicación” o “Agregar a pantalla principal”.',
+      );
+      return;
+    }
+
+    window.alert(
+      'Para instalar Comercio Flex Admin, usá la opción “Instalar aplicación” del menú de tu navegador.',
+    );
   }
 
   private syncStandaloneState(): void {
