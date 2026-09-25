@@ -1,247 +1,44 @@
-<section
-  class="catalog"
-  [class.catalog--streetwear]="isModern()"
-  [class.catalog--fresh]="isFresh()"
-  [class.catalog--minimal]="isMinimal()"
-  aria-labelledby="catalog-title"
->
-  @if (isModern()) {
-    <header class="streetwear-hero">
-      <div class="hero-copy">
-        <p class="eyebrow">{{ heroEyebrow() }}</p>
-        <h1 id="catalog-title">{{ heroTitle() }}</h1>
-        <p>{{ heroSubtitle() }}</p>
-        <div class="hero-actions">
-          <a
-            class="hero-primary"
-            [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
-            fragment="catalog-products"
-            queryParamsHandling="preserve"
-            >Comprar ahora</a
-          >
-          <a
-            class="hero-secondary"
-            [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
-            fragment="category-section"
-            queryParamsHandling="preserve"
-            >Ver colección</a
-          >
-        </div>
-      </div>
-    </header>
-
-    <section class="trust-strip" aria-label="Beneficios de la tienda">
-      <article>
-        <span aria-hidden="true">↗</span>
-        <p><strong>Compra online</strong><small>Desde cualquier dispositivo</small></p>
-      </article>
-      <article>
-        <span aria-hidden="true">↻</span>
-        <p><strong>Stock actualizado</strong><small>Disponibilidad por opción</small></p>
-      </article>
-      <article>
-        <span aria-hidden="true">◇</span>
-        <p><strong>Compra segura</strong><small>Pagos protegidos</small></p>
-      </article>
-      <article>
-        <span aria-hidden="true">◎</span>
-        <p><strong>Estamos para ayudarte</strong><small>Atención personalizada</small></p>
-      </article>
-    </section>
-
-    @if (categories().length > 0) {
-      <section id="category-section" class="category-showcase" aria-labelledby="category-title">
-        <p class="section-kicker">Elegí tu estilo</p>
-        <h2 id="category-title">Comprá por categoría</h2>
-        <div class="category-grid">
-          @for (category of categories(); track category.id) {
-            <a
-              class="category-card"
-              [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
-              [queryParams]="{ categoria: category.slug, catalogo: 'todos' }"
-              fragment="catalog-products"
-            >
-              @if (category.image; as image) {
-                <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" />
-              } @else {
-                <span class="category-monogram" aria-hidden="true">{{
-                  category.name.slice(0, 1)
-                }}</span>
-              }
-              <span class="category-shade"></span>
-              <span class="category-copy"
-                ><strong>{{ category.name }}</strong
-                ><small>Ver productos →</small></span
-              >
-            </a>
-          }
-        </div>
-      </section>
-    }
-  } @else if (isFresh()) {
-    <div class="fresh-showcase">
-      <header class="fresh-hero">
-        <div class="fresh-hero-copy">
-          <p class="eyebrow">{{ heroEyebrow() }}</p>
-          <h1 id="catalog-title">{{ heroTitle() }}</h1>
-          <p>{{ heroSubtitle() }}</p>
-          <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Ver productos →</a>
-        </div>
-      </header>
-      <aside class="fresh-promos" aria-label="Promociones destacadas">
-        <article class="fresh-promo fresh-promo--offer"><strong>OFERTAS</strong><span>de temporada</span><small>Ver ofertas →</small></article>
-        <article class="fresh-promo fresh-promo--social"><strong>COMPARTÍ</strong><span>tu estilo</span><small>#MiTienda</small></article>
-      </aside>
-    </div>
-
-    @if (categories().length > 0) {
-      <section id="category-section" class="fresh-categories" aria-label="Comprá por categoría">
-        <div class="fresh-category-list">
-          @for (category of categories(); track category.id) {
-            <a
-              [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
-              [queryParams]="{ categoria: category.slug, catalogo: 'todos' }"
-              fragment="catalog-products"
-            >
-              <span aria-hidden="true">{{ category.name.slice(0, 1) }}</span>
-              <div><strong>{{ category.name }}</strong><small>Descubrí más</small></div>
-              <b aria-hidden="true">›</b>
-            </a>
-          }
-        </div>
-      </section>
-    }
+<section class="catalog" [class.catalog--streetwear]="isModern()" [class.catalog--fresh]="isFresh()" [class.catalog--minimal]="isMinimal()" [class.catalog--designer]="designerTemplate() !== null" [class.catalog--designer-landing]="isDesignerLanding()" [attr.data-designer-template]="designerTemplate()?.toLowerCase() ?? null" aria-labelledby="catalog-title">
+  @if (isDesignerLanding()) {
+    @if (loading()) { <div class="state" aria-busy="true"><p role="status">Cargando tienda…</p><div class="skeleton-grid" aria-hidden="true">@for (item of [1,2,3,4]; track item) { <span></span> }</div></div> }
+    @else if (errorMessage()) { <div class="state state--message" role="alert"><p class="eyebrow">Ocurrió un problema</p><h2>No pudimos cargar la tienda</h2><p>{{ errorMessage() }}</p><button type="button" (click)="retry()">Reintentar</button></div> }
+    @else if (designerTemplate(); as template) { <app-designer-home [template]="template" [categories]="categories()" [products]="page().items" [storeSlug]="storeSlug() ?? ''" [currencyCode]="currencyCode()" [heroEyebrow]="heroEyebrow()" [heroTitle]="heroTitle()" [heroSubtitle]="heroSubtitle()" /> }
   } @else {
-    <header class="catalog-heading hero">
-      <div>
-        <p class="eyebrow">{{ heroEyebrow() }}</p>
-        <h1 id="catalog-title">Catálogo</h1>
-        <span hidden>Objetos esenciales</span>
-        <p>{{ heroSubtitle() }}</p>
-      </div>
-      <span class="catalog-total">{{ page().totalItems }} productos</span>
-    </header>
-  }
-
-  <form
-    id="catalog-search"
-    class="filters"
-    [class.filters--streetwear]="isModern()"
-    [class.filters--fresh]="isFresh()"
-    [class.filters--minimal]="isMinimal()"
-    [formGroup]="filters"
-    (ngSubmit)="search()"
-    role="search"
-  >
-    @if (isMinimal()) { <div class="filter-title"><strong>Filtrar</strong>@if (query() || selectedCategory()) { <button type="button" class="filter-clear" (click)="clearFilters()">Limpiar todo</button> }</div> }
-    <div class="search-field">
-      <label for="catalog-query">Buscar productos</label>
-      <input id="catalog-query" type="search" formControlName="q" maxlength="100" placeholder="¿Qué estás buscando?" />
-    </div>
-    <div>
-      <label for="catalog-category">Categoría</label>
-      <select id="catalog-category" formControlName="category" (change)="search()">
-        <option value="">Todas las categorías</option>
-        @for (category of categories(); track category.id) { <option [value]="category.slug">{{ category.name }}</option> }
-      </select>
-    </div>
-    @if (isMinimal()) {
-      <div class="catalog-faux-filter"><label>Talle</label><div class="size-pills"><span>XS</span><span>S</span><span>M</span><span>L</span><span>XL</span></div></div>
-      <div class="catalog-faux-filter"><label>Color</label><div class="color-pills"><span></span><span></span><span></span><span></span><span></span></div></div>
-      <div class="catalog-faux-filter"><label>Disponibilidad</label><label class="check-row"><input type="checkbox" disabled /> En stock</label><label class="check-row"><input type="checkbox" disabled /> Entrega inmediata</label></div>
-    }
-    <button type="submit" [disabled]="loading()">Buscar</button>
-  </form>
-
-  @if (loading()) {
-    <div class="state" aria-busy="true"><p role="status">Cargando productos…</p><div class="skeleton-grid" aria-hidden="true">@for (item of [1,2,3,4]; track item) { <span></span> }</div></div>
-  } @else if (errorMessage()) {
-    <div class="state state--message" role="alert"><p class="eyebrow">Ocurrió un problema</p><h2>No pudimos cargar el catálogo</h2><p>{{ errorMessage() }}</p><button type="button" (click)="retry()">Reintentar</button></div>
-  } @else if (page().items.length === 0) {
-    <div class="state state--message">@if (query() || selectedCategory()) { <p class="eyebrow">Sin resultados</p><h2>No encontramos productos con esos filtros</h2><p>Probá otra búsqueda o volvé a ver el catálogo completo.</p><button type="button" (click)="clearFilters()">Limpiar filtros</button> } @else { <p class="eyebrow">Próximamente</p><h2>Esta tienda todavía no publicó productos</h2><p>Volvé pronto para conocer sus novedades.</p> }</div>
-  } @else {
-    <div id="catalog-products" class="results-heading">
-      <div>
-        <p class="eyebrow">{{ isModern() ? (isFashionLanding() ? 'Nueva temporada' : 'La colección') : isFresh() ? (isFreshLanding() ? 'Lo más vendido' : 'La colección') : 'La colección' }}</p>
-        @if (isModern()) {
-          <h2>{{ isFashionLanding() ? 'Nuevos ingresos' : 'Catálogo' }}</h2>
-          @if (!isFashionLanding()) { <small>{{ page().totalItems }} productos</small> }
-        }
-        @else if (isFresh()) {
-          <h2>{{ isFreshLanding() ? 'Lo más vendido' : 'Catálogo' }}</h2>
-          @if (!isFreshLanding()) { <small>{{ page().totalItems }} productos</small> }
-        }
-        @else { <h2>Catálogo</h2><small>{{ page().totalItems }} productos</small> }
-      </div>
-      @if (isModern()) {
-        @if (isFashionLanding() && hiddenProductCount() > 0) {
-          <a
-            class="result-count result-count--link"
-            [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
-            [queryParams]="{ catalogo: 'todos' }"
-            fragment="catalog-products"
-          >Ver todos →</a>
-        } @else {
-          <span class="result-count">{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span>
-        }
-      }
-      @if (isFresh() && isFreshLanding() && hiddenProductCount() > 0) {
-        <a
-          class="fresh-catalog-link"
-          [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
-          [queryParams]="{ catalogo: 'todos' }"
-          fragment="catalog-products"
-        >Ver todos →</a>
-      }
-      @if (isMinimal()) { <div class="catalog-sort">Ordenar por: <span>Más populares⌄</span></div> }
-      @if (query() || selectedCategory()) { <button class="text-button" type="button" (click)="clearFilters()">Limpiar filtros</button> }
-    </div>
-
-    <div class="product-grid">
-      @for (product of visibleProducts(); track product.id) {
-        <app-public-product-card [product]="product" [storeSlug]="storeSlug() ?? ''" [currencyCode]="currencyCode()" [modern]="isModern()" [minimal]="isMinimal()" />
-      }
-    </div>
-
-    @if (isFashionLanding() && hiddenProductCount() > 0) {
-      <div class="fashion-catalog-cta">
-        <p>Mostrando {{ visibleProducts().length }} de {{ page().totalItems }} productos</p>
-        <a
-          [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
-          [queryParams]="{ catalogo: 'todos' }"
-          fragment="catalog-products"
-        >Ver todo el catálogo</a>
-      </div>
-    } @else if (isFreshLanding() && hiddenProductCount() > 0) {
-      <div class="fresh-catalog-cta">
-        <p>Mostrando {{ visibleProducts().length }} de {{ page().totalItems }} productos</p>
-        <a
-          [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
-          [queryParams]="{ catalogo: 'todos' }"
-          fragment="catalog-products"
-        >Ver todo el catálogo</a>
-      </div>
-    }
-
-    @if (page().totalPages > 1 && !isFashionLanding() && !isFreshLanding()) {
-      <nav class="pagination" aria-label="Paginación del catálogo"><button type="button" (click)="goToPage(page().page - 1)" [disabled]="page().page === 0">Anterior</button><span>Página {{ page().page + 1 }} de {{ page().totalPages }}</span><button type="button" (click)="goToPage(page().page + 1)" [disabled]="page().page + 1 >= page().totalPages">Siguiente</button></nav>
-    }
-
     @if (isModern()) {
-      <section class="campaign-grid" aria-label="Campañas destacadas">
-        <article class="campaign campaign--dark">
-          <p>Selección del comercio</p>
-          <h2>Encontrá eso<br />que buscabas.</h2>
-          <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Ver productos</a>
-        </article>
-        <article class="campaign campaign--photo">
-          <p>Novedades</p>
-          <h2>Conocé lo nuevo<br />de la tienda.</h2>
-          <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Explorar ahora</a>
-        </article>
-      </section>
+      <header class="streetwear-hero"><div class="hero-copy"><p class="eyebrow">{{ heroEyebrow() }}</p><h1 id="catalog-title">{{ heroTitle() }}</h1><p>{{ heroSubtitle() }}</p><div class="hero-actions"><a class="hero-primary" [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Comprar ahora</a><a class="hero-secondary" [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="category-section" queryParamsHandling="preserve">Ver colección</a></div></div></header>
+      <section class="trust-strip" aria-label="Beneficios de la tienda"><article><span aria-hidden="true">↗</span><p><strong>Compra online</strong><small>Desde cualquier dispositivo</small></p></article><article><span aria-hidden="true">↻</span><p><strong>Stock actualizado</strong><small>Disponibilidad por opción</small></p></article><article><span aria-hidden="true">◇</span><p><strong>Compra segura</strong><small>Pagos protegidos</small></p></article><article><span aria-hidden="true">◎</span><p><strong>Estamos para ayudarte</strong><small>Atención personalizada</small></p></article></section>
+      @if (categories().length > 0) { <section id="category-section" class="category-showcase" aria-labelledby="category-title"><p class="section-kicker">Elegí tu estilo</p><h2 id="category-title">Comprá por categoría</h2><div class="category-grid">@for (category of categories(); track category.id) { <a class="category-card" [routerLink]="storefrontRouting.route(storeSlug() ?? '')" [queryParams]="{ categoria: category.slug, catalogo: 'todos' }" fragment="catalog-products" queryParamsHandling="merge">@if (category.image; as image) { <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" /> } @else { <span class="category-monogram" aria-hidden="true">{{ category.name.slice(0,1) }}</span> }<span class="category-shade"></span><span class="category-copy"><strong>{{ category.name }}</strong><small>Ver productos →</small></span></a> }</div></section> }
     } @else if (isFresh()) {
-      <section class="fresh-benefit-row"><span>🚚 <b>Envíos a todo el país</b><small>Rápidos y seguros</small></span><span>▣ <b>3 y 6 cuotas sin interés</b><small>Con todas las tarjetas</small></span><span>♧ <b>Compras con impacto</b><small>Elegí mejor</small></span><span>☺ <b>Una comunidad real</b><small>Siempre cerca</small></span></section>
+      <div class="fresh-showcase"><header class="fresh-hero"><div class="fresh-hero-copy"><p class="eyebrow">{{ heroEyebrow() }}</p><h1 id="catalog-title">{{ heroTitle() }}</h1><p>{{ heroSubtitle() }}</p><a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Ver productos →</a></div></header><aside class="fresh-promos" aria-label="Promociones destacadas"><article class="fresh-promo fresh-promo--offer"><strong>OFERTAS</strong><span>de temporada</span><small>Ver ofertas →</small></article><article class="fresh-promo fresh-promo--social"><strong>COMPARTÍ</strong><span>tu estilo</span><small>#MiTienda</small></article></aside></div>
+      @if (categories().length > 0) { <section id="category-section" class="fresh-categories" aria-label="Comprá por categoría"><div class="fresh-category-list">@for (category of categories(); track category.id) { <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" [queryParams]="{ categoria: category.slug, catalogo: 'todos' }" fragment="catalog-products" queryParamsHandling="merge"><span aria-hidden="true">{{ category.name.slice(0,1) }}</span><div><strong>{{ category.name }}</strong><small>Descubrí más</small></div><b aria-hidden="true">›</b></a> }</div></section> }
+    } @else {
+      <header class="catalog-heading hero"><div><p class="eyebrow">{{ heroEyebrow() }}</p><h1 id="catalog-title">Catálogo</h1><span hidden>Objetos esenciales</span><p>{{ heroSubtitle() }}</p></div><span class="catalog-total">{{ page().totalItems }} productos</span></header>
+    }
+
+    <form id="catalog-search" class="filters" [class.filters--streetwear]="isModern()" [class.filters--fresh]="isFresh()" [class.filters--minimal]="isMinimal()" [formGroup]="filters" (ngSubmit)="search()" role="search">
+      @if (isMinimal()) { <div class="filter-title"><strong>Filtrar</strong>@if (query() || selectedCategory()) { <button type="button" class="filter-clear" (click)="clearFilters()">Limpiar todo</button> }</div> }
+      <div class="search-field"><label for="catalog-query">Buscar productos</label><input id="catalog-query" type="search" formControlName="q" maxlength="100" placeholder="¿Qué estás buscando?" /></div>
+      <div><label for="catalog-category">Categoría</label><select id="catalog-category" formControlName="category" (change)="search()"><option value="">Todas las categorías</option>@for (category of categories(); track category.id) { <option [value]="category.slug">{{ category.name }}</option> }</select></div>
+      @if (isMinimal()) { <div class="catalog-faux-filter"><label>Talle</label><div class="size-pills"><span>XS</span><span>S</span><span>M</span><span>L</span><span>XL</span></div></div><div class="catalog-faux-filter"><label>Color</label><div class="color-pills"><span></span><span></span><span></span><span></span><span></span></div></div><div class="catalog-faux-filter"><label>Disponibilidad</label><label class="check-row"><input type="checkbox" disabled /> En stock</label><label class="check-row"><input type="checkbox" disabled /> Entrega inmediata</label></div> }
+      <button type="submit" [disabled]="loading()">Buscar</button>
+    </form>
+
+    @if (loading()) { <div class="state" aria-busy="true"><p role="status">Cargando productos…</p><div class="skeleton-grid" aria-hidden="true">@for (item of [1,2,3,4]; track item) { <span></span> }</div></div> }
+    @else if (errorMessage()) { <div class="state state--message" role="alert"><p class="eyebrow">Ocurrió un problema</p><h2>No pudimos cargar el catálogo</h2><p>{{ errorMessage() }}</p><button type="button" (click)="retry()">Reintentar</button></div> }
+    @else if (page().items.length === 0) { <div class="state state--message">@if (query() || selectedCategory()) { <p class="eyebrow">Sin resultados</p><h2>No encontramos productos con esos filtros</h2><p>Probá otra búsqueda o volvé a ver el catálogo completo.</p><button type="button" (click)="clearFilters()">Limpiar filtros</button> } @else { <p class="eyebrow">Próximamente</p><h2>Esta tienda todavía no publicó productos</h2><p>Volvé pronto para conocer sus novedades.</p> }</div> }
+    @else {
+      <div id="catalog-products" class="results-heading"><div><p class="eyebrow">{{ isModern() ? (isFashionLanding() ? 'Nueva temporada' : 'La colección') : isFresh() ? (isFreshLanding() ? 'Lo más vendido' : 'La colección') : 'La colección' }}</p>@if (isModern()) { <h2>{{ isFashionLanding() ? 'Nuevos ingresos' : 'Catálogo' }}</h2>@if (!isFashionLanding()) { <small>{{ page().totalItems }} productos</small> } } @else if (isFresh()) { <h2>{{ isFreshLanding() ? 'Lo más vendido' : 'Catálogo' }}</h2>@if (!isFreshLanding()) { <small>{{ page().totalItems }} productos</small> } } @else { <h2>Catálogo</h2><small>{{ page().totalItems }} productos</small> }</div>
+        @if (isModern()) { @if (isFashionLanding() && hiddenProductCount() > 0) { <a class="result-count result-count--link" [routerLink]="storefrontRouting.route(storeSlug() ?? '')" [queryParams]="{ catalogo: 'todos' }" queryParamsHandling="merge" fragment="catalog-products">Ver todos →</a> } @else { <span class="result-count">{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span> } }
+        @if (isFresh() && isFreshLanding() && hiddenProductCount() > 0) { <a class="fresh-catalog-link" [routerLink]="storefrontRouting.route(storeSlug() ?? '')" [queryParams]="{ catalogo: 'todos' }" queryParamsHandling="merge" fragment="catalog-products">Ver todos →</a> }
+        @if (isMinimal()) { <div class="catalog-sort">Ordenar por: <span>Más populares⌄</span></div> }
+        @if (query() || selectedCategory()) { <button class="text-button" type="button" (click)="clearFilters()">Limpiar filtros</button> }
+      </div>
+      <div class="product-grid">@for (product of visibleProducts(); track product.id) { <app-public-product-card [product]="product" [storeSlug]="storeSlug() ?? ''" [currencyCode]="currencyCode()" [modern]="isModern()" [minimal]="isMinimal()" /> }</div>
+      @if (isFashionLanding() && hiddenProductCount() > 0) { <div class="fashion-catalog-cta"><p>Mostrando {{ visibleProducts().length }} de {{ page().totalItems }} productos</p><a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" [queryParams]="{ catalogo: 'todos' }" queryParamsHandling="merge" fragment="catalog-products">Ver todo el catálogo</a></div> }
+      @else if (isFreshLanding() && hiddenProductCount() > 0) { <div class="fresh-catalog-cta"><p>Mostrando {{ visibleProducts().length }} de {{ page().totalItems }} productos</p><a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" [queryParams]="{ catalogo: 'todos' }" queryParamsHandling="merge" fragment="catalog-products">Ver todo el catálogo</a></div> }
+      @if (page().totalPages > 1 && !isFashionLanding() && !isFreshLanding()) { <nav class="pagination" aria-label="Paginación del catálogo"><button type="button" (click)="goToPage(page().page - 1)" [disabled]="page().page === 0">Anterior</button><span>Página {{ page().page + 1 }} de {{ page().totalPages }}</span><button type="button" (click)="goToPage(page().page + 1)" [disabled]="page().page + 1 >= page().totalPages">Siguiente</button></nav> }
+      @if (isModern()) { <section class="campaign-grid" aria-label="Campañas destacadas"><article class="campaign campaign--dark"><p>Selección del comercio</p><h2>Encontrá eso<br />que buscabas.</h2><a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Ver productos</a></article><article class="campaign campaign--photo"><p>Novedades</p><h2>Conocé lo nuevo<br />de la tienda.</h2><a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" fragment="catalog-products" queryParamsHandling="preserve">Explorar ahora</a></article></section> }
+      @else if (isFresh()) { <section class="fresh-benefit-row"><span>🚚 <b>Envíos a todo el país</b><small>Rápidos y seguros</small></span><span>▣ <b>3 y 6 cuotas sin interés</b><small>Con todas las tarjetas</small></span><span>♧ <b>Compras con impacto</b><small>Elegí mejor</small></span><span>☺ <b>Una comunidad real</b><small>Siempre cerca</small></span></section> }
     }
   }
 </section>
