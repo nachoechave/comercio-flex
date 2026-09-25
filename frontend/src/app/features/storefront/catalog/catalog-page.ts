@@ -14,6 +14,7 @@ import { PublicCategory, PublicProductPage } from '../storefront.models';
 
 const PAGE_SIZE = 24;
 const FASHION_LANDING_LIMIT = 10;
+const FRESH_LANDING_LIMIT = 10;
 const EMPTY_PAGE: PublicProductPage = {
   items: [],
   page: 0,
@@ -68,11 +69,23 @@ export class CatalogPage {
       !this.fullCatalog() &&
       !this.queryParams().has('page'),
   );
-  protected readonly visibleProducts = computed(() =>
-    this.isFashionLanding()
-      ? this.page().items.slice(0, FASHION_LANDING_LIMIT)
-      : this.page().items,
+  protected readonly isFreshLanding = computed(
+    () =>
+      this.isFresh() &&
+      !this.query() &&
+      !this.selectedCategory() &&
+      !this.fullCatalog() &&
+      !this.queryParams().has('page'),
   );
+  protected readonly visibleProducts = computed(() => {
+    if (this.isFashionLanding()) {
+      return this.page().items.slice(0, FASHION_LANDING_LIMIT);
+    }
+    if (this.isFreshLanding()) {
+      return this.page().items.slice(0, FRESH_LANDING_LIMIT);
+    }
+    return this.page().items;
+  });
   protected readonly hiddenProductCount = computed(() =>
     Math.max(0, this.page().totalItems - this.visibleProducts().length),
   );
@@ -108,6 +121,7 @@ export class CatalogPage {
       const q = (params.get('q') ?? '').trim().slice(0, 100);
       const category = params.get('categoria') ?? '';
       const requestedPage = this.readPage(params);
+      const showFullCatalog = params.get('catalogo') === 'todos';
 
       this.query.set(q);
       this.selectedCategory.set(category);
@@ -145,7 +159,7 @@ export class CatalogPage {
           this.categories.set(categories);
           this.page.set(page);
           this.loading.set(false);
-          if (category) {
+          if (q || category || requestedPage > 0 || showFullCatalog) {
             this.scrollToProducts();
           }
         },
@@ -175,21 +189,31 @@ export class CatalogPage {
     const value = this.filters.getRawValue();
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { q: value.q.trim() || null, categoria: value.category || null, page: null },
+      queryParams: {
+        q: value.q.trim() || null,
+        categoria: value.category || null,
+        page: null,
+        catalogo: value.q.trim() || value.category ? 'todos' : null,
+      },
+      fragment: value.q.trim() || value.category ? 'catalog-products' : undefined,
     });
   }
 
   protected clearFilters(): void {
     this.filters.reset({ q: '', category: '' });
-    void this.router.navigate([], { relativeTo: this.route, queryParams: { q: null, categoria: null, page: null } });
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { q: null, categoria: null, page: null, catalogo: null },
+    });
   }
 
   protected goToPage(page: number): void {
     if (page < 0 || page >= this.page().totalPages) return;
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { page: page === 0 ? null : page + 1 },
+      queryParams: { page: page === 0 ? null : page + 1, catalogo: 'todos' },
       queryParamsHandling: 'merge',
+      fragment: 'catalog-products',
     });
   }
 
