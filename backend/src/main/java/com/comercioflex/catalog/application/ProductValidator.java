@@ -35,7 +35,7 @@ public class ProductValidator {
 			return null;
 		}
 		String value = raw.strip();
-		if (value.length() > 4000 || containsControl(value)) {
+		if (value.length() > 4000 || containsDisallowedDescriptionControl(value)) {
 			throw new InvalidProductException(
 				"La descripción admite hasta 4000 caracteres válidos.");
 		}
@@ -202,5 +202,13 @@ public class ProductValidator {
 
 	private boolean containsControl(String value) {
 		return value.codePoints().anyMatch(Character::isISOControl);
+	}
+
+	private boolean containsDisallowedDescriptionControl(String value) {
+		return value.codePoints().anyMatch(codePoint ->
+			Character.isISOControl(codePoint)
+				&& codePoint != '\n'
+				&& codePoint != '\r'
+				&& codePoint != '\t');
 	}
 }
