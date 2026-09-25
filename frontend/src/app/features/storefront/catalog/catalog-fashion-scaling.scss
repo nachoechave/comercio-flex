@@ -17,6 +17,59 @@
   background: #0b0b0b;
 }
 
+/* Keep the FASHION benefit strip visual and consistent across browsers.
+   The source markup still uses decorative spans, but these masks replace the
+   old Unicode glyphs with one coherent line-icon set. */
+.catalog--streetwear .trust-strip article > span {
+  display: block;
+  width: 1.8rem;
+  height: 1.8rem;
+  flex: 0 0 1.8rem;
+  color: #0b0b0b;
+  background-color: currentcolor;
+  font-size: 0;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.catalog--streetwear .trust-strip article:nth-child(1) > span {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8h12l-1 12H7L6 8Z'/%3E%3Cpath d='M9 9V6a3 3 0 0 1 6 0v3'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8h12l-1 12H7L6 8Z'/%3E%3Cpath d='M9 9V6a3 3 0 0 1 6 0v3'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.catalog--streetwear .trust-strip article:nth-child(2) > span {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 7 8-4 8 4-8 4-8-4Z'/%3E%3Cpath d='M4 7v10l8 4 8-4V7M12 11v10'/%3E%3Cpath d='m15.5 14.5 1.5 1.5 3-3'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 7 8-4 8 4-8 4-8-4Z'/%3E%3Cpath d='M4 7v10l8 4 8-4V7M12 11v10'/%3E%3Cpath d='m15.5 14.5 1.5 1.5 3-3'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.catalog--streetwear .trust-strip article:nth-child(3) > span {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.catalog--streetwear .trust-strip article:nth-child(4) > span {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 13v-1a8 8 0 0 1 16 0v1'/%3E%3Cpath d='M4 13h3v6H5a1 1 0 0 1-1-1v-5ZM20 13h-3v6h2a1 1 0 0 0 1-1v-5Z'/%3E%3Cpath d='M17 19c0 1.1-1.8 2-4 2h-1'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 13v-1a8 8 0 0 1 16 0v1'/%3E%3Cpath d='M4 13h3v6H5a1 1 0 0 1-1-1v-5ZM20 13h-3v6h2a1 1 0 0 0 1-1v-5Z'/%3E%3Cpath d='M17 19c0 1.1-1.8 2-4 2h-1'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Never hide category cards as the viewport narrows. The previous fidelity
+   stylesheet deliberately removed the last cards at 72rem/56rem. These rules
+   override that behavior and let the grid wrap instead. */
+.catalog--streetwear .category-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.catalog--streetwear .category-card,
+.catalog--streetwear .category-card:last-child,
+.catalog--streetwear .category-card:nth-child(4),
+.catalog--streetwear .category-card:nth-child(n + 4) {
+  display: grid;
+}
+
 .catalog--streetwear .fashion-catalog-cta {
   display: flex;
   width: min(100% - 2rem, 88rem);
@@ -53,6 +106,26 @@
   text-transform: uppercase;
 }
 
+@media (max-width: 72rem) {
+  .catalog--streetwear .category-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .catalog--streetwear .category-card {
+    min-height: 17rem;
+  }
+}
+
+@media (max-width: 56rem) {
+  .catalog--streetwear .category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog--streetwear .category-card {
+    min-height: 15rem;
+  }
+}
+
 @media (max-width: 42rem) {
   .catalog--streetwear .fashion-catalog-cta {
     width: min(100% - 1.25rem, 88rem);
@@ -63,5 +136,17 @@
 
   .catalog--streetwear .fashion-catalog-cta a {
     width: 100%;
+  }
+
+  .catalog--streetwear .category-card {
+    min-height: 13rem;
+  }
+
+  .catalog--streetwear .category-copy {
+    padding: 0.9rem 0.5rem;
+  }
+
+  .catalog--streetwear .category-copy strong {
+    font-size: 1.15rem;
   }
 }
