@@ -14,6 +14,7 @@ describe('StorefrontLayout', () => {
 
   beforeEach(async () => {
     const routeParams = new BehaviorSubject(convertToParamMap({ storeSlug: 'tienda-a' }));
+    const queryParams = new BehaviorSubject(convertToParamMap({}));
 
     await TestBed.configureTestingModule({
       imports: [StorefrontLayout],
@@ -25,7 +26,11 @@ describe('StorefrontLayout', () => {
           provide: ActivatedRoute,
           useValue: {
             paramMap: routeParams.asObservable(),
-            snapshot: { paramMap: routeParams.value },
+            queryParamMap: queryParams.asObservable(),
+            snapshot: {
+              paramMap: routeParams.value,
+              queryParamMap: queryParams.value,
+            },
           },
         },
       ],
