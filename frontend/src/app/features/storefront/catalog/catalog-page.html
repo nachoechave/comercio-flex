@@ -157,23 +157,48 @@
   } @else {
     <div id="catalog-products" class="results-heading">
       <div>
-        <p class="eyebrow">{{ isModern() ? 'Nueva temporada' : isFresh() ? 'Lo más vendido' : 'La colección' }}</p>
-        @if (isModern()) { <h2>Nuevos ingresos</h2> }
+        <p class="eyebrow">{{ isModern() ? (isFashionLanding() ? 'Nueva temporada' : 'La colección') : isFresh() ? 'Lo más vendido' : 'La colección' }}</p>
+        @if (isModern()) {
+          <h2>{{ isFashionLanding() ? 'Nuevos ingresos' : 'Catálogo' }}</h2>
+          @if (!isFashionLanding()) { <small>{{ page().totalItems }} productos</small> }
+        }
         @else if (isFresh()) { <h2>Lo más vendido</h2> }
         @else { <h2>Catálogo</h2><small>{{ page().totalItems }} productos</small> }
       </div>
-      @if (isModern()) { <span class="result-count">{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span> }
+      @if (isModern()) {
+        @if (isFashionLanding() && hiddenProductCount() > 0) {
+          <a
+            class="result-count result-count--link"
+            [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
+            [queryParams]="{ catalogo: 'todos' }"
+            fragment="catalog-products"
+          >Ver todos →</a>
+        } @else {
+          <span class="result-count">{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span>
+        }
+      }
       @if (isMinimal()) { <div class="catalog-sort">Ordenar por: <span>Más populares⌄</span></div> }
       @if (query() || selectedCategory()) { <button class="text-button" type="button" (click)="clearFilters()">Limpiar filtros</button> }
     </div>
 
     <div class="product-grid">
-      @for (product of page().items; track product.id) {
+      @for (product of visibleProducts(); track product.id) {
         <app-public-product-card [product]="product" [storeSlug]="storeSlug() ?? ''" [currencyCode]="currencyCode()" [modern]="isModern()" [minimal]="isMinimal()" />
       }
     </div>
 
-    @if (page().totalPages > 1) {
+    @if (isFashionLanding() && hiddenProductCount() > 0) {
+      <div class="fashion-catalog-cta">
+        <p>Mostrando {{ visibleProducts().length }} de {{ page().totalItems }} productos</p>
+        <a
+          [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
+          [queryParams]="{ catalogo: 'todos' }"
+          fragment="catalog-products"
+        >Ver todo el catálogo</a>
+      </div>
+    }
+
+    @if (page().totalPages > 1 && !isFashionLanding()) {
       <nav class="pagination" aria-label="Paginación del catálogo"><button type="button" (click)="goToPage(page().page - 1)" [disabled]="page().page === 0">Anterior</button><span>Página {{ page().page + 1 }} de {{ page().totalPages }}</span><button type="button" (click)="goToPage(page().page + 1)" [disabled]="page().page + 1 >= page().totalPages">Siguiente</button></nav>
     }
 
