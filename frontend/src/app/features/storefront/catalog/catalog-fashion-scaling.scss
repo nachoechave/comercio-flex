@@ -17,7 +17,9 @@
   background: #0b0b0b;
 }
 
-.catalog--streetwear #catalog-products {
+.catalog--streetwear #catalog-products,
+.catalog--fresh #catalog-products,
+.catalog--minimal #catalog-products {
   scroll-margin-top: 6rem;
 }
 
@@ -110,6 +112,83 @@
   text-transform: uppercase;
 }
 
+/* FRESH keeps its own playful visual language while sharing the scalable
+   catalog behavior used by FASHION. */
+.catalog--fresh .fresh-category-list {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.catalog--fresh .fresh-category-list a:nth-child(3n + 1) {
+  background: linear-gradient(135deg, #def6e7, #f8fff9);
+}
+
+.catalog--fresh .fresh-category-list a:nth-child(3n + 2) {
+  background: linear-gradient(135deg, #fff1c9, #ffe3a7);
+}
+
+.catalog--fresh .fresh-category-list a:nth-child(3n) {
+  background: linear-gradient(135deg, #ffe0e9, #ffd2df);
+}
+
+.catalog--fresh .results-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.catalog--fresh .results-heading small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #64808a;
+}
+
+.catalog--fresh .fresh-catalog-link {
+  display: inline-flex;
+  min-height: 2.7rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  color: #07385a;
+  background: #ffdf45;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.catalog--fresh .fresh-catalog-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2rem 0 0;
+  padding: 1.2rem;
+  border-radius: 1.25rem;
+  background: #eef8fb;
+}
+
+.catalog--fresh .fresh-catalog-cta p {
+  margin: 0;
+  color: #476773;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.catalog--fresh .fresh-catalog-cta a {
+  display: inline-flex;
+  min-height: 2.8rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.2rem;
+  border-radius: 999px;
+  color: #fff;
+  background: #064d68;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
 @media (max-width: 72rem) {
   .catalog--streetwear .category-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -131,14 +210,19 @@
 }
 
 @media (max-width: 42rem) {
-  .catalog--streetwear .fashion-catalog-cta {
-    width: min(100% - 1.25rem, 88rem);
+  .catalog--streetwear .fashion-catalog-cta,
+  .catalog--fresh .fresh-catalog-cta {
     flex-direction: column;
     align-items: stretch;
     text-align: center;
   }
 
-  .catalog--streetwear .fashion-catalog-cta a {
+  .catalog--streetwear .fashion-catalog-cta {
+    width: min(100% - 1.25rem, 88rem);
+  }
+
+  .catalog--streetwear .fashion-catalog-cta a,
+  .catalog--fresh .fresh-catalog-cta a {
     width: 100%;
   }
 
@@ -152,5 +236,10 @@
 
   .catalog--streetwear .category-copy strong {
     font-size: 1.15rem;
+  }
+
+  .catalog--fresh .results-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
