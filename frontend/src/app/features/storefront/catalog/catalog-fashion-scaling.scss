@@ -17,6 +17,10 @@
   background: #0b0b0b;
 }
 
+.catalog--streetwear #catalog-products {
+  scroll-margin-top: 6rem;
+}
+
 /* Keep the FASHION benefit strip visual and consistent across browsers.
    The source markup still uses decorative spans, but these masks replace the
    old Unicode glyphs with one coherent line-icon set. */
