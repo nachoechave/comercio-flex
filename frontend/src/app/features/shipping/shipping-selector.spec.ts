@@ -36,6 +36,9 @@ describe('ShippingSelector', () => {
       pickupAvailable: true,
       shippingAvailable: true,
     });
+    const automaticPickup = http.expectOne('/api/v1/stores/tienda-a/shipping/quote');
+    expect(automaticPickup.request.body.paymentMethod).toBe('MERCADO_PAGO');
+    automaticPickup.flush([pickup]);
     fixture.detectChanges();
   });
 
@@ -48,9 +51,19 @@ describe('ShippingSelector', () => {
     expect(request.request.body.shippingAmount).toBeUndefined();
     request.flush([q]);
     fixture.detectChanges();
-    fixture.componentInstance.select(q);
-    fixture.detectChanges();
+    if (q.type !== 'PICKUP') {
+      fixture.componentInstance.select(q);
+      fixture.detectChanges();
+    }
   }
+
+  it('selects pickup by default without requiring a confirmation button', () => {
+    expect(fixture.componentInstance.mode()).toBe('PICKUP');
+    expect(fixture.componentInstance.selected()).toBe('pickup');
+    expect(fixture.componentInstance.current()?.methodId).toBe('pickup');
+    expect(fixture.nativeElement.textContent).toContain('Retiro en local');
+    expect(fixture.nativeElement.textContent).not.toContain('Confirmar retiro');
+  });
 
   it('hides delivery when the store only enables pickup', () => {
     fixture.componentInstance.availability.set({ pickupAvailable: true, shippingAvailable: false });
@@ -60,7 +73,7 @@ describe('ShippingSelector', () => {
     expect(fixture.nativeElement.textContent).toContain('Retiro en local');
     expect(fixture.nativeElement.textContent).not.toContain('Envío a domicilio');
     expect(fixture.nativeElement.textContent).not.toContain('Código postal');
-    expect(fixture.nativeElement.textContent).toContain('Confirmar retiro');
+    expect(fixture.nativeElement.textContent).not.toContain('Confirmar retiro');
   });
 
   it('allows pickup without an address and shows backend total', () => {
@@ -149,15 +162,20 @@ describe('ShippingSelector', () => {
       .flush({}, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Reintentá');
+    expect(fixture.nativeElement.textContent).toContain('Reintentar');
     respond();
     expect(fixture.componentInstance.error()).toBe('');
   });
 
-  it('invalidates a selection when the payment method changes', () => {
-    respond();
+  it('re-quotes pickup automatically when the payment method changes', () => {
     fixture.componentRef.setInput('paymentMethod', 'BANK_TRANSFER');
     fixture.detectChanges();
-    expect(fixture.componentInstance.current()).toBeNull();
+    const request = http.expectOne('/api/v1/stores/tienda-a/shipping/quote');
+    expect(request.request.body.paymentMethod).toBe('BANK_TRANSFER');
+    request.flush([pickup]);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selected()).toBe('pickup');
+    expect(fixture.componentInstance.current()?.methodId).toBe('pickup');
   });
 
   it.skipIf(navigator.userAgent.includes('jsdom'))(
