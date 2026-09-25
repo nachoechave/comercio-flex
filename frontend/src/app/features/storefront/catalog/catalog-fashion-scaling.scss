@@ -1,0 +1,245 @@
+.catalog--streetwear .result-count--link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid #0b0b0b;
+  color: #0b0b0b;
+  background: #fff;
+  text-decoration: none;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.catalog--streetwear .result-count--link:hover {
+  color: #fff;
+  background: #0b0b0b;
+}
+
+.catalog--streetwear #catalog-products,
+.catalog--fresh #catalog-products,
+.catalog--minimal #catalog-products {
+  scroll-margin-top: 6rem;
+}
+
+/* Keep the FASHION benefit strip visual and consistent across browsers.
+   The source markup still uses decorative spans, but these masks replace the
+   old Unicode glyphs with one coherent line-icon set. */
+.catalog--streetwear .trust-strip article > span {
+  display: block;
+  width: 1.8rem;
+  height: 1.8rem;
+  flex: 0 0 1.8rem;
+  color: #0b0b0b;
+  background-color: currentcolor;
+  font-size: 0;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.catalog--streetwear .trust-strip article:nth-child(1) > span {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8h12l-1 12H7L6 8Z'/%3E%3Cpath d='M9 9V6a3 3 0 0 1 6 0v3'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8h12l-1 12H7L6 8Z'/%3E%3Cpath d='M9 9V6a3 3 0 0 1 6 0v3'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.catalog--streetwear .trust-strip article:nth-child(2) > span {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 7 8-4 8 4-8 4-8-4Z'/%3E%3Cpath d='M4 7v10l8 4 8-4V7M12 11v10'/%3E%3Cpath d='m15.5 14.5 1.5 1.5 3-3'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 7 8-4 8 4-8 4-8-4Z'/%3E%3Cpath d='M4 7v10l8 4 8-4V7M12 11v10'/%3E%3Cpath d='m15.5 14.5 1.5 1.5 3-3'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.catalog--streetwear .trust-strip article:nth-child(3) > span {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.catalog--streetwear .trust-strip article:nth-child(4) > span {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 13v-1a8 8 0 0 1 16 0v1'/%3E%3Cpath d='M4 13h3v6H5a1 1 0 0 1-1-1v-5ZM20 13h-3v6h2a1 1 0 0 0 1-1v-5Z'/%3E%3Cpath d='M17 19c0 1.1-1.8 2-4 2h-1'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 13v-1a8 8 0 0 1 16 0v1'/%3E%3Cpath d='M4 13h3v6H5a1 1 0 0 1-1-1v-5ZM20 13h-3v6h2a1 1 0 0 0 1-1v-5Z'/%3E%3Cpath d='M17 19c0 1.1-1.8 2-4 2h-1'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Never hide category cards as the viewport narrows. The previous fidelity
+   stylesheet deliberately removed the last cards at 72rem/56rem. These rules
+   override that behavior and let the grid wrap instead. */
+.catalog--streetwear .category-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.catalog--streetwear .category-card,
+.catalog--streetwear .category-card:last-child,
+.catalog--streetwear .category-card:nth-child(4),
+.catalog--streetwear .category-card:nth-child(n + 4) {
+  display: grid;
+}
+
+.catalog--streetwear .fashion-catalog-cta {
+  display: flex;
+  width: min(100% - 2rem, 88rem);
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2.4rem auto 0;
+  padding: 1.25rem 0;
+  border-top: 1px solid #e7e7e7;
+  border-bottom: 1px solid #e7e7e7;
+}
+
+.catalog--streetwear .fashion-catalog-cta p {
+  margin: 0;
+  color: #666;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.catalog--streetwear .fashion-catalog-cta a {
+  display: inline-flex;
+  min-height: 2.8rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1.1rem;
+  color: #fff;
+  background: #0b0b0b;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+/* FRESH keeps its own playful visual language while sharing the scalable
+   catalog behavior used by FASHION. */
+.catalog--fresh .fresh-category-list {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.catalog--fresh .fresh-category-list a:nth-child(3n + 1) {
+  background: linear-gradient(135deg, #def6e7, #f8fff9);
+}
+
+.catalog--fresh .fresh-category-list a:nth-child(3n + 2) {
+  background: linear-gradient(135deg, #fff1c9, #ffe3a7);
+}
+
+.catalog--fresh .fresh-category-list a:nth-child(3n) {
+  background: linear-gradient(135deg, #ffe0e9, #ffd2df);
+}
+
+.catalog--fresh .results-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.catalog--fresh .results-heading small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #64808a;
+}
+
+.catalog--fresh .fresh-catalog-link {
+  display: inline-flex;
+  min-height: 2.7rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  color: #07385a;
+  background: #ffdf45;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.catalog--fresh .fresh-catalog-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2rem 0 0;
+  padding: 1.2rem;
+  border-radius: 1.25rem;
+  background: #eef8fb;
+}
+
+.catalog--fresh .fresh-catalog-cta p {
+  margin: 0;
+  color: #476773;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.catalog--fresh .fresh-catalog-cta a {
+  display: inline-flex;
+  min-height: 2.8rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.2rem;
+  border-radius: 999px;
+  color: #fff;
+  background: #064d68;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+@media (max-width: 72rem) {
+  .catalog--streetwear .category-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .catalog--streetwear .category-card {
+    min-height: 17rem;
+  }
+}
+
+@media (max-width: 56rem) {
+  .catalog--streetwear .category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog--streetwear .category-card {
+    min-height: 15rem;
+  }
+}
+
+@media (max-width: 42rem) {
+  .catalog--streetwear .fashion-catalog-cta,
+  .catalog--fresh .fresh-catalog-cta {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .catalog--streetwear .fashion-catalog-cta {
+    width: min(100% - 1.25rem, 88rem);
+  }
+
+  .catalog--streetwear .fashion-catalog-cta a,
+  .catalog--fresh .fresh-catalog-cta a {
+    width: 100%;
+  }
+
+  .catalog--streetwear .category-card {
+    min-height: 13rem;
+  }
+
+  .catalog--streetwear .category-copy {
+    padding: 0.9rem 0.5rem;
+  }
+
+  .catalog--streetwear .category-copy strong {
+    font-size: 1.15rem;
+  }
+
+  .catalog--fresh .results-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

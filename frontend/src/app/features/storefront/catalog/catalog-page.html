@@ -54,11 +54,12 @@
         <p class="section-kicker">Elegí tu estilo</p>
         <h2 id="category-title">Comprá por categoría</h2>
         <div class="category-grid">
-          @for (category of categories().slice(0, 5); track category.id) {
+          @for (category of categories(); track category.id) {
             <a
               class="category-card"
               [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
-              [queryParams]="{ categoria: category.slug }"
+              [queryParams]="{ categoria: category.slug, catalogo: 'todos' }"
+              fragment="catalog-products"
             >
               @if (category.image; as image) {
                 <img [src]="image.thumbnailUrl" [alt]="image.altText" loading="lazy" />
@@ -94,10 +95,14 @@
     </div>
 
     @if (categories().length > 0) {
-      <section id="category-section" class="fresh-categories" aria-labelledby="fresh-categories-title">
+      <section id="category-section" class="fresh-categories" aria-label="Comprá por categoría">
         <div class="fresh-category-list">
-          @for (category of categories().slice(0, 3); track category.id) {
-            <a [routerLink]="storefrontRouting.route(storeSlug() ?? '')" [queryParams]="{ categoria: category.slug }">
+          @for (category of categories(); track category.id) {
+            <a
+              [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
+              [queryParams]="{ categoria: category.slug, catalogo: 'todos' }"
+              fragment="catalog-products"
+            >
               <span aria-hidden="true">{{ category.name.slice(0, 1) }}</span>
               <div><strong>{{ category.name }}</strong><small>Descubrí más</small></div>
               <b aria-hidden="true">›</b>
@@ -135,7 +140,7 @@
     </div>
     <div>
       <label for="catalog-category">Categoría</label>
-      <select id="catalog-category" formControlName="category">
+      <select id="catalog-category" formControlName="category" (change)="search()">
         <option value="">Todas las categorías</option>
         @for (category of categories(); track category.id) { <option [value]="category.slug">{{ category.name }}</option> }
       </select>
@@ -157,23 +162,68 @@
   } @else {
     <div id="catalog-products" class="results-heading">
       <div>
-        <p class="eyebrow">{{ isModern() ? 'Nueva temporada' : isFresh() ? 'Lo más vendido' : 'La colección' }}</p>
-        @if (isModern()) { <h2>Nuevos ingresos</h2> }
-        @else if (isFresh()) { <h2>Lo más vendido</h2> }
+        <p class="eyebrow">{{ isModern() ? (isFashionLanding() ? 'Nueva temporada' : 'La colección') : isFresh() ? (isFreshLanding() ? 'Lo más vendido' : 'La colección') : 'La colección' }}</p>
+        @if (isModern()) {
+          <h2>{{ isFashionLanding() ? 'Nuevos ingresos' : 'Catálogo' }}</h2>
+          @if (!isFashionLanding()) { <small>{{ page().totalItems }} productos</small> }
+        }
+        @else if (isFresh()) {
+          <h2>{{ isFreshLanding() ? 'Lo más vendido' : 'Catálogo' }}</h2>
+          @if (!isFreshLanding()) { <small>{{ page().totalItems }} productos</small> }
+        }
         @else { <h2>Catálogo</h2><small>{{ page().totalItems }} productos</small> }
       </div>
-      @if (isModern()) { <span class="result-count">{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span> }
+      @if (isModern()) {
+        @if (isFashionLanding() && hiddenProductCount() > 0) {
+          <a
+            class="result-count result-count--link"
+            [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
+            [queryParams]="{ catalogo: 'todos' }"
+            fragment="catalog-products"
+          >Ver todos →</a>
+        } @else {
+          <span class="result-count">{{ page().totalItems }} {{ page().totalItems === 1 ? 'pieza' : 'piezas' }}</span>
+        }
+      }
+      @if (isFresh() && isFreshLanding() && hiddenProductCount() > 0) {
+        <a
+          class="fresh-catalog-link"
+          [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
+          [queryParams]="{ catalogo: 'todos' }"
+          fragment="catalog-products"
+        >Ver todos →</a>
+      }
       @if (isMinimal()) { <div class="catalog-sort">Ordenar por: <span>Más populares⌄</span></div> }
       @if (query() || selectedCategory()) { <button class="text-button" type="button" (click)="clearFilters()">Limpiar filtros</button> }
     </div>
 
     <div class="product-grid">
-      @for (product of page().items; track product.id) {
+      @for (product of visibleProducts(); track product.id) {
         <app-public-product-card [product]="product" [storeSlug]="storeSlug() ?? ''" [currencyCode]="currencyCode()" [modern]="isModern()" [minimal]="isMinimal()" />
       }
     </div>
 
-    @if (page().totalPages > 1) {
+    @if (isFashionLanding() && hiddenProductCount() > 0) {
+      <div class="fashion-catalog-cta">
+        <p>Mostrando {{ visibleProducts().length }} de {{ page().totalItems }} productos</p>
+        <a
+          [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
+          [queryParams]="{ catalogo: 'todos' }"
+          fragment="catalog-products"
+        >Ver todo el catálogo</a>
+      </div>
+    } @else if (isFreshLanding() && hiddenProductCount() > 0) {
+      <div class="fresh-catalog-cta">
+        <p>Mostrando {{ visibleProducts().length }} de {{ page().totalItems }} productos</p>
+        <a
+          [routerLink]="storefrontRouting.route(storeSlug() ?? '')"
+          [queryParams]="{ catalogo: 'todos' }"
+          fragment="catalog-products"
+        >Ver todo el catálogo</a>
+      </div>
+    }
+
+    @if (page().totalPages > 1 && !isFashionLanding() && !isFreshLanding()) {
       <nav class="pagination" aria-label="Paginación del catálogo"><button type="button" (click)="goToPage(page().page - 1)" [disabled]="page().page === 0">Anterior</button><span>Página {{ page().page + 1 }} de {{ page().totalPages }}</span><button type="button" (click)="goToPage(page().page + 1)" [disabled]="page().page + 1 >= page().totalPages">Siguiente</button></nav>
     }
 
