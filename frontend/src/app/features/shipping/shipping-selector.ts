@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   CarrierDocumentType,
@@ -76,23 +76,17 @@ interface ShippingAvailability {
               </label>
             }
           </div>
-        }
 
-        @if (modes.pickupAvailable || modes.shippingAvailable) {
           <button
             class="quote-button"
             type="button"
             (click)="quote()"
             [disabled]="loading() || disabled() || !paymentMethod()"
           >
-            {{
-              loading()
-                ? 'Calculando…'
-                : modes.shippingAvailable
-                  ? 'Consultar opciones de entrega'
-                  : 'Confirmar retiro'
-            }}
+            {{ loading() ? 'Calculando…' : 'Consultar opciones de entrega' }}
           </button>
+        } @else if (mode() === 'PICKUP' && loading()) {
+          <p class="availability-loading">Calculando retiro…</p>
         }
       } @else if (availabilityLoading()) {
         <p class="availability-loading">Cargando métodos de entrega…</p>
@@ -100,6 +94,16 @@ interface ShippingAvailability {
 
       @if (error()) {
         <p class="message error" role="alert">{{ error() }}</p>
+        @if (mode() === 'PICKUP' && availability()?.pickupAvailable) {
+          <button
+            class="quote-button"
+            type="button"
+            (click)="quote()"
+            [disabled]="loading() || disabled() || !paymentMethod()"
+          >
+            Reintentar
+          </button>
+        }
       }
 
       @if (visibleOptions().length) {
@@ -433,11 +437,12 @@ export class ShippingSelector {
           next: (modes) => {
             this.availability.set(modes);
             this.availabilityLoading.set(false);
-            if (modes.pickupAvailable && !modes.shippingAvailable) {
+            if (modes.pickupAvailable) {
               this.mode.set('PICKUP');
-            } else if (!modes.pickupAvailable && modes.shippingAvailable) {
+              this.autoSelectPickup();
+            } else if (modes.shippingAvailable) {
               this.mode.set('SHIPPING');
-            } else if (!modes.pickupAvailable && !modes.shippingAvailable) {
+            } else {
               this.error.set('Este comercio no tiene métodos de entrega habilitados.');
             }
           },
@@ -455,6 +460,7 @@ export class ShippingSelector {
       this.paymentMethod();
       this.refreshVersion();
       this.invalidate();
+      untracked(() => this.autoSelectPickup());
     });
   }
 
@@ -474,6 +480,9 @@ export class ShippingSelector {
     if (mode === 'SHIPPING' && modes && !modes.shippingAvailable) return;
     this.mode.set(mode);
     this.invalidate();
+    if (mode === 'PICKUP') {
+      this.autoSelectPickup();
+    }
   }
 
   invalidateSelection() {
@@ -534,8 +543,11 @@ export class ShippingSelector {
             this.mode.set('PICKUP');
           }
 
-          if (!this.visibleOptions().length) {
+          const visible = this.visibleOptions();
+          if (!visible.length) {
             this.error.set('No hay métodos disponibles para este destino.');
+          } else if (this.mode() === 'PICKUP') {
+            this.select(visible[0]);
           }
         },
         error: (response) => {
@@ -576,5 +588,19 @@ export class ShippingSelector {
           }
         : {}),
     });
+  }
+
+  private autoSelectPickup() {
+    const modes = this.availability();
+    if (
+      !modes?.pickupAvailable ||
+      this.mode() !== 'PICKUP' ||
+      !this.paymentMethod() ||
+      this.disabled() ||
+      this.loading()
+    ) {
+      return;
+    }
+    this.quote();
   }
 }
