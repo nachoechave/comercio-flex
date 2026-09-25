@@ -145,6 +145,9 @@ export class CatalogPage {
           this.categories.set(categories);
           this.page.set(page);
           this.loading.set(false);
+          if (category) {
+            this.scrollToProducts();
+          }
         },
         error: (error: unknown) => {
           this.loading.set(false);
@@ -192,6 +195,16 @@ export class CatalogPage {
 
   protected retry(): void {
     this.retryVersion.update((value) => value + 1);
+  }
+
+  private scrollToProducts(): void {
+    setTimeout(() => {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return;
+      const products = document.getElementById('catalog-products');
+      if (!products) return;
+      const top = products.getBoundingClientRect().top + window.scrollY - 96;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    });
   }
 
   private readPage(params: ParamMap): number {
