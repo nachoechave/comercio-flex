@@ -148,7 +148,7 @@ describe('CheckoutPage', () => {
     expect(radios[0].checked).toBe(true);
     expect(fixture.nativeElement.textContent).not.toContain('Transferencia bancaria');
     expect(submitButton().textContent).toContain('Continuar a Mercado Pago');
-    expect(submitButton().disabled).toBe(true);
+    expect(submitButton().disabled).toBe(false);
   });
 
   it('shows and selects only bank transfer when it is the sole enabled method', () => {
@@ -160,7 +160,7 @@ describe('CheckoutPage', () => {
     expect(radios[0].checked).toBe(true);
     expect(fixture.nativeElement.textContent).not.toContain('Mercado Pago');
     expect(submitButton().textContent).toContain('Confirmar pedido y pagar por transferencia');
-    expect(submitButton().disabled).toBe(true);
+    expect(submitButton().disabled).toBe(false);
   });
 
   it('fails closed when no payment method is enabled', () => {
@@ -195,7 +195,7 @@ describe('CheckoutPage', () => {
     respondMethods({ mercadoPago: false, bankTransfer: true });
 
     expect(component().selectedPaymentMethod()).toBe('BANK_TRANSFER');
-    expect(submitButton().disabled).toBe(true);
+    expect(submitButton().disabled).toBe(false);
   });
 
   it('creates the order and starts Checkout Pro when Mercado Pago is selected', async () => {
@@ -350,10 +350,12 @@ describe('CheckoutPage', () => {
     );
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('El importe cambió');
-    expect(submitButton().disabled).toBe(true);
     const selector = fixture.debugElement.query(By.directive(ShippingSelector))
       .componentInstance as ShippingSelector;
     expect(selector.current()).toBeNull();
+
+    flushAutomaticPickupQuoteIfPresent();
+    expect(selector.current()?.methodId).toBe('pickup');
   });
 
   function component(): CheckoutComponentAccess {
@@ -372,6 +374,16 @@ describe('CheckoutPage', () => {
     const requests = http.match('/api/v1/stores/tienda-a/shipping/availability');
     for (const request of requests) {
       request.flush({ pickupAvailable: true, shippingAvailable: false });
+    }
+    fixture.detectChanges();
+    flushAutomaticPickupQuoteIfPresent();
+  }
+
+  function flushAutomaticPickupQuoteIfPresent(): void {
+    const requests = http.match('/api/v1/stores/tienda-a/shipping/quote');
+    for (const request of requests) {
+      expect(request.request.method).toBe('POST');
+      request.flush([pickupQuote()]);
     }
     fixture.detectChanges();
   }
@@ -399,10 +411,14 @@ describe('CheckoutPage', () => {
   function selectPickup(): void {
     fixture.detectChanges();
     flushAvailabilityIfPresent();
+    flushAutomaticPickupQuoteIfPresent();
     const selector = fixture.debugElement.query(By.directive(ShippingSelector))
       .componentInstance as ShippingSelector;
-    selector.quote();
-    const q = {
+    expect(selector.current()?.methodId).toBe('pickup');
+  }
+
+  function pickupQuote() {
+    return {
       methodId: 'pickup',
       name: 'Retiro',
       description: null,
@@ -416,9 +432,6 @@ describe('CheckoutPage', () => {
       pickupAddress: 'Calle 123',
       instructions: null,
     };
-    http.expectOne('/api/v1/stores/tienda-a/shipping/quote').flush([q]);
-    selector.select(q);
-    fixture.detectChanges();
   }
 
   function expectOrderRequest() {
