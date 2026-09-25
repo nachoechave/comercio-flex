@@ -15,7 +15,7 @@ public record CreateProductRequest(
 	@Size(max = 160)
 	String name,
 
-	@Size(max = 2000)
+	@Size(max = 4000)
 	String description,
 
 	@NotNull

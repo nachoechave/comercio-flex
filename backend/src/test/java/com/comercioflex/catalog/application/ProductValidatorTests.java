@@ -107,7 +107,8 @@ class ProductValidatorTests {
 			.isInstanceOf(InvalidProductException.class);
 		assertThatThrownBy(() -> validator.name("A"))
 			.isInstanceOf(InvalidProductException.class);
-		assertThatThrownBy(() -> validator.description("x".repeat(2001)))
+		assertThat(validator.description("x".repeat(4000))).hasSize(4000);
+		assertThatThrownBy(() -> validator.description("x".repeat(4001)))
 			.isInstanceOf(InvalidProductException.class);
 	}
 

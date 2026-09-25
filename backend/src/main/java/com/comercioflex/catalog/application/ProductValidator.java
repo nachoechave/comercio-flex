@@ -35,9 +35,9 @@ public class ProductValidator {
 			return null;
 		}
 		String value = raw.strip();
-		if (value.length() > 2000 || containsControl(value)) {
+		if (value.length() > 4000 || containsControl(value)) {
 			throw new InvalidProductException(
-				"La descripción admite hasta 2000 caracteres válidos.");
+				"La descripción admite hasta 4000 caracteres válidos.");
 		}
 		return value;
 	}
