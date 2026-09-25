@@ -350,10 +350,12 @@ describe('CheckoutPage', () => {
     );
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('El importe cambió');
-    expect(submitButton().disabled).toBe(true);
     const selector = fixture.debugElement.query(By.directive(ShippingSelector))
       .componentInstance as ShippingSelector;
     expect(selector.current()).toBeNull();
+
+    flushAutomaticPickupQuoteIfPresent();
+    expect(selector.current()?.methodId).toBe('pickup');
   });
 
   function component(): CheckoutComponentAccess {
@@ -372,6 +374,16 @@ describe('CheckoutPage', () => {
     const requests = http.match('/api/v1/stores/tienda-a/shipping/availability');
     for (const request of requests) {
       request.flush({ pickupAvailable: true, shippingAvailable: false });
+    }
+    fixture.detectChanges();
+    flushAutomaticPickupQuoteIfPresent();
+  }
+
+  function flushAutomaticPickupQuoteIfPresent(): void {
+    const requests = http.match('/api/v1/stores/tienda-a/shipping/quote');
+    for (const request of requests) {
+      expect(request.request.method).toBe('POST');
+      request.flush([pickupQuote()]);
     }
     fixture.detectChanges();
   }
@@ -399,10 +411,14 @@ describe('CheckoutPage', () => {
   function selectPickup(): void {
     fixture.detectChanges();
     flushAvailabilityIfPresent();
+    flushAutomaticPickupQuoteIfPresent();
     const selector = fixture.debugElement.query(By.directive(ShippingSelector))
       .componentInstance as ShippingSelector;
-    selector.quote();
-    const q = {
+    expect(selector.current()?.methodId).toBe('pickup');
+  }
+
+  function pickupQuote() {
+    return {
       methodId: 'pickup',
       name: 'Retiro',
       description: null,
@@ -416,9 +432,6 @@ describe('CheckoutPage', () => {
       pickupAddress: 'Calle 123',
       instructions: null,
     };
-    http.expectOne('/api/v1/stores/tienda-a/shipping/quote').flush([q]);
-    selector.select(q);
-    fixture.detectChanges();
   }
 
   function expectOrderRequest() {
