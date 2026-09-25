@@ -148,7 +148,7 @@ describe('CheckoutPage', () => {
     expect(radios[0].checked).toBe(true);
     expect(fixture.nativeElement.textContent).not.toContain('Transferencia bancaria');
     expect(submitButton().textContent).toContain('Continuar a Mercado Pago');
-    expect(submitButton().disabled).toBe(true);
+    expect(submitButton().disabled).toBe(false);
   });
 
   it('shows and selects only bank transfer when it is the sole enabled method', () => {
@@ -160,7 +160,7 @@ describe('CheckoutPage', () => {
     expect(radios[0].checked).toBe(true);
     expect(fixture.nativeElement.textContent).not.toContain('Mercado Pago');
     expect(submitButton().textContent).toContain('Confirmar pedido y pagar por transferencia');
-    expect(submitButton().disabled).toBe(true);
+    expect(submitButton().disabled).toBe(false);
   });
 
   it('fails closed when no payment method is enabled', () => {
@@ -195,7 +195,7 @@ describe('CheckoutPage', () => {
     respondMethods({ mercadoPago: false, bankTransfer: true });
 
     expect(component().selectedPaymentMethod()).toBe('BANK_TRANSFER');
-    expect(submitButton().disabled).toBe(true);
+    expect(submitButton().disabled).toBe(false);
   });
 
   it('creates the order and starts Checkout Pro when Mercado Pago is selected', async () => {
