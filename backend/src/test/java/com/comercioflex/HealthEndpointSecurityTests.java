@@ -2,6 +2,7 @@ package com.comercioflex;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -87,6 +88,19 @@ class HealthEndpointSecurityTests {
 			mockMvc.perform(get("/tiendas/la-ola-madre/admin/pedidos"))
 					.andExpect(status().isOk())
 					.andExpect(forwardedUrl("/admin-index.html"));
+	}
+
+	@Test
+	void storefrontPreviewCanBeFramedOnlyByTheSameOrigin() throws Exception {
+		mockMvc.perform(get("/tiendas/tienda-a")
+				.queryParam("preview", "1")
+				.queryParam("previewTemplate", "FRESH"))
+			.andExpect(status().isOk())
+			.andExpect(header().string("X-Frame-Options", "SAMEORIGIN"));
+
+		mockMvc.perform(get("/tiendas/tienda-a"))
+			.andExpect(status().isOk())
+			.andExpect(header().string("X-Frame-Options", "DENY"));
 	}
 
 	@Test
