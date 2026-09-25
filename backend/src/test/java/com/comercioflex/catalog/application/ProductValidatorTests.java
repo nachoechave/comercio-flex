@@ -113,6 +113,15 @@ class ProductValidatorTests {
 	}
 
 	@Test
+	void allowsLineBreaksAndTabsInProductDescriptions() {
+		String description = "Primera línea\nSegunda línea\r\n\tDetalle del producto";
+
+		assertThat(validator.description(description)).isEqualTo(description);
+		assertThatThrownBy(() -> validator.description("Texto\u0000oculto"))
+			.isInstanceOf(InvalidProductException.class);
+	}
+
+	@Test
 	void enforcesTheApprovedPublicationStateMachine() {
 		assertThat(ProductStatus.DRAFT.canTransitionTo(ProductStatus.PUBLISHED)).isTrue();
 		assertThat(ProductStatus.PUBLISHED.canTransitionTo(ProductStatus.ARCHIVED)).isTrue();
