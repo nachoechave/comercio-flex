@@ -11,11 +11,18 @@
     <a routerLink="/">Volver a Comercio Flex</a>
   </main>
 } @else if (context.settings(); as settings) {
-  <div class="store-theme" [attr.data-template]="branding().template.toLowerCase()" [style.--store-primary-color]="branding().primaryColor" [style.--store-secondary-color]="branding().secondaryColor" [style.--store-background-color]="branding().backgroundColor" [style.--store-text-color]="branding().textColor" [style.--store-font-family]="fontFamily()" [style.--store-hero-image]="branding().heroImageUrl ? 'url(' + branding().heroImageUrl + ')' : 'none'">
-    @switch (branding().template) {
-      @case ('FASHION') { <app-fashion-storefront-shell [settings]="settings" [branding]="branding()" [cartUnits]="cartUnits()" /> }
-      @case ('FRESH') { <app-fresh-storefront-shell [settings]="settings" [branding]="branding()" [cartUnits]="cartUnits()" /> }
-      @default { <app-catalog-storefront-shell [settings]="settings" [branding]="branding()" [cartUnits]="cartUnits()" /> }
+  <div class="store-theme" [attr.data-template]="activeTemplate().toLowerCase()" [style.--store-primary-color]="branding().primaryColor" [style.--store-secondary-color]="branding().secondaryColor" [style.--store-background-color]="branding().backgroundColor" [style.--store-text-color]="branding().textColor" [style.--store-font-family]="fontFamily()" [style.--store-hero-image]="branding().heroImageUrl ? 'url(' + branding().heroImageUrl + ')' : 'none'">
+    @switch (activeTemplate()) {
+      @case ('FASHION') { <app-fashion-storefront-shell [settings]="settings" [branding]="effectiveBranding()" [cartUnits]="cartUnits()" /> }
+      @case ('FRESH') { <app-fresh-storefront-shell [settings]="settings" [branding]="effectiveBranding()" [cartUnits]="cartUnits()" /> }
+      @case ('CATALOG') { <app-catalog-storefront-shell [settings]="settings" [branding]="effectiveBranding()" [cartUnits]="cartUnits()" /> }
+      @default {
+        @if (designerTemplate(); as template) {
+          <app-designer-storefront-shell [settings]="settings" [branding]="effectiveBranding()" [cartUnits]="cartUnits()" [template]="template" />
+        } @else {
+          <app-catalog-storefront-shell [settings]="settings" [branding]="effectiveBranding()" [cartUnits]="cartUnits()" />
+        }
+      }
     }
   </div>
 }
