@@ -13,6 +13,7 @@ import { storefrontErrorMessage } from '../storefront-errors';
 import { PublicCategory, PublicProductPage } from '../storefront.models';
 
 const PAGE_SIZE = 24;
+const FASHION_LANDING_LIMIT = 10;
 const EMPTY_PAGE: PublicProductPage = {
   items: [],
   page: 0,
@@ -29,6 +30,7 @@ const EMPTY_PAGE: PublicProductPage = {
     './catalog-page.scss',
     './catalog-page-v2.scss',
     './catalog-fashion-fidelity.scss',
+    './catalog-fashion-scaling.scss',
   ],
 })
 export class CatalogPage {
@@ -57,6 +59,23 @@ export class CatalogPage {
   protected readonly isModern = computed(() => this.context.settings()?.branding?.template === 'FASHION');
   protected readonly isFresh = computed(() => this.context.settings()?.branding?.template === 'FRESH');
   protected readonly isMinimal = computed(() => this.context.settings()?.branding?.template === 'CATALOG');
+  protected readonly fullCatalog = computed(() => this.queryParams().get('catalogo') === 'todos');
+  protected readonly isFashionLanding = computed(
+    () =>
+      this.isModern() &&
+      !this.query() &&
+      !this.selectedCategory() &&
+      !this.fullCatalog() &&
+      !this.queryParams().has('page'),
+  );
+  protected readonly visibleProducts = computed(() =>
+    this.isFashionLanding()
+      ? this.page().items.slice(0, FASHION_LANDING_LIMIT)
+      : this.page().items,
+  );
+  protected readonly hiddenProductCount = computed(() =>
+    Math.max(0, this.page().totalItems - this.visibleProducts().length),
+  );
   protected readonly heroEyebrow = computed(() => {
     const configured = this.context.settings()?.branding?.heroEyebrow;
     if (configured) return configured;
