@@ -54,6 +54,11 @@ public class SecurityConfig {
 			org.springframework.jdbc.core.JdbcTemplate controlJdbcTemplate) throws Exception {
 		return http
 			.cors(Customizer.withDefaults())
+			.headers(headers -> headers
+				.frameOptions(frameOptions -> frameOptions.disable())
+				.addHeaderWriter((request, response) -> response.setHeader(
+					"X-Frame-Options",
+					isStorefrontPreviewRequest(request) ? "SAMEORIGIN" : "DENY")))
 			.csrf(csrf -> csrf
 				.csrfTokenRepository(csrfTokenRepository)
 				.ignoringRequestMatchers(
@@ -219,6 +224,18 @@ public class SecurityConfig {
 			.addFilterBefore(new com.comercioflex.identity.api.CredentialSessionFilter(controlJdbcTemplate), AnonymousAuthenticationFilter.class)
 			.addFilterAfter(tenantResolutionFilter, AnonymousAuthenticationFilter.class)
 			.build();
+	}
+
+	private static boolean isStorefrontPreviewRequest(jakarta.servlet.http.HttpServletRequest request) {
+		String path = request.getRequestURI();
+		String contextPath = request.getContextPath();
+		if (contextPath != null && !contextPath.isBlank() && path.startsWith(contextPath)) {
+			path = path.substring(contextPath.length());
+		}
+		return ("GET".equals(request.getMethod()) || "HEAD".equals(request.getMethod()))
+			&& path.startsWith("/tiendas/")
+			&& "1".equals(request.getParameter("preview"))
+			&& request.getParameter("previewTemplate") != null;
 	}
 
 	private static PathPatternRequestMatcher postMatcher(String pattern) {
