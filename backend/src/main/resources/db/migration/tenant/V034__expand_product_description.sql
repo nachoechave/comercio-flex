@@ -1,0 +1,2 @@
+ALTER TABLE products
+    MODIFY COLUMN description VARCHAR(4000) NULL;

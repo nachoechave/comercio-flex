@@ -221,7 +221,7 @@ export class ProductForm implements OnDestroy {
 
   readonly form = this.formBuilder.nonNullable.group({
     name: ['', [normalizedProductNameLength]],
-    description: ['', [Validators.maxLength(2000)]],
+    description: ['', [Validators.maxLength(4000)]],
     categoryId: ['', [Validators.required]],
   });
   readonly imageAltText = this.formBuilder.nonNullable.control('', [
