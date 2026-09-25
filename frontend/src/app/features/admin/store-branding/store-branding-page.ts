@@ -1,5 +1,6 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -10,6 +11,7 @@ import { STOREFRONT_TEMPLATES } from '../../storefront/storefront-template';
 import { StoreSettingsApiService } from '../store-settings/store-settings-api.service';
 
 type BrandAssetType = 'logo' | 'favicon' | 'hero';
+type PreviewViewport = 'desktop' | 'mobile';
 
 @Component({
   selector: 'app-store-branding-page',
@@ -21,6 +23,7 @@ export class StoreBrandingPage {
   private readonly api = inject(StoreSettingsApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), { initialValue: '' });
   readonly loading = signal(true);
@@ -30,6 +33,16 @@ export class StoreBrandingPage {
   readonly errorMessage = signal<string | null>(null);
   readonly noticeMessage = signal<string | null>(null);
   readonly templates = STOREFRONT_TEMPLATES;
+  readonly previewTemplate = signal<StorefrontTemplate | null>(null);
+  readonly previewViewport = signal<PreviewViewport>('desktop');
+  readonly previewOption = computed(() => this.templates.find((template) => template.value === this.previewTemplate()) ?? null);
+  readonly previewUrl = computed<SafeResourceUrl | null>(() => {
+    const slug = this.storeSlug();
+    const template = this.previewTemplate();
+    if (!slug || !template) return null;
+    const url = `/tiendas/${encodeURIComponent(slug)}?previewTemplate=${encodeURIComponent(template)}&preview=1`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  });
   readonly fonts: { value: BrandFont; label: string }[] = [
     { value: 'SYSTEM', label: 'Sistema' },
     { value: 'SANS', label: 'Sans moderna' },
@@ -72,6 +85,27 @@ export class StoreBrandingPage {
   selectTemplate(template: StorefrontTemplate): void {
     this.form.controls.template.setValue(template);
     this.form.controls.template.markAsDirty();
+  }
+
+  openPreview(template: StorefrontTemplate): void {
+    this.previewTemplate.set(template);
+    this.previewViewport.set('desktop');
+  }
+
+  closePreview(): void {
+    this.previewTemplate.set(null);
+  }
+
+  setPreviewViewport(viewport: PreviewViewport): void {
+    this.previewViewport.set(viewport);
+  }
+
+  usePreviewTemplate(): void {
+    const template = this.previewTemplate();
+    if (!template) return;
+    this.selectTemplate(template);
+    this.closePreview();
+    this.noticeMessage.set('Diseño seleccionado. Guardá la apariencia para publicarlo.');
   }
 
   save(): void {
