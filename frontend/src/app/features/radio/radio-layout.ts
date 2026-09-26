@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -41,6 +41,7 @@ import { RadioContext } from './radio-context';
 export class RadioLayout {
   private readonly favicons = inject(FaviconService);
   private readonly analytics = inject(StoreAnalyticsService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly brandingEffect = effect((onCleanup) => {
     const branding = this.settings()?.branding;
     this.favicons.useTenant(branding?.faviconUrl, branding?.logoUrl);
@@ -70,6 +71,7 @@ export class RadioLayout {
     if (slug) {
       this.storeContext?.load(slug);
       this.analytics.activate(slug);
+      this.destroyRef.onDestroy(() => this.analytics.deactivate(slug));
       this.siteApi.get(slug).subscribe({
         next: value => this.site.set(value),
         error: () => this.error.set('No pudimos cargar la configuración de la radio.'),
