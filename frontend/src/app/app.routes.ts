@@ -148,6 +148,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'estadisticas',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/analytics/analytics-dashboard-page').then(
+            (module) => module.AnalyticsDashboardPage,
+          ),
+      },
+      {
         path: 'configuracion/envios',
         canActivate: [allowedRolesGuard(['OWNER', 'ADMIN'])],
         loadComponent: () =>
