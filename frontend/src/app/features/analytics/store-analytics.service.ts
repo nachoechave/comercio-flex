@@ -46,9 +46,11 @@ interface SessionState {
   medium: string | null;
 }
 
-const VISITOR_KEY = 'comercio-flex:analytics:visitor:v1';
+const VISITOR_PREFIX = 'comercio-flex:analytics:visitor:v1:';
 const SESSION_PREFIX = 'comercio-flex:analytics:session:v1:';
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+const memoryVisitors = new Map<string, string>();
+const memorySessions = new Map<string, SessionState>();
 
 @Injectable({ providedIn: 'root' })
 export class StoreAnalyticsService {
@@ -115,14 +117,14 @@ export class StoreAnalyticsService {
     const slug = this.activeSlug;
     if (!slug || !this.http || trackingDisabled()) return;
 
-    const visitorId = visitorId();
+    const anonymousVisitorId = visitorId(slug);
     const session = sessionState(slug);
-    if (!visitorId || !session) return;
+    if (!anonymousVisitorId || !session) return;
 
     this.http
       .post<void>(`/api/v1/stores/${encodeURIComponent(slug)}/analytics/events`, {
         eventType,
-        visitorId,
+        visitorId: anonymousVisitorId,
         sessionId: session.id,
         path: currentPath(),
         source: session.source,
@@ -145,27 +147,35 @@ function currentPath(): string {
   return window.location.pathname || '/';
 }
 
-function visitorId(): string | null {
+function visitorId(storeSlug: string): string | null {
   const storage = safeStorage('local');
-  if (!storage) return ephemeralId();
+  const key = VISITOR_PREFIX + storeSlug;
+  if (!storage) {
+    const existing = memoryVisitors.get(storeSlug);
+    if (existing) return existing;
+    const created = ephemeralId();
+    memoryVisitors.set(storeSlug, created);
+    return created;
+  }
   try {
-    const existing = storage.getItem(VISITOR_KEY);
+    const existing = storage.getItem(key);
     if (existing && UUID_PATTERN.test(existing)) return existing;
     const created = ephemeralId();
-    storage.setItem(VISITOR_KEY, created);
+    storage.setItem(key, created);
     return created;
   } catch {
-    return ephemeralId();
+    const existing = memoryVisitors.get(storeSlug);
+    if (existing) return existing;
+    const created = ephemeralId();
+    memoryVisitors.set(storeSlug, created);
+    return created;
   }
 }
 
 function sessionState(storeSlug: string): SessionState | null {
   const storage = safeStorage('session');
   const now = Date.now();
-  if (!storage) {
-    const attribution = captureAttribution();
-    return { id: ephemeralId(), lastSeen: now, ...attribution };
-  }
+  if (!storage) return memorySession(storeSlug, now);
 
   const key = SESSION_PREFIX + storeSlug;
   try {
@@ -198,9 +208,24 @@ function sessionState(storeSlug: string): SessionState | null {
     storage.setItem(key, JSON.stringify(created));
     return created;
   } catch {
-    const attribution = captureAttribution();
-    return { id: ephemeralId(), lastSeen: now, ...attribution };
+    return memorySession(storeSlug, now);
   }
+}
+
+function memorySession(storeSlug: string, now: number): SessionState {
+  const current = memorySessions.get(storeSlug);
+  if (current && now - current.lastSeen <= SESSION_TIMEOUT_MS) {
+    const refreshed = { ...current, lastSeen: now };
+    memorySessions.set(storeSlug, refreshed);
+    return refreshed;
+  }
+  const created: SessionState = {
+    id: ephemeralId(),
+    lastSeen: now,
+    ...captureAttribution(),
+  };
+  memorySessions.set(storeSlug, created);
+  return created;
 }
 
 function captureAttribution(): Pick<SessionState, 'source' | 'medium'> {
