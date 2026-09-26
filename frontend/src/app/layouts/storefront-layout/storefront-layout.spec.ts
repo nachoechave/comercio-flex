@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
+import { StoreAnalyticsService } from '../../features/analytics/store-analytics.service';
 import { StorefrontLayout } from './storefront-layout';
 import { CartPreviewService } from '../../features/storefront/cart/cart-preview.service';
 import { CartService } from '../../features/storefront/cart/cart.service';
@@ -11,6 +12,7 @@ import { CartService } from '../../features/storefront/cart/cart.service';
 describe('StorefrontLayout', () => {
   let fixture: ComponentFixture<StorefrontLayout>;
   let http: HttpTestingController;
+  const analytics = { activate: () => undefined, deactivate: () => undefined };
 
   beforeEach(async () => {
     const routeParams = new BehaviorSubject(convertToParamMap({ storeSlug: 'tienda-a' }));
@@ -22,6 +24,7 @@ describe('StorefrontLayout', () => {
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: StoreAnalyticsService, useValue: analytics },
         {
           provide: ActivatedRoute,
           useValue: {

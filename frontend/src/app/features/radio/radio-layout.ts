@@ -1,9 +1,10 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { FaviconService } from '../../core/branding/favicon.service';
+import { StoreAnalyticsService } from '../analytics/store-analytics.service';
 import { StorefrontContextService } from '../storefront/storefront-context.service';
 import { RadioSite, RadioSiteApiService } from './radio-site-api.service';
 import { RadioContext } from './radio-context';
@@ -39,6 +40,8 @@ import { RadioContext } from './radio-context';
 })
 export class RadioLayout {
   private readonly favicons = inject(FaviconService);
+  private readonly analytics = inject(StoreAnalyticsService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly brandingEffect = effect((onCleanup) => {
     const branding = this.settings()?.branding;
     this.favicons.useTenant(branding?.faviconUrl, branding?.logoUrl);
@@ -62,7 +65,21 @@ export class RadioLayout {
   readonly heroImage = computed(() => { const url = this.settings()?.branding?.heroImageUrl; return url ? `url("${url}")` : 'none'; });
   readonly busy = signal(false);
   readonly error = signal('');
-  constructor() { const slug = this.context.slug(); if (slug) { this.storeContext?.load(slug); this.siteApi.get(slug).subscribe({ next: value => this.site.set(value), error: () => this.error.set('No pudimos cargar la configuración de la radio.') }); } this.auth.loadSession().subscribe(); }
+
+  constructor() {
+    const slug = this.context.slug();
+    if (slug) {
+      this.storeContext?.load(slug);
+      this.analytics.activate(slug);
+      this.destroyRef.onDestroy(() => this.analytics.deactivate(slug));
+      this.siteApi.get(slug).subscribe({
+        next: value => this.site.set(value),
+        error: () => this.error.set('No pudimos cargar la configuración de la radio.'),
+      });
+    }
+    this.auth.loadSession().subscribe();
+  }
+
   logout() {
     this.busy.set(true); this.error.set('');
     this.auth.logout().pipe(finalize(() => this.busy.set(false))).subscribe({

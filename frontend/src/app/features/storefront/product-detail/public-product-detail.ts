@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { StoreAnalyticsService } from '../../analytics/store-analytics.service';
 import { StorefrontRoutingService } from '../storefront-routing.service';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { VariantOptionValue, variantOptionsLabel } from '../../../shared/variant-options';
@@ -33,6 +34,7 @@ export class PublicProductDetail {
   private readonly api = inject(StorefrontApiService);
   private readonly cart = inject(CartService);
   private readonly cartPreview = inject(CartPreviewService);
+  private readonly analytics = inject(StoreAnalyticsService);
   protected readonly context = inject(StorefrontContextService);
   private readonly route = inject(ActivatedRoute);
   protected readonly storefrontRouting = inject(StorefrontRoutingService);
@@ -160,6 +162,7 @@ export class PublicProductDetail {
       const subscription = this.api.getProduct(storeSlug, productSlug).subscribe({
         next: (product) => {
           this.product.set(product);
+          this.analytics.trackProductView(product.id);
           const onlyVariant = product.variants.length === 1 ? product.variants[0] : null;
           if (onlyVariant?.available && this.variantOptions(onlyVariant).length === 0) {
             this.selectedVariantId.set(onlyVariant.id);
@@ -286,6 +289,7 @@ export class PublicProductDetail {
       variant,
       quantity: this.quantity(),
     });
+    this.analytics.trackAddToCart(product.id);
     this.cartMessage.set(
       result.reachedLimit
         ? `El carrito admite hasta 99 unidades de ${this.variantLabel(variant)}.`

@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { FaviconService } from '../../core/branding/favicon.service';
+import { StoreAnalyticsService } from '../../features/analytics/store-analytics.service';
 import { CartService } from '../../features/storefront/cart/cart.service';
 import { StorefrontContextService } from '../../features/storefront/storefront-context.service';
 import { StorefrontRoutingService } from '../../features/storefront/storefront-routing.service';
@@ -45,6 +46,7 @@ export class StorefrontLayout {
   private readonly route = inject(ActivatedRoute);
   private readonly storefrontRouting = inject(StorefrontRoutingService);
   private readonly cart = inject(CartService);
+  private readonly analytics = inject(StoreAnalyticsService);
   private readonly favicons = inject(FaviconService);
   protected readonly context = inject(StorefrontContextService);
   protected readonly storeSlug = toSignal(this.storefrontRouting.storeSlug(this.route), {
@@ -76,6 +78,12 @@ export class StorefrontLayout {
         this.cart.activate(slug);
         this.context.load(slug);
       }
+    });
+    effect((onCleanup) => {
+      const slug = this.storeSlug();
+      if (!slug) return;
+      this.analytics.activate(slug);
+      onCleanup(() => this.analytics.deactivate(slug));
     });
     effect((onCleanup) => {
       const branding = this.context.settings()?.branding;

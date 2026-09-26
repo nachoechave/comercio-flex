@@ -8,6 +8,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, map, switchMap } from 'rxjs';
 
 import { CsrfService } from '../../../core/auth/csrf.service';
+import { StoreAnalyticsService } from '../../analytics/store-analytics.service';
 import { StorefrontRoutingService } from '../storefront-routing.service';
 import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
 import { CartService } from '../cart/cart.service';
@@ -40,6 +41,7 @@ export class CheckoutPage {
   private readonly api = inject(StorefrontApiService);
   private readonly cart = inject(CartService);
   private readonly csrf = inject(CsrfService);
+  private readonly analytics = inject(StoreAnalyticsService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly paymentApi = inject(PaymentApiService);
   private readonly paymentHandoff = inject(CheckoutProHandoffService);
@@ -58,6 +60,7 @@ export class CheckoutPage {
   private intentFingerprint: string | null = null;
   private idempotencyKey: string | null = null;
   private paymentIdempotencyKey: string | null = null;
+  private trackedCheckoutSlug = '';
 
   protected readonly storeSlug = toSignal(this.storefrontRouting.storeSlug(this.route), {
     initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '',
@@ -110,6 +113,13 @@ export class CheckoutPage {
     effect(() => {
       const storeSlug = this.storeSlug();
       if (storeSlug) this.loadPaymentMethods(storeSlug);
+    });
+    effect(() => {
+      const storeSlug = this.storeSlug();
+      if (storeSlug && this.items().length > 0 && this.trackedCheckoutSlug !== storeSlug) {
+        this.trackedCheckoutSlug = storeSlug;
+        this.analytics.trackBeginCheckout();
+      }
     });
   }
 
@@ -194,7 +204,6 @@ export class CheckoutPage {
         switchMap(() => this.api.createOrder(storeSlug, this.idempotencyKey!, body)),
         switchMap((response) => {
           createdOrder = { id: response.order.id, lookupToken: response.lookupToken };
-          // Persist the private recovery credential before any external payment navigation.
           try {
             this.guestOrders.remember(storeSlug, response.order, response.lookupToken);
           } catch {
