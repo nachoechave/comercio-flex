@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
-import { Subscription, filter } from 'rxjs';
+import { Subscription, filter, throwError } from 'rxjs';
 
 export type StoreAnalyticsEventType =
   | 'PAGE_VIEW'
@@ -52,7 +52,7 @@ const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
 @Injectable({ providedIn: 'root' })
 export class StoreAnalyticsService {
-  private readonly http = inject(HttpClient);
+  private readonly http = inject(HttpClient, { optional: true });
   private readonly router = inject(Router);
   private activeSlug = '';
   private navigationSubscription: Subscription | null = null;
@@ -93,6 +93,9 @@ export class StoreAnalyticsService {
   }
 
   summary(storeSlug: string, days: 1 | 7 | 30) {
+    if (!this.http) {
+      return throwError(() => new Error('El transporte HTTP no está disponible.'));
+    }
     return this.http.get<StoreAnalyticsSummary>(
       `/api/v1/stores/${encodeURIComponent(storeSlug)}/admin/analytics`,
       { params: { days } },
@@ -110,7 +113,7 @@ export class StoreAnalyticsService {
 
   private track(eventType: StoreAnalyticsEventType, productId?: string): void {
     const slug = this.activeSlug;
-    if (!slug || trackingDisabled()) return;
+    if (!slug || !this.http || trackingDisabled()) return;
 
     const visitorId = visitorId();
     const session = sessionState(slug);
