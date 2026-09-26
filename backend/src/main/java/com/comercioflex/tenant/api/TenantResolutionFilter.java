@@ -77,6 +77,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 			&& !storeResource.startsWith("/payment-returns/")
 			&& !storeResource.startsWith("/media/product-images/")
 			&& !storeResource.startsWith("/media/branding/")
+			&& !storeResource.equals("/analytics/events")
 			&& !storeResource.equals("/admin")
 			&& !storeResource.startsWith("/admin/");
 	}
