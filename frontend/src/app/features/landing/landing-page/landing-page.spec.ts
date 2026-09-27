@@ -96,17 +96,14 @@ describe('LandingPage', () => {
 
     const request = httpTesting.expectOne('/api/v1/public/contact');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual(
-      jasmine.objectContaining({
-        name: 'Ignacio',
-        business: 'Comercio de prueba',
-        email: 'cliente@example.com',
-        whatsapp: '2215555555',
-        message: 'Quiero conocer Comercio Flex.',
-        website: '',
-      }),
-    );
-    expect(request.request.body.startedAt).toBeGreaterThan(0);
+    const body = request.request.body as Record<string, unknown>;
+    expect(body['name']).toBe('Ignacio');
+    expect(body['business']).toBe('Comercio de prueba');
+    expect(body['email']).toBe('cliente@example.com');
+    expect(body['whatsapp']).toBe('2215555555');
+    expect(body['message']).toBe('Quiero conocer Comercio Flex.');
+    expect(body['website']).toBe('');
+    expect(body['startedAt'] as number).toBeGreaterThan(0);
     request.flush(null);
     fixture.detectChanges();
 
