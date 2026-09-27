@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
@@ -6,8 +6,8 @@ import { catchError, forkJoin, of } from 'rxjs';
 import { inheritedRouteParam } from '../../../core/routing/inherited-route-param';
 import { CommerceDatePipe } from '../../../shared/pipes/commerce-date.pipe';
 import { QuantityFormatPipe } from '../../../shared/pipes/quantity-format.pipe';
+import { AdminIcon } from '../../../shared/ui/admin-icon/admin-icon';
 import { StorefrontMoneyPipe } from '../../storefront/storefront-money.pipe';
-import { AdminStatCard } from '../../../shared/ui/admin-stat-card/admin-stat-card';
 import { BankTransferApiService } from '../bank-transfers/bank-transfer-api.service';
 import { AdminBankTransferPayment } from '../bank-transfers/bank-transfer.models';
 import { OrderApiService } from '../orders/order-api.service';
@@ -17,7 +17,7 @@ import { DashboardSummary } from './dashboard.models';
 
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [AdminStatCard, CommerceDatePipe, QuantityFormatPipe, RouterLink, StorefrontMoneyPipe],
+  imports: [AdminIcon, CommerceDatePipe, QuantityFormatPipe, RouterLink, StorefrontMoneyPipe],
   templateUrl: './admin-dashboard.html',
   styleUrl: './admin-dashboard.scss',
 })
@@ -37,6 +37,11 @@ export class AdminDashboard {
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly orderLabels = ORDER_STATUS_LABELS;
+
+  readonly chartOrders = computed(() => [...this.recentOrders()].reverse());
+  readonly chartMaximum = computed(() =>
+    Math.max(...this.chartOrders().map((order) => Number(order.subtotal) || 0), 1),
+  );
 
   constructor() {
     effect((onCleanup) => {
@@ -84,5 +89,25 @@ export class AdminDashboard {
       currency: currencyCode,
       minimumFractionDigits: 2,
     }).format(Number(value));
+  }
+
+  chartPointX(index: number, count: number): number {
+    if (count <= 1) return 50;
+    return 8 + (index / (count - 1)) * 84;
+  }
+
+  chartPointY(value: string): number {
+    const amount = Number(value) || 0;
+    return 92 - (amount / this.chartMaximum()) * 70;
+  }
+
+  chartPolyline(): string {
+    const orders = this.chartOrders();
+    return orders
+      .map(
+        (order, index) =>
+          `${this.chartPointX(index, orders.length)},${this.chartPointY(order.subtotal)}`,
+      )
+      .join(' ');
   }
 }
