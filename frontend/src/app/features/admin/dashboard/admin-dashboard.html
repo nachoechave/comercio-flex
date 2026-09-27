@@ -1,44 +1,265 @@
-<section class="page" aria-labelledby="dashboard-title">
-  <header class="hero">
-    <div><p class="eyebrow">Resumen</p><h1 id="dashboard-title">Resumen de tu negocio</h1><p>Una vista rápida de ventas, pedidos e inventario.</p></div>
-    <button type="button" class="secondary" (click)="reload()" [disabled]="loading()">Actualizar</button>
+<section class="page dashboard-page" aria-labelledby="dashboard-title">
+  <header class="dashboard-hero">
+    <div>
+      <p class="eyebrow">Comercio Flex</p>
+      <h1 id="dashboard-title">Panel de administración</h1>
+      <p>Gestioná tu tienda de forma simple, rápida y profesional.</p>
+    </div>
+    <div class="hero-actions">
+      <div class="growth-note" aria-label="Estado del negocio">
+        <span class="growth-icon" aria-hidden="true">↗</span>
+        <div>
+          <strong>Tu negocio, en un solo lugar</strong>
+          <span>Ventas, pedidos e inventario actualizados.</span>
+        </div>
+      </div>
+      <button type="button" class="refresh-button" (click)="reload()" [disabled]="loading()">
+        Actualizar
+      </button>
+    </div>
   </header>
 
   @if (loading()) {
     <p class="state" role="status">Calculando indicadores…</p>
   } @else if (errorMessage() && !summary()) {
-    <div class="state error" role="alert"><p>{{ errorMessage() }}</p><button type="button" (click)="reload()">Reintentar</button></div>
+    <div class="state error" role="alert">
+      <p>{{ errorMessage() }}</p>
+      <button type="button" (click)="reload()">Reintentar</button>
+    </div>
   } @else if (summary(); as data) {
     <div class="metrics" aria-label="Indicadores principales">
-      <app-admin-stat-card label="Ventas de hoy" [value]="formatMoney(data.salesToday, data.currencyCode)" [helper]="'Confirmadas en ' + data.timezone" />
-      <app-admin-stat-card label="Ventas del mes" [value]="formatMoney(data.salesThisMonth, data.currencyCode)" helper="Sin pedidos cancelados" />
-      <app-admin-stat-card label="Pedidos abiertos" [value]="data.openOrders" helper="Ver pedidos" [link]="['pedidos']" />
-      <app-admin-stat-card label="Stock bajo" [value]="data.lowStockVariants" helper="Ver inventario" [link]="['inventario']" />
+      <article class="metric-card metric-sales">
+        <span class="metric-icon"><app-admin-icon name="payments" /></span>
+        <div class="metric-copy">
+          <span>Ventas del mes</span>
+          <strong>{{ formatMoney(data.salesThisMonth, data.currencyCode) }}</strong>
+          <small>Pedidos confirmados</small>
+        </div>
+      </article>
+
+      <article class="metric-card metric-orders">
+        <span class="metric-icon"><app-admin-icon name="orders" /></span>
+        <div class="metric-copy">
+          <span>Pedidos abiertos</span><strong>{{ data.openOrders }}</strong>
+          <small>Requieren seguimiento</small>
+        </div>
+      </article>
+
+      <article class="metric-card metric-today">
+        <span class="metric-icon"><app-admin-icon name="dashboard" /></span>
+        <div class="metric-copy">
+          <span>Ventas de hoy</span>
+          <strong>{{ formatMoney(data.salesToday, data.currencyCode) }}</strong>
+          <small>Zona {{ data.timezone }}</small>
+        </div>
+      </article>
+
+      <article class="metric-card metric-stock">
+        <span class="metric-icon"><app-admin-icon name="inventory" /></span>
+        <div class="metric-copy">
+          <span>Stock bajo</span>
+          <strong>{{ data.lowStockVariants }}</strong>
+          <a [routerLink]="['inventario']">Ver inventario</a>
+        </div>
+      </article>
     </div>
 
-    <div class="dashboard-grid">
-      <section class="dashboard-panel orders-panel" aria-labelledby="recent-orders-title">
-        <div class="section-heading"><div><p class="eyebrow">Actividad</p><h2 id="recent-orders-title">Pedidos recientes</h2></div><a [routerLink]="['pedidos']">Ver todos</a></div>
-        @if (recentOrders().length === 0) { <p class="panel-empty">Todavía no hay pedidos para mostrar.</p> }
-        @else {
-          <div class="table-wrapper"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Fecha</th></tr></thead><tbody>
-            @for (order of recentOrders(); track order.id) {
-              <tr><td><a [routerLink]="['pedidos', order.id]"><strong>{{ order.number }}</strong></a></td><td>{{ order.customerName }}</td><td><span [attr.data-status]="order.status">{{ orderLabels[order.status] }}</span></td><td>{{ order.subtotal | storefrontMoney: order.currencyCode }}</td><td>{{ order.createdAt | commerceDate }}</td></tr>
+    <div class="primary-grid">
+      <section class="dashboard-panel sales-panel" aria-labelledby="sales-activity-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Ventas</p>
+            <h2 id="sales-activity-title">Actividad reciente</h2>
+            <span>Importes de los últimos pedidos registrados.</span>
+          </div>
+          <a [routerLink]="['estadisticas']">Ver estadísticas</a>
+        </div>
+
+        <div class="sales-total">
+          <span>Ventas del mes</span>
+          <strong>{{ formatMoney(data.salesThisMonth, data.currencyCode) }}</strong>
+        </div>
+
+        @if (chartOrders().length === 0) {
+          <p class="panel-empty">Todavía no hay pedidos para graficar.</p>
+        } @else {
+          <div class="sales-chart" aria-label="Importes de los últimos pedidos">
+            <div class="chart-grid" aria-hidden="true"></div>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Evolución de los últimos pedidos">
+              <polyline class="chart-area" [attr.points]="'8,92 ' + chartPolyline() + ' 92,92'" />
+              <polyline class="chart-line" [attr.points]="chartPolyline()" />
+              @for (order of chartOrders(); track order.id; let index = $index) {
+                <circle
+                  [attr.cx]="chartPointX(index, chartOrders().length)"
+                  [attr.cy]="chartPointY(order.subtotal)"
+                  r="1.4"
+                />
+              }
+            </svg>
+          </div>
+          <div class="chart-labels" aria-hidden="true">
+            @for (order of chartOrders(); track order.id) {
+              <span>{{ order.number }}</span>
             }
-          </tbody></table></div>
+          </div>
         }
       </section>
 
-      <section class="dashboard-panel transfer-panel" aria-labelledby="transfers-review-title">
-        <div class="section-heading"><div><p class="eyebrow">Pagos</p><h2 id="transfers-review-title">Transferencias a revisar</h2></div><a [routerLink]="['pedidos', 'transferencias']">Ver todas</a></div>
-        @if (transfersUnderReview().length === 0) { <p class="panel-empty">No hay comprobantes esperando revisión.</p> }
-        @else { <ul class="compact-list">@for (transfer of transfersUnderReview(); track transfer.id) { <li><div><a [routerLink]="['pedidos', 'transferencias', transfer.id]"><strong>{{ transfer.orderNumber }}</strong></a><span>{{ transfer.customerName }}</span></div><span data-status="UNDER_REVIEW">A revisar</span></li> }</ul> }
+      <section class="dashboard-panel orders-panel" aria-labelledby="recent-orders-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Actividad</p>
+            <h2 id="recent-orders-title">Pedidos recientes</h2>
+          </div>
+          <a [routerLink]="['pedidos']">Ver todos</a>
+        </div>
+        @if (recentOrders().length === 0) {
+          <p class="panel-empty">Todavía no hay pedidos para mostrar.</p>
+        } @else {
+          <div class="table-wrapper dashboard-table">
+            <table>
+              <thead>
+                <tr><th>Pedido</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Fecha</th></tr>
+              </thead>
+              <tbody>
+                @for (order of recentOrders(); track order.id) {
+                  <tr>
+                    <td><a [routerLink]="['pedidos', order.id]"><strong>{{ order.number }}</strong></a></td>
+                    <td>{{ order.customerName }}</td>
+                    <td><span [attr.data-status]="order.status">{{ orderLabels[order.status] }}</span></td>
+                    <td>{{ order.subtotal | storefrontMoney: order.currencyCode }}</td>
+                    <td>{{ order.createdAt | commerceDate }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
       </section>
 
       <section class="dashboard-panel stock-panel" aria-labelledby="critical-title">
-        <div class="section-heading"><div><p class="eyebrow">Inventario</p><h2 id="critical-title">Stock que requiere atención</h2></div><div class="heading-actions"><span>Umbral: {{ data.lowStockThreshold | quantityFormat }}</span><a data-testid="inventory-threshold-settings-link" [routerLink]="['inventario', 'configuracion']">Configurar</a></div></div>
-        @if (data.criticalStock.length === 0) { <p class="panel-empty">No hay variantes por debajo del umbral configurado.</p> }
-        @else { <ul class="compact-list">@for (item of data.criticalStock; track item.variantId) { <li><div><strong>{{ item.productName }}</strong><span>{{ item.sku }} · {{ item.size || 'Sin talle' }} · {{ item.color || 'Sin color' }}</span></div><div class="stock-value"><span>{{ item.quantity | quantityFormat }}</span><a [routerLink]="['inventario', item.variantId]" [attr.aria-label]="'Ver inventario de ' + item.sku">Ver</a></div></li> }</ul> }
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Inventario</p>
+            <h2 id="critical-title">Productos con poco stock</h2>
+          </div>
+          <div class="heading-actions">
+            <span>Umbral: {{ data.lowStockThreshold | quantityFormat }}</span>
+            <a data-testid="inventory-threshold-settings-link" [routerLink]="['inventario', 'configuracion']">Configurar</a>
+          </div>
+        </div>
+        @if (data.criticalStock.length === 0) {
+          <p class="panel-empty">No hay variantes por debajo del umbral configurado.</p>
+        } @else {
+          <ul class="stock-list">
+            @for (item of data.criticalStock; track item.variantId) {
+              <li>
+                <span class="product-thumb"><app-admin-icon name="products" /></span>
+                <div class="stock-copy">
+                  <strong>{{ item.productName }}</strong>
+                  <span>{{ item.sku }} · {{ item.size || 'Sin talle' }} · {{ item.color || 'Sin color' }}</span>
+                </div>
+                <div class="stock-value">
+                  <strong>{{ item.quantity | quantityFormat }}</strong>
+                  <span>unidades</span>
+                </div>
+                <a [routerLink]="['inventario', item.variantId]" [attr.aria-label]="'Ver inventario de ' + item.sku">Ver</a>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+
+    <section class="quick-section" aria-labelledby="quick-actions-title">
+      <div class="section-heading quick-heading">
+        <div>
+          <p class="eyebrow">Accesos rápidos</p>
+          <h2 id="quick-actions-title">Lo que más usás, a un clic</h2>
+        </div>
+      </div>
+      <div class="quick-actions">
+        <a class="quick-card quick-product" [routerLink]="['productos', 'nuevo']">
+          <span><app-admin-icon name="products" /></span><strong>Crear producto</strong><b>›</b>
+        </a>
+        <a class="quick-card quick-store" [routerLink]="['/tiendas', storeSlug()]" target="_blank" rel="noopener">
+          <span><app-admin-icon name="store" /></span><strong>Ver tienda</strong><b>›</b>
+        </a>
+        <a class="quick-card quick-shipping" [routerLink]="['configuracion', 'envios']">
+          <span><app-admin-icon name="commerce" /></span><strong>Configurar envíos</strong><b>›</b>
+        </a>
+        <a class="quick-card quick-appearance" [routerLink]="['configuracion', 'apariencia']">
+          <span><app-admin-icon name="appearance" /></span><strong>Editar apariencia</strong><b>›</b>
+        </a>
+      </div>
+    </section>
+
+    <div class="secondary-grid">
+      <section class="dashboard-panel transfer-panel" aria-labelledby="transfers-review-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Pagos</p>
+            <h2 id="transfers-review-title">Transferencias a revisar</h2>
+          </div>
+          <a [routerLink]="['pedidos', 'transferencias']">Ver todas</a>
+        </div>
+        @if (transfersUnderReview().length === 0) {
+          <div class="empty-success">
+            <span>✓</span>
+            <div><strong>Todo al día</strong><p>No hay comprobantes esperando revisión.</p></div>
+          </div>
+        } @else {
+          <ul class="compact-list">
+            @for (transfer of transfersUnderReview(); track transfer.id) {
+              <li>
+                <div>
+                  <a [routerLink]="['pedidos', 'transferencias', transfer.id]"><strong>{{ transfer.orderNumber }}</strong></a>
+                  <span>{{ transfer.customerName }}</span>
+                </div>
+                <span data-status="UNDER_REVIEW">A revisar</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="dashboard-panel operations-panel" aria-labelledby="operations-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Estado general</p>
+            <h2 id="operations-title">Operación de la tienda</h2>
+          </div>
+        </div>
+        <div class="operation-row">
+          <span class="operation-icon"><app-admin-icon name="orders" /></span>
+          <div><strong>Pedidos abiertos</strong><span>Pendientes de resolución</span></div>
+          <b>{{ data.openOrders }}</b>
+        </div>
+        <div class="operation-row">
+          <span class="operation-icon"><app-admin-icon name="transfers" /></span>
+          <div><strong>Transferencias</strong><span>Esperando revisión</span></div>
+          <b>{{ transfersUnderReview().length }}</b>
+        </div>
+        <div class="operation-row">
+          <span class="operation-icon"><app-admin-icon name="inventory" /></span>
+          <div><strong>Stock bajo</strong><span>Variantes por debajo del umbral</span></div>
+          <b>{{ data.lowStockVariants }}</b>
+        </div>
+      </section>
+
+      <section class="dashboard-panel templates-panel" aria-labelledby="templates-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Apariencia</p>
+            <h2 id="templates-title">Plantillas de tu tienda</h2>
+          </div>
+          <a [routerLink]="['configuracion', 'apariencia']">Editar</a>
+        </div>
+        <div class="template-previews" aria-label="Plantillas disponibles">
+          <div class="template-card fashion-preview"><div><span>Estilo</span><strong>sin límites</strong></div><b>Fashion</b></div>
+          <div class="template-card fresh-preview"><div><span>Productos</span><strong>que hacen bien</strong></div><b>Fresh</b></div>
+          <div class="template-card catalog-preview"><div><span>Todo claro</span><strong>y directo</strong></div><b>Catalog</b></div>
+        </div>
       </section>
     </div>
   }
