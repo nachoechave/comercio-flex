@@ -1,16 +1,17 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
+  ViewChild,
+} from '@angular/core';
+import { FormsModule, NgForm } from '@angular/forms';
 import { Meta, Title } from '@angular/platform-browser';
-
-import { LandingBeforeAfter } from '../landing-before-after/landing-before-after';
-import { LandingCta } from '../landing-cta/landing-cta';
-import { LandingFaq } from '../landing-faq/landing-faq';
-import { LandingFeatures } from '../landing-features/landing-features';
-import { LandingFooter } from '../landing-footer/landing-footer';
-import { LandingHero } from '../landing-hero/landing-hero';
-import { LandingHowItWorks } from '../landing-how-it-works/landing-how-it-works';
-import { LandingIndustries } from '../landing-industries/landing-industries';
-import { LandingNavbar } from '../landing-navbar/landing-navbar';
 
 const LANDING_TITLE = 'Comercio Flex | Tienda online y gestión para comercios';
 const LANDING_DESCRIPTION =
@@ -20,27 +21,49 @@ const LANDING_SOCIAL_IMAGE =
   'https://comercioflex.com.ar/assets/comercio-flex/icon-512x512.png';
 const LANDING_ROBOTS =
   'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+const CONTACT_EMAIL = 'nacho9847@gmail.com';
+const CONTACT_PHONE_DISPLAY = '221 353-3259';
+const CONTACT_PHONE_E164 = '+5492213533259';
+const CONTACT_WHATSAPP =
+  'https://wa.me/5492213533259?text=Hola%20Nacho%2C%20vi%20Comercio%20Flex%20y%20quiero%20recibir%20m%C3%A1s%20informaci%C3%B3n.';
+
+type ContactStatus = 'idle' | 'sending' | 'success' | 'error';
+
+interface LandingContactModel {
+  name: string;
+  business: string;
+  email: string;
+  whatsapp: string;
+  message: string;
+  website: string;
+}
+
+interface LandingContactPayload extends LandingContactModel {
+  startedAt: number;
+}
 
 @Component({
   selector: 'app-landing-page',
-  imports: [
-    LandingNavbar,
-    LandingHero,
-    LandingFeatures,
-    LandingBeforeAfter,
-    LandingHowItWorks,
-    LandingIndustries,
-    LandingFaq,
-    LandingCta,
-    LandingFooter,
-  ],
+  imports: [FormsModule],
   templateUrl: './landing-page.html',
   styleUrl: './landing-page.scss',
 })
 export class LandingPage implements OnInit, OnDestroy {
   private readonly document = inject(DOCUMENT);
+  private readonly http = inject(HttpClient);
   private readonly meta = inject(Meta);
   private readonly title = inject(Title);
+
+  @ViewChild('menuButton') private menuButton?: ElementRef<HTMLButtonElement>;
+
+  protected readonly mobileMenuOpen = signal(false);
+  protected readonly contactStatus = signal<ContactStatus>('idle');
+  protected readonly contactEmail = CONTACT_EMAIL;
+  protected readonly contactPhoneDisplay = CONTACT_PHONE_DISPLAY;
+  protected readonly whatsappHref = CONTACT_WHATSAPP;
+  protected contact = this.emptyContact();
+
+  private contactStartedAt = Date.now();
   private canonicalElement?: HTMLLinkElement;
   private canonicalCreated = false;
   private previousCanonical: string | null = null;
@@ -100,6 +123,55 @@ export class LandingPage implements OnInit, OnDestroy {
     }
   }
 
+  protected toggleMobileMenu(): void {
+    this.mobileMenuOpen.update((open) => !open);
+  }
+
+  protected closeMobileMenu(): void {
+    this.mobileMenuOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  protected closeMobileMenuOnEscape(): void {
+    if (!this.mobileMenuOpen()) return;
+    this.closeMobileMenu();
+    setTimeout(() => this.menuButton?.nativeElement.focus());
+  }
+
+  protected submitContact(form: NgForm): void {
+    if (form.invalid || this.contactStatus() === 'sending') {
+      form.control.markAllAsTouched();
+      return;
+    }
+
+    const payload: LandingContactPayload = {
+      ...this.contact,
+      startedAt: this.contactStartedAt,
+    };
+
+    this.contactStatus.set('sending');
+    this.http.post<void>('/api/v1/public/contact', payload).subscribe({
+      next: () => {
+        this.contactStatus.set('success');
+        this.contact = this.emptyContact();
+        this.contactStartedAt = Date.now();
+        form.resetForm(this.contact);
+      },
+      error: () => this.contactStatus.set('error'),
+    });
+  }
+
+  private emptyContact(): LandingContactModel {
+    return {
+      name: '',
+      business: '',
+      email: '',
+      whatsapp: '',
+      message: '',
+      website: '',
+    };
+  }
+
   private setCanonicalUrl(): void {
     this.canonicalElement =
       this.document.head.querySelector<HTMLLinkElement>("link[rel='canonical']") ?? undefined;
@@ -134,6 +206,14 @@ export class LandingPage implements OnInit, OnDestroy {
           name: 'Comercio Flex',
           url: LANDING_CANONICAL,
           logo: LANDING_SOCIAL_IMAGE,
+          email: CONTACT_EMAIL,
+          contactPoint: {
+            '@type': 'ContactPoint',
+            contactType: 'sales',
+            email: CONTACT_EMAIL,
+            telephone: CONTACT_PHONE_E164,
+            availableLanguage: ['es'],
+          },
         },
         {
           '@type': 'SoftwareApplication',

@@ -1,11 +1,322 @@
-<app-landing-navbar />
-<main id="main-content">
-  <app-landing-hero />
-  <app-landing-features />
-  <app-landing-before-after />
-  <app-landing-how-it-works />
-  <app-landing-industries />
-  <app-landing-faq />
-  <app-landing-cta />
-</main>
-<app-landing-footer />
+<div class="landing-shell">
+  <header class="site-header" id="inicio">
+    <div class="container header-inner">
+      <a class="brand" href="#inicio" aria-label="Comercio Flex - Inicio">
+        <img src="/assets/comercio-flex/icon-192x192.png" alt="" width="40" height="40" />
+        <span>Comercio Flex</span>
+      </a>
+
+      <nav class="desktop-nav" aria-label="Navegación principal">
+        <a href="#inicio">Inicio</a>
+        <a href="#funciones">Funciones</a>
+        <a href="#plantillas">Plantillas</a>
+        <a href="#como-funciona">Cómo funciona</a>
+        <a href="#contacto">Contacto</a>
+      </nav>
+
+      <div class="header-actions">
+        <a class="login-link" href="/admin/login">Iniciar sesión</a>
+        <a class="button button--primary button--small" href="#contacto">Solicitar demo <span>→</span></a>
+      </div>
+
+      <button
+        #menuButton
+        class="menu-button"
+        type="button"
+        aria-label="Abrir menú"
+        aria-controls="landing-mobile-menu"
+        [attr.aria-expanded]="mobileMenuOpen()"
+        (click)="toggleMobileMenu()"
+      >
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+
+    @if (mobileMenuOpen()) {
+      <nav id="landing-mobile-menu" class="mobile-nav" aria-label="Navegación móvil">
+        <a href="#inicio" (click)="closeMobileMenu()">Inicio</a>
+        <a href="#funciones" (click)="closeMobileMenu()">Funciones</a>
+        <a href="#plantillas" (click)="closeMobileMenu()">Plantillas</a>
+        <a href="#como-funciona" (click)="closeMobileMenu()">Cómo funciona</a>
+        <a href="#contacto" (click)="closeMobileMenu()">Contacto</a>
+        <a href="/admin/login" (click)="closeMobileMenu()">Iniciar sesión</a>
+        <a class="button button--primary" href="#contacto" (click)="closeMobileMenu()">Solicitar demo</a>
+      </nav>
+    }
+  </header>
+
+  <main id="main-content">
+    <section class="hero section-glow" aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">TU NEGOCIO, SIN LÍMITES</p>
+          <h1 id="hero-title">
+            Tu tienda online y la gestión de tu comercio,
+            <span>en un solo lugar</span>
+          </h1>
+          <p class="hero-summary">
+            Vendé por internet, gestioná tus productos, controlá tu stock y recibí pedidos fácilmente.
+            Una plataforma pensada para comercios de Argentina que quieren crecer.
+          </p>
+          <div class="hero-actions">
+            <a class="button button--primary" href="#contacto">Solicitar demo <span>→</span></a>
+            <a class="button button--secondary" href="#como-funciona"><span class="play">▶</span> Ver cómo funciona</a>
+          </div>
+          <div class="hero-proof" aria-label="Beneficios principales">
+            <span><b>✓</b> Rápido y sin complicaciones</span>
+            <span><b>✓</b> Soporte en todo el proceso</span>
+            <span><b>✓</b> Pensado para pymes argentinas</span>
+          </div>
+        </div>
+
+        <div class="product-visual" aria-label="Vista previa del panel y la tienda">
+          <div class="dashboard-device">
+            <div class="dashboard-topbar">
+              <div class="dashboard-brand"><span class="mini-logo">C</span> Comercio Flex</div>
+              <div class="dashboard-search">Buscar...</div>
+              <span class="dashboard-avatar">N</span>
+            </div>
+            <div class="dashboard-body">
+              <aside class="dashboard-sidebar" aria-hidden="true">
+                <span class="active">⌂ <small>Inicio</small></span>
+                <span>□ <small>Productos</small></span>
+                <span>▦ <small>Stock</small></span>
+                <span>≡ <small>Pedidos</small></span>
+                <span>♙ <small>Clientes</small></span>
+                <span>◇ <small>Promociones</small></span>
+                <span>✦ <small>Diseño</small></span>
+                <span>⚙ <small>Configuración</small></span>
+              </aside>
+              <div class="dashboard-content">
+                <div class="dashboard-heading">
+                  <div><span>Panel general</span><strong>Resumen de tu negocio</strong></div>
+                  <span class="dashboard-date">Últimos 30 días</span>
+                </div>
+                <div class="metric-grid">
+                  <article><small>Ventas</small><strong>$1.250.000</strong><em>↑ 12%</em></article>
+                  <article><small>Pedidos</small><strong>156</strong><em>↑ 8%</em></article>
+                  <article><small>Productos</small><strong>321</strong><em>Activo</em></article>
+                  <article><small>Clientes</small><strong>284</strong><em>↑ 14%</em></article>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-head"><strong>Ventas de los últimos 30 días</strong><span>$86.200</span></div>
+                  <div class="chart-area" aria-hidden="true">
+                    <span class="chart-line"></span>
+                    <i class="dot dot--1"></i><i class="dot dot--2"></i><i class="dot dot--3"></i><i class="dot dot--4"></i><i class="dot dot--5"></i>
+                  </div>
+                </div>
+                <div class="orders-card">
+                  <div class="orders-title"><strong>Pedidos recientes</strong><span>Ver todos</span></div>
+                  <div class="order-row"><span>#1042</span><span>Juan Pérez</span><b>$43.500</b><em>En preparación</em></div>
+                  <div class="order-row"><span>#1041</span><span>María González</span><b>$19.200</b><em class="sent">Enviado</em></div>
+                  <div class="order-row"><span>#1040</span><span>Lucas Rojas</span><b>$32.100</b><em>En preparación</em></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="phone-device">
+            <div class="phone-notch"></div>
+            <div class="phone-header"><span>☰</span><strong>Tu Marca</strong><span>⌕ &nbsp; ♡</span></div>
+            <div class="phone-hero">
+              <span class="phone-kicker">NUEVA COLECCIÓN</span>
+              <strong>Productos que te inspiran</strong>
+              <span class="phone-button">Ver colección →</span>
+            </div>
+            <div class="phone-products">
+              <div class="phone-title"><strong>Más vendidos</strong><span>Ver todo</span></div>
+              <div class="phone-product-grid">
+                <article><div class="product-shape product-shape--tee"></div><small>Remera básica</small><b>$12.900</b></article>
+                <article><div class="product-shape product-shape--shoe"></div><small>Zapatillas urbanas</small><b>$28.900</b></article>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="benefit-strip" aria-label="Ventajas de Comercio Flex">
+      <div class="container benefit-grid">
+        <article><span class="benefit-icon">$</span><div><strong>Sin costo de implementación</strong><small>Empezá sin costos iniciales.</small></div></article>
+        <article><span class="benefit-icon">⌁</span><div><strong>Atención directa</strong><small>Te acompañamos siempre.</small></div></article>
+        <article><span class="benefit-icon">✦</span><div><strong>Diseños personalizables</strong><small>Tu tienda, con tu identidad.</small></div></article>
+        <article><span class="benefit-icon">↯</span><div><strong>Gestión simple</strong><small>Todo desde un panel intuitivo.</small></div></article>
+      </div>
+    </section>
+
+    <section class="section features" id="funciones" aria-labelledby="features-title">
+      <div class="container">
+        <div class="section-heading section-heading--center">
+          <p class="eyebrow">TODO LO QUE NECESITÁS</p>
+          <h2 id="features-title">Funciones pensadas para hacer crecer tu negocio</h2>
+          <p>Comercio Flex reúne las herramientas para vender online y gestionar tu comercio de forma simple y profesional.</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card"><span class="feature-icon feature-icon--blue">▱</span><div><h3>Tienda online propia</h3><p>Tu propio sitio e-commerce con tu dominio, tu catálogo y tu marca.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--green">⬡</span><div><h3>Gestión de productos y stock</h3><p>Controlá tu inventario en tiempo real desde un panel claro y ordenado.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--purple">▤</span><div><h3>Pedidos y ventas</h3><p>Recibí y gestioná todos tus pedidos desde un solo lugar.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--amber">▥</span><div><h3>Panel administrador</h3><p>Una interfaz intuitiva para tener las métricas y operaciones bajo control.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--pink">✎</span><div><h3>Plantillas visuales</h3><p>Diseños modernos y personalizables para distintos tipos de comercio.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--cyan">▭</span><div><h3>Pagos y medios de cobro</h3><p>Integrá Mercado Pago y otros medios para cobrar online de forma segura.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section templates-section" id="plantillas" aria-labelledby="templates-title">
+      <div class="container templates-panel">
+        <div class="section-heading section-heading--split">
+          <div>
+            <p class="eyebrow">DISEÑOS PARA CADA NEGOCIO</p>
+            <h2 id="templates-title">Tu tienda, con el estilo de tu marca</h2>
+            <p>Elegí una base visual y personalizala para que tu negocio se vea realmente propio.</p>
+          </div>
+          <a href="/tiendas/tiendademo">Ver tienda demo <span>→</span></a>
+        </div>
+
+        <div class="template-grid">
+          <article class="template-card template-card--nordic">
+            <div class="template-browser"><span>NÓRDICA</span><small>Inicio &nbsp; Productos &nbsp; Nosotros</small><i>⌕ ♡</i></div>
+            <div class="template-hero template-hero--nordic">
+              <div><span>DISEÑO & HOGAR</span><strong>Hogar que<br />inspira</strong><p>Objetos simples para espacios con identidad.</p><b>Ver productos</b></div>
+              <div class="nordic-scene" aria-hidden="true"><i class="plant"></i><i class="lamp"></i><i class="vase"></i></div>
+            </div>
+            <div class="template-categories"><span>Decoración</span><span>Iluminación</span><span>Textiles</span><span>Organización</span></div>
+          </article>
+
+          <article class="template-card template-card--urban">
+            <div class="template-browser"><span>URBAN</span><small>Inicio &nbsp; Productos &nbsp; Nosotros</small><i>⌕ ♡</i></div>
+            <div class="template-hero template-hero--urban">
+              <div><span>NUEVA TEMPORADA</span><strong>Estilo urbano<br />sin límites</strong><p>Indumentaria y accesorios para todos los días.</p><b>Ver colección</b></div>
+              <div class="urban-shoe" aria-hidden="true"></div>
+            </div>
+            <div class="urban-products"><i></i><i></i><i></i><i></i></div>
+          </article>
+
+          <article class="template-card template-card--beauty">
+            <div class="template-browser"><span>BELA</span><small>Inicio &nbsp; Productos &nbsp; Nosotros</small><i>⌕ ♡</i></div>
+            <div class="template-hero template-hero--beauty">
+              <div><span>CUIDADO PERSONAL</span><strong>Belleza real<br />todos los días</strong><p>Productos pensados para sentirte bien.</p><b>Ver productos</b></div>
+              <div class="beauty-scene" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            </div>
+            <div class="template-categories"><span>Faciales</span><span>Maquillaje</span><span>Capilares</span><span>Cuidado corporal</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section steps-section" id="como-funciona" aria-labelledby="steps-title">
+      <div class="container steps-panel">
+        <div class="steps-heading">
+          <div><p class="eyebrow">EN SOLO 3 PASOS</p><h2 id="steps-title">Así de simple es empezar</h2></div>
+          <p>Te acompañamos en todo el proceso para que tu tienda quede lista y puedas enfocarte en vender.</p>
+        </div>
+        <div class="steps-grid">
+          <article><span>1</span><div><h3>Configuramos tu tienda</h3><p>Preparamos la base con tu marca, datos y el diseño que elijas.</p></div></article>
+          <i>→</i>
+          <article><span>2</span><div><h3>Cargás tus productos</h3><p>Subí productos, precios, imágenes y stock desde el panel.</p></div></article>
+          <i>→</i>
+          <article><span>3</span><div><h3>Empezás a vender</h3><p>Tu tienda queda lista para recibir pedidos y gestionar ventas.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section contact-section" id="contacto" aria-labelledby="contact-title">
+      <div class="container contact-panel">
+        <div class="contact-copy">
+          <p class="eyebrow">CONTACTO DIRECTO</p>
+          <h2 id="contact-title">Hablemos de tu tienda</h2>
+          <p>Contanos sobre tu negocio, solicitá una demo o hacenos cualquier consulta. Te respondemos de forma directa y personalizada.</p>
+          <div class="contact-trust">
+            <span><b>✓</b> Respuesta directa</span>
+            <span><b>✓</b> Sin compromiso</span>
+            <span><b>✓</b> Acompañamiento real</span>
+          </div>
+        </div>
+
+        <form #contactForm="ngForm" class="contact-form" (ngSubmit)="submitContact(contactForm)" novalidate>
+          <div class="form-row">
+            <label>
+              <span>Nombre <b>*</b></span>
+              <input #name="ngModel" type="text" name="name" [(ngModel)]="contact.name" required maxlength="80" autocomplete="name" placeholder="Tu nombre" />
+              @if (name.invalid && (name.touched || name.dirty)) { <small class="field-error">Ingresá tu nombre.</small> }
+            </label>
+            <label>
+              <span>Negocio <b>*</b></span>
+              <input #business="ngModel" type="text" name="business" [(ngModel)]="contact.business" required maxlength="120" autocomplete="organization" placeholder="Nombre de tu negocio" />
+              @if (business.invalid && (business.touched || business.dirty)) { <small class="field-error">Ingresá el nombre del negocio.</small> }
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              <span>Email <b>*</b></span>
+              <input #email="ngModel" type="email" name="email" [(ngModel)]="contact.email" required email maxlength="254" autocomplete="email" placeholder="tu@email.com" />
+              @if (email.invalid && (email.touched || email.dirty)) { <small class="field-error">Ingresá un email válido.</small> }
+            </label>
+            <label>
+              <span>WhatsApp <b>*</b></span>
+              <input #whatsapp="ngModel" type="tel" name="whatsapp" [(ngModel)]="contact.whatsapp" required minlength="6" maxlength="30" autocomplete="tel" placeholder="221 353-3259" />
+              @if (whatsapp.invalid && (whatsapp.touched || whatsapp.dirty)) { <small class="field-error">Ingresá un número de contacto.</small> }
+            </label>
+          </div>
+
+          <label class="message-field">
+            <span>Mensaje <b>*</b></span>
+            <textarea #message="ngModel" name="message" [(ngModel)]="contact.message" required maxlength="2000" rows="5" placeholder="Contanos en qué podemos ayudarte..."></textarea>
+            <span class="message-meta">{{ contact.message.length }}/2000</span>
+            @if (message.invalid && (message.touched || message.dirty)) { <small class="field-error">Contanos brevemente qué necesitás.</small> }
+          </label>
+
+          <label class="honeypot" aria-hidden="true">
+            Sitio web
+            <input type="text" name="website" [(ngModel)]="contact.website" tabindex="-1" autocomplete="off" />
+          </label>
+
+          <button class="button button--primary form-submit" type="submit" [disabled]="contactStatus() === 'sending'">
+            @if (contactStatus() === 'sending') { Enviando... } @else { Enviar consulta <span>→</span> }
+          </button>
+
+          <div class="form-status" aria-live="polite">
+            @if (contactStatus() === 'success') {
+              <p class="status-success">✓ Consulta enviada. Te vamos a responder a la brevedad.</p>
+            }
+            @if (contactStatus() === 'error') {
+              <p class="status-error">No pudimos enviar el formulario. Podés escribirnos directamente por WhatsApp o email.</p>
+            }
+          </div>
+        </form>
+
+        <aside class="direct-contact" aria-label="Medios de contacto directo">
+          <p>También podés contactarnos directamente</p>
+          <a class="contact-method" [href]="'mailto:' + contactEmail">
+            <span class="contact-method-icon">✉</span>
+            <div><small>Email</small><strong>{{ contactEmail }}</strong></div>
+          </a>
+          <a class="contact-method contact-method--whatsapp" [href]="whatsappHref" target="_blank" rel="noopener noreferrer">
+            <span class="contact-method-icon">◉</span>
+            <div><small>WhatsApp</small><strong>{{ contactPhoneDisplay }}</strong></div>
+          </a>
+          <div class="contact-note"><span>i</span><p>Respuesta directa y personalizada.<br /><b>¡Hablemos de tu proyecto!</b></p></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <div class="container final-cta-inner">
+        <div><strong>Mostrale a tu negocio una imagen más profesional</strong><span>Sumate a Comercio Flex y llevá tu comercio al siguiente nivel.</span></div>
+        <a class="button button--light" href="#contacto">Quiero mi demo <span>→</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <a class="brand brand--footer" href="#inicio"><img src="/assets/comercio-flex/icon-192x192.png" alt="" width="32" height="32" /><span>Comercio Flex</span></a>
+      <nav aria-label="Enlaces del pie">
+        <a href="#inicio">Inicio</a><a href="#funciones">Funciones</a><a href="#plantillas">Plantillas</a><a href="#como-funciona">Cómo funciona</a><a href="#contacto">Contacto</a>
+      </nav>
+      <div class="footer-meta"><span>© 2026 Comercio Flex.</span><small>Todos los derechos reservados.</small></div>
+    </div>
+  </footer>
+</div>

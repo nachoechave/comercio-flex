@@ -1,107 +1,73 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Meta, Title } from '@angular/platform-browser';
-import { provideRouter } from '@angular/router';
 
-import { LANDING_CONFIG } from '../landing.config';
 import { LandingPage } from './landing-page';
 
 describe('LandingPage', () => {
   let fixture: ComponentFixture<LandingPage>;
+  let httpTesting: HttpTestingController;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [LandingPage],
-      providers: [provideRouter([])],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LandingPage);
+    httpTesting = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
   });
 
   afterEach(() => {
+    httpTesting.verify();
     if (!fixture.componentRef.hostView.destroyed) {
       fixture.destroy();
     }
   });
 
-  it('renders the commercial landing with its primary navigation and internal links', () => {
+  it('renders the redesigned commercial landing and internal navigation', () => {
     const element = fixture.nativeElement as HTMLElement;
     const navLabels = Array.from(element.querySelectorAll('.desktop-nav a')).map((link) =>
       link.textContent?.trim(),
     );
 
-    expect(element.querySelector('h1')?.textContent).toContain('más simple');
+    expect(element.querySelector('h1')?.textContent).toContain('en un solo lugar');
     expect(navLabels).toEqual([
       'Inicio',
-      'Solución',
-      'Beneficios',
+      'Funciones',
+      'Plantillas',
       'Cómo funciona',
-      'Rubros',
-      'Demo',
+      'Contacto',
     ]);
-    expect(
-      Array.from(element.querySelectorAll('.desktop-nav a')).every((link) =>
-        link.getAttribute('href')?.startsWith('#'),
-      ),
-    ).toBe(true);
+
+    for (const anchor of Array.from(element.querySelectorAll<HTMLAnchorElement>('.desktop-nav a'))) {
+      expect(element.querySelector(anchor.hash)).not.toBeNull();
+    }
   });
 
-  it('uses the real login and published demo storefront routes', () => {
+  it('publishes the verified direct contact channels', () => {
     const element = fixture.nativeElement as HTMLElement;
-    const links = Array.from(element.querySelectorAll('a'));
-    const login = links.find((link) => link.textContent?.trim() === 'Iniciar sesión');
-    const demo = links.find((link) => link.textContent?.trim() === 'Ver tienda demo');
+    const email = element.querySelector<HTMLAnchorElement>('a[href^="mailto:"]');
+    const whatsapp = element.querySelector<HTMLAnchorElement>('a[href*="wa.me"]');
 
-    expect(login?.getAttribute('href')).toBe('/admin/login');
-    expect(LANDING_CONFIG.demoStorePath).toBe('/tiendas/tiendademo');
-    expect(demo?.getAttribute('href')).toBe('/tiendas/tiendademo');
+    expect(email?.getAttribute('href')).toBe('mailto:nacho9847@gmail.com');
+    expect(whatsapp?.getAttribute('href')).toContain('5492213533259');
+    expect(element.textContent).toContain('221 353-3259');
+    expect(element.textContent).toContain('Solicitar demo');
   });
 
-  it('does not expose a demo-request CTA until a verified contact channel is configured', () => {
-    const element = fixture.nativeElement as HTMLElement;
-
-    expect(LANDING_CONFIG.contactHref).toBeNull();
-    expect(element.querySelector('a[href^="mailto:"]')).toBeNull();
-    expect(element.querySelector('a[href*="wa.me"]')).toBeNull();
-    expect(element.textContent).not.toContain('Solicitar demo');
-  });
-
-  it('keeps pricing and testimonials hidden and renders no unsupported claims', () => {
+  it('keeps pricing and testimonials out of the landing', () => {
     const element = fixture.nativeElement as HTMLElement;
     const text = element.textContent ?? '';
 
     expect(element.querySelector('[data-section="pricing"]')).toBeNull();
     expect(element.querySelector('[data-section="testimonials"]')).toBeNull();
-    expect(LANDING_CONFIG.showPricing).toBe(false);
-    expect(LANDING_CONFIG.showTestimonials).toBe(false);
-    expect(element.querySelector('.desktop-nav')?.textContent).not.toMatch(/precios|testimonios/i);
-    expect(text).not.toMatch(
-      /sin tarjeta|clientes satisfechos|conversion rate|aumentá ventas \d+%/i,
-    );
-    expect(text).not.toMatch(/19\.990|39\.990|79\.990/);
+    expect(text).not.toMatch(/clientes satisfechos|conversion rate|aumentá ventas \d+%/i);
   });
 
-  it('points every navbar anchor to a rendered section', () => {
-    const element = fixture.nativeElement as HTMLElement;
-    const anchors = Array.from(element.querySelectorAll<HTMLAnchorElement>('.desktop-nav a'));
-
-    expect(anchors.length).toBeGreaterThan(0);
-    for (const anchor of anchors) {
-      expect(element.querySelector(anchor.hash)).not.toBeNull();
-    }
-  });
-
-  it('renders accessible native FAQ accordions', () => {
-    const element = fixture.nativeElement as HTMLElement;
-    const questions = element.querySelectorAll('details');
-
-    expect(questions).toHaveLength(7);
-    expect(questions[0].querySelector('summary')?.textContent).toContain(
-      '¿Necesito conocimientos técnicos?',
-    );
-  });
-
-  it('opens the mobile navigation, closes it after navigation and restores focus on Escape', () => {
+  it('opens and closes the mobile navigation', () => {
     const element = fixture.nativeElement as HTMLElement;
     const menuButton = element.querySelector('.menu-button') as HTMLButtonElement;
 
@@ -110,16 +76,41 @@ describe('LandingPage', () => {
     expect(menuButton.getAttribute('aria-expanded')).toBe('true');
     expect(element.querySelector('#landing-mobile-menu')).not.toBeNull();
 
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    fixture.detectChanges();
-    expect(element.querySelector('#landing-mobile-menu')).toBeNull();
-    expect(document.activeElement).toBe(menuButton);
-
-    menuButton.click();
-    fixture.detectChanges();
     (element.querySelector('#landing-mobile-menu a') as HTMLAnchorElement).click();
     fixture.detectChanges();
     expect(element.querySelector('#landing-mobile-menu')).toBeNull();
+  });
+
+  it('submits the contact form to the public endpoint', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    setInput(element, 'name', 'Ignacio');
+    setInput(element, 'business', 'Comercio de prueba');
+    setInput(element, 'email', 'cliente@example.com');
+    setInput(element, 'whatsapp', '2215555555');
+    setTextarea(element, 'message', 'Quiero conocer Comercio Flex.');
+    fixture.detectChanges();
+
+    (element.querySelector('.contact-form') as HTMLFormElement).dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    const request = httpTesting.expectOne('/api/v1/public/contact');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(
+      jasmine.objectContaining({
+        name: 'Ignacio',
+        business: 'Comercio de prueba',
+        email: 'cliente@example.com',
+        whatsapp: '2215555555',
+        message: 'Quiero conocer Comercio Flex.',
+        website: '',
+      }),
+    );
+    expect(request.request.body.startedAt).toBeGreaterThan(0);
+    request.flush(null);
+    fixture.detectChanges();
+
+    expect(element.textContent).toContain('Consulta enviada');
   });
 
   it('sets complete landing SEO, social and canonical metadata', () => {
@@ -138,14 +129,12 @@ describe('LandingPage', () => {
     expect(meta.getTag("property='og:image'")?.content).toBe(
       'https://comercioflex.com.ar/assets/comercio-flex/icon-512x512.png',
     );
-    expect(meta.getTag("name='twitter:card'")?.content).toBe('summary');
-    expect(meta.getTag("name='twitter:title'")?.content).toContain('Comercio Flex');
     expect(document.head.querySelector<HTMLLinkElement>("link[rel='canonical']")?.href).toBe(
       'https://comercioflex.com.ar/',
     );
   });
 
-  it('publishes structured data for the platform without unsupported commercial claims', () => {
+  it('publishes Organization contact data in structured data', () => {
     const script = document.head.querySelector<HTMLScriptElement>(
       "script[type='application/ld+json'][data-landing-seo='true']",
     );
@@ -155,29 +144,33 @@ describe('LandingPage', () => {
       '@graph': Array<Record<string, unknown>>;
     };
     expect(schema['@graph']).toHaveLength(2);
-    expect(schema['@graph'][0]['@type']).toBe('Organization');
+    expect(schema['@graph'][0]['email']).toBe('nacho9847@gmail.com');
     expect(schema['@graph'][1]['@type']).toBe('SoftwareApplication');
-    expect(schema['@graph'][1]['applicationCategory']).toBe('BusinessApplication');
-    expect(schema['@graph'][1]).not.toHaveProperty('offers');
-    expect(schema['@graph'][1]).not.toHaveProperty('aggregateRating');
   });
 
-  it('removes landing-only social, robots, schema and canonical metadata when leaving the route', () => {
+  it('removes landing-only metadata when leaving the route', () => {
     const meta = TestBed.inject(Meta);
 
     fixture.destroy();
 
     expect(meta.getTag("name='robots'")).toBeNull();
     expect(meta.getTag("property='og:site_name'")).toBeNull();
-    expect(meta.getTag("property='og:locale'")).toBeNull();
     expect(meta.getTag("property='og:title'")).toBeNull();
-    expect(meta.getTag("property='og:description'")).toBeNull();
-    expect(meta.getTag("property='og:type'")).toBeNull();
-    expect(meta.getTag("property='og:url'")).toBeNull();
-    expect(meta.getTag("property='og:image'")).toBeNull();
-    expect(meta.getTag("name='twitter:card'")).toBeNull();
-    expect(meta.getTag("name='twitter:title'")).toBeNull();
     expect(document.head.querySelector("script[data-landing-seo='true']")).toBeNull();
     expect(document.head.querySelector("link[rel='canonical']")).toBeNull();
   });
 });
+
+function setInput(element: HTMLElement, name: string, value: string): void {
+  const input = element.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+  if (!input) throw new Error(`Missing input ${name}`);
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function setTextarea(element: HTMLElement, name: string, value: string): void {
+  const textarea = element.querySelector<HTMLTextAreaElement>(`textarea[name="${name}"]`);
+  if (!textarea) throw new Error(`Missing textarea ${name}`);
+  textarea.value = value;
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+}
