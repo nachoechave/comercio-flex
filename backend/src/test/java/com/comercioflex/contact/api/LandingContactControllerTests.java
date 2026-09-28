@@ -16,6 +16,7 @@ import com.comercioflex.notification.application.TransactionalEmailSender;
 import com.comercioflex.notification.infrastructure.EmailProperties;
 
 class LandingContactControllerTests {
+	private static final long VALID_FORM_AGE_MILLIS = 10_000;
 
 	@Test
 	void sendsValidContactToConfiguredRecipient() {
@@ -25,7 +26,7 @@ class LandingContactControllerTests {
 		LandingContactController controller =
 			new LandingContactController(sender, properties, "nacho9847@gmail.com");
 
-		var response = controller.submit(validRequest(System.currentTimeMillis() - 3_000));
+		var response = controller.submit(validRequest(System.currentTimeMillis() - VALID_FORM_AGE_MILLIS));
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
 		ArgumentCaptor<TransactionalEmail> captor = ArgumentCaptor.forClass(TransactionalEmail.class);
@@ -63,7 +64,7 @@ class LandingContactControllerTests {
 			"2215555555",
 			"Spam",
 			"https://spam.example",
-			System.currentTimeMillis() - 3_000);
+			System.currentTimeMillis() - VALID_FORM_AGE_MILLIS);
 
 		var response = controller.submit(request);
 
@@ -79,7 +80,7 @@ class LandingContactControllerTests {
 		LandingContactController controller =
 			new LandingContactController(sender, properties, "nacho9847@gmail.com");
 
-		var response = controller.submit(validRequest(System.currentTimeMillis() - 3_000));
+		var response = controller.submit(validRequest(System.currentTimeMillis() - VALID_FORM_AGE_MILLIS));
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
 		verify(sender, org.mockito.Mockito.never()).send(any());
