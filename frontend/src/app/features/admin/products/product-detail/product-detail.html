@@ -70,11 +70,12 @@
         <div class="actions">
           @if (current.status === 'DRAFT') {
             <button type="button" (click)="requestStatus('PUBLISHED', $event)">Publicar</button>
-            <button type="button" (click)="requestStatus('ARCHIVED', $event)">Archivar</button>
+            <button type="button" (click)="requestStatus('ARCHIVED', $event)">Eliminar del catálogo</button>
           } @else if (current.status === 'PUBLISHED') {
             <button type="button" (click)="requestStatus('DRAFT', $event)">Despublicar</button>
-            <button type="button" (click)="requestStatus('ARCHIVED', $event)">Archivar</button>
+            <button type="button" (click)="requestStatus('ARCHIVED', $event)">Eliminar del catálogo</button>
           } @else {
+            <p>Este producto no aparece en la tienda ni en el listado activo del panel.</p>
             <button type="button" (click)="requestStatus('DRAFT', $event)">
               Restaurar como borrador
             </button>
@@ -85,8 +86,12 @@
 
     @if (requestedStatus(); as nextStatus) {
       <section class="confirmation" role="alertdialog" aria-labelledby="status-confirm-title">
-        <h2 id="status-confirm-title">Confirmar cambio de estado</h2>
-        <p>El producto pasará a estado {{ statusLabel(nextStatus).toLowerCase() }}.</p>
+        <h2 id="status-confirm-title">Confirmar cambio</h2>
+        @if (nextStatus === 'ARCHIVED') {
+          <p>El producto dejará de verse en la tienda y en el listado activo del panel. Podrás recuperarlo desde “Archivados”.</p>
+        } @else {
+          <p>El producto pasará a estado {{ statusLabel(nextStatus).toLowerCase() }}.</p>
+        }
         <div class="actions">
           <button type="button" (click)="cancelStatus()">Cancelar</button>
           <button #statusConfirm type="button" class="primary" (click)="confirmStatus()">
