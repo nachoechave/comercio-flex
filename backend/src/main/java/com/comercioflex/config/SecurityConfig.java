@@ -62,6 +62,7 @@ public class SecurityConfig {
 			.csrf(csrf -> csrf
 				.csrfTokenRepository(csrfTokenRepository)
 				.ignoringRequestMatchers(
+					postMatcher("/api/v1/public/contact"),
 					postMatcher("/api/v1/stores/*/orders"),
  postMatcher("/api/v1/stores/*/shipping/quote"),
 					postMatcher("/api/v1/stores/*/orders/*/payments/checkout-pro"),
@@ -94,6 +95,7 @@ public class SecurityConfig {
 						"/productos/**")
 				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+				.requestMatchers(HttpMethod.POST, "/api/v1/public/contact").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/shipping/availability").permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/v1/stores/*/shipping/quote").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/storefront/resolve").permitAll()
@@ -104,7 +106,7 @@ public class SecurityConfig {
     .access(new TenantPermissionAuthorizationManager(TenantPermission.MANAGE_PAYMENTS))
     .requestMatchers("/api/v1/stores/*/admin/membership-plans", "/api/v1/stores/*/admin/membership-plans/**")
 				.access(new TenantPermissionAuthorizationManager(TenantPermission.MANAGE_RADIO_PLANS))
-				.requestMatchers("/api/v1/stores/*/admin/paid-memberships", "/api/v1/stores/*/admin/paid-memberships/**")
+    .requestMatchers("/api/v1/stores/*/admin/paid-memberships", "/api/v1/stores/*/admin/paid-memberships/**")
 				.access(new TenantPermissionAuthorizationManager(TenantPermission.VIEW_RADIO_MEMBERSHIPS))
 				.requestMatchers("/api/v1/stores/*/settings").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/payment-methods").permitAll()
