@@ -48,18 +48,30 @@ public class ProductService {
 		String name = validator.name(command.name());
 		String description = validator.description(command.description());
 		List<VariantValues> variants = validator.variants(command.variants());
-		String slug = slugGenerator.generate(name);
+		String baseSlug = slugGenerator.generate(name);
 		UUID productId = UUID.randomUUID();
 		return transactionTemplate.execute(ignored -> {
 			long categoryId = repository.lockActiveCategory(command.categoryId())
 				.orElseThrow(() -> new ProductConflictException(
 					"La categoría debe existir y estar activa."));
-			long internalId = repository.insertProduct(
-				productId,
-				categoryId,
-				name,
-				slug,
-				description);
+			long internalId;
+			try {
+				internalId = repository.insertProduct(
+					productId,
+					categoryId,
+					name,
+					baseSlug,
+					description);
+			}
+			catch (ProductConflictException conflict) {
+				String fallbackSlug = baseSlug + "-" + productId.toString().substring(0, 8);
+				internalId = repository.insertProduct(
+					productId,
+					categoryId,
+					name,
+					fallbackSlug,
+					description);
+			}
 			for (VariantValues variant : variants) {
 				repository.insertVariant(UUID.randomUUID(), internalId, variant);
 			}

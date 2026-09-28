@@ -64,12 +64,12 @@ describe('ProductDetail', () => {
     fixture.detectChanges();
   }
 
-  it('lets an owner archive a published product using its version', () => {
+  it('lets an owner remove a published product from the catalog using its version', () => {
     load();
-    const archive = [...fixture.nativeElement.querySelectorAll('button')].find(
-      (button: HTMLButtonElement) => button.textContent?.trim() === 'Archivar',
+    const removeFromCatalog = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (button: HTMLButtonElement) => button.textContent?.trim() === 'Eliminar del catálogo',
     ) as HTMLButtonElement;
-    archive.click();
+    removeFromCatalog.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeTruthy();
 
@@ -91,6 +91,6 @@ describe('ProductDetail', () => {
     load();
     expect(fixture.nativeElement.textContent).toContain('Vista de lectura');
     expect(fixture.nativeElement.textContent).not.toContain('Despublicar');
-    expect(fixture.nativeElement.textContent).not.toContain('Archivar');
+    expect(fixture.nativeElement.textContent).not.toContain('Eliminar del catálogo');
   });
 });
