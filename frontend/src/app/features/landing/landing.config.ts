@@ -16,7 +16,7 @@ export const LANDING_CONFIG = {
   // Keep the commercial contact CTA disabled until a verified, company-owned channel exists.
   // Before production activation, set this once to a real mailto: or HTTPS WhatsApp/contact URL.
   contactHref: null as string | null,
-  demoStorePath: '/tiendas/tiendademo',
+  demoStorePath: 'https://laolamadre.com.ar',
   showPricing: false,
   showTestimonials: false,
 } as const;
