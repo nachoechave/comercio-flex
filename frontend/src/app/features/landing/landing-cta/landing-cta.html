@@ -15,7 +15,9 @@
       class="button"
       [class.button--light]="!config.contactHref"
       [class.button--outline]="config.contactHref"
-      [routerLink]="config.demoStorePath"
+      [href]="config.demoStorePath"
+      target="_blank"
+      rel="noopener noreferrer"
     >
       Ver tienda demo
     </a>
