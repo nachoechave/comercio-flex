@@ -83,7 +83,11 @@ export class ProductList {
           .pipe(catchError(() => of([] as ProductCategory[]))),
       }).subscribe({
         next: ({ page, categories }) => {
-          this.page.set(page);
+          this.page.set(
+            value.status
+              ? page
+              : { ...page, items: page.items.filter((product) => product.status !== 'ARCHIVED') },
+          );
           this.categories.set(categories);
           this.loading.set(false);
         },
