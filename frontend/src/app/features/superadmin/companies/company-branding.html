@@ -22,7 +22,7 @@
           <label>Fondo <span><input type="color" formControlName="backgroundColor" /><input formControlName="backgroundColor" maxlength="7" /></span></label>
           <label>Texto <span><input type="color" formControlName="textColor" /><input formControlName="textColor" maxlength="7" /></span></label>
         </div>
-      </fieldset>
+      @if (form.controls.template.value === 'FASHION') { <label>Color del texto del hero<input type="color" formControlName="heroTextColor" /></label> }</fieldset>
 
       <fieldset>
         <legend>Tipografía y presentación</legend>

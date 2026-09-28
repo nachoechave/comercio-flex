@@ -12,5 +12,6 @@ public record TenantBranding(
 	StorefrontTemplate template,
 	BrandAssetReference logo,
 	BrandAssetReference favicon,
-	BrandAssetReference hero) {
+	BrandAssetReference hero,
+	String heroTextColor) {
 }

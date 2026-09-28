@@ -39,7 +39,8 @@ public record StoreSettingsResponse(
 		String template,
 		String logoUrl,
 		String faviconUrl,
-		String heroImageUrl) {
+		String heroImageUrl,
+		String heroTextColor) {
 
 		static BrandingResponse from(String slug, com.comercioflex.tenant.domain.TenantBranding branding) {
 			return new BrandingResponse(
@@ -48,7 +49,7 @@ public record StoreSettingsResponse(
 				branding.heroSubtitle(), branding.template().name(),
 				url(slug, "logo", branding.logo()),
 				url(slug, "favicon", branding.favicon()),
-				url(slug, "hero", branding.hero()));
+				url(slug, "hero", branding.hero()), branding.heroTextColor());
 		}
 
 		private static String url(

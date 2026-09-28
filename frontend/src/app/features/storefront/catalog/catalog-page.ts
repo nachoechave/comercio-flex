@@ -28,7 +28,7 @@ const EMPTY_PAGE: PublicProductPage = { items: [], page: 0, size: PAGE_SIZE, tot
   selector: 'app-catalog-page',
   imports: [ReactiveFormsModule, RouterLink, ProductCard, DesignerHome],
   templateUrl: './catalog-page.html',
-  styleUrls: ['./catalog-page.scss', './catalog-page-v2.scss', './catalog-fashion-fidelity.scss', './catalog-fashion-scaling.scss', './catalog-designer-full.scss'],
+  styleUrls: ['./catalog-page.scss', './catalog-page-v2.scss', './catalog-fashion-fidelity.scss', './catalog-fashion-scaling.scss', './catalog-fashion-branding.scss', './catalog-designer-full.scss'],
 })
 export class CatalogPage {
   private readonly api = inject(StorefrontApiService);

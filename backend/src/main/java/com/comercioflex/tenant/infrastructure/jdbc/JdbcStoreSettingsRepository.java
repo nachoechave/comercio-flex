@@ -31,7 +31,7 @@ public class JdbcStoreSettingsRepository implements StoreSettingsRepository {
 				SELECT store_name, currency_code, timezone, contact_phone, contact_email,
 				       pickup_address, pickup_instructions, bank_transfer_enabled, bank_transfer_discount_percentage,
 				       bank_name, bank_account_holder, bank_alias, bank_cbu_cvu, brand_theme,
-				       primary_color, secondary_color, background_color, text_color,
+				       primary_color, secondary_color, background_color, text_color, hero_text_color,
 				       brand_font, hero_eyebrow, hero_title, hero_subtitle, storefront_template,
 				       logo_storage_key, logo_content_type, logo_etag,
 				       favicon_storage_key, favicon_content_type, favicon_etag,
@@ -66,7 +66,7 @@ public class JdbcStoreSettingsRepository implements StoreSettingsRepository {
 				StorefrontTemplate.valueOf(resultSet.getString("storefront_template")),
 				asset(resultSet, "logo"),
 				asset(resultSet, "favicon"),
-				asset(resultSet, "hero"))));
+				asset(resultSet, "hero"), resultSet.getString("hero_text_color"))));
 		return result.stream().findFirst();
 	}
 

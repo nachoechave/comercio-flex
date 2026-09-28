@@ -27,13 +27,28 @@ class UpdateStoreBrandingRequestTests {
 	void rejectsInvalidColorsAndOversizedHeroCopy() {
 		var request = new UpdateStoreBrandingRequest(
 			"green", "#112233", "#FFFFFF", "#111111", BrandFont.SANS,
-			"z".repeat(81), "x".repeat(161), "y".repeat(301), StorefrontTemplate.FRESH);
+			"z".repeat(81), "x".repeat(161), "y".repeat(301), StorefrontTemplate.FRESH, null);
 		assertThat(validator.validate(request)).hasSize(4);
+	}
+
+	@Test
+	void validatesAndForwardsIndependentHeroColor() {
+		var valid = validRequest(StorefrontTemplate.FASHION);
+		var request = new UpdateStoreBrandingRequest(
+			valid.primaryColor(), valid.secondaryColor(), valid.backgroundColor(), valid.textColor(),
+			valid.font(), valid.heroEyebrow(), valid.heroTitle(), valid.heroSubtitle(), valid.template(), "#ABCDEF");
+		assertThat(validator.validate(request)).isEmpty();
+		assertThat(request.toCommand().heroTextColor()).isEqualTo("#ABCDEF");
+		var invalid = new UpdateStoreBrandingRequest(
+			valid.primaryColor(), valid.secondaryColor(), valid.backgroundColor(), valid.textColor(),
+			valid.font(), valid.heroEyebrow(), valid.heroTitle(), valid.heroSubtitle(), valid.template(), "red");
+		assertThat(validator.validate(invalid)).hasSize(1);
+		assertThat(valid.toCommand().heroTextColor()).isNull();
 	}
 
 	private UpdateStoreBrandingRequest validRequest(StorefrontTemplate template) {
 		return new UpdateStoreBrandingRequest(
 			"#315A46", "#17352A", "#F7F5EF", "#20241F", BrandFont.SYSTEM,
-			"Colección destacada", "Una tienda con identidad", "Productos elegidos para vos", template);
+			"Colección destacada", "Una tienda con identidad", "Productos elegidos para vos", template, null);
 	}
 }

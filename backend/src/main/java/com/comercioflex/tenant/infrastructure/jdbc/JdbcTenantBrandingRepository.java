@@ -29,7 +29,7 @@ public class JdbcTenantBrandingRepository implements TenantBrandingRepository {
 	@Override
 	public Optional<TenantBranding> findCurrent() {
 		return jdbcTemplate.query("""
-			SELECT primary_color, secondary_color, background_color, text_color,
+			SELECT primary_color, secondary_color, background_color, text_color, hero_text_color,
 			       brand_font, hero_eyebrow, hero_title, hero_subtitle, storefront_template,
 			       logo_storage_key, logo_content_type, logo_etag,
 			       favicon_storage_key, favicon_content_type, favicon_etag,
@@ -46,12 +46,12 @@ public class JdbcTenantBrandingRepository implements TenantBrandingRepository {
 			UPDATE store_settings
 			SET primary_color = ?, secondary_color = ?, background_color = ?,
 			    text_color = ?, brand_font = ?, hero_eyebrow = ?, hero_title = ?, hero_subtitle = ?,
-			    storefront_template = ?
+			    storefront_template = ?, hero_text_color = COALESCE(?, hero_text_color)
 			ORDER BY id
 			LIMIT 1
 			""", command.primaryColor(), command.secondaryColor(), command.backgroundColor(),
 			command.textColor(), command.font().name(), command.heroEyebrow(), command.heroTitle(),
-			command.heroSubtitle(), command.template().name());
+			command.heroSubtitle(), command.template().name(), command.heroTextColor());
 	}
 
 	@Override
@@ -94,7 +94,7 @@ public class JdbcTenantBrandingRepository implements TenantBrandingRepository {
 			resultSet.getString("hero_title"),
 			resultSet.getString("hero_subtitle"),
 			StorefrontTemplate.valueOf(resultSet.getString("storefront_template")),
-			asset(resultSet, "logo"), asset(resultSet, "favicon"), asset(resultSet, "hero"));
+			asset(resultSet, "logo"), asset(resultSet, "favicon"), asset(resultSet, "hero"), resultSet.getString("hero_text_color"));
 	}
 
 	private BrandAssetReference asset(ResultSet resultSet, String prefix) throws SQLException {

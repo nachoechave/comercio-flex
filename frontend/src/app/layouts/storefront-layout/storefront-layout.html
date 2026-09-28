@@ -11,7 +11,7 @@
     <a routerLink="/">Volver a Comercio Flex</a>
   </main>
 } @else if (context.settings(); as settings) {
-  <div class="store-theme" [attr.data-template]="activeTemplate().toLowerCase()" [style.--store-primary-color]="branding().primaryColor" [style.--store-secondary-color]="branding().secondaryColor" [style.--store-background-color]="branding().backgroundColor" [style.--store-text-color]="branding().textColor" [style.--store-font-family]="fontFamily()" [style.--store-hero-image]="branding().heroImageUrl ? 'url(' + branding().heroImageUrl + ')' : 'none'">
+  <div class="store-theme" [attr.data-template]="activeTemplate().toLowerCase()" [style.--store-primary-color]="branding().primaryColor" [style.--store-secondary-color]="branding().secondaryColor" [style.--store-background-color]="branding().backgroundColor" [style.--store-text-color]="branding().textColor" [style.--store-hero-text-color]="branding().heroTextColor ?? '#FFFFFF'" [style.--store-font-family]="fontFamily()" [style.--store-hero-image]="branding().heroImageUrl ? 'url(' + branding().heroImageUrl + ')' : 'none'">
     @switch (activeTemplate()) {
       @case ('FASHION') { <app-fashion-storefront-shell [settings]="settings" [branding]="effectiveBranding()" [cartUnits]="cartUnits()" /> }
       @case ('FRESH') { <app-fresh-storefront-shell [settings]="settings" [branding]="effectiveBranding()" [cartUnits]="cartUnits()" /> }

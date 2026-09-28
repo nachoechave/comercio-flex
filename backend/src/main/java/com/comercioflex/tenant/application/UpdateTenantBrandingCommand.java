@@ -12,5 +12,6 @@ public record UpdateTenantBrandingCommand(
 	String heroEyebrow,
 	String heroTitle,
 	String heroSubtitle,
-	StorefrontTemplate template) {
+	StorefrontTemplate template,
+	String heroTextColor) {
 }

@@ -15,7 +15,8 @@ public record CompanyBrandingResponse(
 	String template,
 	String logoUrl,
 	String faviconUrl,
-	String heroImageUrl) {
+	String heroImageUrl,
+	String heroTextColor) {
 
 	static CompanyBrandingResponse from(CompanyBranding company) {
 		var branding = company.branding();
@@ -25,7 +26,7 @@ public record CompanyBrandingResponse(
 			branding.heroSubtitle(), branding.template().name(),
 			url(company.slug(), "logo", branding.logo()),
 			url(company.slug(), "favicon", branding.favicon()),
-			url(company.slug(), "hero", branding.hero()));
+			url(company.slug(), "hero", branding.hero()), branding.heroTextColor());
 	}
 
 	private static String url(String slug, String type, BrandAssetReference asset) {
