@@ -218,7 +218,7 @@ class EmailBrandingResolverTests {
                         StorefrontTemplate.CATALOG,
                         logo,
                         null,
-                        null);
+                        null, null);
 
         return new StoreSettings(
                 name,

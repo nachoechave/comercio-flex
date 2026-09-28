@@ -17,11 +17,12 @@ public record UpdateStoreBrandingRequest(
 	@Size(max = 80) String heroEyebrow,
 	@Size(max = 160) String heroTitle,
 	@Size(max = 300) String heroSubtitle,
-	@NotNull StorefrontTemplate template) {
+	@NotNull StorefrontTemplate template,
+	@Pattern(regexp = "#[0-9A-Fa-f]{6}") String heroTextColor) {
 
 	UpdateTenantBrandingCommand toCommand() {
 		return new UpdateTenantBrandingCommand(
 			primaryColor, secondaryColor, backgroundColor, textColor,
-			font, heroEyebrow, heroTitle, heroSubtitle, template);
+			font, heroEyebrow, heroTitle, heroSubtitle, template, heroTextColor);
 	}
 }

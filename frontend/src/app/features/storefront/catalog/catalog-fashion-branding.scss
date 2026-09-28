@@ -1,0 +1,53 @@
+/* Loaded after the fidelity rules: merchant palette wins on page surfaces.
+   Image overlays and semantic badges keep their own contrast colors. */
+.catalog--streetwear {
+  color: var(--store-text-color);
+  background: var(--store-background-color);
+}
+
+.catalog--streetwear .filters,
+.catalog--streetwear .filters input,
+.catalog--streetwear .filters select {
+  color: var(--store-text-color);
+  background: var(--store-background-color);
+}
+
+.catalog--streetwear .results-heading h2,
+.catalog--streetwear .category-showcase > h2,
+.catalog--streetwear .trust-strip,
+.catalog--streetwear .trust-strip article > span,
+.catalog--streetwear .result-count--link {
+  color: var(--store-text-color);
+}
+
+.catalog--streetwear .result-count--link {
+  border-color: var(--store-text-color);
+  background: var(--store-background-color);
+}
+
+.catalog--streetwear .section-kicker,
+.catalog--streetwear .result-count:not(.result-count--link),
+.catalog--streetwear .trust-strip small,
+.catalog--streetwear .fashion-catalog-cta p {
+  color: var(--color-muted);
+}
+
+.catalog--streetwear .filters button,
+.catalog--streetwear .pagination button,
+.catalog--streetwear .fashion-catalog-cta a,
+.catalog--streetwear .result-count--link:hover {
+  color: var(--store-background-color);
+  background: var(--store-text-color);
+  border-color: var(--store-text-color);
+}
+
+.catalog--streetwear .streetwear-hero,
+.catalog--streetwear .hero-copy h1,
+.catalog--streetwear .hero-copy > p:not(.eyebrow),
+.catalog--streetwear .hero-secondary {
+  color: var(--store-hero-text-color, #fff);
+}
+
+.catalog--streetwear .hero-secondary {
+  border-color: currentColor;
+}

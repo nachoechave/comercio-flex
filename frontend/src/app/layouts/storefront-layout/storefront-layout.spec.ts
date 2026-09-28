@@ -49,7 +49,7 @@ describe('StorefrontLayout', () => {
       timezone: 'America/Argentina/Buenos_Aires',
       branding: {
         primaryColor: '#B7FF2A', secondaryColor: '#080808', backgroundColor: '#FFFFFF',
-        textColor: '#0B0B0B', font: 'SANS', heroTitle: null, heroSubtitle: null,
+        textColor: '#0B0B0B', heroTextColor: '#FFEEDD', font: 'SANS', heroTitle: null, heroSubtitle: null,
         template: 'FASHION', logoUrl: null, faviconUrl: null, heroImageUrl: null,
       },
     });
@@ -57,6 +57,12 @@ describe('StorefrontLayout', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('exposes general and hero text colors independently to the storefront', () => {
+    const theme: HTMLElement = fixture.nativeElement.querySelector('.store-theme');
+    expect(theme.style.getPropertyValue('--store-text-color')).toBe('#0B0B0B');
+    expect(theme.style.getPropertyValue('--store-hero-text-color')).toBe('#FFEEDD');
+  });
 
   it('keeps storefront section links inside the active store route', () => {
     const links = Array.from<HTMLAnchorElement>(

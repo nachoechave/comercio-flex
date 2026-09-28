@@ -587,3 +587,49 @@ nav {
     padding-inline: 0.625rem;
   }
 }
+
+/* Brand images are wordmarks, not fixed-size avatars. Keep their proportions. */
+.store-theme[data-template='fashion'] {
+  --color-surface: var(--store-background-color);
+  --color-muted: color-mix(in srgb, var(--store-text-color) 72%, var(--store-background-color));
+  --color-border: color-mix(in srgb, var(--store-text-color) 18%, var(--store-background-color));
+}
+
+.store-theme .site-header--fashion {
+  color: var(--store-text-color);
+  background: var(--store-background-color);
+  border-color: var(--color-border);
+  padding-block: 0.75rem;
+}
+
+.store-theme .site-header--fashion .brand {
+  min-width: 0;
+  flex: 0 1 13.75rem;
+}
+
+.store-theme .site-header--fashion .brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 13.75rem;
+  height: 5rem;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.store-theme .site-header--fashion .brand,
+.store-theme .site-header--fashion nav > a,
+.store-theme .site-header--fashion .mobile-menu {
+  color: var(--store-text-color);
+}
+
+@media (max-width: 48rem) {
+  .store-theme .site-header--fashion .brand {
+    flex-basis: 10rem;
+    max-width: calc(100% - 6rem);
+  }
+
+  .store-theme .site-header--fashion .brand-logo {
+    max-width: 10rem;
+    height: 3.75rem;
+  }
+}

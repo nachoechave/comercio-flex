@@ -111,6 +111,7 @@ export interface CompanyBranding {
   secondaryColor: string;
   backgroundColor: string;
   textColor: string;
+  heroTextColor?: string | null;
   font: BrandFont;
   heroEyebrow?: string | null;
   heroTitle: string | null;

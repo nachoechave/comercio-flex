@@ -58,12 +58,14 @@ describe('StoreBrandingPage', () => {
     expect(page.form.controls.template.value).toBe('COAST');
     expect(updateBranding).not.toHaveBeenCalled();
 
+    page.form.controls.textColor.setValue('#223344');
+    page.form.controls.heroTextColor.setValue('#FFEEDD');
     page.save();
 
     expect(updateBranding).toHaveBeenCalledTimes(1);
     expect(updateBranding).toHaveBeenCalledWith(
       'mercado-sur',
-      expect.objectContaining({ template: 'COAST', heroTitle: 'La feria en tu casa' }),
+      expect.objectContaining({ template: 'COAST', heroTitle: 'La feria en tu casa', textColor: '#223344', heroTextColor: '#FFEEDD' }),
     );
   });
 });

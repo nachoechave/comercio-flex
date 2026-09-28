@@ -178,6 +178,8 @@ h2 a::after {
 }
 
 .product-card--streetwear {
+  color: var(--store-text-color);
+  background: var(--store-background-color);
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -229,7 +231,7 @@ h2 a::after {
 }
 
 .product-card--streetwear .category {
-  color: #717171;
+  color: var(--color-muted);
   font-size: 0.62rem;
   letter-spacing: 0.06em;
 }
@@ -263,7 +265,7 @@ h2 a::after {
 }
 
 .product-card--streetwear .availability {
-  color: #4c4c4c;
+  color: var(--color-muted);
   font-size: 0.65rem;
   text-transform: uppercase;
 }
