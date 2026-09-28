@@ -69,37 +69,43 @@
           </div>
         </div>
 
-        <div class="product-visual" aria-label="Vista previa del panel y la tienda">
+        <div class="product-visual" aria-label="Vista previa del panel real de Comercio Flex y la tienda">
           <div class="dashboard-device">
-            <div class="dashboard-topbar">
-              <div class="dashboard-brand"><span class="mini-logo">C</span> Comercio Flex</div>
-              <div class="dashboard-search">Buscar...</div>
-              <span class="dashboard-avatar">N</span>
+            <div class="dashboard-topbar" style="grid-template-columns: auto 1fr auto; gap: 8px;">
+              <div class="dashboard-brand"><span class="mini-logo">CF</span> Comercio Flex</div>
+              <div style="display:flex; gap:6px; align-items:center; justify-content:flex-start;">
+                <span style="padding:6px 9px; border:1px solid #dfe6f1; border-radius:7px; background:#fff; font-weight:700; color:#475467;">▣ Ver tienda</span>
+                <span style="padding:6px 9px; border-radius:7px; background:#edf3ff; color:#2459d8; font-weight:700;">Instalar app</span>
+              </div>
+              <span class="dashboard-avatar">DM</span>
             </div>
-            <div class="dashboard-body">
-              <aside class="dashboard-sidebar" aria-hidden="true">
-                <span class="active">⌂ <small>Inicio</small></span>
-                <span>□ <small>Productos</small></span>
-                <span>▦ <small>Stock</small></span>
-                <span>≡ <small>Pedidos</small></span>
-                <span>♙ <small>Clientes</small></span>
-                <span>◇ <small>Promociones</small></span>
-                <span>✦ <small>Diseño</small></span>
-                <span>⚙ <small>Configuración</small></span>
+            <div class="dashboard-body" style="grid-template-columns: 132px 1fr;">
+              <aside class="dashboard-sidebar" aria-hidden="true" style="padding-top:12px;">
+                <div style="padding:4px 7px 10px; color:#fff; font-size:.55rem; font-weight:800;">DEMO STORE<br /><small style="opacity:.65;">OWNER</small></div>
+                <span class="active">▦ <small>Inicio</small></span>
+                <span>◫ <small>Estadísticas</small></span>
+                <span>▤ <small>Pedidos</small></span>
+                <span>▥ <small>Transferencias</small></span>
+                <span>◇ <small>Productos</small></span>
+                <span>▦ <small>Categorías</small></span>
+                <span>⬡ <small>Inventario</small></span>
+                <span>▱ <small>Envíos</small></span>
+                <span>⌂ <small>Comercio</small></span>
+                <span>✦ <small>Apariencia</small></span>
               </aside>
               <div class="dashboard-content">
                 <div class="dashboard-heading">
-                  <div><span>Panel general</span><strong>Resumen de tu negocio</strong></div>
+                  <div><span>COMERCIO FLEX</span><strong>Panel de administración</strong></div>
                   <span class="dashboard-date">Últimos 30 días</span>
                 </div>
                 <div class="metric-grid">
-                  <article><small>Ventas</small><strong>$1.250.000</strong><em>↑ 12%</em></article>
-                  <article><small>Pedidos</small><strong>156</strong><em>↑ 8%</em></article>
-                  <article><small>Productos</small><strong>321</strong><em>Activo</em></article>
-                  <article><small>Clientes</small><strong>284</strong><em>↑ 14%</em></article>
+                  <article><small>Ventas del mes</small><strong>$1.248.900</strong><em>Pedidos confirmados</em></article>
+                  <article><small>Pedidos abiertos</small><strong>18</strong><em>Requieren seguimiento</em></article>
+                  <article><small>Ventas de hoy</small><strong>$86.200</strong><em>7 operaciones</em></article>
+                  <article><small>Stock bajo</small><strong>12</strong><em>Ver inventario</em></article>
                 </div>
                 <div class="chart-card">
-                  <div class="chart-head"><strong>Ventas de los últimos 30 días</strong><span>$86.200</span></div>
+                  <div class="chart-head"><strong>Actividad reciente</strong><span>Ver estadísticas</span></div>
                   <div class="chart-area" aria-hidden="true">
                     <span class="chart-line"></span>
                     <i class="dot dot--1"></i><i class="dot dot--2"></i><i class="dot dot--3"></i><i class="dot dot--4"></i><i class="dot dot--5"></i>
@@ -107,9 +113,9 @@
                 </div>
                 <div class="orders-card">
                   <div class="orders-title"><strong>Pedidos recientes</strong><span>Ver todos</span></div>
-                  <div class="order-row"><span>#1042</span><span>Juan Pérez</span><b>$43.500</b><em>En preparación</em></div>
-                  <div class="order-row"><span>#1041</span><span>María González</span><b>$19.200</b><em class="sent">Enviado</em></div>
-                  <div class="order-row"><span>#1040</span><span>Lucas Rojas</span><b>$32.100</b><em>En preparación</em></div>
+                  <div class="order-row"><span>#1128</span><span>Sofía Díaz</span><b>$43.500</b><em>En preparación</em></div>
+                  <div class="order-row"><span>#1127</span><span>Martín López</span><b>$19.200</b><em class="sent">Enviado</em></div>
+                  <div class="order-row"><span>#1126</span><span>Camila Torres</span><b>$32.100</b><em>En preparación</em></div>
                 </div>
               </div>
             </div>
@@ -153,12 +159,12 @@
         </div>
 
         <div class="feature-grid">
-          <article class="feature-card"><span class="feature-icon feature-icon--blue">▱</span><div><h3>Tienda online propia</h3><p>Tu propio sitio e-commerce con tu dominio, tu catálogo y tu marca.</p></div></article>
-          <article class="feature-card"><span class="feature-icon feature-icon--green">⬡</span><div><h3>Gestión de productos y stock</h3><p>Controlá tu inventario en tiempo real desde un panel claro y ordenado.</p></div></article>
-          <article class="feature-card"><span class="feature-icon feature-icon--purple">▤</span><div><h3>Pedidos y ventas</h3><p>Recibí y gestioná todos tus pedidos desde un solo lugar.</p></div></article>
-          <article class="feature-card"><span class="feature-icon feature-icon--amber">▥</span><div><h3>Panel administrador</h3><p>Una interfaz intuitiva para tener las métricas y operaciones bajo control.</p></div></article>
-          <article class="feature-card"><span class="feature-icon feature-icon--pink">✎</span><div><h3>Plantillas visuales</h3><p>Diseños modernos y personalizables para distintos tipos de comercio.</p></div></article>
-          <article class="feature-card"><span class="feature-icon feature-icon--cyan">▭</span><div><h3>Pagos y medios de cobro</h3><p>Integrá Mercado Pago y otros medios para cobrar online de forma segura.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 12 4l9 5.5"/><path d="M5 8.5V20h14V8.5"/><path d="M9 20v-6h6v6"/></svg></span><div><h3>Tienda online propia</h3><p>Tu propio sitio e-commerce con tu dominio, tu catálogo y tu marca.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--green"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v12H4z"/><path d="M8 7V5h8v2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg></span><div><h3>Gestión de productos y stock</h3><p>Controlá tu inventario en tiempo real desde un panel claro y ordenado.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--purple"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><div><h3>Pedidos y ventas</h3><p>Recibí y gestioná todos tus pedidos desde un solo lugar.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 14h3M14 14h2"/></svg></span><div><h3>Panel administrador</h3><p>Una interfaz intuitiva para tener las métricas y operaciones bajo control.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--pink"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 16 8-8 4 4-8 8H4z"/><path d="m14 6 2-2 4 4-2 2"/><path d="M13 17h7"/></svg></span><div><h3>Plantillas visuales</h3><p>Diseños modernos y personalizables para distintos tipos de comercio.</p></div></article>
+          <article class="feature-card"><span class="feature-icon feature-icon--cyan"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg></span><div><h3>Pagos y medios de cobro</h3><p>Integrá Mercado Pago y otros medios para cobrar online de forma segura.</p></div></article>
         </div>
       </div>
     </section>
@@ -171,7 +177,7 @@
             <h2 id="templates-title">Tu tienda, con el estilo de tu marca</h2>
             <p>Elegí una base visual y personalizala para que tu negocio se vea realmente propio.</p>
           </div>
-          <a href="/tiendas/tiendademo">Ver tienda demo <span>→</span></a>
+          <a href="https://laolamadre.com.ar" target="_blank" rel="noopener noreferrer">Ver tienda demo <span>→</span></a>
         </div>
 
         <div class="template-grid">
