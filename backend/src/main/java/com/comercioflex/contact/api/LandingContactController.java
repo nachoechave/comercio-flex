@@ -1,7 +1,12 @@
 package com.comercioflex.contact.api;
 
 import java.time.Duration;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -26,10 +31,13 @@ import com.comercioflex.notification.infrastructure.EmailProperties;
 public class LandingContactController {
 	private static final Duration MIN_FORM_AGE = Duration.ofSeconds(2);
 	private static final Duration MAX_FORM_AGE = Duration.ofHours(24);
+	private static final Duration RATE_LIMIT_WINDOW = Duration.ofMinutes(10);
+	private static final int RATE_LIMIT_MAX_REQUESTS = 5;
 
 	private final TransactionalEmailSender emailSender;
 	private final EmailProperties emailProperties;
 	private final String recipientEmail;
+	private final Map<String, Deque<Long>> requestTimesByIp = new ConcurrentHashMap<>();
 
 	public LandingContactController(
 			TransactionalEmailSender emailSender,
@@ -41,14 +49,21 @@ public class LandingContactController {
 	}
 
 	@PostMapping
-	public ResponseEntity<Void> submit(@Valid @RequestBody LandingContactRequest request) {
+	public ResponseEntity<Void> submit(
+			@Valid @RequestBody LandingContactRequest request,
+			HttpServletRequest httpRequest) {
 		if (request.website() != null && !request.website().isBlank()) {
 			return ResponseEntity.accepted().build();
 		}
 
-		long formAgeMillis = System.currentTimeMillis() - request.startedAt();
+		long now = System.currentTimeMillis();
+		long formAgeMillis = now - request.startedAt();
 		if (formAgeMillis < MIN_FORM_AGE.toMillis() || formAgeMillis > MAX_FORM_AGE.toMillis()) {
 			return ResponseEntity.badRequest().build();
+		}
+
+		if (!allowRequest(clientIp(httpRequest), now)) {
+			return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
 		}
 
 		if (!emailProperties.isEnabled()) {
@@ -57,6 +72,41 @@ public class LandingContactController {
 
 		emailSender.send(buildEmail(request));
 		return ResponseEntity.accepted().build();
+	}
+
+	ResponseEntity<Void> submit(LandingContactRequest request) {
+		return submit(request, null);
+	}
+
+	private boolean allowRequest(String clientIp, long now) {
+		Deque<Long> timestamps = requestTimesByIp.computeIfAbsent(clientIp, ignored -> new ArrayDeque<>());
+		synchronized (timestamps) {
+			long cutoff = now - RATE_LIMIT_WINDOW.toMillis();
+			while (!timestamps.isEmpty() && timestamps.peekFirst() <= cutoff) {
+				timestamps.removeFirst();
+			}
+			if (timestamps.size() >= RATE_LIMIT_MAX_REQUESTS) {
+				return false;
+			}
+			timestamps.addLast(now);
+			return true;
+		}
+	}
+
+	private String clientIp(HttpServletRequest request) {
+		if (request == null) {
+			return "local-test";
+		}
+		String forwardedFor = request.getHeader("X-Forwarded-For");
+		if (forwardedFor != null && !forwardedFor.isBlank()) {
+			int comma = forwardedFor.indexOf(',');
+			String firstIp = comma >= 0 ? forwardedFor.substring(0, comma) : forwardedFor;
+			if (!firstIp.isBlank()) {
+				return firstIp.trim();
+			}
+		}
+		String remoteAddress = request.getRemoteAddr();
+		return remoteAddress == null || remoteAddress.isBlank() ? "unknown" : remoteAddress;
 	}
 
 	private TransactionalEmail buildEmail(LandingContactRequest request) {
