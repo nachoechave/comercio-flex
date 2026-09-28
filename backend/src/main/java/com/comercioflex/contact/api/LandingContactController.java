@@ -127,7 +127,7 @@ public class LandingContactController {
 		String htmlBody = """
 			<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.55">
 			  <h2 style="margin:0 0 16px;color:#0f172a">Nueva consulta de Comercio Flex</h2>
-			  <table style="border-collapse:collapse;width:100%;max-width:620px">
+			  <table style="border-collapse:collapse;width:100%%;max-width:620px">
 			    <tr><td style="padding:6px 0;font-weight:700">Nombre</td><td style="padding:6px 0">%s</td></tr>
 			    <tr><td style="padding:6px 0;font-weight:700">Negocio</td><td style="padding:6px 0">%s</td></tr>
 			    <tr><td style="padding:6px 0;font-weight:700">Email</td><td style="padding:6px 0">%s</td></tr>

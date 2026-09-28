@@ -34,6 +34,9 @@ class LandingContactControllerTests {
 		assertThat(captor.getValue().recipient()).isEqualTo("nacho9847@gmail.com");
 		assertThat(captor.getValue().subject()).contains("Comercio de prueba");
 		assertThat(captor.getValue().textBody()).contains("cliente@example.com", "2215555555");
+		assertThat(captor.getValue().htmlBody())
+			.contains("width:100%;max-width:620px", "cliente@example.com", "2215555555")
+			.doesNotContain("width:100%%", "%s");
 	}
 
 	@Test
