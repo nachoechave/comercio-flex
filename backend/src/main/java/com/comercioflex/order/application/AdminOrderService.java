@@ -10,6 +10,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.comercioflex.inventory.application.BranchStockSynchronizer;
 import com.comercioflex.order.domain.OrderStatus;
 
 @Service
@@ -23,11 +24,14 @@ public class AdminOrderService {
 	public AdminOrderService(
 			AdminOrderRepository repository,
 			@Qualifier("tenantTransactionTemplate") TransactionTemplate transactionTemplate,
-			OrderPaymentPolicy paymentPolicy) {
+			OrderPaymentPolicy paymentPolicy,
+			OrderFulfillmentPolicy fulfillmentPolicy,
+			BranchStockSynchronizer branchStockSynchronizer) {
 		this(
 			repository,
 			transactionTemplate,
-			new OrderTransitionExecutor(repository, paymentPolicy, Clock.systemUTC()));
+			new OrderTransitionExecutor(
+				repository, paymentPolicy, Clock.systemUTC(), fulfillmentPolicy, branchStockSynchronizer));
 	}
 
 	AdminOrderService(
@@ -72,8 +76,7 @@ public class AdminOrderService {
 			return transactionTemplate.execute(ignored -> replayAfterDuplicate(command, exception));
 		}
 		if (outcome == null || outcome.expired()) {
-			throw new InvalidOrderTransitionException(
-				"La reserva del pedido ya venció.");
+			throw new InvalidOrderTransitionException("La reserva del pedido ya venció.");
 		}
 		return outcome.detail();
 	}
@@ -106,12 +109,8 @@ public class AdminOrderService {
 			throw new InvalidOrderTransitionException("La transición está incompleta.");
 		}
 		return new OrderTransitionCommand(
-			command.orderId(),
-			command.idempotencyKey(),
-			command.targetStatus(),
-			normalize(command.note(), 500),
-			command.actorId(),
-			command.actorDisplayName());
+			command.orderId(), command.idempotencyKey(), command.targetStatus(),
+			normalize(command.note(), 500), command.actorId(), command.actorDisplayName());
 	}
 
 	static void requireSameTransition(
