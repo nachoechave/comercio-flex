@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 import { CartPreview } from '../../cart/cart-preview';
 import { StorefrontRoutingService } from '../../storefront-routing.service';
@@ -7,7 +7,7 @@ import { StoreSettings, TenantBranding } from '../../storefront.models';
 
 @Component({
   selector: 'app-fresh-storefront-shell',
-  imports: [RouterLink, RouterOutlet, CartPreview],
+  imports: [RouterLink, CartPreview],
   template: `
     <a class="store-skip-link" href="#main-content">Saltar al contenido</a>
     <aside class="fresh-topbar"><span>Envíos a todo el país</span><span>3 y 6 cuotas sin interés</span><span>Buenas compras, mejor vibra ✦</span></aside>
@@ -28,7 +28,7 @@ import { StoreSettings, TenantBranding } from '../../storefront.models';
       <button class="mobile-menu" type="button" (click)="toggleMenu()" [attr.aria-expanded]="menuOpen()" aria-label="Abrir navegación">Menú</button>
     </header>
     <app-cart-preview [storeSlug]="settings().slug" />
-    <main id="main-content"><router-outlet /></main>
+    <main id="main-content"><ng-content /></main>
     <section class="fresh-benefits"><span>✦ Envíos rápidos</span><span>▣ Cuotas disponibles</span><span>♡ Compra simple</span><span>☻ Atención cercana</span></section>
     <footer class="fresh-footer">
       <a class="fresh-footer__brand" [routerLink]="storefrontRouting.route(settings().slug)"><span>≈</span><strong>{{ settings().storeName }}</strong></a>
