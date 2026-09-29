@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 public final class CarrierModels {
   private CarrierModels() {}
@@ -75,6 +76,29 @@ public final class CarrierModels {
       @Valid Parcel defaultParcel,
       @Min(5) @Max(1440) int trackingSyncMinutes,
       @Min(0) long version) {}
+
+  public record ConnectionTestRequest(
+      @NotNull Provider provider,
+      @NotNull Environment environment,
+      @NotBlank @Size(max = 80) String clientCode,
+      @NotBlank @Size(max = 80) String contractCode,
+      @Size(max = 300) String username,
+      @Size(max = 300) String password,
+      @NotNull @Valid Origin origin,
+      @NotNull @Valid Parcel defaultParcel,
+      @NotBlank @Size(max = 20) String destinationPostalCode) {}
+
+  public record ConnectionCheck(String code, boolean success, String message) {}
+
+  public record ConnectionTestResult(
+      boolean success,
+      boolean authenticationOk,
+      boolean quoteOk,
+      Environment environment,
+      String destinationPostalCode,
+      String serviceCode,
+      BigDecimal providerCost,
+      List<ConnectionCheck> checks) {}
 
   public record Account(
       Provider provider,
