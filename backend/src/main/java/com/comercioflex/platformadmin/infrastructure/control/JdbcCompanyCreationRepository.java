@@ -37,6 +37,7 @@ public class JdbcCompanyCreationRepository implements CompanyCreationRepository 
 			String databaseKey,
 			String databaseName) {
 		long tenantId = insertTenant(command, companyId, databaseKey);
+		registerPrimaryDomain(tenantId, command.domain());
 		long ownerId = findUser(command.administratorEmail())
 			.orElseGet(() -> insertUser(command, passwordHash));
 		jdbcTemplate.update("""
@@ -165,6 +166,16 @@ public class JdbcCompanyCreationRepository implements CompanyCreationRepository 
 			return statement;
 		}, keyHolder);
 		return requiredKey(keyHolder, "tenant");
+	}
+
+	private void registerPrimaryDomain(long tenantId, String domain) {
+		if (domain == null) {
+			return;
+		}
+		jdbcTemplate.update("""
+			INSERT INTO tenant_domains (tenant_id, hostname, primary_domain, verified)
+			VALUES (?, ?, TRUE, TRUE)
+			""", tenantId, domain);
 	}
 
 	private Optional<Long> findUser(String email) {

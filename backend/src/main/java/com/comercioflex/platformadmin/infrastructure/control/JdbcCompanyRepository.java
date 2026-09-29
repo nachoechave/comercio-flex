@@ -245,6 +245,22 @@ public class JdbcCompanyRepository implements CompanyRepository {
 			SET display_name = ?, industry = ?, contact_phone = ?, domain = ?
 			WHERE id = ?
 			""", command.name(), command.industry(), command.phone(), command.domain(), internalId);
+
+		jdbcTemplate.update("""
+			DELETE FROM tenant_domains
+			WHERE tenant_id = ? AND primary_domain = TRUE
+			""", internalId);
+
+		if (command.domain() != null) {
+			jdbcTemplate.update("""
+				DELETE FROM tenant_domains
+				WHERE tenant_id = ? AND hostname = ?
+				""", internalId, command.domain());
+			jdbcTemplate.update("""
+				INSERT INTO tenant_domains (tenant_id, hostname, primary_domain, verified)
+				VALUES (?, ?, TRUE, TRUE)
+				""", internalId, command.domain());
+		}
 	}
 
 	@Override
