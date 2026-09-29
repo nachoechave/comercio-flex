@@ -10,14 +10,10 @@ import { QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pip
 import { variantOptionsLabel } from '../../../../shared/variant-options';
 import { InventoryApiService } from '../inventory-api.service';
 import { inventoryErrorMessage } from '../inventory-errors';
-import { InventoryItem, InventoryMovementReason, MovementPage } from '../inventory.models';
+import { BranchStock, InventoryItem, InventoryMovementReason, MovementPage } from '../inventory.models';
 
 const EMPTY_MOVEMENTS: MovementPage = {
-  items: [],
-  page: 0,
-  size: 20,
-  totalItems: 0,
-  totalPages: 0,
+  items: [], page: 0, size: 20, totalItems: 0, totalPages: 0,
 };
 
 @Component({
@@ -40,6 +36,7 @@ export class InventoryDetail {
     initialValue: routeParam(this.route.snapshot, 'variantId'),
   });
   readonly inventory = signal<InventoryItem | null>(null);
+  readonly branchStock = signal<BranchStock[]>([]);
   readonly movements = signal<MovementPage>(EMPTY_MOVEMENTS);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
@@ -55,6 +52,7 @@ export class InventoryDetail {
         this.requestedPage = 0;
       }
       this.inventory.set(null);
+      this.branchStock.set([]);
       this.movements.set(EMPTY_MOVEMENTS);
       this.loading.set(true);
       this.errorMessage.set(null);
@@ -66,18 +64,18 @@ export class InventoryDetail {
 
       const subscription = forkJoin({
         inventory: this.api.get(slug, variantId),
+        branches: this.api.branchStock(slug, variantId),
         movements: this.api.movements(slug, variantId, this.requestedPage, 20),
       }).subscribe({
-        next: ({ inventory, movements }) => {
+        next: ({ inventory, branches, movements }) => {
           this.inventory.set(inventory);
+          this.branchStock.set(branches);
           this.movements.set(movements);
           this.loading.set(false);
         },
         error: (error: unknown) => {
           this.loading.set(false);
-          this.errorMessage.set(
-            inventoryErrorMessage(error, 'No pudimos cargar el inventario y sus movimientos.'),
-          );
+          this.errorMessage.set(inventoryErrorMessage(error, 'No pudimos cargar el inventario y sus movimientos.'));
         },
       });
       onCleanup(() => subscription.unsubscribe());
@@ -92,13 +90,8 @@ export class InventoryDetail {
 
   reasonLabel(reason: InventoryMovementReason): string {
     return {
-      RECEIPT: 'Recepción',
-      CORRECTION: 'Corrección',
-      DAMAGE: 'Daño o pérdida',
-      RETURN: 'Devolución',
-      OTHER: 'Otro',
-      ORDER_CONFIRMED: 'Pedido confirmado',
-      ORDER_CANCELLED: 'Pedido cancelado',
+      RECEIPT: 'Recepción', CORRECTION: 'Corrección', DAMAGE: 'Daño o pérdida', RETURN: 'Devolución',
+      OTHER: 'Otro', ORDER_CONFIRMED: 'Pedido confirmado', ORDER_CANCELLED: 'Pedido cancelado',
     }[reason];
   }
 
