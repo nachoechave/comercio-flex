@@ -23,7 +23,7 @@
 
       <nav class="admin-nav">
         @if (isRadio()) {
-          @if (currentMembership.role !== 'STAFF') {
+          @if (currentMembership.role === 'OWNER' || currentMembership.role === 'ADMIN') {
             <p class="nav-group-label">RADIO</p>
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin']" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><app-admin-icon name="dashboard" /><span>Dashboard</span></a>
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'estadisticas']" routerLinkActive="active"><app-admin-icon name="dashboard" /><span>Estadísticas</span></a>
@@ -33,22 +33,28 @@
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'contenido']" routerLinkActive="active"><app-admin-icon name="appearance" /><span>Programas y sponsors</span></a>
           }
         } @else {
-          @if (currentMembership.role !== 'STAFF') {
+          @if (currentMembership.role === 'OWNER' || currentMembership.role === 'ADMIN' || currentMembership.role === 'MANAGER') {
             <p class="nav-group-label">Resumen</p>
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin']" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
               <app-admin-icon name="dashboard" /><span>Inicio</span>
             </a>
-            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'estadisticas']" routerLinkActive="active"><app-admin-icon name="dashboard" /><span>Estadísticas</span></a>
+            @if (currentMembership.role === 'OWNER' || currentMembership.role === 'ADMIN') {
+              <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'estadisticas']" routerLinkActive="active"><app-admin-icon name="dashboard" /><span>Estadísticas</span></a>
+            }
           }
 
           <p class="nav-group-label">Operación</p>
-          <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'pedidos']" [class.active]="ordersNavigationActive()"><app-admin-icon name="orders" /><span>Pedidos</span></a>
-          <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'pedidos', 'transferencias']" [class.active]="transfersNavigationActive()"><app-admin-icon name="transfers" /><span>Transferencias</span></a>
-          <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'productos']" routerLinkActive="active"><app-admin-icon name="products" /><span>Productos</span></a>
-          <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'categorias']" routerLinkActive="active"><app-admin-icon name="categories" /><span>Categorías</span></a>
+          @if (currentMembership.role !== 'SELLER') {
+            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'pedidos']" [class.active]="ordersNavigationActive()"><app-admin-icon name="orders" /><span>Pedidos</span></a>
+            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'pedidos', 'transferencias']" [class.active]="transfersNavigationActive()"><app-admin-icon name="transfers" /><span>Transferencias</span></a>
+          }
+          @if (currentMembership.role === 'OWNER' || currentMembership.role === 'ADMIN' || currentMembership.role === 'STAFF') {
+            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'productos']" routerLinkActive="active"><app-admin-icon name="products" /><span>Productos</span></a>
+            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'categorias']" routerLinkActive="active"><app-admin-icon name="categories" /><span>Categorías</span></a>
+          }
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'inventario']" routerLinkActive="active"><app-admin-icon name="inventory" /><span>Inventario</span></a>
         }
-        @if (currentMembership.role !== 'STAFF') {
+        @if (currentMembership.role === 'OWNER' || currentMembership.role === 'ADMIN') {
           <p class="nav-group-label">Tienda</p>
           @if (!isRadio()) {
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'configuracion', 'envios']" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><app-admin-icon name="commerce" /><span>Envíos</span></a>
