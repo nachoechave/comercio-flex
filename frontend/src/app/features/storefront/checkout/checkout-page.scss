@@ -86,7 +86,7 @@ textarea {
   padding: 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: var(--store-control-radius, 0.75rem);
-  color: var(--color-text);
+  color: #111827;
   background: #fff;
   font: inherit;
 }
@@ -121,6 +121,7 @@ textarea:focus-visible {
   padding: 1rem;
   border: 1px solid var(--color-border);
   border-radius: 0.8rem;
+  color: #111827;
   background: #fff;
   cursor: pointer;
 }
@@ -144,11 +145,11 @@ textarea:focus-visible {
 }
 
 .payment-method-copy strong {
-  color: var(--color-text);
+  color: #111827;
 }
 
 .payment-method-copy > span {
-  color: var(--color-muted);
+  color: #667085;
   font-size: 0.9rem;
   font-weight: 500;
 }
@@ -163,7 +164,7 @@ textarea:focus-visible {
 
 .payment-method-status.error {
   border: 1px solid #dc8f8f;
-  color: var(--color-text);
+  color: #7f1d1d;
   background: #fff0f0;
 }
 
@@ -176,9 +177,9 @@ textarea:focus-visible {
   min-height: auto;
   margin-top: 0.75rem;
   padding: 0.55rem 0.8rem;
-  color: var(--color-text);
+  color: #111827;
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid #cbd5e1;
 }
 
 button,
@@ -239,6 +240,7 @@ aside li,
   padding: 1rem;
   border: 1px solid #dc8f8f;
   border-radius: 0.8rem;
+  color: #7f1d1d;
   background: #fff0f0;
 }
 
@@ -248,6 +250,25 @@ aside li,
 
 .warning a {
   width: fit-content;
+}
+
+/*
+ * Shipping selector renders light cards inside the checkout even when the storefront
+ * uses a dark palette. Keep the text inside those light surfaces dark so inherited
+ * storefront text colors never make controls unreadable.
+ */
+:host ::ng-deep app-shipping-selector .delivery-panel,
+:host ::ng-deep app-shipping-selector .mode-card,
+:host ::ng-deep app-shipping-selector .option,
+:host ::ng-deep app-shipping-selector .address,
+:host ::ng-deep app-shipping-selector .carrier-document,
+:host ::ng-deep app-shipping-selector .summary {
+  color: #111827;
+}
+
+:host ::ng-deep app-shipping-selector input:not([type='radio']),
+:host ::ng-deep app-shipping-selector select {
+  color: #111827;
 }
 
 @media (max-width: 48rem) {
