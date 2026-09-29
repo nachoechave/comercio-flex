@@ -50,6 +50,14 @@ WHERE movement.branch_id IS NULL;
 ALTER TABLE inventory_movements
     MODIFY branch_id BIGINT NOT NULL;
 
+CREATE TRIGGER trg_inventory_movements_default_branch
+BEFORE INSERT ON inventory_movements
+FOR EACH ROW
+SET NEW.branch_id = COALESCE(
+    NEW.branch_id,
+    (SELECT id FROM store_branches WHERE is_default = TRUE LIMIT 1)
+);
+
 CREATE INDEX ix_branch_inventory_variant
     ON branch_inventory_balances (variant_id, branch_id);
 
