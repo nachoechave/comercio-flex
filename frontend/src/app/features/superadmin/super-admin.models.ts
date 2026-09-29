@@ -47,14 +47,29 @@ export interface UpdateCompanyRequest {
   domain: string | null;
 }
 
+export type CompanyUserRole = 'OWNER' | 'ADMIN' | 'MANAGER' | 'SELLER' | 'STAFF';
+export type AssignableCompanyUserRole = Exclude<CompanyUserRole, 'OWNER'>;
+
 export interface CompanyUser {
   id: string;
   name: string;
   email: string;
-  role: 'OWNER' | 'ADMIN' | 'STAFF';
+  role: CompanyUserRole;
   membershipStatus: 'ACTIVE' | 'INACTIVE';
   userStatus: 'ACTIVE' | 'LOCKED' | 'DISABLED';
   joinedAt: string;
+}
+
+export interface CreateCompanyUserRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: AssignableCompanyUserRole;
+}
+
+export interface UpdateCompanyUserRequest {
+  role: AssignableCompanyUserRole;
+  membershipStatus: 'ACTIVE' | 'INACTIVE';
 }
 
 export interface CompanyActivity {
