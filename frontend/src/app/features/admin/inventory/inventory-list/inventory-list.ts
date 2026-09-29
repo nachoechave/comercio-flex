@@ -45,9 +45,10 @@ export class InventoryList {
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly lowStockThreshold = signal<number | null>(null);
-  readonly canManage = computed(
-    () => this.auth.membershipFor(this.storeSlug() ?? '')?.role !== 'STAFF',
-  );
+  readonly canManage = computed(() => {
+    const role = this.auth.membershipFor(this.storeSlug() ?? '')?.role;
+    return role === 'OWNER' || role === 'ADMIN' || role === 'MANAGER';
+  });
   readonly filters = this.formBuilder.nonNullable.group({
     q: [''],
     availability: ['ALL' as InventoryAvailability],
