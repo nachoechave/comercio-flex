@@ -16,6 +16,15 @@ public enum MembershipRole {
 		TenantPermission.MANAGE_BASIC_SETTINGS,
 		TenantPermission.VIEW_RADIO_MEMBERSHIPS,
 		TenantPermission.MANAGE_RADIO_PLANS)),
+	MANAGER(EnumSet.of(
+		TenantPermission.VIEW_DASHBOARD,
+		TenantPermission.VIEW_CATALOG,
+		TenantPermission.VIEW_INVENTORY,
+		TenantPermission.ADJUST_STOCK,
+		TenantPermission.MANAGE_ORDERS)),
+	SELLER(EnumSet.of(
+		TenantPermission.VIEW_CATALOG,
+		TenantPermission.VIEW_INVENTORY)),
 	STAFF(EnumSet.of(
 		TenantPermission.VIEW_CATALOG,
 		TenantPermission.VIEW_INVENTORY,

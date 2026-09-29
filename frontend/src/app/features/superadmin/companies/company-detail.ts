@@ -8,6 +8,7 @@ import { inheritedRouteParam } from '../../../core/routing/inherited-route-param
 import { CommerceDatePipe } from '../../../shared/pipes/commerce-date.pipe';
 import { SuperAdminApiService } from '../super-admin-api.service';
 import {
+  AssignableCompanyUserRole,
   COMPANY_STATUS_LABELS,
   CompanyActivityPage,
   CompanyBranding,
@@ -15,6 +16,7 @@ import {
   CompanyInfrastructure,
   CompanyStatus,
   CompanyUser,
+  CreateCompanyUserRequest,
   UpdateCompanyRequest,
 } from '../super-admin.models';
 
@@ -58,6 +60,8 @@ export class CompanyDetailPage {
   readonly loading = signal(true);
   readonly changingStatus = signal(false);
   readonly saving = signal(false);
+  readonly creatingUser = signal(false);
+  readonly savingUserId = signal<string | null>(null);
   readonly activityLoading = signal(false);
   readonly unavailableSections = signal<CompanyTab[]>([]);
   readonly pendingAction = signal<StatusAction | null>(null);
@@ -76,6 +80,12 @@ export class CompanyDetailPage {
         ),
       ],
     ],
+  });
+  readonly userForm = this.formBuilder.nonNullable.group({
+    name: ['', [Validators.required, Validators.maxLength(160)]],
+    email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
+    password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(200)]],
+    role: ['SELLER' as AssignableCompanyUserRole, [Validators.required]],
   });
 
   constructor() {
@@ -145,7 +155,13 @@ export class CompanyDetailPage {
   }
 
   roleLabel(role: CompanyUser['role']): string {
-    return { OWNER: 'Propietario', ADMIN: 'Administrador', STAFF: 'Personal' }[role];
+    return {
+      OWNER: 'Propietario',
+      ADMIN: 'Administrador',
+      MANAGER: 'Encargado',
+      SELLER: 'Vendedor',
+      STAFF: 'Personal',
+    }[role];
   }
 
   userStatusLabel(user: CompanyUser): string {
@@ -163,6 +179,8 @@ export class CompanyDetailPage {
         COMPANY_ACTIVATED: 'Activó la empresa',
         COMPANY_SUSPENDED: 'Suspendió la empresa',
         COMPANY_UPDATED: 'Actualizó la configuración de la empresa',
+        COMPANY_USER_CREATED: 'Creó un usuario de la empresa',
+        COMPANY_USER_UPDATED: 'Actualizó un usuario de la empresa',
         COMPANY_BRANDING_UPDATED: 'Actualizó la apariencia',
         COMPANY_BRANDING_ASSET_UPDATED: 'Actualizó un recurso de marca',
         COMPANY_BRANDING_ASSET_DELETED: 'Eliminó un recurso de marca',
@@ -193,6 +211,55 @@ export class CompanyDetailPage {
     return this.unavailableSections()
       .map((section) => labels[section] ?? section)
       .join(', ');
+  }
+
+  createUser(): void {
+    const company = this.company();
+    if (!company || this.creatingUser()) return;
+    this.userForm.markAllAsTouched();
+    if (this.userForm.invalid) {
+      this.errorMessage.set('Revisá los datos del nuevo usuario.');
+      return;
+    }
+    const value = this.userForm.getRawValue();
+    const request: CreateCompanyUserRequest = {
+      name: value.name.trim(),
+      email: value.email.trim(),
+      password: value.password,
+      role: value.role,
+    };
+    this.creatingUser.set(true);
+    this.errorMessage.set(null);
+    this.noticeMessage.set(null);
+    this.api
+      .createCompanyUser(company.id, request)
+      .pipe(finalize(() => this.creatingUser.set(false)))
+      .subscribe({
+        next: (created) => {
+          this.users.update((users) => [...users, created]);
+          this.userForm.reset({ name: '', email: '', password: '', role: 'SELLER' });
+          this.noticeMessage.set('El usuario quedó creado y ya puede iniciar sesión.');
+          this.reloadActivity(0);
+        },
+        error: () => {
+          this.errorMessage.set(
+            'No pudimos crear el usuario. Verificá que el email no esté en uso y volvé a intentar.',
+          );
+        },
+      });
+  }
+
+  changeUserRole(user: CompanyUser, event: Event): void {
+    if (user.role === 'OWNER') return;
+    const role = (event.target as HTMLSelectElement).value as AssignableCompanyUserRole;
+    this.updateUser(user, role, user.membershipStatus);
+  }
+
+  toggleUser(user: CompanyUser): void {
+    if (user.role === 'OWNER') return;
+    const role = user.role as AssignableCompanyUserRole;
+    const status = user.membershipStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    this.updateUser(user, role, status);
   }
 
   ask(action: StatusAction): void {
@@ -302,6 +369,31 @@ export class CompanyDetailPage {
       });
   }
 
+  private updateUser(
+    user: CompanyUser,
+    role: AssignableCompanyUserRole,
+    membershipStatus: 'ACTIVE' | 'INACTIVE',
+  ): void {
+    const company = this.company();
+    if (!company || this.savingUserId()) return;
+    this.savingUserId.set(user.id);
+    this.errorMessage.set(null);
+    this.noticeMessage.set(null);
+    this.api
+      .updateCompanyUser(company.id, user.id, { role, membershipStatus })
+      .pipe(finalize(() => this.savingUserId.set(null)))
+      .subscribe({
+        next: (updated) => {
+          this.users.update((users) => users.map((item) => (item.id === updated.id ? updated : item)));
+          this.noticeMessage.set('El acceso del usuario quedó actualizado.');
+          this.reloadActivity(0);
+        },
+        error: () => {
+          this.errorMessage.set('No pudimos actualizar el acceso del usuario.');
+        },
+      });
+  }
+
   private reloadActivity(page: number): void {
     const companyId = this.companyId();
     if (!companyId || this.activityLoading()) return;
@@ -336,6 +428,8 @@ export class CompanyDetailPage {
     this.unavailableSections.set([]);
     this.selectedTab.set('summary');
     this.loading.set(true);
+    this.creatingUser.set(false);
+    this.savingUserId.set(null);
     this.errorMessage.set(null);
     this.noticeMessage.set(null);
   }

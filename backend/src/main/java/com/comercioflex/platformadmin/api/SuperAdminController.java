@@ -27,6 +27,7 @@ import com.comercioflex.platformadmin.application.CompanyService;
 import com.comercioflex.platformadmin.application.CompanyProvisioningService;
 import com.comercioflex.platformadmin.application.CompanyBrandingService;
 import com.comercioflex.platformadmin.application.CompanyNotFoundException;
+import com.comercioflex.platformadmin.application.CompanyUserManagementService;
 import com.comercioflex.media.application.InvalidProductImageException;
 import com.comercioflex.tenant.domain.BrandAssetType;
 import com.comercioflex.platformadmin.application.CompanyStatusFilter;
@@ -45,16 +46,19 @@ public class SuperAdminController {
 	private final CompanyService companyService;
 	private final CompanyProvisioningService provisioningService;
 	private final CompanyBrandingService brandingService;
+	private final CompanyUserManagementService userManagementService;
 	private final PlatformRoleGuard roleGuard;
 
 	public SuperAdminController(
 			CompanyService companyService,
 			CompanyProvisioningService provisioningService,
 			CompanyBrandingService brandingService,
+			CompanyUserManagementService userManagementService,
 			PlatformRoleGuard roleGuard) {
 		this.companyService = companyService;
 		this.provisioningService = provisioningService;
 		this.brandingService = brandingService;
+		this.userManagementService = userManagementService;
 		this.roleGuard = roleGuard;
 	}
 
@@ -169,6 +173,39 @@ public class SuperAdminController {
 		return companyService.users(companyId).stream()
 			.map(CompanyUserResponse::from)
 			.toList();
+	}
+
+	@PostMapping("/companies/{companyId}/users")
+	@ResponseStatus(HttpStatus.CREATED)
+	CompanyUserResponse createCompanyUser(
+			@PathVariable UUID companyId,
+			@Valid @RequestBody CreateCompanyUserRequest requestBody,
+			Authentication authentication,
+			HttpServletRequest request) {
+		requireSuperAdmin(request);
+		return CompanyUserResponse.from(userManagementService.create(
+			companyId,
+			requestBody.name(),
+			requestBody.email(),
+			requestBody.password(),
+			requestBody.role(),
+			principal(authentication)));
+	}
+
+	@PutMapping("/companies/{companyId}/users/{userId}")
+	CompanyUserResponse updateCompanyUser(
+			@PathVariable UUID companyId,
+			@PathVariable UUID userId,
+			@Valid @RequestBody UpdateCompanyUserRequest requestBody,
+			Authentication authentication,
+			HttpServletRequest request) {
+		requireSuperAdmin(request);
+		return CompanyUserResponse.from(userManagementService.update(
+			companyId,
+			userId,
+			requestBody.role(),
+			requestBody.membershipStatus(),
+			principal(authentication)));
 	}
 
 	@GetMapping("/companies/{companyId}/activity")

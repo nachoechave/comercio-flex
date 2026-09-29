@@ -189,6 +189,7 @@ export const routes: Routes = [
       },
       {
         path: 'categorias',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN', 'STAFF'])],
         loadChildren: () =>
           import('./features/admin/categories/category.routes').then(
             (module) => module.CATEGORY_ROUTES,
@@ -196,6 +197,7 @@ export const routes: Routes = [
       },
       {
         path: 'productos',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN', 'STAFF'])],
         loadChildren: () =>
           import('./features/admin/products/product.routes').then(
             (module) => module.PRODUCT_ROUTES,
@@ -210,6 +212,7 @@ export const routes: Routes = [
       },
       {
         path: 'pedidos',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN', 'MANAGER', 'STAFF'])],
         loadChildren: () =>
           import('./features/admin/orders/order.routes').then((module) => module.ORDER_ROUTES),
       },

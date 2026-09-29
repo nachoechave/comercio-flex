@@ -12,9 +12,13 @@ class MembershipRoleTests {
 			TenantPermission.VIEW_RADIO_MEMBERSHIPS, TenantPermission.MANAGE_RADIO_PLANS }) {
 			assertThat(MembershipRole.OWNER.allows(permission)).isTrue();
 			assertThat(MembershipRole.ADMIN.allows(permission)).isTrue();
+			assertThat(MembershipRole.MANAGER.allows(permission)).isFalse();
+			assertThat(MembershipRole.SELLER.allows(permission)).isFalse();
 			assertThat(MembershipRole.STAFF.allows(permission)).isFalse();
 		}
 		assertThat(MembershipRole.ADMIN.allows(TenantPermission.MANAGE_MEMBERSHIPS)).isFalse();
+		assertThat(MembershipRole.MANAGER.allows(TenantPermission.MANAGE_MEMBERSHIPS)).isFalse();
+		assertThat(MembershipRole.SELLER.allows(TenantPermission.MANAGE_MEMBERSHIPS)).isFalse();
 		assertThat(MembershipRole.STAFF.allows(TenantPermission.MANAGE_MEMBERSHIPS)).isFalse();
 	}
 
@@ -32,6 +36,27 @@ class MembershipRoleTests {
 		assertThat(MembershipRole.ADMIN.allows(TenantPermission.MANAGE_BASIC_SETTINGS)).isTrue();
 		assertThat(MembershipRole.ADMIN.allows(TenantPermission.MANAGE_MEMBERSHIPS)).isFalse();
 		assertThat(MembershipRole.ADMIN.allows(TenantPermission.MANAGE_PAYMENTS)).isFalse();
+	}
+
+	@Test
+	void managerCanOperateOrdersAndStockWithoutChangingCatalogOrSettings() {
+		assertThat(MembershipRole.MANAGER.allows(TenantPermission.VIEW_DASHBOARD)).isTrue();
+		assertThat(MembershipRole.MANAGER.allows(TenantPermission.VIEW_CATALOG)).isTrue();
+		assertThat(MembershipRole.MANAGER.allows(TenantPermission.VIEW_INVENTORY)).isTrue();
+		assertThat(MembershipRole.MANAGER.allows(TenantPermission.ADJUST_STOCK)).isTrue();
+		assertThat(MembershipRole.MANAGER.allows(TenantPermission.MANAGE_ORDERS)).isTrue();
+		assertThat(MembershipRole.MANAGER.allows(TenantPermission.MANAGE_CATALOG)).isFalse();
+		assertThat(MembershipRole.MANAGER.allows(TenantPermission.MANAGE_BASIC_SETTINGS)).isFalse();
+	}
+
+	@Test
+	void sellerCanReadCatalogAndInventoryButCannotMutateOperations() {
+		assertThat(MembershipRole.SELLER.allows(TenantPermission.VIEW_CATALOG)).isTrue();
+		assertThat(MembershipRole.SELLER.allows(TenantPermission.VIEW_INVENTORY)).isTrue();
+		assertThat(MembershipRole.SELLER.allows(TenantPermission.ADJUST_STOCK)).isFalse();
+		assertThat(MembershipRole.SELLER.allows(TenantPermission.MANAGE_ORDERS)).isFalse();
+		assertThat(MembershipRole.SELLER.allows(TenantPermission.MANAGE_CATALOG)).isFalse();
+		assertThat(MembershipRole.SELLER.allows(TenantPermission.MANAGE_BASIC_SETTINGS)).isFalse();
 	}
 
 	@Test

@@ -177,7 +177,7 @@ public class JdbcCompanyRepository implements CompanyRepository {
 			JOIN memberships membership ON membership.tenant_id = tenant.id
 			JOIN platform_users user ON user.id = membership.user_id
 			WHERE tenant.public_id = UUID_TO_BIN(?)
-			ORDER BY FIELD(membership.role, 'OWNER', 'ADMIN', 'STAFF'),
+			ORDER BY FIELD(membership.role, 'OWNER', 'ADMIN', 'MANAGER', 'SELLER', 'STAFF'),
 				user.display_name, user.id
 			""", (resultSet, rowNumber) -> new CompanyUser(
 			UUID.fromString(resultSet.getString("public_id")),

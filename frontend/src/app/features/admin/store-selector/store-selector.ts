@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
+import { AdminRole } from '../../../core/auth/auth.models';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
@@ -23,9 +24,7 @@ import { AuthService } from '../../../core/auth/auth.service';
           <ul class="store-list">
             @for (membership of auth.memberships(); track membership.storeSlug) {
               <li>
-                <a [routerLink]="membership.role === 'STAFF'
-                  ? ['/tiendas', membership.storeSlug, 'admin', 'pedidos']
-                  : ['/tiendas', membership.storeSlug, 'admin']">
+                <a [routerLink]="membershipLink(membership.storeSlug, membership.role)">
                   <span>{{ membership.storeName }}</span>
                   <small>{{ roleLabel(membership.role) }}</small>
                 </a>
@@ -106,12 +105,20 @@ export class StoreSelector {
   private readonly route = inject(ActivatedRoute);
   readonly accessDenied = this.route.snapshot.queryParamMap.get('denied') === 'true';
 
-  roleLabel(role: string): string {
-    const labels: Record<string, string> = {
+  membershipLink(storeSlug: string, role: AdminRole): string[] {
+    if (role === 'SELLER') return ['/tiendas', storeSlug, 'admin', 'inventario'];
+    if (role === 'STAFF') return ['/tiendas', storeSlug, 'admin', 'pedidos'];
+    return ['/tiendas', storeSlug, 'admin'];
+  }
+
+  roleLabel(role: AdminRole): string {
+    const labels: Record<AdminRole, string> = {
       OWNER: 'Propietario',
       ADMIN: 'Administrador',
+      MANAGER: 'Encargado',
+      SELLER: 'Vendedor',
       STAFF: 'Colaborador',
     };
-    return labels[role] ?? role;
+    return labels[role];
   }
 }
