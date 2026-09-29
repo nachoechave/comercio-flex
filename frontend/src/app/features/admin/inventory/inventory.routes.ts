@@ -18,6 +18,7 @@ export const INVENTORY_ROUTES: Routes = [
   },
   {
     path: ':variantId/ajustar',
+    canActivate: [allowedRolesGuard(['OWNER', 'ADMIN', 'MANAGER'])],
     loadComponent: () =>
       import('./stock-adjustment-form/stock-adjustment-form').then(
         (module) => module.StockAdjustmentForm,
