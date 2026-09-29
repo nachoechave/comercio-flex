@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, ViewEncapsulation } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink, RouterOutlet } from '@angular/router';
 
 import { FaviconService } from '../../core/branding/favicon.service';
 import { StoreAnalyticsService } from '../../features/analytics/store-analytics.service';
@@ -36,7 +36,14 @@ const DEFAULT_BRANDING: TenantBranding = {
 
 @Component({
   selector: 'app-storefront-layout',
-  imports: [RouterLink, CatalogStorefrontShell, DesignerStorefrontShell, FashionStorefrontShell, FreshStorefrontShell],
+  imports: [
+    RouterLink,
+    RouterOutlet,
+    CatalogStorefrontShell,
+    DesignerStorefrontShell,
+    FashionStorefrontShell,
+    FreshStorefrontShell,
+  ],
   providers: [StorefrontContextService],
   templateUrl: './storefront-layout.html',
   styleUrl: './storefront-layout.scss',
