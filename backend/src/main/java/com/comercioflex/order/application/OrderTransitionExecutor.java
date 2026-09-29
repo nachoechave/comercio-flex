@@ -1,5 +1,7 @@
 package com.comercioflex.order.application;
 
+import com.comercioflex.inventory.application.BranchStockSynchronizer;
+import com.comercioflex.inventory.application.InsufficientStockException;
 import com.comercioflex.order.domain.OrderStatus;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -30,22 +32,24 @@ class OrderTransitionExecutor {
   private final OrderPaymentPolicy paymentPolicy;
   private final Clock clock;
   private final OrderFulfillmentPolicy fulfillmentPolicy;
+  private final BranchStockSynchronizer branchStockSynchronizer;
 
   @Autowired
   OrderTransitionExecutor(
       AdminOrderRepository repository,
       OrderPaymentPolicy paymentPolicy,
-      OrderFulfillmentPolicy fulfillmentPolicy) {
-    this(repository, paymentPolicy, Clock.systemUTC(), fulfillmentPolicy);
+      OrderFulfillmentPolicy fulfillmentPolicy,
+      BranchStockSynchronizer branchStockSynchronizer) {
+    this(repository, paymentPolicy, Clock.systemUTC(), fulfillmentPolicy, branchStockSynchronizer);
   }
 
   OrderTransitionExecutor(AdminOrderRepository repository, Clock clock) {
-    this(repository, OrderPaymentPolicy.allowAll(), clock);
+    this(repository, OrderPaymentPolicy.allowAll(), clock, OrderFulfillmentPolicy.noop(), null);
   }
 
   OrderTransitionExecutor(
       AdminOrderRepository repository, OrderPaymentPolicy paymentPolicy, Clock clock) {
-    this(repository, paymentPolicy, clock, OrderFulfillmentPolicy.noop());
+    this(repository, paymentPolicy, clock, OrderFulfillmentPolicy.noop(), null);
   }
 
   OrderTransitionExecutor(
@@ -53,10 +57,20 @@ class OrderTransitionExecutor {
       OrderPaymentPolicy paymentPolicy,
       Clock clock,
       OrderFulfillmentPolicy fulfillmentPolicy) {
+    this(repository, paymentPolicy, clock, fulfillmentPolicy, null);
+  }
+
+  OrderTransitionExecutor(
+      AdminOrderRepository repository,
+      OrderPaymentPolicy paymentPolicy,
+      Clock clock,
+      OrderFulfillmentPolicy fulfillmentPolicy,
+      BranchStockSynchronizer branchStockSynchronizer) {
     this.repository = repository;
     this.paymentPolicy = paymentPolicy;
     this.clock = clock;
     this.fulfillmentPolicy = fulfillmentPolicy;
+    this.branchStockSynchronizer = branchStockSynchronizer;
   }
 
   OrderTransitionExecution execute(OrderTransitionCommand command) {
@@ -143,6 +157,21 @@ class OrderTransitionExecutor {
       if (after.signum() < 0) {
         throw new InvalidOrderTransitionException(
             "No hay stock físico suficiente para confirmar el pedido.");
+      }
+      if (branchStockSynchronizer != null) {
+        BigDecimal branchDelta = restoring ? line.quantity() : line.quantity().negate();
+        if (!restoring
+            && branchStockSynchronizer.findDefaultAvailable(line.variantInternalId())
+                .compareTo(line.quantity()) < 0) {
+          throw new InvalidOrderTransitionException(
+              "La sucursal principal no tiene stock suficiente para confirmar el pedido.");
+        }
+        try {
+          branchStockSynchronizer.applyDefaultDelta(line.variantInternalId(), branchDelta);
+        } catch (InsufficientStockException exception) {
+          throw new InvalidOrderTransitionException(
+              "La sucursal principal no tiene stock suficiente para confirmar el pedido.");
+        }
       }
       long balanceVersion = repository.updateBalance(line.variantInternalId(), after);
       UUID movementId = movementId(command.idempotencyKey(), line.variantId());

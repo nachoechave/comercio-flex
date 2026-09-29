@@ -12,22 +12,25 @@
   } @else if (inventory(); as current) {
     <p class="eyebrow">Ajuste auditable</p>
     <h1 id="adjustment-title">Ajustar {{ current.sku }}</h1>
-    <p>{{ current.productName }} · {{ optionLabel(current) }} · Existencia actual: <strong>{{ current.quantity | quantityFormat }}</strong></p>
+    <p>{{ current.productName }} · {{ optionLabel(current) }} · Stock total: <strong>{{ current.quantity | quantityFormat }}</strong></p>
 
-    @if (!current.variantActive || current.productStatus === 'ARCHIVED') {
-      <p class="warning" role="status">
-        La existencia puede conciliarse, pero {{ current.productStatus === 'ARCHIVED' ? 'el producto está archivado' : 'la variante está inactiva' }}.
-      </p>
-    }
     @if (successMessage()) { <p class="success" role="status">{{ successMessage() }}</p> }
     @if (errorMessage()) { <p class="error" role="alert">{{ errorMessage() }}</p> }
     @if (uncertainResult()) {
-      <p class="warning" role="alert">
-        No reintentamos automáticamente. <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'inventario', variantId()]">Verificá movimientos y existencia</a> antes de decidir.
-      </p>
+      <p class="warning" role="alert">No reintentamos automáticamente. Verificá el stock antes de intentar nuevamente.</p>
     }
 
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <label for="adjustment-branch">Sucursal</label>
+      <select id="adjustment-branch" formControlName="branchId">
+        @for (branch of branches(); track branch.branchId) {
+          <option [value]="branch.branchId">{{ branch.branchName }}{{ branch.defaultBranch ? ' · Principal' : '' }} — {{ branch.quantity | quantityFormat }}</option>
+        }
+      </select>
+      @if (selectedBranch(); as branch) {
+        <p class="help">Existencia en {{ branch.branchName }}: <strong>{{ branch.quantity | quantityFormat }}</strong></p>
+      }
+
       <fieldset>
         <legend>Tipo de ajuste</legend>
         <label><input type="radio" formControlName="direction" value="INCREASE" /> Entrada</label>
@@ -35,11 +38,8 @@
       </fieldset>
 
       <label for="adjustment-quantity">Cantidad de unidades</label>
-      <input id="adjustment-quantity" formControlName="quantity" inputmode="numeric" placeholder="1" [attr.aria-invalid]="form.controls.quantity.touched && form.controls.quantity.invalid" aria-describedby="quantity-help quantity-error" />
-      <p id="quantity-help" class="help">Ingresá un número entero positivo.</p>
-      @if (form.controls.quantity.touched && form.controls.quantity.invalid) {
-        <p id="quantity-error" class="field-error">Ingresá entre 1 y 999999999999 unidades.</p>
-      }
+      <input id="adjustment-quantity" formControlName="quantity" inputmode="numeric" placeholder="1" [attr.aria-invalid]="form.controls.quantity.touched && form.controls.quantity.invalid" />
+      @if (form.controls.quantity.touched && form.controls.quantity.invalid) { <p class="field-error">Ingresá una cantidad entera positiva.</p> }
 
       <label for="adjustment-reason">Motivo</label>
       <select id="adjustment-reason" formControlName="reason">
@@ -51,10 +51,8 @@
       </select>
 
       <label for="adjustment-note">Nota {{ form.controls.reason.value === 'OTHER' ? '(obligatoria)' : '(opcional)' }}</label>
-      <textarea id="adjustment-note" formControlName="note" maxlength="500" [attr.aria-invalid]="otherNoteMissing()" aria-describedby="note-error"></textarea>
-      @if (otherNoteMissing()) {
-        <p id="note-error" class="field-error">Explicá el motivo del ajuste.</p>
-      }
+      <textarea id="adjustment-note" formControlName="note" maxlength="500"></textarea>
+      @if (otherNoteMissing()) { <p class="field-error">Explicá el motivo del ajuste.</p> }
 
       @if (preview(); as calculation) {
         <p class="preview" [class.invalid]="!calculation.valid" aria-live="polite">
@@ -66,9 +64,7 @@
 
       <div class="actions">
         <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'inventario', variantId()]">Cancelar</a>
-        <button type="submit" [disabled]="submitting()">
-          {{ submitting() ? 'Registrando…' : uncertainResult() ? 'Reintentar manualmente' : 'Registrar ajuste' }}
-        </button>
+        <button type="submit" [disabled]="submitting()">{{ submitting() ? 'Registrando…' : 'Registrar ajuste' }}</button>
       </div>
     </form>
   }

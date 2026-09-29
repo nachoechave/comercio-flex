@@ -29,6 +29,33 @@ export interface InventoryPage {
   totalPages: number;
 }
 
+export interface StoreBranch {
+  id: string;
+  name: string;
+  address: string | null;
+  active: boolean;
+  defaultBranch: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BranchStock {
+  branchId: string;
+  branchName: string;
+  active: boolean;
+  defaultBranch: boolean;
+  quantity: string;
+  version: number;
+  updatedAt: string;
+}
+
+export interface BranchPayload {
+  name: string;
+  address?: string | null;
+  active: boolean;
+  defaultBranch: boolean;
+}
+
 export interface MovementActor {
   id: string;
   displayName: string;
@@ -64,4 +91,9 @@ export interface StockAdjustment {
 export interface AdjustmentResponse {
   inventory: InventoryItem;
   movement: InventoryMovement;
+}
+
+export interface BranchAdjustmentResponse {
+  stock: BranchStock;
+  replay: boolean;
 }

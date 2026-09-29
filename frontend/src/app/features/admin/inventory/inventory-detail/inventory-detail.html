@@ -25,9 +25,34 @@
     }
 
     <section class="quantity-card" aria-labelledby="current-quantity-title">
-      <h2 id="current-quantity-title">Existencia actual</h2>
+      <h2 id="current-quantity-title">Stock total</h2>
       <strong>{{ current.quantity | quantityFormat }}</strong>
       <small>Última actualización: {{ current.updatedAt | commerceDate }}</small>
+    </section>
+
+    <section aria-labelledby="branches-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Disponibilidad física</p>
+          <h2 id="branches-title">Stock por sucursal</h2>
+        </div>
+        <a [routerLink]="['/tiendas', storeSlug(), 'admin', 'inventario', 'sucursales']">Ver sucursales</a>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Sucursal</th><th>Stock</th><th>Estado</th><th>Actualizado</th></tr></thead>
+          <tbody>
+            @for (branch of branchStock(); track branch.branchId) {
+              <tr>
+                <td><strong>{{ branch.branchName }}</strong>@if (branch.defaultBranch) { <small>Principal · ventas online</small> }</td>
+                <td class="quantity">{{ branch.quantity | quantityFormat }}</td>
+                <td>{{ branch.active ? 'Activa' : 'Inactiva' }}</td>
+                <td>{{ branch.updatedAt | commerceDate }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <section aria-labelledby="movements-title">
