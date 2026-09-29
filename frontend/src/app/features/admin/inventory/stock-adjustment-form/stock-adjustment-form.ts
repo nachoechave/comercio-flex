@@ -3,23 +3,15 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { finalize, Subscription } from 'rxjs';
+import { finalize, forkJoin, Subscription } from 'rxjs';
 
 import { routeParam } from '../../../../core/auth/auth.guards';
 import { inheritedRouteParam } from '../../../../core/routing/inherited-route-param';
-import {
-  formatQuantity,
-  QuantityFormatPipe,
-} from '../../../../shared/pipes/quantity-format.pipe';
+import { formatQuantity, QuantityFormatPipe } from '../../../../shared/pipes/quantity-format.pipe';
 import { variantOptionsLabel } from '../../../../shared/variant-options';
 import { InventoryApiService } from '../inventory-api.service';
 import { inventoryErrorMessage } from '../inventory-errors';
-import {
-  AdjustmentDirection,
-  AdjustmentReason,
-  InventoryItem,
-  StockAdjustment,
-} from '../inventory.models';
+import { AdjustmentDirection, AdjustmentReason, BranchStock, InventoryItem, StockAdjustment } from '../inventory.models';
 
 function positiveInteger(control: AbstractControl<string>): ValidationErrors | null {
   return /^[1-9][0-9]{0,11}$/.test(control.value.trim()) ? null : { quantity: true };
@@ -57,29 +49,34 @@ export class StockAdjustmentForm {
     initialValue: routeParam(this.route.snapshot, 'variantId'),
   });
   readonly inventory = signal<InventoryItem | null>(null);
+  readonly branches = signal<BranchStock[]>([]);
   readonly loading = signal(true);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
   readonly uncertainResult = signal(false);
   readonly form = this.formBuilder.nonNullable.group({
+    branchId: ['', [Validators.required]],
     direction: ['INCREASE' as AdjustmentDirection, [Validators.required]],
     quantity: ['', [positiveInteger]],
     reason: ['RECEIPT' as AdjustmentReason, [Validators.required]],
     note: ['', [Validators.maxLength(500)]],
   });
+
+  selectedBranch(): BranchStock | null {
+    const id = this.form.controls.branchId.value;
+    return this.branches().find((branch) => branch.branchId === id) ?? null;
+  }
+
   preview() {
-    const inventory = this.inventory();
+    const branch = this.selectedBranch();
     const quantity = this.form.controls.quantity.value.trim();
-    if (!inventory || !/^[1-9][0-9]{0,11}$/.test(quantity)) return null;
-    const current = toThousandths(inventory.quantity);
+    if (!branch || !/^[1-9][0-9]{0,11}$/.test(quantity)) return null;
+    const current = toThousandths(branch.quantity);
     const adjustment = BigInt(quantity) * 1000n;
-    const result =
-      this.form.controls.direction.value === 'INCREASE'
-        ? current + adjustment
-        : current - adjustment;
+    const result = this.form.controls.direction.value === 'INCREASE' ? current + adjustment : current - adjustment;
     return {
-      current: inventory.quantity,
+      current: branch.quantity,
       operator: this.form.controls.direction.value === 'INCREASE' ? '+' : '−',
       quantity: `${quantity}.000`,
       result: formatThousandths(result),
@@ -92,11 +89,7 @@ export class StockAdjustmentForm {
   }
 
   otherNoteMissing(): boolean {
-    return (
-      this.form.controls.reason.value === 'OTHER' &&
-      this.form.controls.note.touched &&
-      !this.form.controls.note.value.trim()
-    );
+    return this.form.controls.reason.value === 'OTHER' && this.form.controls.note.touched && !this.form.controls.note.value.trim();
   }
 
   constructor() {
@@ -110,9 +103,15 @@ export class StockAdjustmentForm {
         this.errorMessage.set('No pudimos identificar la variante solicitada.');
         return;
       }
-      const subscription = this.api.get(slug, variantId).subscribe({
-        next: (inventory) => {
+      const subscription = forkJoin({
+        inventory: this.api.get(slug, variantId),
+        branches: this.api.branchStock(slug, variantId),
+      }).subscribe({
+        next: ({ inventory, branches }) => {
           this.inventory.set(inventory);
+          this.branches.set(branches.filter((branch) => branch.active));
+          const preferred = branches.find((branch) => branch.active && branch.defaultBranch) ?? branches.find((branch) => branch.active);
+          if (preferred) this.form.controls.branchId.setValue(preferred.branchId);
           this.loading.set(false);
         },
         error: (error: unknown) => {
@@ -141,7 +140,7 @@ export class StockAdjustmentForm {
     }
     const preview = this.preview();
     if (!preview?.valid) {
-      this.errorMessage.set('La salida no puede dejar una existencia negativa.');
+      this.errorMessage.set('La salida no puede dejar una existencia negativa en esa sucursal.');
       return;
     }
     const slug = this.storeSlug();
@@ -154,7 +153,7 @@ export class StockAdjustmentForm {
       reason: value.reason,
       ...(value.note.trim() ? { note: value.note.trim() } : {}),
     };
-    const fingerprint = JSON.stringify(body);
+    const fingerprint = JSON.stringify({ branchId: value.branchId, ...body });
     if (fingerprint !== this.intentFingerprint) {
       this.intentFingerprint = fingerprint;
       this.idempotencyKey = globalThis.crypto.randomUUID();
@@ -162,41 +161,22 @@ export class StockAdjustmentForm {
 
     this.submitting.set(true);
     this.form.disable();
-    this.mutation = this.api
-      .adjust(slug, variantId, this.idempotencyKey!, body)
-      .pipe(
-        finalize(() => {
-          this.submitting.set(false);
-          this.form.enable();
-        }),
-      )
+    this.mutation = this.api.adjustBranch(slug, variantId, value.branchId, this.idempotencyKey!, body)
+      .pipe(finalize(() => { this.submitting.set(false); this.form.enable(); }))
       .subscribe({
         next: (response) => {
-          this.inventory.set(response.inventory);
-          this.successMessage.set(
-            `Ajuste registrado. Nueva existencia: ${formatQuantity(response.inventory.quantity)}.`,
-          );
-          this.form.reset({
-            direction: 'INCREASE',
-            quantity: '',
-            reason: 'RECEIPT',
-            note: '',
-          });
+          this.branches.update((branches) => branches.map((branch) => branch.branchId === response.stock.branchId ? response.stock : branch));
+          this.successMessage.set(`Ajuste registrado en ${response.stock.branchName}. Nueva existencia: ${formatQuantity(response.stock.quantity)}.`);
+          this.form.patchValue({ direction: 'INCREASE', quantity: '', reason: 'RECEIPT', note: '' });
           this.intentFingerprint = null;
           this.idempotencyKey = null;
         },
         error: (error: unknown) => {
-          this.uncertainResult.set(
-            error instanceof HttpErrorResponse && (error.status === 0 || error.status === 409),
-          );
-          this.errorMessage.set(
-            inventoryErrorMessage(
-              error,
-              error instanceof HttpErrorResponse && error.status === 0
-                ? 'No recibimos confirmación. Verificá el inventario antes de intentar nuevamente.'
-                : 'No pudimos registrar el ajuste.',
-            ),
-          );
+          this.uncertainResult.set(error instanceof HttpErrorResponse && (error.status === 0 || error.status === 409));
+          this.errorMessage.set(inventoryErrorMessage(error,
+            error instanceof HttpErrorResponse && error.status === 0
+              ? 'No recibimos confirmación. Verificá el inventario antes de intentar nuevamente.'
+              : 'No pudimos registrar el ajuste.'));
         },
       });
   }
@@ -204,12 +184,13 @@ export class StockAdjustmentForm {
   private resetForRoute(): void {
     this.form.enable();
     this.inventory.set(null);
+    this.branches.set([]);
     this.loading.set(true);
     this.submitting.set(false);
     this.errorMessage.set(null);
     this.successMessage.set(null);
     this.uncertainResult.set(false);
-    this.form.reset({ direction: 'INCREASE', quantity: '', reason: 'RECEIPT', note: '' });
+    this.form.reset({ branchId: '', direction: 'INCREASE', quantity: '', reason: 'RECEIPT', note: '' });
     this.intentFingerprint = null;
     this.idempotencyKey = null;
   }
