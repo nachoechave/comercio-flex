@@ -113,6 +113,32 @@ export interface CarrierSettingsSave {
   trackingSyncMinutes: number;
   version: number;
 }
+export interface CarrierConnectionTestRequest {
+  provider: 'ANDREANI';
+  environment: CarrierEnvironment;
+  clientCode: string;
+  contractCode: string;
+  username: string | null;
+  password: string | null;
+  origin: CarrierOrigin;
+  defaultParcel: CarrierParcel;
+  destinationPostalCode: string;
+}
+export interface CarrierConnectionCheck {
+  code: 'AUTH' | 'QUOTE' | string;
+  success: boolean;
+  message: string;
+}
+export interface CarrierConnectionTestResult {
+  success: boolean;
+  authenticationOk: boolean;
+  quoteOk: boolean;
+  environment: CarrierEnvironment;
+  destinationPostalCode: string;
+  serviceCode: string | null;
+  providerCost: string | null;
+  checks: CarrierConnectionCheck[];
+}
 export type ShippingStatus = 'PENDING' | 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 export interface Shipment {
   id: string;
