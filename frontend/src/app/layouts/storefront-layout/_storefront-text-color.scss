@@ -1,0 +1,109 @@
+/*
+ * Storefront text branding.
+ *
+ * The merchant-selected textColor is the source of truth for public-store copy.
+ * Keep semantic feedback colors meaningful and preserve the dedicated Fashion
+ * hero text color configured from Appearance.
+ */
+.store-theme {
+  --store-muted-text-color: color-mix(in srgb, var(--store-text-color) 64%, transparent);
+  --store-surface-color: color-mix(in srgb, var(--store-text-color) 5%, var(--store-background-color));
+  --color-text: var(--store-text-color) !important;
+  --color-muted: var(--store-muted-text-color) !important;
+  --color-border: color-mix(in srgb, var(--store-text-color) 18%, transparent) !important;
+  --color-surface: var(--store-surface-color) !important;
+}
+
+/*
+ * Some visual templates still contain legacy fixed text colors. Override only
+ * inside the public storefront so the admin Appearance > Texto value reaches
+ * headings, navigation, cards, cart, checkout and form controls consistently.
+ */
+.store-theme :where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    a,
+    span,
+    small,
+    strong,
+    b,
+    em,
+    label,
+    legend,
+    li,
+    dt,
+    dd,
+    th,
+    td,
+    button,
+    input,
+    textarea,
+    select,
+    option
+  ) {
+  color: var(--store-text-color) !important;
+}
+
+.store-theme :where(input, textarea)::placeholder {
+  color: var(--store-muted-text-color) !important;
+  opacity: 1;
+}
+
+/* Secondary copy still follows the selected text color, only with less weight. */
+.store-theme :where(
+    .breadcrumbs,
+    .brand-copy small,
+    .site-footer,
+    .store-newsletter small,
+    .page-header > div > p:last-child,
+    .empty-state > p:not(.eyebrow),
+    .summary-card p,
+    .summary-card small,
+    .line-heading p,
+    .line-actions label,
+    .line-total,
+    .description,
+    .section-kicker,
+    .result-count:not(.result-count--link),
+    .payment-method-copy > span,
+    label > span,
+    aside small,
+    .purchase-benefits small,
+    .product-information > p:last-child,
+    .state--message > p:not(.eyebrow)
+  ) {
+  color: var(--store-muted-text-color) !important;
+}
+
+/* Keep controls readable when a dark store uses a light text color. */
+.store-theme :where(input, textarea, select),
+.store-theme .cart-page--streetwear :where(.cart-line, .clear-button, .secondary-button, .line-actions button),
+.store-theme .checkout-page :where(form, aside, .payment-method-card) {
+  background-color: var(--store-surface-color) !important;
+}
+
+/* Fashion keeps its independently configurable hero text color. */
+.store-theme[data-template='fashion'] .streetwear-hero .eyebrow,
+.store-theme[data-template='fashion'] .streetwear-hero h1,
+.store-theme[data-template='fashion'] .streetwear-hero .hero-copy > p:not(.eyebrow),
+.store-theme[data-template='fashion'] .streetwear-hero .hero-secondary {
+  color: var(--store-hero-text-color, var(--store-text-color)) !important;
+}
+
+/* Semantic feedback stays semantic instead of being turned into branding copy. */
+.store-theme :where(.field-error, .error-message, .error-message *, .payment-method-status.error, .payment-method-status.error *) {
+  color: var(--color-danger, #a22323) !important;
+}
+
+.store-theme :where(.availability:not(.availability--out), .line-notice:not(.line-notice--warning)) {
+  color: var(--color-success, #26734d) !important;
+}
+
+.store-theme :where(.availability--out, .line-notice--warning, .warning, .warning *) {
+  color: var(--color-warning, #8a5a00) !important;
+}
