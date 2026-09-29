@@ -15,6 +15,12 @@ function loginRedirect(router: Router, returnUrl: string) {
   });
 }
 
+function defaultTenantPath(role: AdminRole): string[] {
+  if (role === 'SELLER') return ['inventario'];
+  if (role === 'STAFF') return ['pedidos'];
+  return [];
+}
+
 export function routeParam(
   route: ActivatedRouteSnapshot,
   name: string,
@@ -74,12 +80,12 @@ export const adminEntryGuard: CanActivateFn = (_route, state) => {
         return router.createUrlTree(['/superadmin']);
       }
       if (session.memberships.length === 1) {
-		const membership = session.memberships[0];
+        const membership = session.memberships[0];
         return router.createUrlTree([
           '/tiendas',
           membership.storeSlug,
           'admin',
-		  ...(membership.role === 'STAFF' ? ['pedidos'] : []),
+          ...defaultTenantPath(membership.role),
         ]);
       }
       return router.createUrlTree(['/admin/comercios']);
@@ -100,12 +106,12 @@ export const membershipSelectionGuard: CanActivateFn = (_route, state) => {
         return router.createUrlTree(['/superadmin']);
       }
       if (session.memberships.length === 1) {
-		const membership = session.memberships[0];
+        const membership = session.memberships[0];
         return router.createUrlTree([
           '/tiendas',
           membership.storeSlug,
           'admin',
-		  ...(membership.role === 'STAFF' ? ['pedidos'] : []),
+          ...defaultTenantPath(membership.role),
         ]);
       }
       return true;
@@ -166,6 +172,9 @@ export const adminHomeGuard: CanActivateFn = (route) => {
     map((session) => {
       if (!session.authenticated) return router.createUrlTree(['/admin/login']);
       const membership = session.memberships.find((item) => item.storeSlug === storeSlug);
+      if (membership?.role === 'SELLER') {
+        return router.createUrlTree(['/tiendas', storeSlug, 'admin', 'inventario']);
+      }
       return membership?.role === 'STAFF'
         ? router.createUrlTree(['/tiendas', storeSlug, 'admin', 'pedidos'])
         : true;
