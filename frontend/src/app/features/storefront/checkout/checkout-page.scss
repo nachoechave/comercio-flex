@@ -271,6 +271,41 @@ aside li,
   color: #111827;
 }
 
+/* Keep the embedded shipping fieldset visually clean on dark storefronts. */
+:host ::ng-deep app-shipping-selector .delivery-panel {
+  overflow: visible;
+}
+
+:host ::ng-deep app-shipping-selector .delivery-panel > legend {
+  width: auto;
+  margin: 0 0 0.25rem;
+  padding: 0 0.45rem;
+  color: #111827;
+  background: #fff;
+  line-height: 1.25;
+}
+
+:host ::ng-deep app-shipping-selector .mode-card strong,
+:host ::ng-deep app-shipping-selector .option strong {
+  color: #111827;
+}
+
+:host ::ng-deep app-shipping-selector .mode-card small,
+:host ::ng-deep app-shipping-selector .option-copy > span:not(.option-heading):not(.free-badge):not(.provider-badge) {
+  color: #5b6472;
+}
+
+/* Disabled CTA must still be readable against bright brand accents such as yellow. */
+form > button[type='submit'] {
+  color: #111;
+}
+
+form > button[type='submit']:disabled {
+  color: #111;
+  opacity: 0.7;
+  filter: saturate(0.65);
+}
+
 @media (max-width: 48rem) {
   .checkout-layout {
     grid-template-columns: 1fr;
