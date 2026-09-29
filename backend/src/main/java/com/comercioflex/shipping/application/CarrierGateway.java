@@ -5,6 +5,8 @@ import com.comercioflex.shipping.domain.CarrierModels.*;
 public interface CarrierGateway {
   Provider provider();
 
+  void authenticate(Account account);
+
   QuoteResult quote(Account account, String postalCode, Parcel parcel);
 
   CreatedShipment create(Account account, CreateShipmentRequest request);

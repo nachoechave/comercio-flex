@@ -7,6 +7,8 @@ import { finalize, switchMap } from 'rxjs';
 import { CsrfService } from '../../core/auth/csrf.service';
 import { inheritedRouteParam } from '../../core/routing/inherited-route-param';
 import {
+  CarrierConnectionTestRequest,
+  CarrierConnectionTestResult,
   CarrierDocumentType,
   CarrierSettings,
   CarrierSettingsSave,
@@ -68,18 +70,18 @@ import {
             <div class="grid two">
               <label>
                 <span>Ambiente</span>
-                <select name="environment" [(ngModel)]="s.environment">
+                <select name="environment" [(ngModel)]="s.environment" (ngModelChange)="invalidateTest()">
                   <option value="SANDBOX">QA / Sandbox</option>
                   <option value="PRODUCTION">Producción</option>
                 </select>
               </label>
               <label>
                 <span>Código de cliente</span>
-                <input name="clientCode" maxlength="80" [(ngModel)]="s.clientCode" />
+                <input name="clientCode" maxlength="80" [(ngModel)]="s.clientCode" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Código de contrato</span>
-                <input name="contractCode" maxlength="80" [(ngModel)]="s.contractCode" />
+                <input name="contractCode" maxlength="80" [(ngModel)]="s.contractCode" (ngModelChange)="invalidateTest()" />
               </label>
               <div></div>
               <label>
@@ -89,6 +91,7 @@ import {
                   autocomplete="off"
                   maxlength="300"
                   [(ngModel)]="username"
+                  (ngModelChange)="invalidateTest()"
                   placeholder="Dejalo vacío para conservar el actual"
                 />
               </label>
@@ -100,15 +103,74 @@ import {
                   autocomplete="new-password"
                   maxlength="300"
                   [(ngModel)]="password"
+                  (ngModelChange)="invalidateTest()"
                   placeholder="Dejala vacía para conservar la actual"
                 />
               </label>
             </div>
             @if (credentialsConfigured()) {
               <label class="clear">
-                <input type="checkbox" name="clearCredentials" [(ngModel)]="clearCredentials" />
+                <input type="checkbox" name="clearCredentials" [(ngModel)]="clearCredentials" (ngModelChange)="invalidateTest()" />
                 Eliminar las credenciales guardadas al guardar
               </label>
+            }
+
+            <div class="connection-test">
+              <div>
+                <span class="kicker">DIAGNÓSTICO</span>
+                <strong>Probar conexión antes de activar</strong>
+                <p>
+                  Verifica autenticación y una cotización real contra el ambiente elegido. No guarda
+                  cambios, no activa Andreani y no genera ningún envío.
+                </p>
+              </div>
+              <label class="test-postal">
+                <span>CP destino de prueba</span>
+                <input
+                  name="testPostalCode"
+                  maxlength="20"
+                  [(ngModel)]="testPostalCode"
+                  (ngModelChange)="invalidateTest()"
+                  placeholder="Ej. 1900"
+                />
+              </label>
+              <button
+                class="test-button"
+                type="button"
+                (click)="testConnection()"
+                [disabled]="testing() || !canTest()"
+              >
+                {{ testing() ? 'Probando…' : 'Probar conexión' }}
+              </button>
+            </div>
+
+            @if (testResult(); as result) {
+              <section class="test-result" [class.ok]="result.success" [class.partial]="result.authenticationOk && !result.quoteOk" aria-live="polite">
+                <header>
+                  <div>
+                    <strong>{{ result.success ? 'Conexión lista para piloto' : result.authenticationOk ? 'Conexión parcial' : 'No se pudo conectar' }}</strong>
+                    <span>{{ result.environment === 'PRODUCTION' ? 'Producción' : 'QA / Sandbox' }} · CP {{ result.destinationPostalCode }}</span>
+                  </div>
+                  <span class="result-badge">{{ result.success ? 'OK' : 'REVISAR' }}</span>
+                </header>
+                <ul>
+                  @for (check of result.checks; track check.code) {
+                    <li [class.ok]="check.success">
+                      <span aria-hidden="true">{{ check.success ? '✓' : '!' }}</span>
+                      <div>
+                        <strong>{{ check.code === 'AUTH' ? 'Autenticación' : check.code === 'QUOTE' ? 'Cotización' : check.code }}</strong>
+                        <small>{{ check.message }}</small>
+                      </div>
+                    </li>
+                  }
+                </ul>
+                @if (result.quoteOk && result.providerCost) {
+                  <p class="quote-result">
+                    Tarifa de prueba Andreani: <strong>$ {{ result.providerCost }}</strong>
+                    @if (result.serviceCode) { <span>· {{ result.serviceCode }}</span> }
+                  </p>
+                }
+              </section>
             }
           </section>
 
@@ -123,19 +185,19 @@ import {
             <div class="grid three">
               <label class="wide">
                 <span>Nombre / Razón social</span>
-                <input name="senderName" required maxlength="160" [(ngModel)]="s.origin.senderName" />
+                <input name="senderName" required maxlength="160" [(ngModel)]="s.origin.senderName" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Email</span>
-                <input name="senderEmail" type="email" required maxlength="254" [(ngModel)]="s.origin.senderEmail" />
+                <input name="senderEmail" type="email" required maxlength="254" [(ngModel)]="s.origin.senderEmail" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Teléfono</span>
-                <input name="senderPhone" required maxlength="40" [(ngModel)]="s.origin.senderPhone" />
+                <input name="senderPhone" required maxlength="40" [(ngModel)]="s.origin.senderPhone" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Documento</span>
-                <select name="senderDocumentType" [(ngModel)]="s.origin.senderDocumentType">
+                <select name="senderDocumentType" [(ngModel)]="s.origin.senderDocumentType" (ngModelChange)="invalidateTest()">
                   <option value="DNI">DNI</option>
                   <option value="CUIT">CUIT</option>
                   <option value="CUIL">CUIL</option>
@@ -149,31 +211,32 @@ import {
                   pattern="[0-9]{7,20}"
                   maxlength="20"
                   [(ngModel)]="s.origin.senderDocumentNumber"
+                  (ngModelChange)="invalidateTest()"
                 />
               </label>
               <label class="wide">
                 <span>Calle</span>
-                <input name="originStreet" required maxlength="160" [(ngModel)]="s.origin.street" />
+                <input name="originStreet" required maxlength="160" [(ngModel)]="s.origin.street" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Número</span>
-                <input name="originNumber" required maxlength="30" [(ngModel)]="s.origin.number" />
+                <input name="originNumber" required maxlength="30" [(ngModel)]="s.origin.number" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Código postal</span>
-                <input name="originPostal" required maxlength="20" [(ngModel)]="s.origin.postalCode" />
+                <input name="originPostal" required maxlength="20" [(ngModel)]="s.origin.postalCode" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Localidad</span>
-                <input name="originCity" required maxlength="160" [(ngModel)]="s.origin.city" />
+                <input name="originCity" required maxlength="160" [(ngModel)]="s.origin.city" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Provincia</span>
-                <input name="originProvince" required maxlength="160" [(ngModel)]="s.origin.province" />
+                <input name="originProvince" required maxlength="160" [(ngModel)]="s.origin.province" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>País</span>
-                <input name="originCountry" required maxlength="80" [(ngModel)]="s.origin.country" />
+                <input name="originCountry" required maxlength="80" [(ngModel)]="s.origin.country" (ngModelChange)="invalidateTest()" />
               </label>
             </div>
           </section>
@@ -192,19 +255,19 @@ import {
             <div class="grid four">
               <label>
                 <span>Peso por unidad (g)</span>
-                <input name="weight" type="number" required min="1" step="1" [(ngModel)]="s.defaultParcel.weightGrams" />
+                <input name="weight" type="number" required min="1" step="1" [(ngModel)]="s.defaultParcel.weightGrams" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Largo (cm)</span>
-                <input name="length" type="number" required min="0.1" step="0.1" [(ngModel)]="s.defaultParcel.lengthCm" />
+                <input name="length" type="number" required min="0.1" step="0.1" [(ngModel)]="s.defaultParcel.lengthCm" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Ancho (cm)</span>
-                <input name="width" type="number" required min="0.1" step="0.1" [(ngModel)]="s.defaultParcel.widthCm" />
+                <input name="width" type="number" required min="0.1" step="0.1" [(ngModel)]="s.defaultParcel.widthCm" (ngModelChange)="invalidateTest()" />
               </label>
               <label>
                 <span>Alto (cm)</span>
-                <input name="height" type="number" required min="0.1" step="0.1" [(ngModel)]="s.defaultParcel.heightCm" />
+                <input name="height" type="number" required min="0.1" step="0.1" [(ngModel)]="s.defaultParcel.heightCm" (ngModelChange)="invalidateTest()" />
               </label>
             </div>
             <label class="sync-field">
@@ -262,13 +325,38 @@ import {
       .notice { padding: 12px 14px; border-radius: 12px; }
       .notice.error { background: #fff1f2; color: #a21c24; }
       .notice.success { background: #e8f7ee; color: #18794e; }
+      .connection-test { display: grid; grid-template-columns: minmax(0,1fr) minmax(180px,220px) auto; gap: 14px; align-items: end; padding: 16px; border: 1px solid #d9e0ea; border-radius: 14px; background: #f8fafc; }
+      .connection-test > div { align-self: center; }
+      .connection-test strong { display: block; margin-top: 3px; color: #172033; }
+      .connection-test p { margin-top: 5px; font-size: .86rem; }
+      .test-button { min-height: 42px; border: 0; border-radius: 10px; padding: 10px 15px; background: #24364b; color: #fff; font: inherit; font-weight: 800; cursor: pointer; white-space: nowrap; }
+      .test-button:disabled { opacity: .5; cursor: not-allowed; }
+      .test-result { display: grid; gap: 12px; padding: 15px; border: 1px solid #efb6b9; border-radius: 14px; background: #fff7f7; }
+      .test-result.ok { border-color: #a7dfbd; background: #f2fbf5; }
+      .test-result.partial { border-color: #e8cf91; background: #fffaf0; }
+      .test-result > header { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+      .test-result > header div { display: grid; gap: 2px; }
+      .test-result > header strong { color: #172033; }
+      .test-result > header span:not(.result-badge) { color: #667085; font-size: .8rem; }
+      .result-badge { padding: 4px 8px; border-radius: 999px; background: #fce8e9; color: #9b252c; font-size: .72rem; font-weight: 850; }
+      .test-result.ok .result-badge { background: #def5e7; color: #18794e; }
+      .test-result.partial .result-badge { background: #fff0c7; color: #805600; }
+      .test-result ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+      .test-result li { display: flex; gap: 10px; align-items: flex-start; }
+      .test-result li > span { display: grid; width: 22px; height: 22px; place-items: center; flex: 0 0 22px; border-radius: 50%; background: #f6d9db; color: #9b252c; font-weight: 900; }
+      .test-result li.ok > span { background: #dff4e7; color: #18794e; }
+      .test-result li div { display: grid; gap: 2px; }
+      .test-result li small { color: #667085; line-height: 1.4; }
+      .quote-result { margin: 0 !important; padding-top: 10px; border-top: 1px solid rgb(23 32 51 / 10%); color: #344054 !important; }
       .save-bar { position: sticky; bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 18px; box-shadow: 0 12px 28px rgb(16 24 40 / 10%); }
       .save-bar a { color: #475467; font-weight: 700; text-decoration: none; }
       .save-bar button { border: 0; border-radius: 10px; padding: 12px 18px; background: #172033; color: #fff; font-weight: 800; cursor: pointer; }
       .save-bar button:disabled { opacity: .55; cursor: not-allowed; }
+      @media (max-width: 900px) { .connection-test { grid-template-columns: 1fr 1fr; } .connection-test > div { grid-column: 1 / -1; } }
       @media (max-width: 780px) {
         .hero, .activation, .section-heading, .save-bar { display: grid; grid-template-columns: 1fr; }
-        .grid.two, .grid.three, .grid.four { grid-template-columns: 1fr; }
+        .grid.two, .grid.three, .grid.four, .connection-test { grid-template-columns: 1fr; }
+        .connection-test > div { grid-column: auto; }
         .wide { grid-column: auto; }
       }
     `,
@@ -287,9 +375,12 @@ export class CarrierSettingsPage {
   username = '';
   password = '';
   clearCredentials = false;
+  testPostalCode = '';
   saving = signal(false);
+  testing = signal(false);
   error = signal('');
   notice = signal('');
+  testResult = signal<CarrierConnectionTestResult | null>(null);
 
   constructor() {
     effect((onCleanup) => {
@@ -305,6 +396,36 @@ export class CarrierSettingsPage {
 
   credentialsConfigured() {
     return !!this.draft?.credentialsConfigured && !this.clearCredentials;
+  }
+
+  canTest() {
+    const s = this.draft;
+    if (!s) return false;
+    const hasEnteredCredentials = !!this.username.trim() && !!this.password;
+    return !!(
+      s.clientCode?.trim() &&
+      s.contractCode?.trim() &&
+      s.origin.senderName.trim() &&
+      s.origin.senderEmail.trim() &&
+      s.origin.senderPhone.trim() &&
+      s.origin.senderDocumentNumber.trim() &&
+      s.origin.street.trim() &&
+      s.origin.number.trim() &&
+      s.origin.postalCode.trim() &&
+      s.origin.city.trim() &&
+      s.origin.province.trim() &&
+      s.origin.country.trim() &&
+      s.defaultParcel.weightGrams > 0 &&
+      s.defaultParcel.lengthCm > 0 &&
+      s.defaultParcel.widthCm > 0 &&
+      s.defaultParcel.heightCm > 0 &&
+      this.testPostalCode.trim() &&
+      (hasEnteredCredentials || this.credentialsConfigured())
+    );
+  }
+
+  invalidateTest() {
+    this.testResult.set(null);
   }
 
   private url(slug = this.slug()) {
@@ -337,7 +458,47 @@ export class CarrierSettingsPage {
     this.username = '';
     this.password = '';
     this.clearCredentials = false;
+    this.testPostalCode = settings.origin?.postalCode ?? this.testPostalCode;
+    this.testResult.set(null);
     this.changeDetector.markForCheck();
+  }
+
+  testConnection() {
+    if (!this.draft || this.testing() || !this.canTest()) return;
+    const payload: CarrierConnectionTestRequest = {
+      provider: 'ANDREANI',
+      environment: this.draft.environment,
+      clientCode: this.draft.clientCode!.trim(),
+      contractCode: this.draft.contractCode!.trim(),
+      username: this.username.trim() || null,
+      password: this.password || null,
+      origin: this.draft.origin,
+      defaultParcel: this.draft.defaultParcel,
+      destinationPostalCode: this.testPostalCode.trim(),
+    };
+    this.testing.set(true);
+    this.error.set('');
+    this.notice.set('');
+    this.testResult.set(null);
+    this.csrf
+      .ensureToken()
+      .pipe(
+        switchMap(() =>
+          this.http.post<CarrierConnectionTestResult>(this.url() + '/test', payload),
+        ),
+        finalize(() => this.testing.set(false)),
+      )
+      .subscribe({
+        next: (result) => {
+          this.testResult.set(result);
+          this.changeDetector.markForCheck();
+        },
+        error: (response) =>
+          this.error.set(
+            response.error?.message ??
+              'No pudimos ejecutar la prueba de conexión con Andreani.',
+          ),
+      });
   }
 
   save() {

@@ -2,7 +2,10 @@ package com.comercioflex.shipping.api;
 
 import com.comercioflex.identity.application.TenantPermissionGuard;
 import com.comercioflex.identity.domain.TenantPermission;
+import com.comercioflex.shipping.application.CarrierConnectionTestService;
 import com.comercioflex.shipping.application.CarrierShippingService;
+import com.comercioflex.shipping.domain.CarrierModels.ConnectionTestRequest;
+import com.comercioflex.shipping.domain.CarrierModels.ConnectionTestResult;
 import com.comercioflex.shipping.domain.CarrierModels.SaveSettings;
 import com.comercioflex.shipping.domain.CarrierModels.SettingsView;
 import com.comercioflex.shipping.domain.ShippingModels.Shipment;
@@ -16,11 +19,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/stores/{storeSlug}/admin")
 public class CarrierShippingController {
   private final CarrierShippingService carrier;
+  private final CarrierConnectionTestService connectionTest;
   private final TenantPermissionGuard permissions;
 
   public CarrierShippingController(
-      CarrierShippingService carrier, TenantPermissionGuard permissions) {
+      CarrierShippingService carrier,
+      CarrierConnectionTestService connectionTest,
+      TenantPermissionGuard permissions) {
     this.carrier = carrier;
+    this.connectionTest = connectionTest;
     this.permissions = permissions;
   }
 
@@ -36,6 +43,14 @@ public class CarrierShippingController {
     ShippingAccess.requireEcommerce(request);
     permissions.require(request, TenantPermission.MANAGE_BASIC_SETTINGS);
     return carrier.save(body);
+  }
+
+  @PostMapping("/shipping/carrier/test")
+  ConnectionTestResult testConnection(
+      @Valid @RequestBody ConnectionTestRequest body, HttpServletRequest request) {
+    ShippingAccess.requireEcommerce(request);
+    permissions.require(request, TenantPermission.MANAGE_BASIC_SETTINGS);
+    return connectionTest.test(body);
   }
 
   @PostMapping("/orders/{id}/shipment/carrier")

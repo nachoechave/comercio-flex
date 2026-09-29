@@ -34,6 +34,18 @@ public class AndreaniCarrierGateway implements CarrierGateway {
   }
 
   @Override
+  public void authenticate(Account account) {
+    requireAccount(account, true);
+    try {
+      login(account);
+    } catch (CarrierUnavailableException e) {
+      throw e;
+    } catch (RestClientException | IllegalArgumentException e) {
+      throw unavailable("No pudimos autenticar la cuenta de Andreani en este momento.", e);
+    }
+  }
+
+  @Override
   public QuoteResult quote(Account account, String postalCode, Parcel parcel) {
     requireAccount(account, false);
     if (postalCode == null || postalCode.isBlank()) {
