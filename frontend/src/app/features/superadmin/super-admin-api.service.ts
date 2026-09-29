@@ -14,9 +14,11 @@ import {
   UpdateCompanyBranding,
   BrandAssetType,
   CreateCompanyRequest,
+  CreateCompanyUserRequest,
   SuperAdminDashboardSummary,
   TenantProvisioningCapability,
   UpdateCompanyRequest,
+  UpdateCompanyUserRequest,
 } from './super-admin.models';
 
 @Injectable({ providedIn: 'root' })
@@ -71,6 +73,35 @@ export class SuperAdminApiService {
   companyUsers(companyId: string): Observable<CompanyUser[]> {
     return this.http.get<CompanyUser[]>(
       `${this.baseUrl}/companies/${encodeURIComponent(companyId)}/users`,
+    );
+  }
+
+  createCompanyUser(
+    companyId: string,
+    request: CreateCompanyUserRequest,
+  ): Observable<CompanyUser> {
+    return this.csrf.ensureToken().pipe(
+      switchMap(() =>
+        this.http.post<CompanyUser>(
+          `${this.baseUrl}/companies/${encodeURIComponent(companyId)}/users`,
+          request,
+        ),
+      ),
+    );
+  }
+
+  updateCompanyUser(
+    companyId: string,
+    userId: string,
+    request: UpdateCompanyUserRequest,
+  ): Observable<CompanyUser> {
+    return this.csrf.ensureToken().pipe(
+      switchMap(() =>
+        this.http.put<CompanyUser>(
+          `${this.baseUrl}/companies/${encodeURIComponent(companyId)}/users/${encodeURIComponent(userId)}`,
+          request,
+        ),
+      ),
     );
   }
 
