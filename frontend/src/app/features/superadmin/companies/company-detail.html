@@ -85,27 +85,94 @@
   }
 
   @if (selectedTab() === 'users') {
-    <section class="panel" aria-labelledby="users-title">
-      <header><div><p class="eyebrow">Accesos tenant</p><h2 id="users-title">Usuarios</h2></div></header>
+    <section class="panel users-panel" aria-labelledby="users-title">
+      <header>
+        <div><p class="eyebrow">Accesos tenant</p><h2 id="users-title">Usuarios</h2></div>
+        <span>{{ users().length }} accesos</span>
+      </header>
       @if (sectionUnavailable('users')) {
         <p class="empty error">No pudimos consultar los usuarios de esta empresa.</p>
-      } @else if (users().length === 0) {
-        <p class="empty">No hay membresías asociadas.</p>
       } @else {
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Alta</th></tr></thead>
-            <tbody>
-              @for (user of users(); track user.id) {
-                <tr>
-                  <td><strong>{{ user.name }}</strong><small>{{ user.email }}</small></td>
-                  <td>{{ roleLabel(user.role) }}</td>
-                  <td><span class="user-status" [class.inactive]="user.membershipStatus !== 'ACTIVE' || user.userStatus !== 'ACTIVE'">{{ userStatusLabel(user) }}</span></td>
-                  <td>{{ user.joinedAt | commerceDate: 'date' }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div class="user-management-grid">
+          <form class="user-create-form" [formGroup]="userForm" (ngSubmit)="createUser()" novalidate>
+            <div class="form-heading">
+              <div><p class="eyebrow">Nuevo acceso</p><h3>Agregar usuario</h3></div>
+              <p>El usuario inicia sesión con su email y la contraseña que definas.</p>
+            </div>
+
+            <label for="user-name">Nombre</label>
+            <input id="user-name" formControlName="name" maxlength="160" autocomplete="name" placeholder="Juan Pérez" />
+            @if (userForm.controls.name.touched && userForm.controls.name.invalid) {
+              <small class="field-error">Ingresá un nombre válido.</small>
+            }
+
+            <label for="user-email">Usuario / email</label>
+            <input id="user-email" formControlName="email" maxlength="254" type="email" autocomplete="off" placeholder="juan@comercio.com" />
+            @if (userForm.controls.email.touched && userForm.controls.email.invalid) {
+              <small class="field-error">Ingresá un email válido.</small>
+            }
+
+            <label for="user-password">Contraseña inicial</label>
+            <input id="user-password" formControlName="password" maxlength="200" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" />
+            @if (userForm.controls.password.touched && userForm.controls.password.invalid) {
+              <small class="field-error">La contraseña debe tener al menos 8 caracteres.</small>
+            }
+
+            <label for="user-role">Rol</label>
+            <select id="user-role" formControlName="role">
+              <option value="ADMIN">Administrador</option>
+              <option value="MANAGER">Encargado</option>
+              <option value="SELLER">Vendedor</option>
+              <option value="STAFF">Personal (legado)</option>
+            </select>
+            <small class="help">Vendedor puede consultar inventario sin modificarlo. Encargado también gestiona pedidos y ajustes de stock.</small>
+
+            <button class="primary" type="submit" [disabled]="creatingUser()">
+              {{ creatingUser() ? 'Creando…' : 'Crear usuario' }}
+            </button>
+          </form>
+
+          <div class="users-list">
+            @if (users().length === 0) {
+              <p class="empty">No hay membresías asociadas.</p>
+            } @else {
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Alta</th><th>Acciones</th></tr></thead>
+                  <tbody>
+                    @for (user of users(); track user.id) {
+                      <tr>
+                        <td><strong>{{ user.name }}</strong><small>{{ user.email }}</small></td>
+                        <td>
+                          @if (user.role === 'OWNER') {
+                            <strong>{{ roleLabel(user.role) }}</strong>
+                          } @else {
+                            <select class="role-select" [value]="user.role" (change)="changeUserRole(user, $event)" [disabled]="savingUserId() === user.id">
+                              <option value="ADMIN">Administrador</option>
+                              <option value="MANAGER">Encargado</option>
+                              <option value="SELLER">Vendedor</option>
+                              <option value="STAFF">Personal</option>
+                            </select>
+                          }
+                        </td>
+                        <td><span class="user-status" [class.inactive]="user.membershipStatus !== 'ACTIVE' || user.userStatus !== 'ACTIVE'">{{ userStatusLabel(user) }}</span></td>
+                        <td>{{ user.joinedAt | commerceDate: 'date' }}</td>
+                        <td>
+                          @if (user.role === 'OWNER') {
+                            <span class="muted">Protegido</span>
+                          } @else {
+                            <button class="compact-action" type="button" (click)="toggleUser(user)" [disabled]="savingUserId() === user.id">
+                              {{ user.membershipStatus === 'ACTIVE' ? 'Desactivar' : 'Activar' }}
+                            </button>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
         </div>
       }
     </section>
