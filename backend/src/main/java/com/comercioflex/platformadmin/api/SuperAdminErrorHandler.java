@@ -15,6 +15,8 @@ import com.comercioflex.platformadmin.application.CompanyProvisioningException;
 import com.comercioflex.platformadmin.application.CompanyProvisioningUnavailableException;
 import com.comercioflex.platformadmin.application.CompanyStatusConflictException;
 import com.comercioflex.platformadmin.application.CompanyUpdateConflictException;
+import com.comercioflex.platformadmin.application.CompanyUserConflictException;
+import com.comercioflex.platformadmin.application.CompanyUserNotFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -28,6 +30,16 @@ public class SuperAdminErrorHandler {
 			"Empresa no encontrada",
 			"No existe una empresa para el identificador solicitado.",
 			"company-not-found",
+			request);
+	}
+
+	@ExceptionHandler(CompanyUserNotFoundException.class)
+	ProblemDetail userNotFound(HttpServletRequest request) {
+		return problem(
+			HttpStatus.NOT_FOUND,
+			"Usuario no encontrado",
+			"No existe ese usuario dentro de la empresa solicitada.",
+			"company-user-not-found",
 			request);
 	}
 
@@ -64,6 +76,18 @@ public class SuperAdminErrorHandler {
 			"No se pudo actualizar la empresa",
 			exception.getMessage(),
 			"company-update-conflict",
+			request);
+	}
+
+	@ExceptionHandler(CompanyUserConflictException.class)
+	ProblemDetail userConflict(
+			CompanyUserConflictException exception,
+			HttpServletRequest request) {
+		return problem(
+			HttpStatus.CONFLICT,
+			"No se pudo administrar el usuario",
+			exception.getMessage(),
+			"company-user-conflict",
 			request);
 	}
 
