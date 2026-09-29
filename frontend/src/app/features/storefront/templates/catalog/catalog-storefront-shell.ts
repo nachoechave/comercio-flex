@@ -1,5 +1,5 @@
 import { Component, inject, input, signal } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 import { CartPreview } from '../../cart/cart-preview';
 import { StorefrontRoutingService } from '../../storefront-routing.service';
@@ -7,7 +7,7 @@ import { StoreSettings, TenantBranding } from '../../storefront.models';
 
 @Component({
   selector: 'app-catalog-storefront-shell',
-  imports: [RouterLink, RouterOutlet, CartPreview],
+  imports: [RouterLink, CartPreview],
   template: `
     <a class="store-skip-link" href="#main-content">Saltar al contenido</a>
     <aside class="catalog-utility"><span>Compra online segura</span><span>Stock actualizado</span>@if (settings().contactPhone) { <a [href]="'tel:' + settings().contactPhone">Contacto {{ settings().contactPhone }}</a> }</aside>
@@ -30,7 +30,7 @@ import { StoreSettings, TenantBranding } from '../../storefront.models';
       </nav>
     </header>
     <app-cart-preview [storeSlug]="settings().slug" />
-    <main id="main-content"><router-outlet /></main>
+    <main id="main-content"><ng-content /></main>
     <section class="catalog-benefits"><span>▣ Envíos a todo el país</span><span>▤ Cuotas disponibles</span><span>◇ Cambios simples</span><span>✓ Compra segura</span></section>
     <footer class="catalog-footer">
       <div class="catalog-footer__brand"><strong>{{ settings().storeName }}</strong><p>Todo lo que buscás, en un solo lugar.</p></div>
