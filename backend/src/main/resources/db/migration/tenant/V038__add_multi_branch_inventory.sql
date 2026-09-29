@@ -47,16 +47,10 @@ JOIN store_branches branch ON branch.is_default = TRUE
 SET movement.branch_id = branch.id
 WHERE movement.branch_id IS NULL;
 
-ALTER TABLE inventory_movements
-    MODIFY branch_id BIGINT NOT NULL;
-
-CREATE TRIGGER trg_inventory_movements_default_branch
-BEFORE INSERT ON inventory_movements
-FOR EACH ROW
-SET NEW.branch_id = COALESCE(
-    NEW.branch_id,
-    (SELECT id FROM store_branches WHERE is_default = TRUE LIMIT 1)
-);
+-- Keep branch_id nullable for legacy movement writers. Branch-specific inventory
+-- operations always provide a branch explicitly. Avoiding a database trigger is
+-- intentional: managed MySQL environments with binary logging commonly reject
+-- CREATE TRIGGER without SUPER privileges (error 1419).
 
 CREATE INDEX ix_branch_inventory_variant
     ON branch_inventory_balances (variant_id, branch_id);
