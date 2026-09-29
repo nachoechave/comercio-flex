@@ -7,7 +7,7 @@
     <div>
       <p class="eyebrow">Operación</p>
       <h1 id="inventory-title">Inventario</h1>
-      <p>Consultá y ajustá la existencia física de cada variante.</p>
+      <p>{{ canManage() ? 'Consultá y ajustá la existencia física de cada variante.' : 'Consultá la existencia disponible de cada variante.' }}</p>
     </div>
     @if (canManage()) { <a class="secondary" routerLink="configuracion">Configurar alertas</a> }
   </header>
@@ -54,7 +54,9 @@
               </td>
               <td class="actions">
                 <a [routerLink]="[item.variantId]" [attr.aria-label]="'Ver movimientos de ' + item.sku">Ver</a>
-                <a [routerLink]="[item.variantId, 'ajustar']" [attr.aria-label]="'Ajustar stock de ' + item.sku">Ajustar</a>
+                @if (canManage()) {
+                  <a [routerLink]="[item.variantId, 'ajustar']" [attr.aria-label]="'Ajustar stock de ' + item.sku">Ajustar</a>
+                }
               </td>
             </tr>
           }
