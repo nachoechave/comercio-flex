@@ -4,7 +4,7 @@ import { VariantOptionValue } from '../../../shared/variant-options';
 export type InventoryAvailability = 'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK';
 export type AdjustmentDirection = 'INCREASE' | 'DECREASE';
 export type AdjustmentReason = 'RECEIPT' | 'CORRECTION' | 'DAMAGE' | 'RETURN' | 'OTHER';
-export type InventoryMovementReason = AdjustmentReason | 'ORDER_CONFIRMED' | 'ORDER_CANCELLED';
+export type InventoryMovementReason = AdjustmentReason | 'ORDER_CONFIRMED' | 'ORDER_CANCELLED' | 'LOCAL_SALE';
 
 export interface InventoryItem {
   variantId: string;
