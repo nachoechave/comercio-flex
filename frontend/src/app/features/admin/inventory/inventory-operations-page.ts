@@ -362,7 +362,7 @@ export class InventoryOperationsPage {
     this.activeBranches().filter((branch) => branch.id !== this.fromBranchId()),
   );
   readonly canTransfer = computed(() => {
-    const role = this.auth.membershipFor(this.storeSlug())?.role;
+    const role = this.auth.membershipFor(this.storeSlug() ?? '')?.role;
     return role === 'OWNER' || role === 'ADMIN' || role === 'MANAGER' || role === 'STAFF';
   });
   readonly validTransfer = computed(() =>
