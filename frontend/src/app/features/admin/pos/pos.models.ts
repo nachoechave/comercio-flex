@@ -43,3 +43,18 @@ export interface PosSale {
   items: PosSaleItem[];
   createdAt: string;
 }
+
+export interface CashSession {
+  id: string;
+  branchId: string;
+  branchName: string;
+  status: 'OPEN' | 'CLOSED';
+  openedByDisplayName: string;
+  openingAmount: string;
+  openedAt: string;
+  closedByDisplayName: string | null;
+  closingAmount: string | null;
+  expectedCash: string | null;
+  differenceAmount: string | null;
+  closedAt: string | null;
+}
