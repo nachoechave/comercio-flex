@@ -13,6 +13,7 @@ public enum MembershipRole {
 		TenantPermission.VIEW_INVENTORY,
 		TenantPermission.ADJUST_STOCK,
 		TenantPermission.MANAGE_ORDERS,
+		TenantPermission.MANAGE_POS_SALES,
 		TenantPermission.MANAGE_BASIC_SETTINGS,
 		TenantPermission.VIEW_RADIO_MEMBERSHIPS,
 		TenantPermission.MANAGE_RADIO_PLANS)),
@@ -21,15 +22,18 @@ public enum MembershipRole {
 		TenantPermission.VIEW_CATALOG,
 		TenantPermission.VIEW_INVENTORY,
 		TenantPermission.ADJUST_STOCK,
-		TenantPermission.MANAGE_ORDERS)),
+		TenantPermission.MANAGE_ORDERS,
+		TenantPermission.MANAGE_POS_SALES)),
 	SELLER(EnumSet.of(
 		TenantPermission.VIEW_CATALOG,
-		TenantPermission.VIEW_INVENTORY)),
+		TenantPermission.VIEW_INVENTORY,
+		TenantPermission.MANAGE_POS_SALES)),
 	STAFF(EnumSet.of(
 		TenantPermission.VIEW_CATALOG,
 		TenantPermission.VIEW_INVENTORY,
 		TenantPermission.ADJUST_STOCK,
-		TenantPermission.MANAGE_ORDERS));
+		TenantPermission.MANAGE_ORDERS,
+		TenantPermission.MANAGE_POS_SALES));
 
 	private final Set<TenantPermission> permissions;
 
