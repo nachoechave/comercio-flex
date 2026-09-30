@@ -8,6 +8,10 @@ export const INVENTORY_ROUTES: Routes = [
     loadComponent: () => import('./inventory-list/inventory-list').then((module) => module.InventoryList),
   },
   {
+    path: 'operaciones',
+    loadComponent: () => import('./inventory-operations-page').then((module) => module.InventoryOperationsPage),
+  },
+  {
     path: 'sucursales',
     canActivate: [allowedRolesGuard(['OWNER', 'ADMIN'])],
     loadComponent: () => import('./branch-management/branch-management').then((module) => module.BranchManagement),
