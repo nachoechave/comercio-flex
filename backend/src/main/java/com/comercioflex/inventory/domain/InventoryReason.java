@@ -7,5 +7,6 @@ public enum InventoryReason {
 	RETURN,
 	OTHER,
 	ORDER_CONFIRMED,
-	ORDER_CANCELLED
+	ORDER_CANCELLED,
+	LOCAL_SALE
 }
