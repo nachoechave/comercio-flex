@@ -217,6 +217,12 @@ export const routes: Routes = [
           import('./features/admin/orders/order.routes').then((module) => module.ORDER_ROUTES),
       },
       {
+        path: 'ventas/caja',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN', 'MANAGER', 'STAFF', 'SELLER'])],
+        loadComponent: () =>
+          import('./features/admin/pos/cash-register-page').then((module) => module.CashRegisterPage),
+      },
+      {
         path: 'ventas',
         canActivate: [allowedRolesGuard(['OWNER', 'ADMIN', 'MANAGER', 'STAFF', 'SELLER'])],
         loadComponent: () =>
