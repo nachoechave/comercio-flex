@@ -1,5 +1,5 @@
 import { Component, inject, input, signal } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 import { CartPreview } from '../../cart/cart-preview';
 import { StorefrontRoutingService } from '../../storefront-routing.service';
@@ -7,7 +7,7 @@ import { StoreSettings, TenantBranding } from '../../storefront.models';
 
 @Component({
   selector: 'app-fashion-storefront-shell',
-  imports: [RouterLink, RouterOutlet, CartPreview],
+  imports: [RouterLink, CartPreview],
   template: `
     <a class="store-skip-link" href="#main-content">Saltar al contenido</a>
     <aside class="announcement-bar" aria-label="Beneficios de compra"><span>Nueva colección</span><span>Compra online simple y segura</span><span>Atención personalizada</span></aside>
@@ -22,9 +22,9 @@ import { StoreSettings, TenantBranding } from '../../storefront.models';
       </nav>
     </header>
     <app-cart-preview [storeSlug]="settings().slug" />
-    <main id="main-content"><router-outlet /></main>
+    <main id="main-content"><ng-content /></main>
     <section class="store-newsletter store-newsletter--fashion"><div><p><strong>Novedades de la tienda</strong><small>Colecciones, productos y beneficios seleccionados.</small></p></div><form><label class="visually-hidden" for="fashion-email">Correo electrónico</label><input id="fashion-email" type="email" placeholder="Tu correo electrónico" /><button type="button">Suscribirme</button></form></section>
-    <footer class="site-footer site-footer--fashion site-footer--streetwear"><div class="footer-brand"><strong>{{ settings().storeName }}</strong><p>Una selección con identidad propia.</p></div><div><strong>Explorar</strong><a [routerLink]="storefrontRouting.route(settings().slug)">Productos</a><a [routerLink]="storefrontRouting.route(settings().slug)" fragment="category-section">Colecciones</a></div><div><strong>Tu compra</strong><a [routerLink]="storefrontRouting.route(settings().slug, 'carrito')">Carrito</a><a [routerLink]="storefrontRouting.route(settings().slug, 'mis-pedidos')">Mis pedidos</a></div><div><strong>Contacto</strong>@if (settings().contactPhone) { <a [href]="'tel:' + settings().contactPhone">{{ settings().contactPhone }}</a> }@if (settings().contactEmail) { <a [href]="'mailto:' + settings().contactEmail">{{ settings().contactEmail }}</a> }<small>Creada con Comercio Flex</small></div></footer>
+    <footer class="site-footer site-footer--fashion site-footer--streetwear"><div class="footer-brand"><strong>{{ settings().storeName }}</strong><p>Una selección con identidad propia.</p></div><div class="footer-explore"><strong>Explorar</strong><a [routerLink]="storefrontRouting.route(settings().slug)">Productos</a><a [routerLink]="storefrontRouting.route(settings().slug)" fragment="category-section">Colecciones</a></div><div class="footer-purchase"><strong>Tu compra</strong><a [routerLink]="storefrontRouting.route(settings().slug, 'carrito')">Carrito</a><a [routerLink]="storefrontRouting.route(settings().slug, 'mis-pedidos')">Mis pedidos</a></div><div class="footer-contact footer-platform"><strong>Contacto</strong>@if (settings().contactPhone) { <a [href]="'tel:' + settings().contactPhone">{{ settings().contactPhone }}</a> }@if (settings().contactEmail) { <a [href]="'mailto:' + settings().contactEmail">{{ settings().contactEmail }}</a> }<small>Creada con Comercio Flex</small></div></footer>
   `,
 })
 export class FashionStorefrontShell {

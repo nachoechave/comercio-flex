@@ -1,0 +1,51 @@
+/* Keep the Fashion footer balanced on tablet/mobile widths. The shell owns these
+   semantic classes so contact data never falls into a half-width, right-aligned cell. */
+@media (max-width: 58rem) {
+  .store-theme[data-template='fashion']
+    .site-footer.site-footer--fashion.site-footer--streetwear {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 2rem clamp(1rem, 5vw, 3rem);
+    padding: 2.5rem max(1rem, calc((100% - 88rem) / 2));
+  }
+
+  .store-theme[data-template='fashion']
+    .site-footer.site-footer--fashion.site-footer--streetwear
+    .footer-brand,
+  .store-theme[data-template='fashion']
+    .site-footer.site-footer--fashion.site-footer--streetwear
+    .footer-contact {
+    grid-column: 1 / -1;
+  }
+
+  .store-theme[data-template='fashion']
+    .site-footer.site-footer--fashion.site-footer--streetwear
+    .footer-contact {
+    align-items: flex-start;
+  }
+
+  .store-theme[data-template='fashion']
+    .site-footer.site-footer--fashion.site-footer--streetwear
+    .footer-contact
+    a {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 30rem) {
+  .store-theme[data-template='fashion']
+    .site-footer.site-footer--fashion.site-footer--streetwear {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding-block: 2rem;
+  }
+
+  .store-theme[data-template='fashion']
+    .site-footer.site-footer--fashion.site-footer--streetwear
+    > div {
+    grid-column: 1;
+  }
+}

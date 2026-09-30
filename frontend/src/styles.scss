@@ -1,6 +1,7 @@
 @use './app/shared/ui/admin/admin-theme';
 @use './app/layouts/storefront-layout/storefront-template-composition';
 @use './app/layouts/storefront-layout/storefront-text-color';
+@use './app/layouts/storefront-layout/storefront-fashion-footer-fix';
 
 :root {
   color-scheme: light;

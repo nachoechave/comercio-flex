@@ -1,5 +1,5 @@
 import { Component, inject, input, signal } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 import { CartPreview } from '../../cart/cart-preview';
 import { StorefrontRoutingService } from '../../storefront-routing.service';
@@ -8,7 +8,7 @@ import { DesignerStorefrontTemplate } from '../../storefront-template';
 
 @Component({
   selector: 'app-designer-storefront-shell',
-  imports: [RouterLink, RouterOutlet, CartPreview],
+  imports: [RouterLink, CartPreview],
   template: `
     <a class="designer-skip-link" href="#main-content">Saltar al contenido</a>
     <aside class="designer-utility"><span>Envíos a todo el país</span><span>Compra segura</span>@if (settings().contactPhone) { <a [href]="'tel:' + settings().contactPhone">Atención {{ settings().contactPhone }}</a> }</aside>
@@ -31,7 +31,7 @@ import { DesignerStorefrontTemplate } from '../../storefront-template';
       </div>
     </header>
     <app-cart-preview [storeSlug]="settings().slug" />
-    <main id="main-content"><router-outlet /></main>
+    <main id="main-content"><ng-content /></main>
     <section class="designer-benefits" aria-label="Beneficios">
       <article><b>↗</b><span><strong>Envíos</strong><small>A todo el país</small></span></article>
       <article><b>◇</b><span><strong>Compra segura</strong><small>Pagos protegidos</small></span></article>

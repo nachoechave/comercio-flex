@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter, Router, RouterOutlet } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { StorefrontApiService } from './storefront-api.service';
@@ -9,9 +9,23 @@ import { storefrontDomainGuard } from './storefront-domain.guard';
 
 @Component({
   standalone: true,
-  template: 'Storefront',
+  imports: [RouterOutlet],
+  template: '<router-outlet />',
+})
+class AppStub {}
+
+@Component({
+  standalone: true,
+  imports: [RouterOutlet],
+  template: 'Storefront shell <router-outlet />',
 })
 class StorefrontStub {}
+
+@Component({
+  standalone: true,
+  template: 'Catálogo público',
+})
+class CatalogStub {}
 
 @Component({
   standalone: true,
@@ -45,11 +59,12 @@ describe('storefrontDomainGuard routing', () => {
           {
             path: '',
             canMatch: [storefrontDomainGuard],
+            component: StorefrontStub,
             children: [
               {
                 path: '',
                 pathMatch: 'full',
-                component: StorefrontStub,
+                component: CatalogStub,
               },
               {
                 path: 'carrito',
@@ -70,6 +85,25 @@ describe('storefrontDomainGuard routing', () => {
     });
 
     router = TestBed.inject(Router);
+  });
+
+  it('renders the catalog inside the storefront shell on a custom-domain root', async () => {
+    api.resolveStorefront.mockReturnValue(
+      of({
+        storeSlug: 'limits',
+        displayName: 'Limits',
+        tenantType: 'ECOMMERCE',
+      }),
+    );
+    const fixture = TestBed.createComponent(AppStub);
+    fixture.detectChanges();
+
+    const navigated = await router.navigateByUrl('/');
+    fixture.detectChanges();
+
+    expect(navigated).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Storefront shell');
+    expect(fixture.nativeElement.textContent).toContain('Catálogo público');
   });
 
   it('keeps /admin inside a custom-domain storefront instead of opening platform admin', async () => {
