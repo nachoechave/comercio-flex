@@ -92,6 +92,7 @@ export class InventoryDetail {
     return {
       RECEIPT: 'Recepción', CORRECTION: 'Corrección', DAMAGE: 'Daño o pérdida', RETURN: 'Devolución',
       OTHER: 'Otro', ORDER_CONFIRMED: 'Pedido confirmado', ORDER_CANCELLED: 'Pedido cancelado',
+      LOCAL_SALE: 'Venta en local',
     }[reason];
   }
 
