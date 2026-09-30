@@ -27,17 +27,17 @@ export class PosApiService {
     return this.http.post<PosSale>(`${this.baseUrl(storeSlug)}/sales`, payload, { headers });
   }
 
-  currentCashSession(storeSlug: string, branchId: string): Observable<CashSession | null> {
+  currentCashSession(storeSlug: string | null, branchId: string): Observable<CashSession | null> {
     const params = new HttpParams().set('branchId', branchId);
-    return this.http.get<CashSession | null>(`${this.baseUrl(storeSlug)}/cash-sessions/current`, {
+    return this.http.get<CashSession | null>(`${this.baseUrl(storeSlug ?? '')}/cash-sessions/current`, {
       params,
     });
   }
 
-  cashSessions(storeSlug: string, branchId: string | null, limit = 30): Observable<CashSession[]> {
+  cashSessions(storeSlug: string | null, branchId: string | null, limit = 30): Observable<CashSession[]> {
     let params = new HttpParams().set('limit', limit);
     if (branchId) params = params.set('branchId', branchId);
-    return this.http.get<CashSession[]>(`${this.baseUrl(storeSlug)}/cash-sessions`, { params });
+    return this.http.get<CashSession[]>(`${this.baseUrl(storeSlug ?? '')}/cash-sessions`, { params });
   }
 
   openCashSession(storeSlug: string, branchId: string, openingAmount: string): Observable<CashSession> {
