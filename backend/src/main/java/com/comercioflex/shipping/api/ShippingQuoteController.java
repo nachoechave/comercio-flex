@@ -30,7 +30,7 @@ public class ShippingQuoteController {
 
   public record Request(
       @NotEmpty @Size(max = 50) List<@NotNull @Valid CreateGuestOrderItemRequest> items,
-      @NotNull OrderPaymentMethod paymentMethod,
+      OrderPaymentMethod paymentMethod,
       @Size(max = 160) String city,
       @Size(max = 20) String postalCode) {}
 

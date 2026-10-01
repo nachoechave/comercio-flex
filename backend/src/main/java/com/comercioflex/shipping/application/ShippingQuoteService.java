@@ -51,11 +51,8 @@ public class ShippingQuoteService {
 
   public List<Quote> quote(
       List<Item> requestedItems, OrderPaymentMethod paymentMethod, String city, String postalCode) {
-    if (paymentMethod == null
-        || requestedItems == null
-        || requestedItems.isEmpty()
-        || requestedItems.size() > 50) {
-      throw new InvalidGuestOrderException("Indicá productos y medio de pago.");
+    if (requestedItems == null || requestedItems.isEmpty() || requestedItems.size() > 50) {
+      throw new InvalidGuestOrderException("Indicá productos válidos.");
     }
 
     Set<UUID> variants = new HashSet<>();
@@ -139,7 +136,7 @@ public class ShippingQuoteService {
   }
 
   private BigDecimal discount(BigDecimal listSubtotal, OrderPaymentMethod paymentMethod) {
-    if (paymentMethod != OrderPaymentMethod.BANK_TRANSFER) {
+    if (paymentMethod == null || paymentMethod != OrderPaymentMethod.BANK_TRANSFER) {
       return BigDecimal.ZERO.setScale(2);
     }
 

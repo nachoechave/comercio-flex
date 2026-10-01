@@ -30,14 +30,14 @@ describe('ShippingSelector', () => {
     http = TestBed.inject(HttpTestingController);
     fixture.componentRef.setInput('storeSlug', 'tienda-a');
     fixture.componentRef.setInput('items', [{ variantId: 'variant-1', quantity: '2' }]);
-    fixture.componentRef.setInput('paymentMethod', 'MERCADO_PAGO');
+    fixture.componentRef.setInput('paymentMethod', null);
     fixture.detectChanges();
     http.expectOne('/api/v1/stores/tienda-a/shipping/availability').flush({
       pickupAvailable: true,
       shippingAvailable: true,
     });
     const automaticPickup = http.expectOne('/api/v1/stores/tienda-a/shipping/quote');
-    expect(automaticPickup.request.body.paymentMethod).toBe('MERCADO_PAGO');
+    expect(automaticPickup.request.body.paymentMethod).toBeNull();
     automaticPickup.flush([pickup]);
     fixture.detectChanges();
   });
@@ -167,7 +167,11 @@ describe('ShippingSelector', () => {
     expect(fixture.componentInstance.error()).toBe('');
   });
 
-  it('re-quotes pickup automatically when the payment method changes', () => {
+  it('shows pickup before payment selection and re-quotes when payment changes', () => {
+    expect(fixture.componentInstance.selected()).toBe('pickup');
+    expect(fixture.componentInstance.current()?.methodId).toBe('pickup');
+    expect(fixture.nativeElement.textContent).toContain('Calle 123');
+
     fixture.componentRef.setInput('paymentMethod', 'BANK_TRANSFER');
     fixture.detectChanges();
     const request = http.expectOne('/api/v1/stores/tienda-a/shipping/quote');

@@ -81,7 +81,7 @@ interface ShippingAvailability {
             class="quote-button"
             type="button"
             (click)="quote()"
-            [disabled]="loading() || disabled() || !paymentMethod()"
+            [disabled]="loading() || disabled()"
           >
             {{ loading() ? 'Calculando…' : 'Consultar opciones de entrega' }}
           </button>
@@ -99,7 +99,7 @@ interface ShippingAvailability {
             class="quote-button"
             type="button"
             (click)="quote()"
-            [disabled]="loading() || disabled() || !paymentMethod()"
+            [disabled]="loading() || disabled()"
           >
             Reintentar
           </button>
@@ -595,7 +595,6 @@ export class ShippingSelector {
     if (
       !modes?.pickupAvailable ||
       this.mode() !== 'PICKUP' ||
-      !this.paymentMethod() ||
       this.disabled() ||
       this.loading()
     ) {
