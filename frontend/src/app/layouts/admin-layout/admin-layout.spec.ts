@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 
 import { AdminRole } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
+import { AdminStorefrontLinkService } from '../../features/admin/admin-storefront-link.service';
 import { AdminLayout } from './admin-layout';
 
 describe('AdminLayout payment navigation', () => {
@@ -21,6 +22,12 @@ describe('AdminLayout payment navigation', () => {
           useValue: {
             paramMap: of(convertToParamMap({ storeSlug: 'tienda-a' })),
             snapshot: { paramMap: convertToParamMap({ storeSlug: 'tienda-a' }) },
+          },
+        },
+        {
+          provide: AdminStorefrontLinkService,
+          useValue: {
+            get: () => of({ url: 'https://limits.com.ar', customDomain: true }),
           },
         },
         {
