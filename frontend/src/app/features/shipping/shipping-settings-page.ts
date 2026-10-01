@@ -19,7 +19,7 @@ import { ShippingMethod, ShippingSettings, ShippingType } from './shipping.model
           <h1>Envíos y retiros</h1>
           <p>
             Definí cómo reciben los pedidos tus clientes. Podés combinar retiro en local, tarifa
-            fija y precios por localidad o código postal.
+            fija y precios por localidad, provincia, resto del país o código postal.
           </p>
         </div>
         @if (settings; as s) {
@@ -119,7 +119,7 @@ import { ShippingMethod, ShippingSettings, ShippingType } from './shipping.model
                     <select [name]="'type' + i" [(ngModel)]="m.type">
                       <option value="PICKUP">Retiro en local</option>
                       <option value="FIXED_RATE">Tarifa fija</option>
-                      <option value="LOCATION_RATE">Por localidad</option>
+                      <option value="LOCATION_RATE">Por destino</option>
                       <option value="POSTAL_CODE_RATE">Por código postal</option>
                     </select>
                   </label>
@@ -183,7 +183,7 @@ import { ShippingMethod, ShippingSettings, ShippingType } from './shipping.model
                         <span>
                           {{
                             m.type === 'LOCATION_RATE'
-                              ? 'Agregá cada localidad con su precio.'
+                              ? 'Combiná localidades, provincias y una tarifa para el resto de Argentina.'
                               : 'Agregá cada código postal con su precio.'
                           }}
                         </span>
@@ -198,16 +198,49 @@ import { ShippingMethod, ShippingSettings, ShippingType } from './shipping.model
                     }
 
                     @for (r of m.rules; track $index; let j = $index) {
-                      <div class="rule-row">
-                        <label>
-                          <span>{{ m.type === 'LOCATION_RATE' ? 'Localidad' : 'Código postal' }}</span>
-                          <input
-                            [name]="'destination' + i + '-' + j"
-                            required
-                            maxlength="160"
-                            [(ngModel)]="r.destination"
-                          />
-                        </label>
+                      <div class="rule-row" [class.rule-row-location]="m.type === 'LOCATION_RATE'">
+                        @if (m.type === 'LOCATION_RATE') {
+                          <label>
+                            <span>Alcance</span>
+                            <select
+                              [name]="'scope' + i + '-' + j"
+                              [ngModel]="ruleScope(r.destination)"
+                              (ngModelChange)="setRuleScope(r, $event)"
+                            >
+                              <option value="LOCALITY">Localidad específica</option>
+                              <option value="PROVINCE">Provincia completa</option>
+                              <option value="COUNTRY_REST">Resto de Argentina</option>
+                            </select>
+                          </label>
+                          @if (ruleScope(r.destination) !== 'COUNTRY_REST') {
+                            <label>
+                              <span>{{ ruleScope(r.destination) === 'PROVINCE' ? 'Provincia' : 'Localidad' }}</span>
+                              <input
+                                [name]="'destination' + i + '-' + j"
+                                required
+                                maxlength="160"
+                                [ngModel]="ruleValue(r.destination)"
+                                (ngModelChange)="setRuleValue(r, $event)"
+                                [placeholder]="ruleScope(r.destination) === 'PROVINCE' ? 'Ej. San Juan' : 'Ej. Rawson'"
+                              />
+                            </label>
+                          } @else {
+                            <div class="country-rest-copy">
+                              <strong>Todo el país</strong>
+                              <span>Se usa si no coincide una localidad o provincia anterior.</span>
+                            </div>
+                          }
+                        } @else {
+                          <label>
+                            <span>Código postal</span>
+                            <input
+                              [name]="'destination' + i + '-' + j"
+                              required
+                              maxlength="160"
+                              [(ngModel)]="r.destination"
+                            />
+                          </label>
+                        }
                         <label>
                           <span>Precio</span>
                           <div class="money-input compact">
@@ -298,6 +331,9 @@ import { ShippingMethod, ShippingSettings, ShippingType } from './shipping.model
       .rules-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 12px; }
       .rules-heading > div { display: grid; gap: 3px; }
       .rule-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 220px) auto; gap: 12px; align-items: end; padding-top: 12px; }
+      .rule-row-location { grid-template-columns: minmax(160px, .7fr) minmax(0, 1fr) minmax(160px, 220px) auto; }
+      .country-rest-copy { align-self: stretch; display: grid; align-content: center; gap: 3px; min-height: 42px; padding: 0 12px; border: 1px dashed #cfd7e3; border-radius: 10px; color: #344054; }
+      .country-rest-copy span { color: #667085; font-size: .82rem; }
       .method-footer { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px 20px; border-top: 1px solid #edf0f4; }
       button { font: inherit; }
       .primary-button, .secondary-button, .danger-button, .text-button, .icon-button { cursor: pointer; }
@@ -374,7 +410,7 @@ export class ShippingSettingsPage {
       {
         PICKUP: 'RETIRO',
         FIXED_RATE: 'TARIFA FIJA',
-        LOCATION_RATE: 'POR LOCALIDAD',
+        LOCATION_RATE: 'POR DESTINO',
         POSTAL_CODE_RATE: 'POR CÓDIGO POSTAL',
       } satisfies Record<ShippingType, string>
     )[type];
@@ -385,7 +421,7 @@ export class ShippingSettingsPage {
       {
         PICKUP: 'No requiere dirección de entrega del comprador.',
         FIXED_RATE: 'Aplica el mismo costo a cualquier destino.',
-        LOCATION_RATE: 'Solo se ofrece cuando la localidad coincide con una tarifa.',
+        LOCATION_RATE: 'Prioridad: localidad específica, provincia y luego resto de Argentina.',
         POSTAL_CODE_RATE: 'Solo se ofrece cuando el código postal coincide con una tarifa.',
       } satisfies Record<ShippingType, string>
     )[type];
@@ -407,6 +443,38 @@ export class ShippingSettingsPage {
 
   addRule(method: ShippingMethod) {
     method.rules.push({ destination: '', price: 0 });
+  }
+
+  ruleScope(destination: string): 'LOCALITY' | 'PROVINCE' | 'COUNTRY_REST' {
+    if (destination === 'RESTO_ARGENTINA') return 'COUNTRY_REST';
+    if (destination.startsWith('PROVINCIA:')) return 'PROVINCE';
+    return 'LOCALITY';
+  }
+
+  ruleValue(destination: string): string {
+    return destination.startsWith('PROVINCIA:')
+      ? destination.slice('PROVINCIA:'.length)
+      : destination === 'RESTO_ARGENTINA'
+        ? ''
+        : destination;
+  }
+
+  setRuleScope(
+    rule: ShippingMethod['rules'][number],
+    scope: 'LOCALITY' | 'PROVINCE' | 'COUNTRY_REST',
+  ) {
+    const value = this.ruleValue(rule.destination);
+    rule.destination =
+      scope === 'COUNTRY_REST'
+        ? 'RESTO_ARGENTINA'
+        : scope === 'PROVINCE'
+          ? 'PROVINCIA:' + value
+          : value;
+  }
+
+  setRuleValue(rule: ShippingMethod['rules'][number], value: string) {
+    rule.destination =
+      this.ruleScope(rule.destination) === 'PROVINCE' ? 'PROVINCIA:' + value : value;
   }
 
   save() {
