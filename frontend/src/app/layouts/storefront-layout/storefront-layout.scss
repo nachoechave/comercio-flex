@@ -626,11 +626,57 @@ nav {
   color: var(--store-text-color);
 }
 
+/* Limits uses a square source image that includes a small lower tagline.
+   Crop that source only in the FASHION navbar so the actual wordmark and
+   white/gold swooshes have the same visual weight as the storefront hero. */
+.store-theme[data-template='fashion'] .site-header--fashion .brand--limits {
+  position: relative;
+  flex: 0 0 clamp(22rem, 31vw, 29rem);
+  height: 9rem;
+  overflow: hidden;
+  justify-content: flex-start;
+  margin-left: clamp(1rem, 2vw, 2rem);
+}
+
+.store-theme[data-template='fashion'] .site-header--fashion .brand--limits .brand-logo {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  object-fit: initial;
+  object-position: initial;
+  transform: translateY(-51%);
+}
+
+@media (max-width: 64rem) {
+  .store-theme[data-template='fashion'] .site-header--fashion .brand--limits {
+    flex-basis: clamp(17rem, 34vw, 22rem);
+    height: 7.5rem;
+    margin-left: .5rem;
+  }
+}
+
 @media (max-width: 48rem) {
   .store-theme .site-header--fashion .brand {
     flex-basis: 14rem;
     max-width: calc(100% - 5rem);
     margin-left: 0;
+  }
+
+  .store-theme[data-template='fashion'] .site-header--fashion .brand--limits {
+    flex-basis: 13.5rem;
+    max-width: calc(100% - 5rem);
+    height: 5.25rem;
+    margin-left: 0;
+  }
+
+  .store-theme[data-template='fashion'] .site-header--fashion .brand--limits .brand-logo {
+    width: 13.5rem;
+    max-width: none;
+    height: auto;
+    transform: translateY(-51%);
   }
 
   .store-theme .site-header--fashion .brand-logo {
