@@ -35,14 +35,26 @@ class OutboxCustomerNotificationService implements CustomerNotificationPublisher
 	@Override
 	public void orderConfirmed(
 			AdminOrderDetail order, Instant confirmedAt, String paymentMethod) {
-		if (!hasRecipient(order)) return;
 		var store = stores.findCurrent().orElseThrow();
-		RenderedEmail rendered = templates.orderConfirmed(
-			order, store, branding.resolve(store), confirmedAt, paymentMethod);
-		String eventKey = "ORDER_CONFIRMED:" + order.id();
-		outbox.enqueue(eventKey, "ORDER_CONFIRMED", order.id(), null,
-			new TransactionalEmail(order.customerEmail(), rendered.subject(),
-				rendered.html(), rendered.text()));
+		var resolvedBranding = branding.resolve(store);
+
+		if (hasRecipient(order)) {
+			RenderedEmail rendered = templates.orderConfirmed(
+				order, store, resolvedBranding, confirmedAt, paymentMethod);
+			String eventKey = "ORDER_CONFIRMED:" + order.id();
+			outbox.enqueue(eventKey, "ORDER_CONFIRMED", order.id(), null,
+				new TransactionalEmail(order.customerEmail(), rendered.subject(),
+					rendered.html(), rendered.text()));
+		}
+
+		if (store.contactEmail() != null && !store.contactEmail().isBlank()) {
+			RenderedEmail rendered = templates.merchantOrderConfirmed(
+				order, store, resolvedBranding, confirmedAt, paymentMethod);
+			String eventKey = "MERCHANT_ORDER_CONFIRMED:" + order.id();
+			outbox.enqueue(eventKey, "MERCHANT_ORDER_CONFIRMED", order.id(), null,
+				new TransactionalEmail(store.contactEmail(), rendered.subject(),
+					rendered.html(), rendered.text()));
+		}
 	}
 
 	public void orderConfirmed(AdminOrderDetail order, Instant confirmedAt) {
