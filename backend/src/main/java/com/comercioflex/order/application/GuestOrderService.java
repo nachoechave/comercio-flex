@@ -138,6 +138,7 @@ public class GuestOrderService {
       List<OrderItemCommand> requestedItems,
       com.comercioflex.order.domain.OrderPaymentMethod method,
       String city,
+      String province,
       String postalCode) {
     if (method == null
         || requestedItems == null
@@ -153,7 +154,8 @@ public class GuestOrderService {
     return transactionTemplate.execute(
         s -> {
           PricedCart cart = priceCart(items, method);
-          return shipping.quotes(cart.listSubtotal(), cart.discountAmount(), city, postalCode);
+          return shipping.quotes(
+              cart.listSubtotal(), cart.discountAmount(), city, province, postalCode);
         });
   }
 
