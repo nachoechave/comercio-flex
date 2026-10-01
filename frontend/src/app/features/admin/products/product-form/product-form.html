@@ -67,7 +67,7 @@
 
       @if (editing()) {
         <button class="primary" type="submit" [disabled]="saving() || archived()">
-          {{ saving() ? 'Guardando…' : 'Guardar datos' }}
+          {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
         </button>
       }
     </form>
@@ -520,7 +520,7 @@
                 <button
                   type="button"
                   (click)="saveVariant(index)"
-                  [disabled]="pendingVariantId() !== null"
+                  [disabled]="saving() || pendingVariantId() !== null"
                 >
                   {{ row.controls.id.value ? 'Guardar' : 'Crear variante' }}
                 </button>
