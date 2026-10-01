@@ -227,11 +227,20 @@ button.copy {
 
 .receipt-status {
   padding: 0.8rem;
+  border: 1px solid #b9e1cb;
   border-radius: 0.7rem;
+  color: #173d2b;
   background: #edf8f2;
 }
 
+.receipt-status strong,
+.bank-transfer .receipt-status span {
+  color: inherit;
+}
+
 .receipt-status.rejected {
+  border-color: #efc2bc;
+  color: #7c2018;
   background: #fff1ef;
 }
 
@@ -257,7 +266,9 @@ button.copy {
 
 .bank-message {
   padding: 0.75rem;
+  border: 1px solid #d8cdf8;
   border-radius: 0.7rem;
+  color: #3f2d70;
   background: #f5f1ff;
 }
 
