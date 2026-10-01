@@ -454,7 +454,19 @@
               } @else if (editing() && row.controls.id.value && inventoryLoading()) {
                 <p>Cargando stock actual…</p>
               } @else if (editing() && !row.controls.id.value) {
-                <p>Guardala para registrar inventario.</p>
+                <label [for]="'initial-stock-' + index">Stock inicial</label>
+                <input
+                  [id]="'initial-stock-' + index"
+                  formControlName="initialStock"
+                  inputmode="numeric"
+                  placeholder="0"
+                  [attr.aria-invalid]="
+                    row.controls.initialStock.touched && row.controls.initialStock.invalid
+                  "
+                />
+                @if (row.controls.initialStock.touched && row.controls.initialStock.invalid) {
+                  <p class="field-error">Ingresá un entero mayor o igual a cero.</p>
+                }
               } @else if (editing()) {
                 <p>Stock no disponible.</p>
               } @else {
