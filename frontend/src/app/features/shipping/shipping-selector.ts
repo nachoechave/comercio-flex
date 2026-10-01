@@ -196,13 +196,13 @@ interface ShippingAvailability {
   styles: [
     `
       .delivery-panel {
-        border: 1px solid #dfe4ea;
+        border: 1px solid var(--color-border, #dfe4ea);
         border-radius: 18px;
         padding: 20px;
         display: grid;
         gap: 18px;
         min-width: 0;
-        background: #fff;
+        background: var(--color-surface, #fff);
       }
       legend {
         padding: 0 8px;
@@ -220,7 +220,7 @@ interface ShippingAvailability {
       }
       .mode-card,
       .option {
-        border: 1px solid #dfe4ea;
+        border: 1px solid var(--color-border, #dfe4ea);
         border-radius: 14px;
         padding: 14px;
         transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
@@ -233,9 +233,9 @@ interface ShippingAvailability {
       }
       .mode-card.selected,
       .option.selected {
-        border-color: #24364b;
-        box-shadow: 0 0 0 2px rgb(36 54 75 / 8%);
-        background: #f8fafc;
+        border-color: var(--color-accent, #24364b);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent, #24364b) 12%, transparent);
+        background: color-mix(in srgb, var(--color-accent, #24364b) 6%, var(--color-surface, #fff));
       }
       .mode-card span,
       .option-copy {
@@ -245,7 +245,7 @@ interface ShippingAvailability {
       .mode-card small,
       .option-copy > span:not(.option-heading):not(.free-badge):not(.provider-badge),
       .availability-loading {
-        color: #667085;
+        color: var(--color-muted, #667085);
       }
       .availability-loading {
         margin: 0;
@@ -257,15 +257,15 @@ interface ShippingAvailability {
         gap: 12px;
         padding: 16px;
         border-radius: 14px;
-        background: #f8fafc;
+        background: color-mix(in srgb, var(--color-text, #111827) 4%, var(--color-surface, #fff));
       }
       .carrier-document {
         align-items: end;
-        border: 1px solid #e3e8ef;
+        border: 1px solid var(--color-border, #e3e8ef);
       }
       .carrier-document > div p {
         margin: 5px 0 0;
-        color: #667085;
+        color: var(--color-muted, #667085);
         font-size: 0.86rem;
         line-height: 1.45;
       }
@@ -281,9 +281,9 @@ interface ShippingAvailability {
         width: 100%;
         box-sizing: border-box;
         padding: 11px 12px;
-        border: 1px solid #cfd6df;
+        border: 1px solid var(--color-border, #cfd6df);
         border-radius: 9px;
-        background: #fff;
+        background: var(--color-surface, #fff);
         font: inherit;
       }
       .quote-button {
@@ -291,8 +291,8 @@ interface ShippingAvailability {
         border: 0;
         border-radius: 10px;
         padding: 12px 18px;
-        background: #172033;
-        color: #fff;
+        background: var(--color-accent, #172033);
+        color: var(--color-background, #fff);
         font-weight: 700;
         cursor: pointer;
       }
@@ -340,7 +340,7 @@ interface ShippingAvailability {
         gap: 8px 18px;
         margin: 0;
         padding-top: 16px;
-        border-top: 1px solid #e6e9ee;
+        border-top: 1px solid var(--color-border, #e6e9ee);
       }
       dd {
         margin: 0;
@@ -348,7 +348,7 @@ interface ShippingAvailability {
       }
       .total {
         padding-top: 8px;
-        border-top: 1px solid #e6e9ee;
+        border-top: 1px solid var(--color-border, #e6e9ee);
         font-size: 1.05rem;
         font-weight: 800;
       }

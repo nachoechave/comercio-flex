@@ -253,25 +253,10 @@ aside li,
 }
 
 /*
- * Shipping selector renders light cards inside the checkout even when the storefront
- * uses a dark palette. Keep the text inside those light surfaces dark so inherited
- * storefront text colors never make controls unreadable.
+ * Shipping selector shares the storefront theme. Avoid forcing a light surface
+ * with dark-only copy: merchant text/background colors must remain readable
+ * together on both light and dark templates.
  */
-:host ::ng-deep app-shipping-selector .delivery-panel,
-:host ::ng-deep app-shipping-selector .mode-card,
-:host ::ng-deep app-shipping-selector .option,
-:host ::ng-deep app-shipping-selector .address,
-:host ::ng-deep app-shipping-selector .carrier-document,
-:host ::ng-deep app-shipping-selector .summary {
-  color: #111827;
-}
-
-:host ::ng-deep app-shipping-selector input:not([type='radio']),
-:host ::ng-deep app-shipping-selector select {
-  color: #111827;
-}
-
-/* Keep the embedded shipping fieldset visually clean on dark storefronts. */
 :host ::ng-deep app-shipping-selector .delivery-panel {
   overflow: visible;
 }
@@ -280,19 +265,9 @@ aside li,
   width: auto;
   margin: 0 0 0.25rem;
   padding: 0 0.45rem;
-  color: #111827;
-  background: #fff;
+  color: var(--color-text);
+  background: var(--color-surface);
   line-height: 1.25;
-}
-
-:host ::ng-deep app-shipping-selector .mode-card strong,
-:host ::ng-deep app-shipping-selector .option strong {
-  color: #111827;
-}
-
-:host ::ng-deep app-shipping-selector .mode-card small,
-:host ::ng-deep app-shipping-selector .option-copy > span:not(.option-heading):not(.free-badge):not(.provider-badge) {
-  color: #5b6472;
 }
 
 /* Disabled CTA must still be readable against bright brand accents such as yellow. */
