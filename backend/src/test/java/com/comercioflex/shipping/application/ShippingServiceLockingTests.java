@@ -32,7 +32,7 @@ class ShippingServiceLockingTests {
         .thenReturn(List.of());
 
     ShippingService service = new ShippingService(repository, provider, null, null);
-    service.quotes(new BigDecimal("1000.00"), BigDecimal.ZERO, null, null);
+    service.quotes(new BigDecimal("1000.00"), BigDecimal.ZERO, null, null, null);
 
     verify(repository).settings(false);
     verify(repository, never()).settings(true);
