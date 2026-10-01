@@ -56,6 +56,10 @@ describe('AdminDashboard', () => {
   afterEach(() => http.verify());
 
   function flushSupportingData(): void {
+    http.expectOne('/api/v1/stores/tienda-a/admin/storefront-link').flush({
+      url: 'https://limits.com.ar',
+      customDomain: true,
+    });
     http.expectOne((request) => request.url.endsWith('/admin/orders') && request.params.get('size') === '5').flush({
       items: [{ id: 'order-1', number: 'ORD-1', status: 'CONFIRMED', fulfillmentType: 'PICKUP', customerName: 'Ana', customerPhone: '111', currencyCode: 'ARS', subtotal: '2500.00', createdAt: '2026-08-25T18:05:00Z' }],
       page: 0, size: 5, totalItems: 1, totalPages: 1,
