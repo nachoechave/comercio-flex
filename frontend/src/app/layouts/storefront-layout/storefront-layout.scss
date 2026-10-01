@@ -605,17 +605,19 @@ nav {
 
 .store-theme .site-header--fashion .brand {
   min-width: 0;
-  flex: 0 1 19rem;
+  flex: 0 1 24rem;
   align-self: stretch;
+  justify-content: center;
+  margin-left: clamp(1.5rem, 3.5vw, 4rem);
 }
 
 .store-theme .site-header--fashion .brand-logo {
   display: block;
   width: 100%;
-  max-width: 19rem;
-  height: 6.4rem;
+  max-width: 22rem;
+  height: 7.25rem;
   object-fit: contain;
-  object-position: left center;
+  object-position: center;
 }
 
 .store-theme .site-header--fashion .brand,
@@ -626,12 +628,14 @@ nav {
 
 @media (max-width: 48rem) {
   .store-theme .site-header--fashion .brand {
-    flex-basis: 12.5rem;
-    max-width: calc(100% - 5.5rem);
+    flex-basis: 14rem;
+    max-width: calc(100% - 5rem);
+    margin-left: 0;
   }
 
   .store-theme .site-header--fashion .brand-logo {
-    max-width: 12.5rem;
-    height: 4.5rem;
+    max-width: 14rem;
+    height: 5rem;
+    object-position: left center;
   }
 }
