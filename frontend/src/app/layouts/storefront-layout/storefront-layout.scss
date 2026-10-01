@@ -596,22 +596,24 @@ nav {
 }
 
 .store-theme .site-header--fashion {
+  min-height: 7.25rem;
   color: var(--store-text-color);
   background: var(--store-background-color);
   border-color: var(--color-border);
-  padding-block: 0.75rem;
+  padding-block: 0.65rem;
 }
 
 .store-theme .site-header--fashion .brand {
   min-width: 0;
-  flex: 0 1 13.75rem;
+  flex: 0 1 19rem;
+  align-self: stretch;
 }
 
 .store-theme .site-header--fashion .brand-logo {
   display: block;
   width: 100%;
-  max-width: 13.75rem;
-  height: 5rem;
+  max-width: 19rem;
+  height: 6.4rem;
   object-fit: contain;
   object-position: left center;
 }
@@ -624,12 +626,12 @@ nav {
 
 @media (max-width: 48rem) {
   .store-theme .site-header--fashion .brand {
-    flex-basis: 10rem;
-    max-width: calc(100% - 6rem);
+    flex-basis: 12.5rem;
+    max-width: calc(100% - 5.5rem);
   }
 
   .store-theme .site-header--fashion .brand-logo {
-    max-width: 10rem;
-    height: 3.75rem;
+    max-width: 12.5rem;
+    height: 4.5rem;
   }
 }
