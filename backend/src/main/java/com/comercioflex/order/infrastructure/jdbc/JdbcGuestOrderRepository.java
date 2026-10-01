@@ -9,6 +9,8 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.ArrayList;
 import java.util.UUID;
 import com.comercioflex.order.domain.OrderPaymentMethod;
 
@@ -18,6 +20,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import com.comercioflex.order.application.OrderPaymentPricing;
+import com.comercioflex.order.application.ActiveQuantityPromotion;
 
 import com.comercioflex.order.application.GuestOrderRepository;
 import com.comercioflex.order.application.LockedOrderVariant;
@@ -189,6 +192,34 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 					.stream()
 					.findFirst()
 					.orElse(new OrderPaymentPricing(false, BigDecimal.ZERO));
+	}
+
+	@Override
+	public List<ActiveQuantityPromotion> findActiveQuantityPromotions(Set<UUID> productIds, Instant at) {
+		if (productIds == null || productIds.isEmpty()) return List.of();
+		String placeholders = String.join(",", java.util.Collections.nCopies(productIds.size(), "UUID_TO_BIN(?)"));
+		String sql = """
+			SELECT BIN_TO_UUID(product.public_id) product_public_id,
+			       promo.bundle_quantity,
+			       promo.bundle_price
+			FROM quantity_promotions promo
+			JOIN products product ON product.id = promo.product_id
+			WHERE promo.active = TRUE
+			  AND product.public_id IN (%s)
+			  AND (promo.starts_at IS NULL OR promo.starts_at <= ?)
+			  AND (promo.ends_at IS NULL OR promo.ends_at > ?)
+			ORDER BY product.id, promo.starts_at DESC, promo.updated_at DESC, promo.id DESC
+			""".formatted(placeholders);
+		List<Object> args = new ArrayList<>();
+		productIds.stream().map(UUID::toString).forEach(args::add);
+		args.add(Timestamp.from(at));
+		args.add(Timestamp.from(at));
+		return jdbcTemplate.query(sql,
+			(resultSet, rowNumber) -> new ActiveQuantityPromotion(
+				UUID.fromString(resultSet.getString("product_public_id")),
+				resultSet.getInt("bundle_quantity"),
+				resultSet.getBigDecimal("bundle_price")),
+			args.toArray());
 	}
 
 	@Override
