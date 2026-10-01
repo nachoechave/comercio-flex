@@ -269,10 +269,18 @@ export class PromotionAdminPage {
     request.subscribe({
       next: () => {
         this.busy.set(false);
-        this.message.set(current ? 'Promoción actualizada.' : 'Promoción creada.');
         this.editingId.set(null);
+        this.form.reset({
+          productId: '',
+          name: '',
+          bundleQuantity: 2,
+          bundlePrice: 0,
+          active: true,
+          startsAt: '',
+          endsAt: '',
+        });
+        this.message.set(current ? 'Promoción actualizada.' : 'Promoción creada.');
         this.load(false);
-        this.newPromotion();
       },
       error: (err) => {
         this.busy.set(false);
