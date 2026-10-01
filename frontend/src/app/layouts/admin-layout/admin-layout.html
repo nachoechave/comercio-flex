@@ -53,6 +53,9 @@
           @if (currentMembership.role === 'OWNER' || currentMembership.role === 'ADMIN' || currentMembership.role === 'STAFF') {
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'productos']" routerLinkActive="active"><app-admin-icon name="products" /><span>Productos</span></a>
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'categorias']" routerLinkActive="active"><app-admin-icon name="categories" /><span>Categorías</span></a>
+            @if (currentMembership.role === 'OWNER' || currentMembership.role === 'ADMIN') {
+              <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'promociones']" routerLinkActive="active"><app-admin-icon name="payments" /><span>Promociones</span></a>
+            }
           }
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'inventario']" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><app-admin-icon name="inventory" /><span>Inventario</span></a>
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'inventario', 'operaciones']" routerLinkActive="active"><app-admin-icon name="transfers" /><span>Operaciones stock</span></a>
