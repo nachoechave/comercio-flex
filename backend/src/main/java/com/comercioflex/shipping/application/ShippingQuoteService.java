@@ -50,7 +50,11 @@ public class ShippingQuoteService {
   private record PaymentPricing(boolean bankTransferEnabled, BigDecimal discountPercentage) {}
 
   public List<Quote> quote(
-      List<Item> requestedItems, OrderPaymentMethod paymentMethod, String city, String postalCode) {
+      List<Item> requestedItems,
+      OrderPaymentMethod paymentMethod,
+      String city,
+      String province,
+      String postalCode) {
     if (requestedItems == null || requestedItems.isEmpty() || requestedItems.size() > 50) {
       throw new InvalidGuestOrderException("Indicá productos válidos.");
     }
@@ -81,7 +85,9 @@ public class ShippingQuoteService {
     }
 
     BigDecimal discountAmount = discount(listSubtotal, paymentMethod);
-    List<Quote> result = new ArrayList<>(shipping.quotes(listSubtotal, discountAmount, city, postalCode));
+    List<Quote> result =
+        new ArrayList<>(
+            shipping.quotes(listSubtotal, discountAmount, city, province, postalCode));
     if (carrier != null) {
       try {
         result.addAll(

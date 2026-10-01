@@ -64,7 +64,7 @@ class ShippingCoreTests {
             new BigDecimal("50000"), 0, List.of(method(MethodType.FIXED_RATE, "3000", List.of())));
     var quote =
         provider
-            .quote(settings, new BigDecimal(subtotal), new BigDecimal("1000"), null, null)
+            .quote(settings, new BigDecimal(subtotal), new BigDecimal("1000"), null, null, null)
             .getFirst();
     assertThat(quote.shippingAmount()).isEqualByComparingTo(cost);
     assertThat(quote.total())
@@ -85,6 +85,7 @@ class ShippingCoreTests {
             new BigDecimal("45000"),
             BigDecimal.ZERO,
             null,
+            null,
             null);
     assertThat(quotes).hasSize(2);
     assertThat(quotes.getFirst().total()).isEqualByComparingTo("45000");
@@ -102,10 +103,56 @@ class ShippingCoreTests {
                     MethodType.LOCATION_RATE,
                     "0",
                     List.of(new Rule("  LA   PLÁTA ", new BigDecimal("4000"))))));
-    assertThat(provider.quote(settings, BigDecimal.TEN, BigDecimal.ZERO, "la plata", null))
+    assertThat(provider.quote(settings, BigDecimal.TEN, BigDecimal.ZERO, "la plata", null, null))
         .hasSize(1);
-    assertThat(provider.quote(settings, BigDecimal.TEN, BigDecimal.ZERO, "Berisso", null))
+    assertThat(provider.quote(settings, BigDecimal.TEN, BigDecimal.ZERO, "Berisso", null, null))
         .isEmpty();
+  }
+
+  @Test
+  void provinceAndRestOfArgentinaRulesUseSpecificityOrder() {
+    var settings =
+        new Settings(
+            null,
+            0,
+            List.of(
+                method(
+                    MethodType.LOCATION_RATE,
+                    "0",
+                    List.of(
+                        new Rule("PROVINCIA:SAN JUAN", new BigDecimal("3000")),
+                        new Rule("RESTO_ARGENTINA", new BigDecimal("15000"))))));
+    assertThat(
+            provider.quote(
+                settings, BigDecimal.TEN, BigDecimal.ZERO, "Rawson", "San Juan", "5400"))
+        .singleElement()
+        .satisfies(q -> assertThat(q.shippingAmount()).isEqualByComparingTo("3000"));
+    assertThat(
+            provider.quote(
+                settings, BigDecimal.TEN, BigDecimal.ZERO, "Ensenada", "Buenos Aires", "1925"))
+        .singleElement()
+        .satisfies(q -> assertThat(q.shippingAmount()).isEqualByComparingTo("15000"));
+  }
+
+  @Test
+  void localityOverridesProvinceAndCountryFallback() {
+    var settings =
+        new Settings(
+            null,
+            0,
+            List.of(
+                method(
+                    MethodType.LOCATION_RATE,
+                    "0",
+                    List.of(
+                        new Rule("Rawson", new BigDecimal("2000")),
+                        new Rule("PROVINCIA:SAN JUAN", new BigDecimal("3000")),
+                        new Rule("RESTO_ARGENTINA", new BigDecimal("15000"))))));
+    assertThat(
+            provider.quote(
+                settings, BigDecimal.TEN, BigDecimal.ZERO, "Rawson", "San Juan", "5400"))
+        .singleElement()
+        .satisfies(q -> assertThat(q.shippingAmount()).isEqualByComparingTo("2000"));
   }
 
   @Test
@@ -113,8 +160,8 @@ class ShippingCoreTests {
     var m =
         method(MethodType.POSTAL_CODE_RATE, "0", List.of(new Rule("1925", new BigDecimal("3000"))));
     var settings = new Settings(null, 0, List.of(m));
-    assertThat(provider.quote(settings, BigDecimal.TEN, BigDecimal.ZERO, null, "1925")).hasSize(1);
-    assertThat(provider.quote(settings, BigDecimal.TEN, BigDecimal.ZERO, null, "192")).isEmpty();
+    assertThat(provider.quote(settings, BigDecimal.TEN, BigDecimal.ZERO, null, null, "1925")).hasSize(1);
+    assertThat(provider.quote(settings, BigDecimal.TEN, BigDecimal.ZERO, null, null, "192")).isEmpty();
     var inactive =
         new Method(m.id(), m.name(), null, m.type(), m.price(), false, null, null, m.rules());
     assertThat(
@@ -122,6 +169,7 @@ class ShippingCoreTests {
                 new Settings(null, 0, List.of(inactive)),
                 BigDecimal.TEN,
                 BigDecimal.ZERO,
+                null,
                 null,
                 "1925"))
         .isEmpty();

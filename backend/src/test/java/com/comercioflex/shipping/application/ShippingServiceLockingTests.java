@@ -28,11 +28,11 @@ class ShippingServiceLockingTests {
     Settings settings = new Settings(null, 0, List.of());
     when(repository.settings(false)).thenReturn(settings);
     when(provider.quote(
-            eq(settings), any(BigDecimal.class), any(BigDecimal.class), isNull(), isNull()))
+            eq(settings), any(BigDecimal.class), any(BigDecimal.class), isNull(), isNull(), isNull()))
         .thenReturn(List.of());
 
     ShippingService service = new ShippingService(repository, provider, null, null);
-    service.quotes(new BigDecimal("1000.00"), BigDecimal.ZERO, null, null);
+    service.quotes(new BigDecimal("1000.00"), BigDecimal.ZERO, null, null, null);
 
     verify(repository).settings(false);
     verify(repository, never()).settings(true);
@@ -74,7 +74,7 @@ class ShippingServiceLockingTests {
             null);
     when(repository.settings(true)).thenReturn(settings);
     when(provider.quote(
-            eq(settings), any(BigDecimal.class), any(BigDecimal.class), isNull(), isNull()))
+            eq(settings), any(BigDecimal.class), any(BigDecimal.class), isNull(), isNull(), isNull()))
         .thenReturn(List.of(quote));
 
     ShippingService service = new ShippingService(repository, provider, null, null);

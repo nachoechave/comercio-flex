@@ -108,8 +108,13 @@ public class ShippingService {
 
   /** Public/advisory internal quote. External carrier quotes are added by ShippingQuoteService. */
   public List<Quote> quotes(
-      BigDecimal subtotal, BigDecimal discount, String city, String postalCode) {
-    return provider.quote(repository.settings(false), subtotal, discount, city, postalCode);
+      BigDecimal subtotal,
+      BigDecimal discount,
+      String city,
+      String province,
+      String postalCode) {
+    return provider.quote(
+        repository.settings(false), subtotal, discount, city, province, postalCode);
   }
 
   public Snapshot select(
@@ -126,6 +131,7 @@ public class ShippingService {
             subtotal,
             discount,
             address == null ? null : address.city(),
+            address == null ? null : address.province(),
             address == null ? null : address.postalCode());
     Quote q =
         quotes.stream()

@@ -11,5 +11,6 @@ public interface ShippingProvider {
       BigDecimal listSubtotal,
       BigDecimal discountAmount,
       String city,
+      String province,
       String postalCode);
 }

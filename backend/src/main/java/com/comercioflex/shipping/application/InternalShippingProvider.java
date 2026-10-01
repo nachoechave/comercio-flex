@@ -23,6 +23,7 @@ public class InternalShippingProvider implements ShippingProvider {
       BigDecimal listSubtotal,
       BigDecimal discount,
       String city,
+      String province,
       String postalCode) {
     List<Quote> result = new ArrayList<>();
     for (Method m : settings.methods()) {
@@ -30,14 +31,10 @@ public class InternalShippingProvider implements ShippingProvider {
       BigDecimal price =
           switch (m.type()) {
             case PICKUP, FIXED_RATE -> m.price();
-            case LOCATION_RATE, POSTAL_CODE_RATE ->
+            case LOCATION_RATE -> locationPrice(m.rules(), city, province);
+            case POSTAL_CODE_RATE ->
                 m.rules().stream()
-                    .filter(
-                        r ->
-                            normalize(r.destination())
-                                .equals(
-                                    normalize(
-                                        m.type() == MethodType.LOCATION_RATE ? city : postalCode)))
+                    .filter(r -> normalize(r.destination()).equals(normalize(postalCode)))
                     .map(Rule::price)
                     .findFirst()
                     .orElse(null);
@@ -68,5 +65,38 @@ public class InternalShippingProvider implements ShippingProvider {
               m.instructions()));
     }
     return List.copyOf(result);
+  }
+
+  private BigDecimal locationPrice(List<Rule> rules, String city, String province) {
+    String normalizedCity = normalize(city);
+    String normalizedProvince = normalize(province);
+
+    BigDecimal locality =
+        rules.stream()
+            .filter(r -> !normalize(r.destination()).startsWith("PROVINCIA:"))
+            .filter(r -> !normalize(r.destination()).equals("RESTO_ARGENTINA"))
+            .filter(r -> normalize(r.destination()).equals(normalizedCity))
+            .map(Rule::price)
+            .findFirst()
+            .orElse(null);
+    if (locality != null) return locality;
+
+    BigDecimal provincePrice =
+        rules.stream()
+            .filter(r -> normalize(r.destination()).startsWith("PROVINCIA:"))
+            .filter(
+                r ->
+                    normalize(r.destination().substring(r.destination().indexOf(':') + 1))
+                        .equals(normalizedProvince))
+            .map(Rule::price)
+            .findFirst()
+            .orElse(null);
+    if (provincePrice != null) return provincePrice;
+
+    return rules.stream()
+        .filter(r -> normalize(r.destination()).equals("RESTO_ARGENTINA"))
+        .map(Rule::price)
+        .findFirst()
+        .orElse(null);
   }
 }

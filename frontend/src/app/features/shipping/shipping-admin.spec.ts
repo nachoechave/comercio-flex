@@ -43,6 +43,24 @@ describe('Shipping administration', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Configuración guardada');
   });
+  it('encodes province and rest-of-country rules without changing the API model', () => {
+    const fixture = TestBed.createComponent(ShippingSettingsPage);
+    fixture.detectChanges();
+    http.expectOne(settingsUrl).flush({ version: 1, freeShippingThreshold: null, methods: [] });
+    fixture.componentInstance.add();
+    const method = fixture.componentInstance.settings!.methods[0];
+    method.type = 'LOCATION_RATE';
+    fixture.componentInstance.addRule(method);
+
+    fixture.componentInstance.setRuleScope(method.rules[0], 'PROVINCE');
+    fixture.componentInstance.setRuleValue(method.rules[0], 'San Juan');
+    expect(method.rules[0].destination).toBe('PROVINCIA:San Juan');
+
+    fixture.componentInstance.addRule(method);
+    fixture.componentInstance.setRuleScope(method.rules[1], 'COUNTRY_REST');
+    expect(method.rules[1].destination).toBe('RESTO_ARGENTINA');
+  });
+
   it('shows a concurrent configuration error without losing edits', () => {
     const fixture = TestBed.createComponent(ShippingSettingsPage);
     fixture.detectChanges();

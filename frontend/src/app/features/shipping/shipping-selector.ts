@@ -525,6 +525,7 @@ export class ShippingSelector {
           items: this.items(),
           paymentMethod: this.paymentMethod(),
           city: a.city,
+          province: a.province,
           postalCode: a.postalCode,
         },
       )
@@ -539,8 +540,6 @@ export class ShippingSelector {
 
           if (this.mode() === 'PICKUP' && !pickupAvailable && shippingAvailable) {
             this.mode.set('SHIPPING');
-          } else if (this.mode() === 'SHIPPING' && !shippingAvailable && pickupAvailable) {
-            this.mode.set('PICKUP');
           }
 
           const visible = this.visibleOptions();
