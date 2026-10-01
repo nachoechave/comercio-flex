@@ -32,6 +32,7 @@ public class ShippingQuoteController {
       @NotEmpty @Size(max = 50) List<@NotNull @Valid CreateGuestOrderItemRequest> items,
       OrderPaymentMethod paymentMethod,
       @Size(max = 160) String city,
+      @Size(max = 160) String province,
       @Size(max = 20) String postalCode) {}
 
   @GetMapping("/availability")
@@ -59,6 +60,7 @@ public class ShippingQuoteController {
                     .toList(),
                 body.paymentMethod(),
                 body.city(),
+                body.province(),
                 body.postalCode()));
   }
 }
