@@ -301,7 +301,10 @@ export class ProductForm implements OnDestroy {
     this.bulkPrice.markAsTouched();
     if (this.bulkPrice.invalid || this.archived()) return;
     const price = this.bulkPrice.value.trim();
-    for (const row of this.variants.controls) row.controls.price.setValue(price);
+    for (const row of this.variants.controls) {
+      row.controls.price.setValue(price);
+      row.controls.price.markAsDirty();
+    }
   }
 
   applyStockReceiptToAll(): void {
@@ -469,12 +472,30 @@ export class ProductForm implements OnDestroy {
     if (!this.editing()) {
       this.productOptions.markAllAsTouched();
       this.variants.markAllAsTouched();
+    } else {
+      for (const row of this.variants.controls) {
+        if (!row.controls.id.value || row.dirty) row.markAllAsTouched();
+      }
     }
-    if (this.form.invalid || (!this.editing() && this.variants.invalid)) {
+    const editedVariantInvalid =
+      this.editing() &&
+      this.variants.controls.some(
+        (row) =>
+          (!row.controls.id.value || row.dirty) &&
+          (row.controls.sku.invalid ||
+            row.controls.price.invalid ||
+            row.controls.size.invalid ||
+            row.controls.color.invalid ||
+            row.controls.options.invalid),
+      );
+    if (this.form.invalid || (!this.editing() && this.variants.invalid) || editedVariantInvalid) {
       this.formError.set('Revisá los campos marcados antes de guardar.');
       return;
     }
     if (!this.editing() && !this.variantMatrixIsValid()) {
+      return;
+    }
+    if (this.editing() && !this.variantMatrixIsValid(false)) {
       return;
     }
     if (!this.editing() && this.selectedImageFile()) {
@@ -503,12 +524,17 @@ export class ProductForm implements OnDestroy {
     this.creationIntent.set(intent);
     const request =
       this.editing() && current
-        ? this.api.update(slug, current.id, {
-            name: normalizeProductName(metadata.name),
-            description,
-            categoryId: metadata.categoryId,
-            version: current.version,
-          })
+        ? this.api
+            .update(slug, current.id, {
+              name: normalizeProductName(metadata.name),
+              description,
+              categoryId: metadata.categoryId,
+              version: current.version,
+            })
+            .pipe(
+              switchMap(() => this.saveEditedVariants(slug, current.id)),
+              switchMap(() => this.api.get(slug, current.id)),
+            )
         : this.createCompleteProduct(
             slug,
             {
@@ -531,7 +557,7 @@ export class ProductForm implements OnDestroy {
         }
         this.product.set(product);
         this.form.markAsPristine();
-        this.successMessage.set('Los datos del producto fueron guardados.');
+        this.successMessage.set('Los cambios del producto fueron guardados.');
       },
       error: (error: unknown) => {
         if (error instanceof ProductSetupError) {
@@ -552,6 +578,36 @@ export class ProductForm implements OnDestroy {
       },
     });
     this.mutations.push(subscription);
+  }
+
+  private saveEditedVariants(slug: string, productId: string): Observable<void> {
+    const rows = this.variants.controls.filter((row) => !row.controls.id.value || row.dirty);
+    if (!rows.length) return of(undefined);
+
+    return from(rows).pipe(
+      concatMap((row) => {
+        const variantId = row.controls.id.value;
+        const body = this.variantBody(row);
+        const request = variantId
+          ? this.api.updateVariant(slug, productId, variantId, {
+              ...body,
+              version: row.controls.version.value ?? 0,
+            })
+          : this.api.createVariant(slug, productId, body);
+        return request.pipe(
+          tap((variant) => {
+            this.setVariantRow(row, variant);
+            this.loadInventoryVariant(slug, variant.id);
+          }),
+        );
+      }),
+      toArray(),
+      tap(() => {
+        this.stashVariantRows();
+        this.updateRemovedExistingVariants();
+      }),
+      map(() => undefined),
+    );
   }
 
   changeProductStatus(target: ProductStatus): void {

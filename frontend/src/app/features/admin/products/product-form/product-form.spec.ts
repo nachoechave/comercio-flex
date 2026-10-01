@@ -538,6 +538,165 @@ describe('ProductForm tenant reuse', () => {
     expect(fixture.componentInstance.form.controls.name.value).toBe('Producto B');
   });
 
+  it('saves a general price change across all edited variants with the global save', () => {
+    http
+      .expectOne('/api/v1/stores/tienda-a/admin/categories')
+      .flush([{ id: 'cat-a', name: 'Categoría A', active: true }]);
+    http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1').flush({
+      id: 'product-1',
+      name: 'Producto A',
+      slug: 'producto-a',
+      description: null,
+      status: 'DRAFT',
+      category: { id: 'cat-a', name: 'Categoría A', active: true },
+      variants: [
+        {
+          id: 'variant-a',
+          sku: 'SKU-A',
+          price: '10.00',
+          size: 'M',
+          color: null,
+          options: [],
+          active: true,
+          version: 1,
+          createdAt: '',
+          updatedAt: '',
+        },
+        {
+          id: 'variant-b',
+          sku: 'SKU-B',
+          price: '12.00',
+          size: 'L',
+          color: null,
+          options: [],
+          active: true,
+          version: 2,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      image: null,
+      version: 3,
+      createdAt: '',
+      updatedAt: '',
+    });
+    http.expectOne('/api/v1/stores/tienda-a/admin/inventory/variants/variant-a').flush({
+      variantId: 'variant-a',
+      quantity: '1.000',
+    });
+    http.expectOne('/api/v1/stores/tienda-a/admin/inventory/variants/variant-b').flush({
+      variantId: 'variant-b',
+      quantity: '1.000',
+    });
+
+    fixture.componentInstance.bulkPrice.setValue('15000');
+    fixture.componentInstance.applyPriceToAll();
+    fixture.componentInstance.submitProduct();
+
+    const productUpdate = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1');
+    expect(productUpdate.request.method).toBe('PUT');
+    productUpdate.flush({
+      id: 'product-1',
+      name: 'Producto A',
+      slug: 'producto-a',
+      description: null,
+      status: 'DRAFT',
+      category: { id: 'cat-a', name: 'Categoría A', active: true },
+      variants: [],
+      image: null,
+      version: 4,
+      createdAt: '',
+      updatedAt: '',
+    });
+
+    const variantA = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/products/product-1/variants/variant-a',
+    );
+    expect(variantA.request.method).toBe('PUT');
+    expect(variantA.request.body).toMatchObject({ sku: 'SKU-A', price: '15000', version: 1 });
+    variantA.flush({
+      id: 'variant-a',
+      sku: 'SKU-A',
+      price: '15000',
+      size: 'M',
+      color: null,
+      options: [],
+      active: true,
+      version: 2,
+      createdAt: '',
+      updatedAt: '',
+    });
+    http.expectOne('/api/v1/stores/tienda-a/admin/inventory/variants/variant-a').flush({
+      variantId: 'variant-a',
+      quantity: '1.000',
+    });
+
+    const variantB = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/products/product-1/variants/variant-b',
+    );
+    expect(variantB.request.method).toBe('PUT');
+    expect(variantB.request.body).toMatchObject({ sku: 'SKU-B', price: '15000', version: 2 });
+    variantB.flush({
+      id: 'variant-b',
+      sku: 'SKU-B',
+      price: '15000',
+      size: 'L',
+      color: null,
+      options: [],
+      active: true,
+      version: 3,
+      createdAt: '',
+      updatedAt: '',
+    });
+    http.expectOne('/api/v1/stores/tienda-a/admin/inventory/variants/variant-b').flush({
+      variantId: 'variant-b',
+      quantity: '1.000',
+    });
+
+    const reload = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1');
+    expect(reload.request.method).toBe('GET');
+    reload.flush({
+      id: 'product-1',
+      name: 'Producto A',
+      slug: 'producto-a',
+      description: null,
+      status: 'DRAFT',
+      category: { id: 'cat-a', name: 'Categoría A', active: true },
+      variants: [
+        {
+          id: 'variant-a',
+          sku: 'SKU-A',
+          price: '15000',
+          size: 'M',
+          color: null,
+          options: [],
+          active: true,
+          version: 2,
+          createdAt: '',
+          updatedAt: '',
+        },
+        {
+          id: 'variant-b',
+          sku: 'SKU-B',
+          price: '15000',
+          size: 'L',
+          color: null,
+          options: [],
+          active: true,
+          version: 3,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      image: null,
+      version: 4,
+      createdAt: '',
+      updatedAt: '',
+    });
+
+    expect(fixture.componentInstance.successMessage()).toContain('cambios');
+  });
+
   it('cancels an in-flight tenant A receipt and clears its state before loading tenant B', () => {
     http
       .expectOne('/api/v1/stores/tienda-a/admin/categories')
