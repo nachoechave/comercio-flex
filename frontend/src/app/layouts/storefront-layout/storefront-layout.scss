@@ -631,8 +631,8 @@ nav {
    white/gold swooshes have the same visual weight as the storefront hero. */
 .store-theme[data-template='fashion'] .site-header--fashion .brand--limits {
   position: relative;
-  flex: 0 0 clamp(24rem, 34vw, 31rem);
-  height: 6.65rem;
+  flex: 0 0 clamp(18.5rem, 23vw, 21rem);
+  height: 5.65rem;
   overflow: hidden;
   justify-content: flex-start;
   margin-left: clamp(0.75rem, 1.5vw, 1.5rem);
@@ -657,8 +657,8 @@ nav {
   }
 
   .store-theme[data-template='fashion'] .site-header--fashion .brand--limits {
-    flex-basis: clamp(18rem, 36vw, 23rem);
-    height: 5.7rem;
+    flex-basis: clamp(15.5rem, 31vw, 18.5rem);
+    height: 5.2rem;
     margin-left: 0.5rem;
   }
 }
@@ -671,14 +671,14 @@ nav {
   }
 
   .store-theme[data-template='fashion'] .site-header--fashion .brand--limits {
-    flex-basis: 14rem;
+    flex-basis: 12.5rem;
     max-width: calc(100% - 5rem);
-    height: 5rem;
+    height: 4.7rem;
     margin-left: 0;
   }
 
   .store-theme[data-template='fashion'] .site-header--fashion .brand--limits .brand-logo {
-    width: 14rem;
+    width: 12.5rem;
     max-width: none;
     height: auto;
     transform: translateY(-50%);
