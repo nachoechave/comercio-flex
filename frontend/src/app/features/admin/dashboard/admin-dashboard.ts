@@ -12,6 +12,7 @@ import { BankTransferApiService } from '../bank-transfers/bank-transfer-api.serv
 import { AdminBankTransferPayment } from '../bank-transfers/bank-transfer.models';
 import { OrderApiService } from '../orders/order-api.service';
 import { AdminOrderSummary, ORDER_STATUS_LABELS } from '../orders/order.models';
+import { AdminStorefrontLinkService } from '../admin-storefront-link.service';
 import { DashboardApiService } from './dashboard-api.service';
 import { DashboardSummary } from './dashboard.models';
 
@@ -26,6 +27,7 @@ export class AdminDashboard {
   private readonly ordersApi = inject(OrderApiService);
   private readonly transfersApi = inject(BankTransferApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly storefrontLinkService = inject(AdminStorefrontLinkService);
   private readonly reloadVersion = signal(0);
 
   readonly storeSlug = toSignal(inheritedRouteParam(this.route, 'storeSlug'), {
@@ -36,6 +38,7 @@ export class AdminDashboard {
   readonly transfersUnderReview = signal<AdminBankTransferPayment[]>([]);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
+  readonly storefrontUrl = signal('/');
   readonly orderLabels = ORDER_STATUS_LABELS;
 
   readonly chartOrders = computed(() => [...this.recentOrders()].reverse());
@@ -57,6 +60,11 @@ export class AdminDashboard {
         this.errorMessage.set('No pudimos identificar el comercio solicitado.');
         return;
       }
+      this.storefrontUrl.set(`/tiendas/${slug}`);
+      const storefrontLinkSubscription = this.storefrontLinkService.get(slug).subscribe({
+        next: (link) => this.storefrontUrl.set(link.url),
+      });
+
       const subscription = forkJoin({
         summary: this.api.get(slug),
         orders: this.ordersApi.list(slug, 0, 5, '', '').pipe(catchError(() => of(null))),
@@ -75,7 +83,10 @@ export class AdminDashboard {
           this.errorMessage.set('No pudimos cargar el resumen operativo.');
         },
       });
-      onCleanup(() => subscription.unsubscribe());
+      onCleanup(() => {
+        subscription.unsubscribe();
+        storefrontLinkSubscription.unsubscribe();
+      });
     });
   }
 
