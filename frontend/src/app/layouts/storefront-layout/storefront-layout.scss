@@ -632,7 +632,7 @@ nav {
 .store-theme[data-template='fashion'] .site-header--fashion .brand--limits {
   position: relative;
   flex: 0 0 clamp(24rem, 34vw, 31rem);
-  height: 5.6rem;
+  height: 6.65rem;
   overflow: hidden;
   justify-content: flex-start;
   margin-left: clamp(0.75rem, 1.5vw, 1.5rem);
@@ -640,14 +640,14 @@ nav {
 
 .store-theme[data-template='fashion'] .site-header--fashion .brand--limits .brand-logo {
   position: absolute;
-  top: 50%;
+  top: 44%;
   left: 0;
   width: 100%;
   max-width: none;
   height: auto;
   object-fit: initial;
   object-position: initial;
-  transform: translateY(-51%);
+  transform: translateY(-50%);
 }
 
 @media (max-width: 64rem) {
@@ -657,7 +657,7 @@ nav {
 
   .store-theme[data-template='fashion'] .site-header--fashion .brand--limits {
     flex-basis: clamp(18rem, 36vw, 23rem);
-    height: 5.1rem;
+    height: 5.7rem;
     margin-left: 0.5rem;
   }
 }
@@ -672,7 +672,7 @@ nav {
   .store-theme[data-template='fashion'] .site-header--fashion .brand--limits {
     flex-basis: 14rem;
     max-width: calc(100% - 5rem);
-    height: 4.6rem;
+    height: 5rem;
     margin-left: 0;
   }
 
@@ -680,7 +680,7 @@ nav {
     width: 14rem;
     max-width: none;
     height: auto;
-    transform: translateY(-51%);
+    transform: translateY(-50%);
   }
 
   .store-theme .site-header--fashion .brand-logo {
