@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F1F5F9;color:#172033;font-family:Arial,sans-serif;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background:#F1F5F9;">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:640px;background:#FFFFFF;border-collapse:separate;border-spacing:0;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.08);">
+<tr><td align="center" style="padding:28px 24px;background:{{headerColor}};color:{{headerTextColor}};font-family:Arial,sans-serif;">
+{{logoHtml}}<div style="font-size:16px;line-height:22px;font-weight:bold;">{{storeName}}</div>
+</td></tr>
+<tr><td style="padding:32px 28px 8px;color:#172033;font-family:Arial,sans-serif;">
+<div style="font-size:28px;line-height:34px;font-weight:bold;margin:0 0 20px;">Nueva venta confirmada</div>
+<p style="margin:0 0 12px;font-size:16px;line-height:24px;">Se confirmó el pedido <strong>{{orderNumber}}</strong>.</p>
+<p style="margin:0 0 20px;padding:16px;background:#F8FAFC;border-radius:8px;font-size:15px;line-height:23px;">
+<strong>Cliente:</strong> {{customerName}}<br>
+<strong>Email:</strong> {{customerEmail}}<br>
+<strong>Teléfono:</strong> {{customerPhone}}<br>
+<strong>Medio de pago:</strong> {{paymentMethod}}
+</p>
+<div style="font-size:12px;line-height:18px;font-weight:bold;letter-spacing:1px;color:#64748B;margin-bottom:4px;">PRODUCTOS</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">{{itemsHtml}}</table>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">
+{{pricingHtml}}
+</table>
+<div style="font-size:12px;line-height:18px;font-weight:bold;letter-spacing:1px;color:#64748B;margin-bottom:8px;">ENTREGA</div>
+<p style="margin:0 0 26px;padding:16px;background:#F8FAFC;border-radius:8px;font-size:15px;line-height:23px;">{{fulfillment}}</p>
+<p style="margin:0 0 24px;color:#64748B;font-size:13px;line-height:20px;">Venta confirmada el {{eventDate}}.</p>
+</td></tr>
+<tr><td style="padding:20px 28px;background:#F8FAFC;border-top:1px solid #E5E7EB;color:#64748B;font-family:Arial,sans-serif;font-size:13px;line-height:20px;text-align:center;">Notificación automática de Comercio Flex para {{storeName}}.</td></tr>
+</table>
+</td></tr></table>
+</body></html>
