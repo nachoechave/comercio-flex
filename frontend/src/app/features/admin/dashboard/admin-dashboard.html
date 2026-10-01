@@ -182,7 +182,7 @@
         <a class="quick-card quick-product" [routerLink]="['productos', 'nuevo']">
           <span><app-admin-icon name="products" /></span><strong>Crear producto</strong><b>›</b>
         </a>
-        <a class="quick-card quick-store" [routerLink]="['/tiendas', storeSlug()]" target="_blank" rel="noopener">
+        <a class="quick-card quick-store" [href]="storefrontUrl()" target="_blank" rel="noopener">
           <span><app-admin-icon name="store" /></span><strong>Ver tienda</strong><b>›</b>
         </a>
         <a class="quick-card quick-shipping" [routerLink]="['configuracion', 'envios']">
