@@ -204,6 +204,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'promociones',
+        canActivate: [allowedRolesGuard(['OWNER', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/admin/promotions/promotion-admin-page').then(
+            (module) => module.PromotionAdminPage,
+          ),
+      },
+      {
         path: 'inventario',
         loadChildren: () =>
           import('./features/admin/inventory/inventory.routes').then(
