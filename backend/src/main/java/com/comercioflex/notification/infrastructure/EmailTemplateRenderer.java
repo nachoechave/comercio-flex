@@ -110,6 +110,32 @@ class EmailTemplateRenderer {
                 values);
     }
 
+    RenderedEmail merchantOrderConfirmed(
+            AdminOrderDetail order,
+            StoreSettings store,
+            EmailBranding branding,
+            Instant confirmedAt,
+            String paymentMethod) {
+
+        String number = orderNumber(order.number());
+        Map<String, String> values = common(order, branding);
+
+        values.put("itemsHtml", itemsHtml(order, store.currencyCode()));
+        values.put("itemsText", itemsText(order, store.currencyCode()));
+        values.put("pricingHtml", pricingHtml(order));
+        values.put("pricingText", pricingText(order));
+        values.put("fulfillment", fulfillment(order, store));
+        values.put("eventDate", date(confirmedAt, store.timezone()));
+        values.put("paymentMethod", paymentMethod);
+        values.put("customerEmail", java.util.Objects.toString(order.customerEmail(), "-"));
+        values.put("customerPhone", java.util.Objects.toString(order.customerPhone(), "-"));
+
+        return render(
+                "merchant-order-confirmed",
+                "Nueva venta confirmada %s".formatted(number),
+                values);
+    }
+
     RenderedEmail mercadoPagoPaymentRejected(
             AdminOrderDetail order,
             StoreSettings store,
