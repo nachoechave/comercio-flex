@@ -81,7 +81,7 @@ class OutboxCustomerNotificationServiceTests {
     }
 
     @Test
-    void confirmedOrderCreatesOneSafeIdempotentEvent() {
+    void confirmedOrderCreatesCustomerAndMerchantIdempotentEvents() {
         when(outbox.enqueue(any(), any(), any(), any(), any()))
                 .thenReturn(true)
                 .thenReturn(false);
@@ -99,6 +99,14 @@ class OutboxCustomerNotificationServiceTests {
                         eq(ORDER_ID),
                         eq(null),
                         email.capture());
+
+        verify(outbox, org.mockito.Mockito.times(2))
+                .enqueue(
+                        eq("MERCHANT_ORDER_CONFIRMED:" + ORDER_ID),
+                        eq("MERCHANT_ORDER_CONFIRMED"),
+                        eq(ORDER_ID),
+                        eq(null),
+                        any());
 
         assertThat(email.getValue().subject())
                 .isEqualTo("Tu pedido ORD-000011 fue confirmado");
@@ -307,7 +315,7 @@ class OutboxCustomerNotificationServiceTests {
     }
 
     @Test
-    void anOrderWithoutCustomerEmailDoesNotCreateOutboxData() {
+    void anOrderWithoutCustomerEmailStillNotifiesMerchant() {
         AdminOrderDetail baseOrder =
                 order();
 
@@ -339,11 +347,23 @@ class OutboxCustomerNotificationServiceTests {
 
         verify(outbox, never())
                 .enqueue(
-                        any(),
-                        any(),
-                        any(),
-                        any(),
+                        eq("ORDER_CONFIRMED:" + ORDER_ID),
+                        eq("ORDER_CONFIRMED"),
+                        eq(ORDER_ID),
+                        eq(null),
                         any());
+
+        ArgumentCaptor<TransactionalEmail> merchantEmail =
+                ArgumentCaptor.forClass(TransactionalEmail.class);
+        verify(outbox)
+                .enqueue(
+                        eq("MERCHANT_ORDER_CONFIRMED:" + ORDER_ID),
+                        eq("MERCHANT_ORDER_CONFIRMED"),
+                        eq(ORDER_ID),
+                        eq(null),
+                        merchantEmail.capture());
+        assertThat(merchantEmail.getValue().recipient()).isEqualTo("store@example.com");
+        assertThat(merchantEmail.getValue().subject()).isEqualTo("Nueva venta confirmada ORD-000011");
     }
 
     private AdminOrderDetail order() {

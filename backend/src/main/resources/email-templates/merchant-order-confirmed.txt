@@ -1,0 +1,24 @@
+{{storeName}}
+
+NUEVA VENTA CONFIRMADA
+
+Se confirmó el pedido {{orderNumber}}.
+
+CLIENTE
+Nombre: {{customerName}}
+Email: {{customerEmail}}
+Teléfono: {{customerPhone}}
+
+Medio de pago: {{paymentMethod}}
+
+PRODUCTOS
+{{itemsText}}
+
+{{pricingText}}
+
+ENTREGA
+{{fulfillment}}
+
+Venta confirmada el {{eventDate}}.
+
+Notificación automática de Comercio Flex para {{storeName}}.
