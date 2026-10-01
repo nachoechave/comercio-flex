@@ -1291,6 +1291,67 @@ describe('ProductForm generated variant editing', () => {
     });
   });
 
+  it('creates a new variant with initial stock while preserving existing inventory', () => {
+    fixture.componentInstance.addProductOptionValue(1);
+    fixture.componentInstance.productOptions.at(1).controls.values.at(1).setValue('Azul');
+
+    const newRows = fixture.componentInstance.variants.controls.filter(
+      (row) => !row.controls.id.value,
+    );
+    expect(newRows).toHaveLength(2);
+
+    const newRow = newRows[0];
+    newRow.controls.sku.setValue('REM-AZUL-S');
+    newRow.controls.price.setValue('1200.00');
+    newRow.controls.initialStock.setValue('7');
+
+    const index = fixture.componentInstance.variants.controls.indexOf(newRow);
+    fixture.componentInstance.saveVariant(index);
+
+    const create = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/products/product-1/variants',
+    );
+    expect(create.request.method).toBe('POST');
+    create.flush({
+      id: 'variant-azul-s',
+      sku: 'REM-AZUL-S',
+      price: '1200.00',
+      size: 'S',
+      color: 'Azul',
+      options: [
+        { name: 'Talle', value: 'S' },
+        { name: 'Color', value: 'Azul' },
+      ],
+      active: true,
+      version: 1,
+      createdAt: '',
+      updatedAt: '',
+    });
+
+    const adjustment = http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-azul-s/adjustments',
+    );
+    expect(adjustment.request.body).toEqual({
+      direction: 'INCREASE',
+      quantity: '7',
+      reason: 'RECEIPT',
+      note: 'Stock inicial registrado al agregar una nueva variante al producto.',
+    });
+    adjustment.flush({
+      inventory: inventoryResponse('variant-azul-s', '7.000'),
+      movement: {},
+    });
+
+    http.expectOne(
+      '/api/v1/stores/tienda-a/admin/inventory/variants/variant-azul-s',
+    ).flush(inventoryResponse('variant-azul-s', '7.000'));
+
+    expect(fixture.componentInstance.inventoryFor('variant-s')?.quantity).toBe('5.000');
+    expect(fixture.componentInstance.inventoryFor('variant-m')?.quantity).toBe('8.000');
+    expect(newRow.controls.id.value).toBe('variant-azul-s');
+    expect(newRow.controls.initialStock.value).toBe('');
+  });
+
   it('updates price on the existing variant id instead of recreating it', () => {
     fixture.componentInstance.variants.at(1).controls.price.setValue('1250.00');
     fixture.componentInstance.saveVariant(1);

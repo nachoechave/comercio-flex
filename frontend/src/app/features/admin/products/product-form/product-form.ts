@@ -486,7 +486,8 @@ export class ProductForm implements OnDestroy {
             row.controls.price.invalid ||
             row.controls.size.invalid ||
             row.controls.color.invalid ||
-            row.controls.options.invalid),
+            row.controls.options.invalid ||
+            row.controls.initialStock.invalid),
       );
     if (this.form.invalid || (!this.editing() && this.variants.invalid) || editedVariantInvalid) {
       this.formError.set('Revisá los campos marcados antes de guardar.');
@@ -593,10 +594,13 @@ export class ProductForm implements OnDestroy {
               ...body,
               version: row.controls.version.value ?? 0,
             })
-          : this.api.createVariant(slug, productId, body);
+          : this.api.createVariant(slug, productId, body).pipe(
+              switchMap((variant) => this.registerNewVariantInitialStock(slug, row, variant)),
+            );
         return request.pipe(
           tap((variant) => {
             this.setVariantRow(row, variant);
+            row.controls.initialStock.reset('');
             this.loadInventoryVariant(slug, variant.id);
           }),
         );
@@ -771,7 +775,8 @@ export class ProductForm implements OnDestroy {
       row.controls.price.invalid ||
       row.controls.size.invalid ||
       row.controls.color.invalid ||
-      row.controls.options.invalid
+      row.controls.options.invalid ||
+      row.controls.initialStock.invalid
     ) {
       return;
     }
@@ -789,10 +794,13 @@ export class ProductForm implements OnDestroy {
           ...body,
           version: row.controls.version.value ?? 0,
         })
-      : this.api.createVariant(slug, productId, body);
+      : this.api.createVariant(slug, productId, body).pipe(
+          switchMap((variant) => this.registerNewVariantInitialStock(slug, row, variant)),
+        );
     const subscription = request.pipe(finalize(() => this.pendingVariantId.set(null))).subscribe({
       next: (variant) => {
         this.setVariantRow(row, variant);
+        row.controls.initialStock.reset('');
         this.stashVariantRows();
         this.updateRemovedExistingVariants();
         this.loadInventoryVariant(slug, variant.id);
@@ -1114,6 +1122,32 @@ export class ProductForm implements OnDestroy {
           ),
       });
     this.mutations.push(subscription);
+  }
+
+  private registerNewVariantInitialStock(
+    slug: string,
+    row: ReturnType<ProductForm['newVariantForm']>,
+    variant: ProductVariant,
+  ): Observable<ProductVariant> {
+    const quantity = row.controls.initialStock.value.trim();
+    if (!quantity || quantity === '0') return of(variant);
+
+    return this.inventoryApi
+      .adjust(slug, variant.id, globalThis.crypto.randomUUID(), {
+        direction: 'INCREASE',
+        quantity,
+        reason: 'RECEIPT',
+        note: 'Stock inicial registrado al agregar una nueva variante al producto.',
+      })
+      .pipe(
+        tap((response) =>
+          this.inventoryByVariant.update((current) => ({
+            ...current,
+            [variant.id]: response.inventory,
+          })),
+        ),
+        map(() => variant),
+      );
   }
 
   private loadInventoryVariant(slug: string, variantId: string): void {
