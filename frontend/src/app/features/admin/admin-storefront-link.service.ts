@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, shareReplay } from 'rxjs';
+import { catchError, Observable, of, shareReplay } from 'rxjs';
 
 interface StorefrontLinkResponse {
   url: string;
@@ -20,7 +20,15 @@ export class AdminStorefrontLinkService {
       .get<StorefrontLinkResponse>(
         `/api/v1/stores/${encodeURIComponent(storeSlug)}/admin/storefront-link`,
       )
-      .pipe(shareReplay({ bufferSize: 1, refCount: false }));
+      .pipe(
+        catchError(() =>
+          of({
+            url: `/tiendas/${storeSlug}`,
+            customDomain: false,
+          }),
+        ),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
 
     this.cache.set(storeSlug, request);
     return request;
