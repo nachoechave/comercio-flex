@@ -17,7 +17,9 @@ public interface GuestOrderRepository {
 
 	String findCurrencyCode();
 	OrderPaymentPricing findPaymentPricing();
-	List<ActiveQuantityPromotion> findActiveQuantityPromotions(java.util.Set<UUID> productIds, Instant at);
+	default List<ActiveQuantityPromotion> findActiveQuantityPromotions(java.util.Set<UUID> productIds, Instant at) {
+		return List.of();
+	}
 
 	long insertOrder(
 			UUID orderId,
