@@ -45,7 +45,7 @@
 
           <p class="nav-group-label">Operación</p>
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'ventas']" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><app-admin-icon name="orders" /><span>Ventas</span></a>
-          <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'ventas', 'caja']" routerLinkActive="active"><app-admin-icon name="payments" /><span>Caja</span></a>
+          <!-- Caja queda oculta temporalmente hasta habilitar nuevamente el flujo. -->
           @if (currentMembership.role !== 'SELLER') {
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'pedidos']" [class.active]="ordersNavigationActive()"><app-admin-icon name="orders" /><span>Pedidos</span></a>
             <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'pedidos', 'transferencias']" [class.active]="transfersNavigationActive()"><app-admin-icon name="transfers" /><span>Pagos transferencia</span></a>
@@ -56,6 +56,9 @@
           }
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'inventario']" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><app-admin-icon name="inventory" /><span>Inventario</span></a>
           <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'inventario', 'operaciones']" routerLinkActive="active"><app-admin-icon name="transfers" /><span>Operaciones stock</span></a>
+          @if (currentMembership.role === 'OWNER' || currentMembership.role === 'ADMIN') {
+            <a [routerLink]="['/tiendas', currentMembership.storeSlug, 'admin', 'inventario', 'sucursales']" routerLinkActive="active"><app-admin-icon name="store" /><span>Sucursales</span></a>
+          }
         }
         @if (currentMembership.role === 'OWNER' || currentMembership.role === 'ADMIN') {
           <p class="nav-group-label">Tienda</p>
