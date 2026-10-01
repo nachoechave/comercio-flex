@@ -125,10 +125,30 @@ describe('ShippingSelector', () => {
     fixture.componentInstance.quote();
     const req = http.expectOne('/api/v1/stores/tienda-a/shipping/quote');
     expect(req.request.body.city).toBe('La Plata');
+    expect(req.request.body.province).toBe('Buenos Aires');
     expect(req.request.body.postalCode).toBe('1900');
     req.flush([{ ...pickup, type: 'LOCATION_RATE', freeShipping: true }]);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Envío gratis');
+  });
+
+  it('keeps delivery selected when no shipping rule matches instead of falling back to pickup', () => {
+    fixture.componentInstance.setMode('SHIPPING');
+    fixture.componentInstance.address.setValue({
+      street: 'Calle',
+      number: '1',
+      apartment: '',
+      city: 'Ensenada',
+      province: 'Buenos Aires',
+      postalCode: '1925',
+    });
+    fixture.componentInstance.quote();
+    http.expectOne('/api/v1/stores/tienda-a/shipping/quote').flush([pickup]);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.mode()).toBe('SHIPPING');
+    expect(fixture.componentInstance.current()).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('No hay métodos disponibles para este destino');
   });
 
   it('invalidates the quote when locality or postal code changes', () => {
