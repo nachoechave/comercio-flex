@@ -12,7 +12,7 @@ import { StoreSettings, TenantBranding } from '../../storefront.models';
     <a class="store-skip-link" href="#main-content">Saltar al contenido</a>
     <aside class="announcement-bar" aria-label="Beneficios de compra"><span>Nueva colección</span><span>Compra online simple y segura</span><span>Atención personalizada</span></aside>
     <header class="site-header site-header--fashion site-header--streetwear">
-      <a class="brand brand--fashion" [routerLink]="storefrontRouting.route(settings().slug)">
+      <a class="brand brand--fashion" [class.brand--limits]="settings().slug === 'limits'" [routerLink]="storefrontRouting.route(settings().slug)">
         @if (branding().logoUrl; as logo) { <img class="brand-logo" [src]="logo" [alt]="'Logo de ' + settings().storeName" /> }
         @else { <span class="fashion-wordmark">{{ settings().storeName }}</span> }
       </a>
