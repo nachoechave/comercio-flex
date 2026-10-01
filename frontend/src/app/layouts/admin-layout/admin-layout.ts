@@ -1,4 +1,4 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   ActivatedRoute,
@@ -12,6 +12,7 @@ import { filter, finalize, map, of } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { AdminPwaService } from '../../core/pwa/admin-pwa.service';
+import { AdminStorefrontLinkService } from '../../features/admin/admin-storefront-link.service';
 import { AdminIcon } from '../../shared/ui/admin-icon/admin-icon';
 
 @Component({
@@ -26,6 +27,7 @@ export class AdminLayout {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly adminPwa = inject(AdminPwaService);
+  private readonly storefrontLinkService = inject(AdminStorefrontLinkService);
   private readonly storeSlug = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('storeSlug') ?? '')),
     { initialValue: this.route.snapshot.paramMap.get('storeSlug') ?? '' },
@@ -43,12 +45,24 @@ export class AdminLayout {
   readonly currentUrl = signal(this.router.url);
   readonly pwaInstallAvailable = this.adminPwa.canInstall;
   readonly pwaStandalone = this.adminPwa.standalone;
+  readonly storefrontUrl = signal('');
   readonly ordersNavigationActive = computed(
     () => this.currentUrl().includes('/admin/pedidos') && !this.currentUrl().includes('/transferencias'),
   );
   readonly transfersNavigationActive = computed(() => this.currentUrl().includes('/transferencias'));
 
   constructor() {
+    effect((onCleanup) => {
+      const slug = this.storeSlug();
+      this.storefrontUrl.set(slug ? `/tiendas/${slug}` : '/');
+      if (!slug) return;
+
+      const subscription = this.storefrontLinkService.get(slug).subscribe({
+        next: (link) => this.storefrontUrl.set(link.url),
+      });
+      onCleanup(() => subscription.unsubscribe());
+    });
+
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
