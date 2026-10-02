@@ -21,7 +21,14 @@ export class StorefrontPromotionsService {
       .pipe(finalize(() => this.loading.delete(storeSlug)))
       .subscribe({
         next: (promotions) => {
-          this.byStore.update((current) => ({ ...current, [storeSlug]: promotions }));
+          // BigDecimal is serialized by Spring/Jackson as a JSON number. Product prices use
+          // strings elsewhere in the storefront, so normalize promotion prices at this boundary
+          // before passing them to StorefrontMoneyPipe or the cart calculator.
+          const normalized = promotions.map((promotion) => ({
+            ...promotion,
+            bundlePrice: String(promotion.bundlePrice),
+          }));
+          this.byStore.update((current) => ({ ...current, [storeSlug]: normalized }));
           this.loaded.add(storeSlug);
         },
         error: () => {
