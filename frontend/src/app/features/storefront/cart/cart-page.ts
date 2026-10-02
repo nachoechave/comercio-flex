@@ -12,6 +12,7 @@ import { StorefrontContextService } from '../storefront-context.service';
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
 import { CartLine } from './cart.models';
 import { CartService } from './cart.service';
+import { StorefrontPromotionsService } from '../promotions/storefront-promotions.service';
 
 @Component({
   selector: 'app-cart-page',
@@ -22,6 +23,7 @@ import { CartService } from './cart.service';
 export class CartPage {
   private readonly api = inject(StorefrontApiService);
   protected readonly cart = inject(CartService);
+  protected readonly promotions = inject(StorefrontPromotionsService);
   protected readonly context = inject(StorefrontContextService);
   private readonly route = inject(ActivatedRoute);
   protected readonly storefrontRouting = inject(StorefrontRoutingService);
@@ -43,6 +45,21 @@ export class CartPage {
   );
   protected readonly items = computed(() => this.cart.items(this.storeSlug() ?? ''));
   protected readonly subtotal = computed(() => this.cart.availableSubtotal(this.storeSlug() ?? ''));
+  protected readonly promotionDiscount = computed(() =>
+    this.promotions.calculateDiscount(
+      this.storeSlug() ?? '',
+      this.items()
+        .filter((line) => line.status === 'AVAILABLE')
+        .map((line) => ({
+          productId: line.productId,
+          unitPrice: line.unitPrice,
+          quantity: line.quantity,
+        })),
+    ),
+  );
+  protected readonly promotionalSubtotal = computed(() =>
+    Math.max(0, Number(this.subtotal()) - this.promotionDiscount()).toFixed(2),
+  );
   protected readonly canCheckout = computed(
     () =>
       !this.validating() &&
@@ -55,6 +72,7 @@ export class CartPage {
   protected readonly confirmingClear = signal(false);
 
   constructor() {
+    effect(() => this.promotions.ensure(this.storeSlug() ?? ''));
     effect((onCleanup) => {
       const storeSlug = this.storeSlug();
       this.retryVersion();
@@ -130,6 +148,11 @@ export class CartPage {
   protected optionLabel(line: CartLine): string {
     return variantOptionsLabel(line.options, line.size, line.color) || 'Opción estándar';
   }
+
+  protected promotionFor(line: CartLine) {
+    return this.promotions.promotion(this.storeSlug() ?? '', line.productId);
+  }
+
 
   protected lineTotal(line: CartLine): string {
     const [integer, fraction = ''] = line.unitPrice.split('.');
