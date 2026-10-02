@@ -116,6 +116,19 @@ export interface PublicProductDetail {
   imageUrl?: string | null;
 }
 
+export interface QuantityPromotion {
+  id: string;
+  productId: string;
+  productName: string;
+  name: string;
+  bundleQuantity: number;
+  bundlePrice: string;
+  active: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  version: number;
+}
+
 export interface PublicProductQuery {
   page: number;
   size: number;
