@@ -125,17 +125,14 @@ public class GuestOrderService {
     var discountAmount = cart.discountAmount();
     var finalSubtotal = cart.subtotal();
     var snapshot = shipping.select(command.shipping(), listSubtotal, discountAmount);
-    UUID pickupBranch = null;
-    if (snapshot.type() == MethodType.PICKUP) {
-      pickupBranch = command.shipping() == null ? null : command.shipping().pickupBranchId();
-      if (pickupBranch == null && fulfillment != null) {
-        pickupBranch = fulfillment.resolveForOrderPlaceholder();
-      }
-      if (branchStock != null) {
-        for (ReservedOrderItem item : items) {
-          branchStock.requireAvailable(
-              pickupBranch, item.variant().internalId(), item.quantity());
-        }
+    UUID pickupBranch =
+        snapshot.type() == MethodType.PICKUP && command.shipping() != null
+            ? command.shipping().pickupBranchId()
+            : null;
+    if (pickupBranch != null && branchStock != null) {
+      for (ReservedOrderItem item : items) {
+        branchStock.requireAvailable(
+            pickupBranch, item.variant().internalId(), item.quantity());
       }
     }
 
@@ -163,7 +160,7 @@ public class GuestOrderService {
     shipping.attach(internalId, snapshot);
     repository.insertInitialHistory(internalId);
     repository.insertItemsAndReservations(internalId, items, expiresAt);
-    if (snapshot.type() == MethodType.PICKUP && fulfillment != null) {
+    if (snapshot.type() == MethodType.PICKUP && pickupBranch != null && fulfillment != null) {
       fulfillment.assign(internalId, pickupBranch);
     }
 
