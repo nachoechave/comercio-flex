@@ -50,6 +50,44 @@ public class QuantityPromotionService {
             rs.getLong("version")));
   }
 
+  public List<View> active(Instant at) {
+    Instant now = at == null ? Instant.now() : at;
+    return jdbc.query("""
+        SELECT BIN_TO_UUID(promo.public_id) id,
+               BIN_TO_UUID(product.public_id) product_id,
+               product.name product_name,
+               promo.name,
+               promo.bundle_quantity,
+               promo.bundle_price,
+               promo.active,
+               promo.starts_at,
+               promo.ends_at,
+               promo.version
+        FROM quantity_promotions promo
+        JOIN products product ON product.id = promo.product_id
+        JOIN categories category ON category.id = product.category_id
+        WHERE promo.active = TRUE
+          AND product.status = 'PUBLISHED'
+          AND category.status = 'ACTIVE'
+          AND (promo.starts_at IS NULL OR promo.starts_at <= ?)
+          AND (promo.ends_at IS NULL OR promo.ends_at > ?)
+        ORDER BY product.id, promo.starts_at DESC, promo.updated_at DESC, promo.id DESC
+        """,
+        (rs, row) -> new View(
+            UUID.fromString(rs.getString("id")),
+            UUID.fromString(rs.getString("product_id")),
+            rs.getString("product_name"),
+            rs.getString("name"),
+            rs.getInt("bundle_quantity"),
+            rs.getBigDecimal("bundle_price"),
+            rs.getBoolean("active"),
+            instant(rs.getTimestamp("starts_at")),
+            instant(rs.getTimestamp("ends_at")),
+            rs.getLong("version")),
+        Timestamp.from(now),
+        Timestamp.from(now));
+  }
+
   public View create(Command raw) {
     Command command = validate(raw);
     UUID id = UUID.randomUUID();
