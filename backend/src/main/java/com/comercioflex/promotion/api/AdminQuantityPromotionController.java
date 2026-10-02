@@ -66,7 +66,10 @@ public class AdminQuantityPromotionController {
   }
 
   public record UpdateRequest(
+      String scopeType,
       UUID productId,
+      java.util.List<UUID> productIds,
+      UUID categoryId,
       String name,
       int bundleQuantity,
       java.math.BigDecimal bundlePrice,
@@ -75,7 +78,9 @@ public class AdminQuantityPromotionController {
       java.time.Instant endsAt,
       long version) {
     Command command() {
-      return new Command(productId, name, bundleQuantity, bundlePrice, active, startsAt, endsAt);
+      return new Command(
+          scopeType, productId, productIds, categoryId, name,
+          bundleQuantity, bundlePrice, active, startsAt, endsAt);
     }
   }
 
