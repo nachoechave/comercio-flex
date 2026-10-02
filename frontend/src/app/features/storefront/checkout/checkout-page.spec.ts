@@ -216,7 +216,11 @@ describe('CheckoutPage', () => {
       customerPhone: '11 5555 1234',
       customerEmail: 'ana@example.com',
       paymentMethod: 'MERCADO_PAGO',
-      shipping: { methodId: 'pickup', expectedTotal: '5000.00' },
+      shipping: {
+        methodId: 'pickup',
+        expectedTotal: '5000.00',
+        pickupBranchId: 'branch-1',
+      },
       notes: 'Cortado fino',
       items: [{ variantId: 'variant-1', quantity: '2' }],
     });
@@ -376,7 +380,18 @@ describe('CheckoutPage', () => {
       request.flush({ pickupAvailable: true, shippingAvailable: false });
     }
     fixture.detectChanges();
+    flushPickupBranchesIfPresent();
     flushAutomaticPickupQuoteIfPresent();
+  }
+
+  function flushPickupBranchesIfPresent(): void {
+    const requests = http.match('/api/v1/stores/tienda-a/shipping/pickup-branches');
+    for (const request of requests) {
+      request.flush([
+        { id: 'branch-1', name: 'Casa central', address: 'Calle 123', defaultBranch: true },
+      ]);
+    }
+    fixture.detectChanges();
   }
 
   function flushAutomaticPickupQuoteIfPresent(): void {
