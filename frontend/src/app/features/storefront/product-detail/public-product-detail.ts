@@ -145,7 +145,7 @@ export class PublicProductDetail {
   });
 
   constructor() {
-    effect(() => this.promotions.ensure(this.storeSlug()));
+    effect(() => this.promotions.ensure(this.storeSlug() ?? ''));
     effect((onCleanup) => {
       const storeSlug = this.storeSlug();
       const productSlug = this.productSlug();
