@@ -38,7 +38,7 @@ export class StorefrontPromotionsService {
   }
 
   promotion(storeSlug: string, productId: string): QuantityPromotion | null {
-    return (this.byStore()[storeSlug] ?? []).find((promo) => promo.productId === productId) ?? null;
+    return (this.byStore()[storeSlug] ?? []).find((promo) => promo.productIds.includes(productId)) ?? null;
   }
 
   promotions(storeSlug: string): QuantityPromotion[] {
@@ -49,15 +49,15 @@ export class StorefrontPromotionsService {
     storeSlug: string,
     lines: readonly { productId: string; unitPrice: string; quantity: number }[],
   ): number {
-    let totalDiscount = 0;
-    const productIds = new Set(lines.map((line) => line.productId));
+    let bestDiscount = 0;
 
-    for (const productId of productIds) {
-      const promotion = this.promotion(storeSlug, productId);
-      if (!promotion || promotion.bundleQuantity < 2) continue;
+    for (const promotion of this.promotions(storeSlug)) {
+      if (promotion.bundleQuantity < 2) continue;
 
+      const eligibleProducts = new Set(promotion.productIds);
       const prices: number[] = [];
-      for (const line of lines.filter((item) => item.productId === productId)) {
+      for (const line of lines) {
+        if (!eligibleProducts.has(line.productId)) continue;
         const unitPrice = Number(line.unitPrice);
         if (!Number.isFinite(unitPrice) || unitPrice <= 0) continue;
         for (let index = 0; index < line.quantity; index++) prices.push(unitPrice);
@@ -70,9 +70,9 @@ export class StorefrontPromotionsService {
 
       const regular = prices.slice(0, promotedUnits).reduce((sum, value) => sum + value, 0);
       const promotional = Number(promotion.bundlePrice) * bundleCount;
-      totalDiscount += Math.max(0, regular - promotional);
+      bestDiscount = Math.max(bestDiscount, regular - promotional);
     }
 
-    return Math.round(totalDiscount * 100) / 100;
+    return Math.round(Math.max(0, bestDiscount) * 100) / 100;
   }
 }

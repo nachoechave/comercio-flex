@@ -198,28 +198,85 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 	public List<ActiveQuantityPromotion> findActiveQuantityPromotions(Set<UUID> productIds, Instant at) {
 		if (productIds == null || productIds.isEmpty()) return List.of();
 		String placeholders = String.join(",", java.util.Collections.nCopies(productIds.size(), "UUID_TO_BIN(?)"));
-		String sql = """
-			SELECT BIN_TO_UUID(product.public_id) product_public_id,
+		record PromotionRow(
+				long internalId,
+				UUID promotionId,
+				String scopeType,
+				UUID productId,
+				Long categoryInternalId,
+				int bundleQuantity,
+				BigDecimal bundlePrice) {}
+
+		List<PromotionRow> rows = jdbcTemplate.query("""
+			SELECT promo.id internal_id,
+			       BIN_TO_UUID(promo.public_id) promotion_public_id,
+			       promo.scope_type,
+			       BIN_TO_UUID(product.public_id) product_public_id,
+			       promo.category_id category_internal_id,
 			       promo.bundle_quantity,
 			       promo.bundle_price
 			FROM quantity_promotions promo
-			JOIN products product ON product.id = promo.product_id
+			LEFT JOIN products product ON product.id = promo.product_id
 			WHERE promo.active = TRUE
-			  AND product.public_id IN (%s)
 			  AND (promo.starts_at IS NULL OR promo.starts_at <= ?)
 			  AND (promo.ends_at IS NULL OR promo.ends_at > ?)
-			ORDER BY product.id, promo.starts_at DESC, promo.updated_at DESC, promo.id DESC
-			""".formatted(placeholders);
-		List<Object> args = new ArrayList<>();
-		productIds.stream().map(UUID::toString).forEach(args::add);
-		args.add(Timestamp.from(at));
-		args.add(Timestamp.from(at));
-		return jdbcTemplate.query(sql,
-			(resultSet, rowNumber) -> new ActiveQuantityPromotion(
-				UUID.fromString(resultSet.getString("product_public_id")),
+			ORDER BY promo.starts_at DESC, promo.updated_at DESC, promo.id DESC
+			""",
+			(resultSet, rowNumber) -> new PromotionRow(
+				resultSet.getLong("internal_id"),
+				UUID.fromString(resultSet.getString("promotion_public_id")),
+				resultSet.getString("scope_type"),
+				resultSet.getString("product_public_id") == null
+					? null : UUID.fromString(resultSet.getString("product_public_id")),
+				resultSet.getObject("category_internal_id") == null
+					? null : resultSet.getLong("category_internal_id"),
 				resultSet.getInt("bundle_quantity"),
 				resultSet.getBigDecimal("bundle_price")),
-			args.toArray());
+			Timestamp.from(at),
+			Timestamp.from(at));
+
+		List<ActiveQuantityPromotion> result = new ArrayList<>();
+		for (PromotionRow row : rows) {
+			List<UUID> eligible = new ArrayList<>();
+			if ("PRODUCT".equals(row.scopeType())) {
+				if (row.productId() != null && productIds.contains(row.productId())) {
+					eligible.add(row.productId());
+				}
+			} else if ("PRODUCTS".equals(row.scopeType())) {
+				String sql = """
+					SELECT BIN_TO_UUID(product.public_id)
+					FROM quantity_promotion_products target
+					JOIN products product ON product.id = target.product_id
+					WHERE target.promotion_id = ?
+					  AND product.public_id IN (%s)
+					""".formatted(placeholders);
+				List<Object> args = new ArrayList<>();
+				args.add(row.internalId());
+				productIds.stream().map(UUID::toString).forEach(args::add);
+				eligible.addAll(jdbcTemplate.query(sql,
+					(rs, n) -> UUID.fromString(rs.getString(1)), args.toArray()));
+			} else if ("CATEGORY".equals(row.scopeType()) && row.categoryInternalId() != null) {
+				String sql = """
+					SELECT BIN_TO_UUID(product.public_id)
+					FROM products product
+					JOIN categories category ON category.id = product.category_id
+					WHERE product.category_id = ?
+					  AND product.public_id IN (%s)
+					  AND product.status = 'PUBLISHED'
+					  AND category.status = 'ACTIVE'
+					""".formatted(placeholders);
+				List<Object> args = new ArrayList<>();
+				args.add(row.categoryInternalId());
+				productIds.stream().map(UUID::toString).forEach(args::add);
+				eligible.addAll(jdbcTemplate.query(sql,
+					(rs, n) -> UUID.fromString(rs.getString(1)), args.toArray()));
+			}
+			if (!eligible.isEmpty()) {
+				result.add(new ActiveQuantityPromotion(
+					row.promotionId(), eligible, row.bundleQuantity(), row.bundlePrice()));
+			}
+		}
+		return result;
 	}
 
 	@Override

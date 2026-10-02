@@ -261,11 +261,6 @@ public class GuestOrderService {
     Set<UUID> productIds = items.stream()
         .map(item -> item.variant().productId())
         .collect(java.util.stream.Collectors.toSet());
-    Map<UUID, ActiveQuantityPromotion> promotions = new HashMap<>();
-    for (ActiveQuantityPromotion promotion :
-        repository.findActiveQuantityPromotions(productIds, clock.instant())) {
-      promotions.putIfAbsent(promotion.productId(), promotion);
-    }
 
     Map<UUID, List<BigDecimal>> unitPricesByProduct = new HashMap<>();
     for (ReservedOrderItem item : items) {
@@ -277,27 +272,35 @@ public class GuestOrderService {
       }
     }
 
-    BigDecimal discount = BigDecimal.ZERO.setScale(2);
-    for (Map.Entry<UUID, List<BigDecimal>> entry : unitPricesByProduct.entrySet()) {
-      ActiveQuantityPromotion promotion = promotions.get(entry.getKey());
-      if (promotion == null || promotion.bundleQuantity() < 2) continue;
+    BigDecimal bestDiscount = BigDecimal.ZERO.setScale(2);
+    for (ActiveQuantityPromotion promotion :
+        repository.findActiveQuantityPromotions(productIds, clock.instant())) {
+      if (promotion.bundleQuantity() < 2) continue;
 
-      List<BigDecimal> unitPrices = entry.getValue();
-      unitPrices.sort(Collections.reverseOrder());
-      int bundleCount = unitPrices.size() / promotion.bundleQuantity();
+      List<BigDecimal> eligiblePrices = new ArrayList<>();
+      for (UUID productId : promotion.productIds()) {
+        eligiblePrices.addAll(unitPricesByProduct.getOrDefault(productId, List.of()));
+      }
+      eligiblePrices.sort(Collections.reverseOrder());
+
+      int bundleCount = eligiblePrices.size() / promotion.bundleQuantity();
       int promotedUnits = bundleCount * promotion.bundleQuantity();
       if (promotedUnits == 0) continue;
 
       BigDecimal regularPromotedTotal = BigDecimal.ZERO.setScale(2);
       for (int index = 0; index < promotedUnits; index++) {
-        regularPromotedTotal = regularPromotedTotal.add(unitPrices.get(index));
+        regularPromotedTotal = regularPromotedTotal.add(eligiblePrices.get(index));
       }
       BigDecimal promotionalTotal =
-          promotion.bundlePrice().multiply(BigDecimal.valueOf(bundleCount)).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal productDiscount = regularPromotedTotal.subtract(promotionalTotal);
-      if (productDiscount.signum() > 0) discount = discount.add(productDiscount);
+          promotion.bundlePrice()
+              .multiply(BigDecimal.valueOf(bundleCount))
+              .setScale(2, RoundingMode.HALF_UP);
+      BigDecimal discount = regularPromotedTotal.subtract(promotionalTotal);
+      if (discount.compareTo(bestDiscount) > 0) {
+        bestDiscount = discount;
+      }
     }
-    return discount.setScale(2, RoundingMode.HALF_UP);
+    return bestDiscount.max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
   }
 
   private GuestOrderCreation replay(UUID idempotencyKey, byte[] fingerprint, String lookupToken) {
