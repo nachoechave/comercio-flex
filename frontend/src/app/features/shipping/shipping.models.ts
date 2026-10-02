@@ -17,6 +17,7 @@ export interface ShippingSelection {
   quoteToken?: string;
   documentType?: CarrierDocumentType;
   documentNumber?: string;
+  pickupBranchId?: string;
 }
 export interface ShippingQuote {
   methodId: string;

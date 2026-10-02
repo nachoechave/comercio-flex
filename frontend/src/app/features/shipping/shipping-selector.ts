@@ -7,6 +7,7 @@ import {
   ShippingSelection,
 } from './shipping.models';
 import { StorefrontMoneyPipe } from '../storefront/storefront-money.pipe';
+import { PickupBranch } from './pickup-branch';
 
 interface ShippingAvailability {
   pickupAvailable: boolean;
@@ -56,6 +57,40 @@ interface ShippingAvailability {
             </label>
           }
         </div>
+
+        @if (mode() === 'PICKUP' && modes.pickupAvailable) {
+          <section class="pickup-branches">
+            <strong>Sucursal de retiro</strong>
+            @if (branchesLoading()) {
+              <p class="availability-loading">Cargando sucursales…</p>
+            } @else if (pickupBranches().length) {
+              <div class="branch-grid">
+                @for (branch of pickupBranches(); track branch.id) {
+                  <label class="branch-card" [class.selected]="selectedBranch() === branch.id">
+                    <input
+                      type="radio"
+                      name="pickupBranch"
+                      [checked]="selectedBranch() === branch.id"
+                      (change)="chooseBranch(branch.id)"
+                      [disabled]="disabled()"
+                    />
+                    <span>
+                      <strong>{{ branch.name }}</strong>
+                      @if (branch.address) {
+                        <small>{{ branch.address }}</small>
+                      }
+                      @if (branch.defaultBranch) {
+                        <em>Principal</em>
+                      }
+                    </span>
+                  </label>
+                }
+              </div>
+            } @else {
+              <p class="availability-loading">No hay sucursales de retiro disponibles.</p>
+            }
+          </section>
+        }
 
         @if (mode() === 'SHIPPING' && modes.shippingAvailable) {
           <div [formGroup]="address" class="address">
@@ -250,6 +285,45 @@ interface ShippingAvailability {
       .availability-loading {
         margin: 0;
       }
+      .pickup-branches {
+        display: grid;
+        gap: 10px;
+        padding: 16px;
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--color-text, #111827) 4%, var(--color-surface, #fff));
+      }
+      .branch-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+        gap: 10px;
+      }
+      .branch-card {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 14px;
+        border: 1px solid var(--color-border, #dfe4ea);
+        border-radius: 14px;
+        background: var(--color-surface, #fff);
+        cursor: pointer;
+      }
+      .branch-card.selected {
+        border-color: var(--color-accent, #24364b);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent, #24364b) 12%, transparent);
+      }
+      .branch-card span {
+        display: grid;
+        gap: 4px;
+      }
+      .branch-card small {
+        color: var(--color-muted, #667085);
+      }
+      .branch-card em {
+        width: fit-content;
+        font-size: 0.75rem;
+        font-style: normal;
+        font-weight: 700;
+      }
       .address,
       .carrier-document {
         display: grid;
@@ -393,6 +467,9 @@ export class ShippingSelector {
   options = signal<ShippingQuote[]>([]);
   selected = signal<string | null>(null);
   current = signal<ShippingQuote | null>(null);
+  pickupBranches = signal<PickupBranch[]>([]);
+  branchesLoading = signal(false);
+  selectedBranch = signal<string | null>(null);
   private generation = 0;
   address = this.fb.nonNullable.group({
     street: ['', Validators.required],
@@ -425,6 +502,8 @@ export class ShippingSelector {
       const slug = this.storeSlug();
       this.availability.set(null);
       this.availabilityLoading.set(true);
+      this.pickupBranches.set([]);
+      this.selectedBranch.set(null);
       if (!slug) {
         this.availabilityLoading.set(false);
         return;
@@ -439,7 +518,7 @@ export class ShippingSelector {
             this.availabilityLoading.set(false);
             if (modes.pickupAvailable) {
               this.mode.set('PICKUP');
-              this.autoSelectPickup();
+              this.loadBranches();
             } else if (modes.shippingAvailable) {
               this.mode.set('SHIPPING');
             } else {
@@ -474,6 +553,33 @@ export class ShippingSelector {
     return this.visibleOptions().some((q) => q.type === 'CARRIER');
   }
 
+  private loadBranches() {
+    this.branchesLoading.set(true);
+    this.http
+      .get<PickupBranch[]>(
+        '/api/v1/stores/' + encodeURIComponent(this.storeSlug()) + '/shipping/pickup-branches',
+      )
+      .subscribe({
+        next: (branches) => {
+          this.branchesLoading.set(false);
+          this.pickupBranches.set(branches);
+          const preferred = branches.find((branch) => branch.defaultBranch) ?? branches[0];
+          this.selectedBranch.set(preferred?.id ?? null);
+          this.autoSelectPickup();
+        },
+        error: () => {
+          this.branchesLoading.set(false);
+          this.error.set('No pudimos cargar las sucursales de retiro.');
+        },
+      });
+  }
+
+  chooseBranch(id: string) {
+    this.selectedBranch.set(id);
+    this.invalidate();
+    this.autoSelectPickup();
+  }
+
   setMode(mode: 'PICKUP' | 'SHIPPING') {
     const modes = this.availability();
     if (mode === 'PICKUP' && modes && !modes.pickupAvailable) return;
@@ -505,6 +611,11 @@ export class ShippingSelector {
     if (!modes) return;
     if (this.mode() === 'PICKUP' && !modes.pickupAvailable) return;
     if (this.mode() === 'SHIPPING' && !modes.shippingAvailable) return;
+
+    if (this.mode() === 'PICKUP' && !this.selectedBranch()) {
+      this.error.set('Elegí una sucursal de retiro.');
+      return;
+    }
 
     if (this.mode() === 'SHIPPING') {
       this.address.markAllAsTouched();
@@ -578,7 +689,9 @@ export class ShippingSelector {
     this.selection.emit({
       methodId: q.methodId,
       expectedTotal: q.total,
-      ...(q.type === 'PICKUP' ? {} : { address: this.address.getRawValue() }),
+      ...(q.type === 'PICKUP'
+        ? { pickupBranchId: this.selectedBranch() ?? undefined }
+        : { address: this.address.getRawValue() }),
       ...(q.type === 'CARRIER'
         ? {
             quoteToken: q.quoteToken ?? undefined,
@@ -594,6 +707,7 @@ export class ShippingSelector {
     if (
       !modes?.pickupAvailable ||
       this.mode() !== 'PICKUP' ||
+      !this.selectedBranch() ||
       this.disabled() ||
       this.loading()
     ) {

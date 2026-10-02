@@ -86,9 +86,20 @@ public final class ShippingModels {
       @NotNull @DecimalMin("0") BigDecimal expectedTotal,
       UUID quoteToken,
       DocumentType documentType,
-      @Size(max = 20) String documentNumber) {
+      @Size(max = 20) String documentNumber,
+      UUID pickupBranchId) {
     public Selection(UUID methodId, Address address, BigDecimal expectedTotal) {
-      this(methodId, address, expectedTotal, null, null, null);
+      this(methodId, address, expectedTotal, null, null, null, null);
+    }
+
+    public Selection(
+        UUID methodId,
+        Address address,
+        BigDecimal expectedTotal,
+        UUID quoteToken,
+        DocumentType documentType,
+        String documentNumber) {
+      this(methodId, address, expectedTotal, quoteToken, documentType, documentNumber, null);
     }
   }
 

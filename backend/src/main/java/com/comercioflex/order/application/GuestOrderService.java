@@ -2,6 +2,7 @@ package com.comercioflex.order.application;
 
 import com.comercioflex.order.domain.GuestOrder;
 import com.comercioflex.order.domain.OrderStatus;
+import com.comercioflex.shipping.domain.ShippingModels.MethodType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -39,13 +40,17 @@ public class GuestOrderService {
   private final TransactionTemplate transactionTemplate;
   private final Clock clock;
   private final com.comercioflex.shipping.application.ShippingService shipping;
+  private final BranchFulfillmentAssignmentService fulfillment;
+  private final BranchReservationStockGuard branchStock;
 
   @Autowired
   public GuestOrderService(
       GuestOrderRepository repository,
       @Qualifier("tenantTransactionTemplate") TransactionTemplate transactionTemplate,
-      com.comercioflex.shipping.application.ShippingService shipping) {
-    this(repository, transactionTemplate, Clock.systemUTC(), shipping);
+      com.comercioflex.shipping.application.ShippingService shipping,
+      BranchFulfillmentAssignmentService fulfillment,
+      BranchReservationStockGuard branchStock) {
+    this(repository, transactionTemplate, Clock.systemUTC(), shipping, fulfillment, branchStock);
   }
 
   GuestOrderService(
@@ -53,10 +58,22 @@ public class GuestOrderService {
       TransactionTemplate transactionTemplate,
       Clock clock,
       com.comercioflex.shipping.application.ShippingService shipping) {
+    this(repository, transactionTemplate, clock, shipping, null, null);
+  }
+
+  GuestOrderService(
+      GuestOrderRepository repository,
+      TransactionTemplate transactionTemplate,
+      Clock clock,
+      com.comercioflex.shipping.application.ShippingService shipping,
+      BranchFulfillmentAssignmentService fulfillment,
+      BranchReservationStockGuard branchStock) {
     this.shipping = shipping;
     this.repository = repository;
     this.transactionTemplate = transactionTemplate;
     this.clock = clock;
+    this.fulfillment = fulfillment;
+    this.branchStock = branchStock;
   }
 
   public GuestOrderCreation create(CreateGuestOrderCommand rawCommand) {
@@ -108,6 +125,16 @@ public class GuestOrderService {
     var discountAmount = cart.discountAmount();
     var finalSubtotal = cart.subtotal();
     var snapshot = shipping.select(command.shipping(), listSubtotal, discountAmount);
+    UUID pickupBranch =
+        snapshot.type() == MethodType.PICKUP && command.shipping() != null
+            ? command.shipping().pickupBranchId()
+            : null;
+    if (pickupBranch != null && branchStock != null) {
+      for (ReservedOrderItem item : items) {
+        branchStock.requireAvailable(
+            pickupBranch, item.variant().internalId(), item.quantity());
+      }
+    }
 
     Instant expiresAt = clock.instant().plus(RESERVATION_DURATION);
     UUID orderId = UUID.randomUUID();
@@ -133,6 +160,9 @@ public class GuestOrderService {
     shipping.attach(internalId, snapshot);
     repository.insertInitialHistory(internalId);
     repository.insertItemsAndReservations(internalId, items, expiresAt);
+    if (snapshot.type() == MethodType.PICKUP && pickupBranch != null && fulfillment != null) {
+      fulfillment.assign(internalId, pickupBranch);
+    }
 
     return new GuestOrderCreation(repository.findByInternalId(internalId), lookupToken, false);
   }
@@ -398,6 +428,9 @@ public class GuestOrderService {
       fingerprintValue(
           canonical, selection.documentType() == null ? null : selection.documentType().name());
       fingerprintValue(canonical, selection.documentNumber());
+      fingerprintValue(
+          canonical,
+          selection.pickupBranchId() == null ? null : selection.pickupBranchId().toString());
       var address = selection.address();
       canonical.append(address == null ? "no-address" : "address");
       if (address != null) {

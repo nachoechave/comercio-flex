@@ -33,23 +33,31 @@ class OrderTransitionExecutor {
   private final Clock clock;
   private final OrderFulfillmentPolicy fulfillmentPolicy;
   private final BranchStockSynchronizer branchStockSynchronizer;
+  private final BranchFulfillmentAssignmentService fulfillmentBranch;
 
   @Autowired
   OrderTransitionExecutor(
       AdminOrderRepository repository,
       OrderPaymentPolicy paymentPolicy,
       OrderFulfillmentPolicy fulfillmentPolicy,
-      BranchStockSynchronizer branchStockSynchronizer) {
-    this(repository, paymentPolicy, Clock.systemUTC(), fulfillmentPolicy, branchStockSynchronizer);
+      BranchStockSynchronizer branchStockSynchronizer,
+      BranchFulfillmentAssignmentService fulfillmentBranch) {
+    this(
+        repository,
+        paymentPolicy,
+        Clock.systemUTC(),
+        fulfillmentPolicy,
+        branchStockSynchronizer,
+        fulfillmentBranch);
   }
 
   OrderTransitionExecutor(AdminOrderRepository repository, Clock clock) {
-    this(repository, OrderPaymentPolicy.allowAll(), clock, OrderFulfillmentPolicy.noop(), null);
+    this(repository, OrderPaymentPolicy.allowAll(), clock, OrderFulfillmentPolicy.noop(), null, null);
   }
 
   OrderTransitionExecutor(
       AdminOrderRepository repository, OrderPaymentPolicy paymentPolicy, Clock clock) {
-    this(repository, paymentPolicy, clock, OrderFulfillmentPolicy.noop(), null);
+    this(repository, paymentPolicy, clock, OrderFulfillmentPolicy.noop(), null, null);
   }
 
   OrderTransitionExecutor(
@@ -57,7 +65,7 @@ class OrderTransitionExecutor {
       OrderPaymentPolicy paymentPolicy,
       Clock clock,
       OrderFulfillmentPolicy fulfillmentPolicy) {
-    this(repository, paymentPolicy, clock, fulfillmentPolicy, null);
+    this(repository, paymentPolicy, clock, fulfillmentPolicy, null, null);
   }
 
   OrderTransitionExecutor(
@@ -66,11 +74,22 @@ class OrderTransitionExecutor {
       Clock clock,
       OrderFulfillmentPolicy fulfillmentPolicy,
       BranchStockSynchronizer branchStockSynchronizer) {
+    this(repository, paymentPolicy, clock, fulfillmentPolicy, branchStockSynchronizer, null);
+  }
+
+  OrderTransitionExecutor(
+      AdminOrderRepository repository,
+      OrderPaymentPolicy paymentPolicy,
+      Clock clock,
+      OrderFulfillmentPolicy fulfillmentPolicy,
+      BranchStockSynchronizer branchStockSynchronizer,
+      BranchFulfillmentAssignmentService fulfillmentBranch) {
     this.repository = repository;
     this.paymentPolicy = paymentPolicy;
     this.clock = clock;
     this.fulfillmentPolicy = fulfillmentPolicy;
     this.branchStockSynchronizer = branchStockSynchronizer;
+    this.fulfillmentBranch = fulfillmentBranch;
   }
 
   OrderTransitionExecution execute(OrderTransitionCommand command) {
@@ -151,6 +170,15 @@ class OrderTransitionExecutor {
 
   private int moveStock(LockedAdminOrder order, OrderTransitionCommand command, boolean restoring) {
     var lines = repository.findStockLinesForUpdate(order.internalId());
+    UUID selectedBranch = null;
+    if (order.fulfillmentType() == com.comercioflex.order.domain.FulfillmentType.PICKUP
+        && fulfillmentBranch != null) {
+      selectedBranch =
+          fulfillmentBranch
+              .findAssignedForOrder(order.internalId(), true)
+              .map(com.comercioflex.inventory.application.BranchFulfillmentStockService.Branch::id)
+              .orElse(null);
+    }
     for (OrderStockLine line : lines) {
       BigDecimal before = repository.findBalanceForUpdate(line.variantInternalId());
       BigDecimal after = restoring ? before.add(line.quantity()) : before.subtract(line.quantity());
@@ -160,17 +188,25 @@ class OrderTransitionExecutor {
       }
       if (branchStockSynchronizer != null) {
         BigDecimal branchDelta = restoring ? line.quantity() : line.quantity().negate();
-        if (!restoring
-            && branchStockSynchronizer.findDefaultAvailable(line.variantInternalId())
-                .compareTo(line.quantity()) < 0) {
+        BigDecimal branchAvailable =
+            selectedBranch == null
+                ? branchStockSynchronizer.findDefaultAvailable(line.variantInternalId())
+                : branchStockSynchronizer.findBranchAvailable(
+                    selectedBranch, line.variantInternalId());
+        if (!restoring && branchAvailable.compareTo(line.quantity()) < 0) {
           throw new InvalidOrderTransitionException(
-              "La sucursal principal no tiene stock suficiente para confirmar el pedido.");
+              "La sucursal seleccionada no tiene stock suficiente para confirmar el pedido.");
         }
         try {
-          branchStockSynchronizer.applyDefaultDelta(line.variantInternalId(), branchDelta);
-        } catch (InsufficientStockException exception) {
+          if (selectedBranch == null) {
+            branchStockSynchronizer.applyDefaultDelta(line.variantInternalId(), branchDelta);
+          } else {
+            branchStockSynchronizer.applyBranchDelta(
+                selectedBranch, line.variantInternalId(), branchDelta);
+          }
+        } catch (InsufficientStockException | IllegalArgumentException exception) {
           throw new InvalidOrderTransitionException(
-              "La sucursal principal no tiene stock suficiente para confirmar el pedido.");
+              "La sucursal seleccionada no tiene stock suficiente para confirmar el pedido.");
         }
       }
       long balanceVersion = repository.updateBalance(line.variantInternalId(), after);

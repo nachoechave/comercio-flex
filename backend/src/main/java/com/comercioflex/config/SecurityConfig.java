@@ -96,7 +96,11 @@ public class SecurityConfig {
 				.permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/v1/public/contact").permitAll()
-				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/shipping/availability").permitAll()
+				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/stores/*/shipping/availability",
+					"/api/v1/stores/*/shipping/pickup-branches")
+				.permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/v1/stores/*/shipping/quote").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/storefront/resolve").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/*/membership-plans").permitAll()

@@ -26,12 +26,18 @@ public class AdminOrderService {
 			@Qualifier("tenantTransactionTemplate") TransactionTemplate transactionTemplate,
 			OrderPaymentPolicy paymentPolicy,
 			OrderFulfillmentPolicy fulfillmentPolicy,
-			BranchStockSynchronizer branchStockSynchronizer) {
+			BranchStockSynchronizer branchStockSynchronizer,
+			BranchFulfillmentAssignmentService fulfillmentBranch) {
 		this(
 			repository,
 			transactionTemplate,
 			new OrderTransitionExecutor(
-				repository, paymentPolicy, Clock.systemUTC(), fulfillmentPolicy, branchStockSynchronizer));
+				repository,
+				paymentPolicy,
+				Clock.systemUTC(),
+				fulfillmentPolicy,
+				branchStockSynchronizer,
+				fulfillmentBranch));
 	}
 
 	AdminOrderService(
