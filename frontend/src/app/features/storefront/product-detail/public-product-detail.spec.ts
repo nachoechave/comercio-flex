@@ -111,9 +111,15 @@ describe('PublicProductDetail', () => {
     localStorage.clear();
   });
 
+  function flushPromotions(storeSlug = 'tienda-a'): void {
+    const requests = http.match(`/api/v1/stores/${storeSlug}/catalog/promotions`);
+    for (const request of requests) request.flush([]);
+  }
+
   function create(): void {
     fixture = TestBed.createComponent(PublicProductDetail);
     fixture.detectChanges();
+    flushPromotions();
   }
 
   it.each(['FASHION', 'FRESH', 'CATALOG'] as const)(
@@ -547,6 +553,7 @@ describe('PublicProductDetail', () => {
     );
 
     fixture.detectChanges();
+    flushPromotions('tienda-b');
 
     expect((fixture.componentInstance as any).product()).toBeNull();
 
@@ -589,6 +596,7 @@ describe('PublicProductDetail', () => {
     );
 
     fixture.detectChanges();
+    flushPromotions('tienda-b');
 
     expect(requestA.cancelled).toBe(true);
     expect((fixture.componentInstance as any).product()).toBeNull();
