@@ -116,7 +116,7 @@ export interface PublicProductDetail {
   imageUrl?: string | null;
 }
 
-export type QuantityPromotionScope = 'PRODUCT' | 'PRODUCTS' | 'CATEGORY';
+export type QuantityPromotionScope = 'PRODUCT' | 'PRODUCTS' | 'CATEGORY' | 'COMBO';
 
 export interface QuantityPromotion {
   id: string;
@@ -126,6 +126,7 @@ export interface QuantityPromotion {
   categoryId: string | null;
   categoryName: string | null;
   productIds: string[];
+  secondProductIds?: string[];
   name: string;
   bundleQuantity: number;
   bundlePrice: string;

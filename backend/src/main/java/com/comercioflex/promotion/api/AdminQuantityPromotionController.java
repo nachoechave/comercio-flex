@@ -69,6 +69,7 @@ public class AdminQuantityPromotionController {
       String scopeType,
       UUID productId,
       java.util.List<UUID> productIds,
+      java.util.List<UUID> secondProductIds,
       UUID categoryId,
       String name,
       int bundleQuantity,
@@ -79,7 +80,7 @@ public class AdminQuantityPromotionController {
       long version) {
     Command command() {
       return new Command(
-          scopeType, productId, productIds, categoryId, name,
+          scopeType, productId, productIds, secondProductIds, categoryId, name,
           bundleQuantity, bundlePrice, active, startsAt, endsAt);
     }
   }

@@ -5,7 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
-type PromotionScope = 'PRODUCT' | 'PRODUCTS' | 'CATEGORY';
+type PromotionScope = 'PRODUCT' | 'PRODUCTS' | 'CATEGORY' | 'COMBO';
 
 interface Promotion {
   id: string;
@@ -15,6 +15,7 @@ interface Promotion {
   categoryId: string | null;
   categoryName: string | null;
   productIds: string[];
+  secondProductIds?: string[];
   name: string;
   bundleQuantity: number;
   bundlePrice: number;
@@ -64,6 +65,7 @@ interface Category {
                 <option value="PRODUCT">Un producto</option>
                 <option value="PRODUCTS">Varios productos</option>
                 <option value="CATEGORY">Categoría completa</option>
+                <option value="COMBO">Combo de dos grupos (1 + 1)</option>
               </select>
             </label>
 
@@ -79,9 +81,9 @@ interface Category {
               </label>
             }
 
-            @if (form.controls.scopeType.value === 'PRODUCTS') {
+            @if (form.controls.scopeType.value === 'PRODUCTS' || form.controls.scopeType.value === 'COMBO') {
               <label>
-                Productos incluidos
+                {{ form.controls.scopeType.value === 'COMBO' ? 'Grupo 1 (ej: remeras)' : 'Productos incluidos' }}
                 <select multiple size="7" formControlName="productIds">
                   @for (product of products(); track product.id) {
                     <option [value]="product.id">{{ product.name }}</option>
@@ -106,6 +108,16 @@ interface Category {
               </label>
             }
 
+            @if (form.controls.scopeType.value === 'COMBO') {
+              <label>Grupo 2 (ej: pantalones)
+                <select multiple size="7" formControlName="secondProductIds">
+                  @for (product of products(); track product.id) {
+                    <option [value]="product.id">{{ product.name }}</option>
+                  }
+                </select>
+                <small>El combo exige una unidad de cada grupo. No repitas productos entre grupos.</small>
+              </label>
+            }
             <label>
               Nombre
               <input
@@ -118,7 +130,7 @@ interface Category {
             <div class="two">
               <label>
                 Cantidad
-                <input type="number" min="2" max="99" step="1" formControlName="bundleQuantity" />
+                <input type="number" min="2" max="99" step="1" formControlName="bundleQuantity" [readOnly]="form.controls.scopeType.value === 'COMBO'" />
               </label>
 
               <label>
@@ -262,6 +274,7 @@ export class PromotionAdminPage {
     scopeType: ['PRODUCT' as PromotionScope, Validators.required],
     productId: [''],
     productIds: [[] as string[]],
+    secondProductIds: [[] as string[]],
     categoryId: [''],
     name: ['', [Validators.required, Validators.maxLength(120)]],
     bundleQuantity: [2, [Validators.required, Validators.min(2), Validators.max(99)]],
@@ -276,6 +289,9 @@ export class PromotionAdminPage {
   }
 
   constructor() {
+    this.form.controls.scopeType.valueChanges.subscribe(scope => {
+      if (scope === 'COMBO') this.form.controls.bundleQuantity.setValue(2);
+    });
     this.load();
   }
 
@@ -291,7 +307,8 @@ export class PromotionAdminPage {
     this.form.reset({
       scopeType: promo.scopeType,
       productId: promo.productId ?? '',
-      productIds: promo.scopeType === 'PRODUCTS' ? promo.productIds : [],
+      productIds: ['PRODUCTS', 'COMBO'].includes(promo.scopeType) ? promo.productIds : [],
+      secondProductIds: promo.secondProductIds ?? [],
       categoryId: promo.categoryId ?? '',
       name: promo.name,
       bundleQuantity: promo.bundleQuantity,
@@ -322,14 +339,19 @@ export class PromotionAdminPage {
       return;
     }
 
+    if (value.scopeType === 'COMBO' && (!value.productIds.length || !value.secondProductIds.length || value.secondProductIds.some(id => value.productIds.includes(id)))) {
+      this.error.set('Elegí productos en ambos grupos sin repetirlos.');
+      return;
+    }
     const current = this.promotions().find((item) => item.id === this.editingId());
     const body = {
       scopeType: value.scopeType,
       productId: value.scopeType === 'PRODUCT' ? value.productId : null,
-      productIds: value.scopeType === 'PRODUCTS' ? value.productIds : [],
+      productIds: ['PRODUCTS', 'COMBO'].includes(value.scopeType) ? value.productIds : [],
+      secondProductIds: value.scopeType === 'COMBO' ? value.secondProductIds : [],
       categoryId: value.scopeType === 'CATEGORY' ? value.categoryId : null,
       name: value.name.trim(),
-      bundleQuantity: Number(value.bundleQuantity),
+      bundleQuantity: value.scopeType === 'COMBO' ? 2 : Number(value.bundleQuantity),
       bundlePrice: Number(value.bundlePrice),
       active: value.active,
       startsAt: value.startsAt ? new Date(value.startsAt).toISOString() : null,
@@ -386,6 +408,8 @@ export class PromotionAdminPage {
 
   previewHelp(): string {
     switch (this.form.controls.scopeType.value) {
+      case 'COMBO':
+        return 'Una unidad de cada grupo. Dos productos del mismo grupo no forman el combo.';
       case 'CATEGORY':
         return 'Se combinan unidades de cualquier producto de la categoría elegida.';
       case 'PRODUCTS':
@@ -396,6 +420,7 @@ export class PromotionAdminPage {
   }
 
   targetLabel(promo: Promotion): string {
+    if (promo.scopeType === 'COMBO') return 'Combo: 1 producto de cada grupo';
     if (promo.scopeType === 'CATEGORY') {
       return `Categoría: ${promo.categoryName ?? 'Sin categoría'}`;
     }
@@ -410,6 +435,7 @@ export class PromotionAdminPage {
       scopeType: 'PRODUCT',
       productId: '',
       productIds: [],
+      secondProductIds: [],
       categoryId: '',
       name: '',
       bundleQuantity: 2,
