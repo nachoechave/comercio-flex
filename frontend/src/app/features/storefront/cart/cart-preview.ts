@@ -1,9 +1,10 @@
-import { Component, HostListener, computed, inject, input } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { variantOptionsLabel } from '../../../shared/variant-options';
 import { StorefrontContextService } from '../storefront-context.service';
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
+import { StorefrontPromotionsService } from '../promotions/storefront-promotions.service';
 import { CartLine } from './cart.models';
 import { CartPreviewService } from './cart-preview.service';
 import { CartService } from './cart.service';
@@ -18,6 +19,7 @@ import { StorefrontRoutingService } from '../storefront-routing.service';
 export class CartPreview {
   private readonly cart = inject(CartService);
   private readonly preview = inject(CartPreviewService);
+  private readonly promotions = inject(StorefrontPromotionsService);
   protected readonly context = inject(StorefrontContextService);
   protected readonly storefrontRouting = inject(StorefrontRoutingService);
 
@@ -30,6 +32,25 @@ export class CartPreview {
   );
   protected readonly totalUnits = computed(() => this.cart.totalUnits(this.storeSlug()));
   protected readonly subtotal = computed(() => this.cart.availableSubtotal(this.storeSlug()));
+  protected readonly promotionDiscount = computed(() =>
+    this.promotions.calculateDiscount(
+      this.storeSlug(),
+      this.items()
+        .filter((line) => line.status === 'AVAILABLE')
+        .map((line) => ({
+          productId: line.productId,
+          unitPrice: line.unitPrice,
+          quantity: line.quantity,
+        })),
+    ),
+  );
+  protected readonly promotionalSubtotal = computed(() =>
+    Math.max(0, Number(this.subtotal()) - this.promotionDiscount()).toFixed(2),
+  );
+
+  constructor() {
+    effect(() => this.promotions.ensure(this.storeSlug()));
+  }
 
   protected close(): void {
     this.preview.close();
