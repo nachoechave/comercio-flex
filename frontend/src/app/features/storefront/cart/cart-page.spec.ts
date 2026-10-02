@@ -116,6 +116,7 @@ describe('CartPage', () => {
     });
     fixture = TestBed.createComponent(CartPage);
     fixture.detectChanges();
+    http.expectOne('/api/v1/stores/tienda-a/catalog/promotions').flush([]);
   }
 
   it('revalidates a persisted line and updates price and metadata', () => {

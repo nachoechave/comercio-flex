@@ -90,7 +90,15 @@ describe('CatalogPage', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    const promotionRequests = http.match(
+      (request) => request.url.endsWith('/catalog/promotions'),
+    );
+    for (const request of promotionRequests) {
+      request.flush([]);
+    }
+    http.verify();
+  });
 
   function create(): void {
     fixture = TestBed.createComponent(CatalogPage);

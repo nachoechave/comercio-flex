@@ -303,3 +303,30 @@ h2 a::after {
     transition: none;
   }
 }
+
+
+.promotion-badge {
+  display: inline-flex;
+  margin: 0.55rem 0 0;
+  padding: 0.28rem 0.5rem;
+  border-radius: 999px;
+  color: var(--store-background-color, #fff);
+  background: var(--store-text-color, #111);
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.product-card--streetwear .promotion-badge {
+  border-radius: 0;
+  color: #111;
+  background: var(--store-primary-color);
+}
+
+.product-card--minimal .promotion-badge {
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-text);
+  background: transparent;
+}

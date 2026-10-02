@@ -718,3 +718,33 @@
 .product-media {
   touch-action: pan-y;
 }
+
+
+.promotion-callout {
+  display: grid;
+  gap: 0.18rem;
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--product-primary) 34%, var(--product-border));
+  border-radius: var(--product-control-radius);
+  color: var(--product-text);
+  background: color-mix(in srgb, var(--product-primary) 8%, var(--product-surface));
+}
+
+.promotion-callout strong {
+  color: var(--product-primary);
+  font-size: 1rem;
+}
+
+.promotion-callout span {
+  font-weight: 750;
+}
+
+.promotion-callout small {
+  color: var(--product-muted);
+}
+
+.product-page--streetwear .promotion-callout,
+.product-page--minimal .promotion-callout {
+  border-radius: 0;
+}

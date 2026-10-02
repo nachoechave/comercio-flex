@@ -93,6 +93,13 @@
                 </p>
               }
 
+              @if (promotionFor(line); as promo) {
+                <p class="line-promotion">
+                  Promo: {{ promo.bundleQuantity }} por
+                  {{ promo.bundlePrice | storefrontMoney: context.currencyCode() }}
+                </p>
+              }
+
               <div class="line-actions">
                 <label>
                   Cantidad
@@ -121,13 +128,25 @@
         <p class="eyebrow">Resumen</p>
         <h2 id="summary-title">Subtotal disponible</h2>
         <strong class="subtotal">{{ subtotal() | storefrontMoney: context.currencyCode() }}</strong>
+        @if (promotionDiscount() > 0) {
+          <div class="promotion-summary">
+            <span>Promociones</span>
+            <strong>
+              −{{ promotionDiscount().toFixed(2) | storefrontMoney: context.currencyCode() }}
+            </strong>
+          </div>
+          <div class="promotion-summary promotion-summary--total">
+            <span>Subtotal con promos</span>
+            <strong>{{ promotionalSubtotal() | storefrontMoney: context.currencyCode() }}</strong>
+          </div>
+        }
         @if (
           context.settings()?.bankTransferEnabled &&
           (context.settings()?.bankTransferDiscountPercentage ?? 0) > 0
         ) {
           <p>
             <strong>
-              {{ context.bankTransferPrice(subtotal()) | storefrontMoney: context.currencyCode() }}
+              {{ context.bankTransferPrice(promotionalSubtotal()) | storefrontMoney: context.currencyCode() }}
             </strong>
             con transferencia ({{ context.settings()?.bankTransferDiscountPercentage }}% OFF).
           </p>

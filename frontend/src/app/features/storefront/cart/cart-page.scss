@@ -659,3 +659,57 @@ button:disabled {
     text-align: right;
   }
 }
+
+
+.line-promotion {
+  display: inline-flex;
+  width: fit-content;
+  margin: 0.55rem 0 0;
+  padding: 0.3rem 0.5rem;
+  border-radius: 999px;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 9%, var(--color-surface));
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.promotion-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.45rem 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.promotion-summary strong {
+  color: #24724a;
+}
+
+.promotion-summary--total {
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.promotion-summary--total strong {
+  color: var(--color-text);
+}
+
+.cart-page--streetwear .line-promotion {
+  border-radius: 0;
+  color: #111;
+  background: var(--store-primary-color);
+  text-transform: uppercase;
+}
+
+.cart-page--streetwear .promotion-summary {
+  color: #bcbcbc;
+}
+
+.cart-page--streetwear .promotion-summary strong {
+  color: var(--store-primary-color);
+}
+
+.cart-page--streetwear .promotion-summary--total {
+  border-top-color: #333;
+}

@@ -17,6 +17,7 @@ import {
 import { StorefrontMoneyPipe } from '../storefront-money.pipe';
 import { CartService } from '../cart/cart.service';
 import { CartPreviewService } from '../cart/cart-preview.service';
+import { StorefrontPromotionsService } from '../promotions/storefront-promotions.service';
 
 interface ProductOptionGroup {
   name: string;
@@ -34,6 +35,7 @@ export class PublicProductDetail {
   private readonly api = inject(StorefrontApiService);
   private readonly cart = inject(CartService);
   private readonly cartPreview = inject(CartPreviewService);
+  private readonly promotions = inject(StorefrontPromotionsService);
   private readonly analytics = inject(StoreAnalyticsService);
   protected readonly context = inject(StorefrontContextService);
   private readonly route = inject(ActivatedRoute);
@@ -112,6 +114,11 @@ export class PublicProductDetail {
       this.product()?.variants[0]?.price ??
       null,
   );
+  protected readonly promotion = computed(() => {
+    const product = this.product();
+    const storeSlug = this.storeSlug();
+    return product && storeSlug ? this.promotions.promotion(storeSlug, product.id) : null;
+  });
   protected readonly initial = computed(
     () => this.product()?.name.trim().slice(0, 1).toUpperCase() ?? '',
   );
@@ -138,6 +145,7 @@ export class PublicProductDetail {
   });
 
   constructor() {
+    effect(() => this.promotions.ensure(this.storeSlug() ?? ''));
     effect((onCleanup) => {
       const storeSlug = this.storeSlug();
       const productSlug = this.productSlug();

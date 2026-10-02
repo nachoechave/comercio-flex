@@ -68,6 +68,16 @@
           <h1 id="product-title">{{ currentProduct.name }}</h1>
           @if (featuredPrice(); as price) {
             <p class="featured-price">{{ price | storefrontMoney: context.currencyCode() }}</p>
+            @if (promotion(); as promo) {
+              <div class="promotion-callout">
+                <strong>
+                  Promo · {{ promo.bundleQuantity }} por
+                  {{ promo.bundlePrice | storefrontMoney: context.currencyCode() }}
+                </strong>
+                <span>{{ promo.name }}</span>
+                <small>Podés combinar variantes del mismo producto.</small>
+              </div>
+            }
             @if (
               context.settings()?.bankTransferEnabled &&
               (context.settings()?.bankTransferDiscountPercentage ?? 0) > 0

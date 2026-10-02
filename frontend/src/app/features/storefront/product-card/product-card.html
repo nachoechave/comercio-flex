@@ -21,6 +21,12 @@
   </a>
   <div class="content">
     <p class="category">{{ product().category.name }}</p>
+    @if (promotion(); as promo) {
+      <p class="promotion-badge">
+        Promo · {{ promo.bundleQuantity }} por
+        {{ promo.bundlePrice | storefrontMoney: currencyCode() }}
+      </p>
+    }
     <h2>
       <a [routerLink]="storefrontRouting.route(storeSlug(), 'productos', product().slug)">
         {{ product().name }}
