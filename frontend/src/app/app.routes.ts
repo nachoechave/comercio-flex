@@ -89,6 +89,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'abonos',
+        loadComponent: () =>
+          import('./features/superadmin/billing/platform-billing-page').then(
+            (module) => module.PlatformBillingPage,
+          ),
+      },
+      {
         path: 'empresas/nueva',
         loadComponent: () =>
           import('./features/superadmin/companies/company-create').then(

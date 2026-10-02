@@ -78,6 +78,7 @@ describe('application routes', () => {
     expect(route?.children?.map((child) => child.path)).toEqual([
       '',
       'empresas',
+      'abonos',
       'empresas/nueva',
       'empresas/:companyId/apariencia',
       'empresas/:companyId',
