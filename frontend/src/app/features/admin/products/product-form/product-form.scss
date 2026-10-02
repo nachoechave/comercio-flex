@@ -479,3 +479,26 @@ textarea:disabled {
 .gallery-editor span {
   width: 100%;
 }
+
+
+.sku-help {
+  display: flex;
+  min-height: 1.6rem;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.25rem;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+.sku-auto-button {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  color: var(--color-accent);
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}

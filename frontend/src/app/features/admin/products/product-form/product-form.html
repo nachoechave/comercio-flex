@@ -234,8 +234,8 @@
         <div>
           <h2 id="variants-title">3. Variantes</h2>
           <p>
-            Definí las opciones del producto y completá SKU, precio y stock para cada combinación
-            vendible.
+            Definí las opciones del producto. El SKU se genera automáticamente desde el nombre,
+            talle, color y demás variantes; podés editarlo si usás códigos propios.
           </p>
         </div>
       </header>
@@ -416,8 +416,19 @@
                 [id]="'sku-' + index"
                 formControlName="sku"
                 maxlength="64"
+                (input)="markSkuManual(row)"
                 [attr.aria-invalid]="row.controls.sku.touched && row.controls.sku.invalid"
               />
+              <div class="sku-help">
+                @if (row.controls.autoSku.value) {
+                  <small>Generado automáticamente</small>
+                } @else {
+                  <small>SKU personalizado</small>
+                  <button type="button" class="sku-auto-button" (click)="useAutomaticSku(row)">
+                    Usar automático
+                  </button>
+                }
+              </div>
               @if (row.controls.sku.touched && row.controls.sku.invalid) {
                 <p class="field-error">Usá un SKU válido y único.</p>
               }

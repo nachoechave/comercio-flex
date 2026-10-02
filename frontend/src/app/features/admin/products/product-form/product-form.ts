@@ -64,6 +64,7 @@ import {
   VariantCombination,
   variantCombinationKey,
 } from './variant-generator';
+import { generateVariantSku, uniqueSku } from './sku-generator';
 
 type CreationIntent = 'DRAFT' | 'PUBLISHED';
 type SetupStep = 'image' | 'inventory' | 'publication';
@@ -73,6 +74,7 @@ interface VariantDraft {
   key: string;
   label: string;
   sku: string;
+  autoSku: boolean;
   price: string;
   options: VariantOptionValue[];
   initialStock: string;
@@ -174,6 +176,8 @@ export class ProductForm implements OnDestroy {
   private readonly variantDrafts = new Map<string, VariantDraft>();
   private readonly stockReceiptIntents = new Map<string, StockReceiptIntent>();
   private readonly optionChanges: Subscription;
+  private readonly productNameChanges: Subscription;
+  private readonly imageAltTextChanges: Subscription;
 
   @ViewChild('imageInput') private imageInput?: ElementRef<HTMLInputElement>;
 
@@ -237,6 +241,12 @@ export class ProductForm implements OnDestroy {
   constructor() {
     this.optionChanges = this.productOptions.valueChanges.subscribe(() =>
       this.regenerateVariants(),
+    );
+    this.productNameChanges = this.form.controls.name.valueChanges.subscribe(() =>
+      this.refreshAutomaticSkus(),
+    );
+    this.imageAltTextChanges = this.imageAltText.valueChanges.subscribe(() =>
+      this.refreshAutomaticSkus(),
     );
     effect((onCleanup) => {
       const slug = this.storeSlug();
@@ -462,6 +472,38 @@ export class ProductForm implements OnDestroy {
       return updated;
     });
     this.stockReceiptIntents.delete(variantId);
+  }
+
+  markSkuManual(row: ReturnType<ProductForm['newVariantForm']>): void {
+    row.controls.autoSku.setValue(false, { emitEvent: false });
+  }
+
+  useAutomaticSku(row: ReturnType<ProductForm['newVariantForm']>): void {
+    row.controls.autoSku.setValue(true, { emitEvent: false });
+    this.refreshAutomaticSkus();
+    row.controls.sku.markAsDirty();
+  }
+
+  private refreshAutomaticSkus(): void {
+    const used = new Set<string>();
+    for (const row of this.variants.controls) {
+      if (!row.controls.autoSku.value) {
+        const manual = row.controls.sku.value.trim();
+        if (manual) used.add(manual.toUpperCase());
+      }
+    }
+
+    const productName = normalizeProductName(this.form.controls.name.value);
+    const imageAltText = this.imageAltText.value.trim();
+    for (const row of this.variants.controls) {
+      if (!row.controls.autoSku.value) continue;
+      const options = row.controls.options.getRawValue().map((option) => ({
+        name: cleanOptionText(option.name),
+        value: cleanOptionText(option.value),
+      }));
+      const candidate = generateVariantSku(productName, options, imageAltText);
+      row.controls.sku.setValue(uniqueSku(candidate, used), { emitEvent: false });
+    }
   }
 
   submitProduct(intent: CreationIntent = 'DRAFT'): void {
@@ -1023,11 +1065,21 @@ export class ProductForm implements OnDestroy {
       id: this.formBuilder.control<string | null>(draft?.id ?? variant?.id ?? null),
       combinationKey: this.formBuilder.nonNullable.control(combinationKey),
       label: this.formBuilder.nonNullable.control(label),
-      sku: this.formBuilder.nonNullable.control(draft?.sku ?? variant?.sku ?? '', [
-        Validators.required,
-        Validators.maxLength(64),
-        Validators.pattern(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/),
-      ]),
+      sku: this.formBuilder.nonNullable.control(
+        draft?.sku ??
+          variant?.sku ??
+          generateVariantSku(
+            normalizeProductName(this.form.controls.name.value),
+            options,
+            this.imageAltText.value.trim(),
+          ),
+        [
+          Validators.required,
+          Validators.maxLength(64),
+          Validators.pattern(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/),
+        ],
+      ),
+      autoSku: this.formBuilder.nonNullable.control(draft?.autoSku ?? !variant),
       price: this.formBuilder.nonNullable.control(draft?.price ?? variant?.price ?? '', [
         positiveDecimal,
       ]),
@@ -1225,6 +1277,7 @@ export class ProductForm implements OnDestroy {
       combinationKey: variantCombinationKey(options),
       label: this.variantLabel(options),
       sku: variant.sku,
+      autoSku: false,
       price: variant.price,
       size: variant.size ?? '',
       color: variant.color ?? '',
@@ -1250,6 +1303,7 @@ export class ProductForm implements OnDestroy {
         { emitEvent: false },
       );
     }
+    this.refreshAutomaticSkus();
     this.updateRemovedExistingVariants();
   }
 
@@ -1261,11 +1315,19 @@ export class ProductForm implements OnDestroy {
         value: cleanOptionText(option.value),
       }));
       const key = value.combinationKey || variantCombinationKey(options);
+      const generatedSku = generateVariantSku(
+        normalizeProductName(this.form.controls.name.value),
+        options,
+        this.imageAltText.value.trim(),
+      );
+      const autoSku =
+        value.autoSku && value.sku.trim().toUpperCase() === generatedSku.trim().toUpperCase();
       this.variantDrafts.set(key, {
         id: value.id,
         key,
         label: value.label || this.variantLabel(options),
         sku: value.sku,
+        autoSku,
         price: value.price,
         options,
         initialStock: value.initialStock,
@@ -1385,6 +1447,8 @@ export class ProductForm implements OnDestroy {
   ngOnDestroy(): void {
     for (const mutation of this.mutations.splice(0)) mutation.unsubscribe();
     this.optionChanges.unsubscribe();
+    this.productNameChanges.unsubscribe();
+    this.imageAltTextChanges.unsubscribe();
     this.clearPreviewObjectUrl();
   }
 }
