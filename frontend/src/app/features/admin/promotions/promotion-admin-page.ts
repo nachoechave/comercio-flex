@@ -5,10 +5,16 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
+type PromotionScope = 'PRODUCT' | 'PRODUCTS' | 'CATEGORY';
+
 interface Promotion {
   id: string;
-  productId: string;
-  productName: string;
+  scopeType: PromotionScope;
+  productId: string | null;
+  productName: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
+  productIds: string[];
   name: string;
   bundleQuantity: number;
   bundlePrice: number;
@@ -22,6 +28,13 @@ interface ProductPage {
   items: Array<{ id: string; name: string; status: string }>;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  active: boolean;
+}
+
 @Component({
   selector: 'app-promotion-admin-page',
   standalone: true,
@@ -32,7 +45,7 @@ interface ProductPage {
         <div>
           <p class="eyebrow">VENTAS</p>
           <h1>Promociones</h1>
-          <p>Creá promos por cantidad, por ejemplo: 2 jeans por $60.000.</p>
+          <p>Creá promos para un producto, varios productos o una categoría completa.</p>
         </div>
         <button type="button" class="primary" (click)="newPromotion()">Nueva promoción</button>
       </header>
@@ -43,20 +56,63 @@ interface ProductPage {
       <div class="layout">
         <section class="card">
           <h2>{{ editingId() ? 'Editar promoción' : 'Nueva promoción' }}</h2>
+
           <form [formGroup]="form" (ngSubmit)="save()">
             <label>
-              Producto
-              <select formControlName="productId">
-                <option value="">Elegí un producto</option>
-                @for (product of products(); track product.id) {
-                  <option [value]="product.id">{{ product.name }}</option>
-                }
+              Alcance
+              <select formControlName="scopeType">
+                <option value="PRODUCT">Un producto</option>
+                <option value="PRODUCTS">Varios productos</option>
+                <option value="CATEGORY">Categoría completa</option>
               </select>
             </label>
 
+            @if (form.controls.scopeType.value === 'PRODUCT') {
+              <label>
+                Producto
+                <select formControlName="productId">
+                  <option value="">Elegí un producto</option>
+                  @for (product of products(); track product.id) {
+                    <option [value]="product.id">{{ product.name }}</option>
+                  }
+                </select>
+              </label>
+            }
+
+            @if (form.controls.scopeType.value === 'PRODUCTS') {
+              <label>
+                Productos incluidos
+                <select multiple size="7" formControlName="productIds">
+                  @for (product of products(); track product.id) {
+                    <option [value]="product.id">{{ product.name }}</option>
+                  }
+                </select>
+                <small>Mantené Ctrl/Cmd para seleccionar varios. Elegí al menos dos productos.</small>
+              </label>
+            }
+
+            @if (form.controls.scopeType.value === 'CATEGORY') {
+              <label>
+                Categoría
+                <select formControlName="categoryId">
+                  <option value="">Elegí una categoría</option>
+                  @for (category of categories(); track category.id) {
+                    <option [value]="category.id">{{ category.name }}</option>
+                  }
+                </select>
+                <small>
+                  La promo alcanza automáticamente a los productos actuales y futuros de esta categoría.
+                </small>
+              </label>
+            }
+
             <label>
               Nombre
-              <input formControlName="name" maxlength="120" placeholder="Ej: 2 jeans por $60.000" />
+              <input
+                formControlName="name"
+                maxlength="120"
+                placeholder="Ej: 2 pantalones por $60.000"
+              />
             </label>
 
             <div class="two">
@@ -64,6 +120,7 @@ interface ProductPage {
                 Cantidad
                 <input type="number" min="2" max="99" step="1" formControlName="bundleQuantity" />
               </label>
+
               <label>
                 Precio promocional
                 <input type="number" min="0.01" step="0.01" formControlName="bundlePrice" />
@@ -76,7 +133,7 @@ interface ProductPage {
                   Llevando {{ form.controls.bundleQuantity.value }}:
                   $ {{ form.controls.bundlePrice.value | number:'1.2-2' }}
                 </strong>
-                <span>Las variantes del mismo producto se combinan para alcanzar la cantidad.</span>
+                <span>{{ previewHelp() }}</span>
               }
             </div>
 
@@ -109,6 +166,7 @@ interface ProductPage {
 
         <section class="card list">
           <h2>Promociones configuradas</h2>
+
           @if (loading()) {
             <p>Cargando…</p>
           } @else if (!promotions().length) {
@@ -118,7 +176,7 @@ interface ProductPage {
               <article>
                 <div>
                   <strong>{{ promo.name }}</strong>
-                  <span>{{ promo.productName }}</span>
+                  <span>{{ targetLabel(promo) }}</span>
                   <small>
                     {{ promo.bundleQuantity }} por $ {{ promo.bundlePrice | number:'1.2-2' }}
                     · {{ promo.active ? 'Activa' : 'Pausada' }}
@@ -130,6 +188,7 @@ interface ProductPage {
                     </small>
                   }
                 </div>
+
                 <div class="row-actions">
                   <button type="button" class="secondary" (click)="edit(promo)">Editar</button>
                   <button type="button" class="secondary" (click)="toggle(promo)">
@@ -154,7 +213,9 @@ interface ProductPage {
     .card { padding:1.25rem; border:1px solid #dfe3ea; border-radius:1rem; background:#fff; box-shadow:0 .5rem 1.5rem rgb(15 23 42 / 5%); }
     form { display:grid; gap:1rem; }
     label { display:grid; gap:.4rem; font-weight:700; }
+    label small { color:#64748b; font-weight:500; line-height:1.4; }
     input,select { width:100%; min-height:2.75rem; padding:.65rem .75rem; border:1px solid #cbd5e1; border-radius:.7rem; background:#fff; font:inherit; }
+    select[multiple] { min-height:11rem; }
     .two { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; }
     .check { display:flex; align-items:center; gap:.55rem; }
     .check input { width:1rem; min-height:1rem; }
@@ -190,6 +251,7 @@ export class PromotionAdminPage {
 
   readonly promotions = signal<Promotion[]>([]);
   readonly products = signal<Array<{ id: string; name: string; status: string }>>([]);
+  readonly categories = signal<Category[]>([]);
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly editingId = signal<string | null>(null);
@@ -197,7 +259,10 @@ export class PromotionAdminPage {
   readonly error = signal<string | null>(null);
 
   readonly form = this.fb.nonNullable.group({
-    productId: ['', Validators.required],
+    scopeType: ['PRODUCT' as PromotionScope, Validators.required],
+    productId: [''],
+    productIds: [[] as string[]],
+    categoryId: [''],
     name: ['', [Validators.required, Validators.maxLength(120)]],
     bundleQuantity: [2, [Validators.required, Validators.min(2), Validators.max(99)]],
     bundlePrice: [0, [Validators.required, Validators.min(0.01)]],
@@ -216,15 +281,7 @@ export class PromotionAdminPage {
 
   newPromotion(): void {
     this.editingId.set(null);
-    this.form.reset({
-      productId: '',
-      name: '',
-      bundleQuantity: 2,
-      bundlePrice: 0,
-      active: true,
-      startsAt: '',
-      endsAt: '',
-    });
+    this.resetForm();
     this.message.set(null);
     this.error.set(null);
   }
@@ -232,7 +289,10 @@ export class PromotionAdminPage {
   edit(promo: Promotion): void {
     this.editingId.set(promo.id);
     this.form.reset({
-      productId: promo.productId,
+      scopeType: promo.scopeType,
+      productId: promo.productId ?? '',
+      productIds: promo.scopeType === 'PRODUCTS' ? promo.productIds : [],
+      categoryId: promo.categoryId ?? '',
       name: promo.name,
       bundleQuantity: promo.bundleQuantity,
       bundlePrice: Number(promo.bundlePrice),
@@ -247,10 +307,27 @@ export class PromotionAdminPage {
 
   save(): void {
     if (this.form.invalid || this.busy()) return;
-    const current = this.promotions().find((item) => item.id === this.editingId());
+
     const value = this.form.getRawValue();
+    if (value.scopeType === 'PRODUCT' && !value.productId) {
+      this.error.set('Elegí un producto.');
+      return;
+    }
+    if (value.scopeType === 'PRODUCTS' && value.productIds.length < 2) {
+      this.error.set('Elegí al menos dos productos.');
+      return;
+    }
+    if (value.scopeType === 'CATEGORY' && !value.categoryId) {
+      this.error.set('Elegí una categoría.');
+      return;
+    }
+
+    const current = this.promotions().find((item) => item.id === this.editingId());
     const body = {
-      productId: value.productId,
+      scopeType: value.scopeType,
+      productId: value.scopeType === 'PRODUCT' ? value.productId : null,
+      productIds: value.scopeType === 'PRODUCTS' ? value.productIds : [],
+      categoryId: value.scopeType === 'CATEGORY' ? value.categoryId : null,
       name: value.name.trim(),
       bundleQuantity: Number(value.bundleQuantity),
       bundlePrice: Number(value.bundlePrice),
@@ -262,6 +339,7 @@ export class PromotionAdminPage {
 
     this.busy.set(true);
     this.error.set(null);
+
     const request = current
       ? this.http.put<Promotion>(`${this.baseUrl()}/${encodeURIComponent(current.id)}`, body)
       : this.http.post<Promotion>(this.baseUrl(), body);
@@ -270,29 +348,27 @@ export class PromotionAdminPage {
       next: () => {
         this.busy.set(false);
         this.editingId.set(null);
-        this.form.reset({
-          productId: '',
-          name: '',
-          bundleQuantity: 2,
-          bundlePrice: 0,
-          active: true,
-          startsAt: '',
-          endsAt: '',
-        });
+        this.resetForm();
         this.message.set(current ? 'Promoción actualizada.' : 'Promoción creada.');
         this.load(false);
       },
       error: (err) => {
         this.busy.set(false);
-        this.error.set(err?.error?.detail || err?.error?.message || 'No pudimos guardar la promoción.');
+        this.error.set(
+          err?.error?.detail ||
+          err?.error?.message ||
+          'No pudimos guardar la promoción.',
+        );
       },
     });
   }
 
   toggle(promo: Promotion): void {
     if (this.busy()) return;
+
     this.busy.set(true);
     this.error.set(null);
+
     this.http.patch<Promotion>(
       `${this.baseUrl()}/${encodeURIComponent(promo.id)}/status`,
       { active: !promo.active, version: promo.version },
@@ -308,18 +384,59 @@ export class PromotionAdminPage {
     });
   }
 
+  previewHelp(): string {
+    switch (this.form.controls.scopeType.value) {
+      case 'CATEGORY':
+        return 'Se combinan unidades de cualquier producto de la categoría elegida.';
+      case 'PRODUCTS':
+        return 'Se combinan unidades de cualquiera de los productos seleccionados.';
+      default:
+        return 'Las variantes del mismo producto se combinan para alcanzar la cantidad.';
+    }
+  }
+
+  targetLabel(promo: Promotion): string {
+    if (promo.scopeType === 'CATEGORY') {
+      return `Categoría: ${promo.categoryName ?? 'Sin categoría'}`;
+    }
+    if (promo.scopeType === 'PRODUCTS') {
+      return `${promo.productIds.length} productos incluidos`;
+    }
+    return promo.productName ?? 'Producto';
+  }
+
+  private resetForm(): void {
+    this.form.reset({
+      scopeType: 'PRODUCT',
+      productId: '',
+      productIds: [],
+      categoryId: '',
+      name: '',
+      bundleQuantity: 2,
+      bundlePrice: 0,
+      active: true,
+      startsAt: '',
+      endsAt: '',
+    });
+  }
+
   private load(showLoading = true): void {
     if (!this.storeSlug) return;
     if (showLoading) this.loading.set(true);
+
     forkJoin({
       promotions: this.http.get<Promotion[]>(this.baseUrl()),
       products: this.http.get<ProductPage>(
         `/api/v1/stores/${encodeURIComponent(this.storeSlug)}/admin/products?page=0&size=100&status=ALL`,
       ),
+      categories: this.http.get<Category[]>(
+        `/api/v1/stores/${encodeURIComponent(this.storeSlug)}/admin/categories`,
+      ),
     }).subscribe({
-      next: ({ promotions, products }) => {
+      next: ({ promotions, products, categories }) => {
         this.promotions.set(promotions);
         this.products.set(products.items);
+        this.categories.set(categories);
         this.loading.set(false);
       },
       error: (err) => {
