@@ -24,14 +24,17 @@ public class PickupBranchController {
     ResponseEntity<List<PickupBranch>> list(jakarta.servlet.http.HttpServletRequest request) {
         ShippingAccess.requireEcommerce(request);
         List<PickupBranch> branches = jdbcTemplate.query("""
-            SELECT BIN_TO_UUID(public_id) public_id, name, address
+            SELECT BIN_TO_UUID(public_id) public_id, name, address, is_default
             FROM store_branches
             WHERE active = TRUE
             ORDER BY is_default DESC, name ASC
             """, (rs, rowNum) -> new PickupBranch(
-                UUID.fromString(rs.getString("public_id")), rs.getString("name"), rs.getString("address")));
+                UUID.fromString(rs.getString("public_id")),
+                rs.getString("name"),
+                rs.getString("address"),
+                rs.getBoolean("is_default")));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(branches);
     }
 
-    public record PickupBranch(UUID id, String name, String address) {}
+    public record PickupBranch(UUID id, String name, String address, boolean defaultBranch) {}
 }
