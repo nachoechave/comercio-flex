@@ -170,10 +170,15 @@ class OrderTransitionExecutor {
 
   private int moveStock(LockedAdminOrder order, OrderTransitionCommand command, boolean restoring) {
     var lines = repository.findStockLinesForUpdate(order.internalId());
-    UUID selectedBranch =
-        fulfillmentBranch == null
-            ? null
-            : fulfillmentBranch.resolveForOrder(order.internalId(), true).id();
+    UUID selectedBranch = null;
+    if (order.fulfillmentType() == com.comercioflex.order.domain.FulfillmentType.PICKUP
+        && fulfillmentBranch != null) {
+      selectedBranch =
+          fulfillmentBranch
+              .findAssignedForOrder(order.internalId(), true)
+              .map(com.comercioflex.inventory.application.BranchFulfillmentStockService.Branch::id)
+              .orElse(null);
+    }
     for (OrderStockLine line : lines) {
       BigDecimal before = repository.findBalanceForUpdate(line.variantInternalId());
       BigDecimal after = restoring ? before.add(line.quantity()) : before.subtract(line.quantity());
