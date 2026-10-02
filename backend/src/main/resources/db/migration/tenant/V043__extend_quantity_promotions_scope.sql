@@ -24,7 +24,3 @@ SELECT id, product_id
 FROM quantity_promotions
 WHERE product_id IS NOT NULL;
 
-ALTER TABLE quantity_promotions
-    DROP FOREIGN KEY fk_quantity_promotions_product,
-    ADD CONSTRAINT fk_quantity_promotions_product
-      FOREIGN KEY (product_id) REFERENCES products(id);
