@@ -19,11 +19,14 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class QuantityPromotionService {
 
-  private static final Set<String> SCOPES = Set.of("PRODUCT", "PRODUCTS", "CATEGORY");
+  private static final Set<String> SCOPES = Set.of("PRODUCT", "PRODUCTS", "CATEGORY", "COMBO");
   private final JdbcTemplate jdbc;
+  private final org.springframework.transaction.support.TransactionTemplate transactions;
 
-  public QuantityPromotionService(@Qualifier("tenantJdbcTemplate") JdbcTemplate jdbc) {
+  public QuantityPromotionService(@Qualifier("tenantJdbcTemplate") JdbcTemplate jdbc,
+      @Qualifier("tenantTransactionTemplate") org.springframework.transaction.support.TransactionTemplate transactions) {
     this.jdbc = jdbc;
+    this.transactions = transactions;
   }
 
   public List<View> list() {
@@ -96,6 +99,7 @@ public class QuantityPromotionService {
           row.categoryId(),
           row.categoryName(),
           productIds,
+          secondGroup(row, activeAt != null),
           row.name(),
           row.bundleQuantity(),
           row.bundlePrice(),
@@ -122,7 +126,7 @@ public class QuantityPromotionService {
           row.categoryInternalId());
     }
 
-    if ("PRODUCTS".equals(row.scopeType())) {
+    if ("PRODUCTS".equals(row.scopeType()) || "COMBO".equals(row.scopeType())) {
       String published = publicOnly
           ? " AND product.status = 'PUBLISHED' AND category.status = 'ACTIVE'"
           : "";
@@ -131,7 +135,7 @@ public class QuantityPromotionService {
           FROM quantity_promotion_products target
           JOIN products product ON product.id = target.product_id
           JOIN categories category ON category.id = product.category_id
-          WHERE target.promotion_id = ?%s
+          WHERE target.promotion_id = ? AND target.group_number = 1%s
           ORDER BY product.id
           """.formatted(published),
           (rs, index) -> UUID.fromString(rs.getString(1)),
@@ -151,7 +155,23 @@ public class QuantityPromotionService {
     return sellable != null && sellable > 0 ? List.of(row.productId()) : List.of();
   }
 
+  private List<UUID> secondGroup(BaseRow row, boolean publicOnly) {
+    if (!"COMBO".equals(row.scopeType())) return List.of();
+    return jdbc.query("""
+        SELECT BIN_TO_UUID(product.public_id)
+        FROM quantity_promotion_products target
+        JOIN products product ON product.id = target.product_id
+        JOIN categories category ON category.id = product.category_id
+        WHERE target.promotion_id = ? AND target.group_number = 2
+        """ + (publicOnly ? " AND product.status = 'PUBLISHED' AND category.status = 'ACTIVE'" : ""),
+        (rs, n) -> UUID.fromString(rs.getString(1)), row.internalId());
+  }
+
   public View create(Command raw) {
+    return transactions.execute(status -> createInTransaction(raw));
+  }
+
+  private View createInTransaction(Command raw) {
     Command command = validate(raw);
     Target target = resolveTarget(command);
     UUID id = UUID.randomUUID();
@@ -175,10 +195,20 @@ public class QuantityPromotionService {
         "SELECT id FROM quantity_promotions WHERE public_id = UUID_TO_BIN(?)",
         Long.class, id.toString());
     replaceProductTargets(promotionInternalId, target.productInternalIds());
+    if ("COMBO".equals(command.scopeType())) {
+      for (UUID productId : command.secondProductIds()) {
+        Long internal = jdbc.queryForObject("SELECT id FROM products WHERE public_id = UUID_TO_BIN(?)", Long.class, productId.toString());
+        jdbc.update("INSERT INTO quantity_promotion_products (promotion_id, product_id, group_number) VALUES (?, ?, 2)", promotionInternalId, internal);
+      }
+    }
     return find(id);
   }
 
   public View update(UUID id, Command raw, long version) {
+    return transactions.execute(status -> updateInTransaction(id, raw, version));
+  }
+
+  private View updateInTransaction(UUID id, Command raw, long version) {
     Command command = validate(raw);
     Target target = resolveTarget(command);
     Long promotionInternalId = jdbc.query("""
@@ -208,6 +238,12 @@ public class QuantityPromotionService {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "La promoción cambió. Actualizá la pantalla e intentá nuevamente.");
     }
     replaceProductTargets(promotionInternalId, target.productInternalIds());
+    if ("COMBO".equals(command.scopeType())) {
+      for (UUID productId : command.secondProductIds()) {
+        Long internal = jdbc.queryForObject("SELECT id FROM products WHERE public_id = UUID_TO_BIN(?)", Long.class, productId.toString());
+        jdbc.update("INSERT INTO quantity_promotion_products (promotion_id, product_id, group_number) VALUES (?, ?, 2)", promotionInternalId, internal);
+      }
+    }
     return find(id);
   }
 
@@ -299,6 +335,21 @@ public class QuantityPromotionService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Elegí una categoría.");
     }
 
+    List<UUID> second = raw.secondProductIds() == null ? List.of()
+        : new ArrayList<>(new LinkedHashSet<>(raw.secondProductIds().stream().filter(java.util.Objects::nonNull).toList()));
+    if ("COMBO".equals(scope)) {
+      if (productIds.isEmpty() || second.isEmpty() || raw.bundleQuantity() != 2) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Elegí productos en ambos grupos. El combo lleva una unidad de cada grupo.");
+      }
+      if (second.stream().anyMatch(productIds::contains)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Un producto no puede estar en ambos grupos.");
+      }
+      for (UUID id : second) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM products WHERE public_id = UUID_TO_BIN(?)", Integer.class, id.toString());
+        if (count == null || count == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos uno de los productos.");
+      }
+    } else second = List.of();
+
     String name = raw.name() == null ? "" : raw.name().trim();
     if (name.isEmpty() || name.length() > 120) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El nombre debe tener entre 1 y 120 caracteres.");
@@ -320,7 +371,7 @@ public class QuantityPromotionService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de finalización debe ser posterior al inicio.");
     }
 
-    return new Command(scope, productId, productIds, categoryId, name, raw.bundleQuantity(), price,
+    return new Command(scope, productId, productIds, second, categoryId, name, raw.bundleQuantity(), price,
         raw.active(), raw.startsAt(), raw.endsAt());
   }
 
@@ -363,6 +414,7 @@ public class QuantityPromotionService {
       String scopeType,
       UUID productId,
       List<UUID> productIds,
+      List<UUID> secondProductIds,
       UUID categoryId,
       String name,
       int bundleQuantity,
@@ -379,6 +431,7 @@ public class QuantityPromotionService {
       UUID categoryId,
       String categoryName,
       List<UUID> productIds,
+      List<UUID> secondProductIds,
       String name,
       int bundleQuantity,
       BigDecimal bundlePrice,

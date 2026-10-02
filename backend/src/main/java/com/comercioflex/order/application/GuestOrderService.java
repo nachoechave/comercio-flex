@@ -283,6 +283,10 @@ public class GuestOrderService {
       }
       eligiblePrices.sort(Collections.reverseOrder());
 
+      if (!promotion.secondProductIds().isEmpty()) {
+        bestDiscount = bestDiscount.max(promotion.comboDiscount(unitPricesByProduct));
+        continue;
+      }
       int bundleCount = eligiblePrices.size() / promotion.bundleQuantity();
       int promotedUnits = bundleCount * promotion.bundleQuantity();
       if (promotedUnits == 0) continue;

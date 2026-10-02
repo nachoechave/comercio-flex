@@ -38,7 +38,7 @@ export class StorefrontPromotionsService {
   }
 
   promotion(storeSlug: string, productId: string): QuantityPromotion | null {
-    return (this.byStore()[storeSlug] ?? []).find((promo) => promo.productIds.includes(productId)) ?? null;
+    return (this.byStore()[storeSlug] ?? []).find((promo) => (promo.productIds.includes(productId) || (promo.secondProductIds ?? []).includes(productId))) ?? null;
   }
 
   promotions(storeSlug: string): QuantityPromotion[] {
@@ -54,6 +54,21 @@ export class StorefrontPromotionsService {
     for (const promotion of this.promotions(storeSlug)) {
       if (promotion.bundleQuantity < 2) continue;
 
+      if (promotion.scopeType === 'COMBO') {
+        const groupPrices = (ids: string[]) => lines.flatMap(line => {
+          const price = Number(line.unitPrice);
+          return ids.includes(line.productId) && Number.isFinite(price) && price > 0
+            ? Array.from({ length: line.quantity }, () => price) : [];
+        }).sort((a, b) => b - a);
+        const first = groupPrices(promotion.productIds);
+        const second = groupPrices(promotion.secondProductIds ?? []);
+        let discount = 0;
+        for (let i = 0; i < Math.min(first.length, second.length); i++) {
+          discount += Math.max(0, first[i] + second[i] - Number(promotion.bundlePrice));
+        }
+        bestDiscount = Math.max(bestDiscount, discount);
+        continue;
+      }
       const eligibleProducts = new Set(promotion.productIds);
       const prices: number[] = [];
       for (const line of lines) {

@@ -238,6 +238,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 		List<ActiveQuantityPromotion> result = new ArrayList<>();
 		for (PromotionRow row : rows) {
 			List<UUID> eligible = new ArrayList<>();
+            List<UUID> second = new ArrayList<>();
 			if ("PRODUCT".equals(row.scopeType())) {
 				if (row.productId() != null && productIds.contains(row.productId())) {
 					eligible.add(row.productId());
@@ -255,7 +256,20 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				productIds.stream().map(UUID::toString).forEach(args::add);
 				eligible.addAll(jdbcTemplate.query(sql,
 					(rs, n) -> UUID.fromString(rs.getString(1)), args.toArray()));
-			} else if ("CATEGORY".equals(row.scopeType()) && row.categoryInternalId() != null) {
+			} else if ("COMBO".equals(row.scopeType())) {
+                for (int group = 1; group <= 2; group++) {
+                    List<UUID> targets = jdbcTemplate.query("""
+                        SELECT BIN_TO_UUID(product.public_id)
+                        FROM quantity_promotion_products target
+                        JOIN products product ON product.id = target.product_id
+                        JOIN categories category ON category.id = product.category_id
+                        WHERE target.promotion_id = ? AND target.group_number = ?
+                          AND product.status = 'PUBLISHED' AND category.status = 'ACTIVE'
+                        """, (rs, n) -> UUID.fromString(rs.getString(1)), row.internalId(), group);
+                    (group == 1 ? eligible : second).addAll(targets);
+                }
+                if (second.isEmpty()) continue;
+            } else if ("CATEGORY".equals(row.scopeType()) && row.categoryInternalId() != null) {
 				String sql = """
 					SELECT BIN_TO_UUID(product.public_id)
 					FROM products product
@@ -273,7 +287,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 			}
 			if (!eligible.isEmpty()) {
 				result.add(new ActiveQuantityPromotion(
-					row.promotionId(), eligible, row.bundleQuantity(), row.bundlePrice()));
+					row.promotionId(), eligible, second, row.bundleQuantity(), row.bundlePrice()));
 			}
 		}
 		return result;
