@@ -123,7 +123,8 @@ public class SecurityConfig {
 					HttpMethod.GET,
 					"/api/v1/stores/*/catalog/categories",
 					"/api/v1/stores/*/catalog/products",
-					"/api/v1/stores/*/catalog/products/*")
+					"/api/v1/stores/*/catalog/products/*",
+					"/api/v1/stores/*/catalog/promotions")
 				.permitAll()
 				.requestMatchers(
 					HttpMethod.POST,
