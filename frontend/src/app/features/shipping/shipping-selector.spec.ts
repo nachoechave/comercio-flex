@@ -36,6 +36,9 @@ describe('ShippingSelector', () => {
       pickupAvailable: true,
       shippingAvailable: true,
     });
+    http.expectOne('/api/v1/stores/tienda-a/shipping/pickup-branches').flush([
+      { id: 'branch-1', name: 'Casa central', address: 'Calle 123', defaultBranch: true },
+    ]);
     const automaticPickup = http.expectOne('/api/v1/stores/tienda-a/shipping/quote');
     expect(automaticPickup.request.body.paymentMethod).toBeNull();
     automaticPickup.flush([pickup]);
@@ -59,6 +62,7 @@ describe('ShippingSelector', () => {
 
   it('selects pickup by default without requiring a confirmation button', () => {
     expect(fixture.componentInstance.mode()).toBe('PICKUP');
+    expect(fixture.componentInstance.selectedBranch()).toBe('branch-1');
     expect(fixture.componentInstance.selected()).toBe('pickup');
     expect(fixture.componentInstance.current()?.methodId).toBe('pickup');
     expect(fixture.nativeElement.textContent).toContain('Retiro en local');
@@ -80,7 +84,11 @@ describe('ShippingSelector', () => {
     const emitted = vi.fn();
     fixture.componentInstance.selection.subscribe(emitted);
     respond();
-    expect(emitted).toHaveBeenLastCalledWith({ methodId: 'pickup', expectedTotal: '5000.00' });
+    expect(emitted).toHaveBeenLastCalledWith({
+      methodId: 'pickup',
+      expectedTotal: '5000.00',
+      pickupBranchId: 'branch-1',
+    });
     expect(fixture.nativeElement.textContent).toContain('Calle 123');
     expect(fixture.nativeElement.textContent).toContain('5.000,00');
   });
