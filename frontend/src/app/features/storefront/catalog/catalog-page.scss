@@ -484,7 +484,7 @@ button:disabled {
 .category-shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(transparent 30%, rgb(0 0 0 / 86%));
+  background: linear-gradient(transparent 22%, rgb(0 0 0 / 94%));
 }
 
 .category-copy {
@@ -498,17 +498,21 @@ button:disabled {
 }
 
 .category-copy strong {
+  color: #fff;
   font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
   font-size: 1.4rem;
   letter-spacing: 0.015em;
+  text-shadow: 0 2px 10px rgb(0 0 0 / 85%);
   text-transform: uppercase;
 }
 
 .category-copy small {
-  color: var(--store-primary-color);
+  color: #fff;
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.06em;
+  opacity: 0.9;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 90%);
   text-transform: uppercase;
 }
 
