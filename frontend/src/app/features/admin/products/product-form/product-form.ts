@@ -1315,12 +1315,19 @@ export class ProductForm implements OnDestroy {
         value: cleanOptionText(option.value),
       }));
       const key = value.combinationKey || variantCombinationKey(options);
+      const generatedSku = generateVariantSku(
+        normalizeProductName(this.form.controls.name.value),
+        options,
+        this.imageAltText.value.trim(),
+      );
+      const autoSku =
+        value.autoSku && value.sku.trim().toUpperCase() === generatedSku.trim().toUpperCase();
       this.variantDrafts.set(key, {
         id: value.id,
         key,
         label: value.label || this.variantLabel(options),
         sku: value.sku,
-        autoSku: value.autoSku,
+        autoSku,
         price: value.price,
         options,
         initialStock: value.initialStock,
