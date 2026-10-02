@@ -74,4 +74,5 @@ export class StorefrontPromotionsService {
     }
 
     return Math.round(Math.max(0, bestDiscount) * 100) / 100;
-  }}
+  }
+}
