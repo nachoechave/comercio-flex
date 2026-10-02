@@ -1,4 +1,4 @@
-import { Component, HostListener, computed, effect, inject, input } from '@angular/core';
+import { Component, HostListener, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { variantOptionsLabel } from '../../../shared/variant-options';
@@ -48,9 +48,6 @@ export class CartPreview {
     Math.max(0, Number(this.subtotal()) - this.promotionDiscount()).toFixed(2),
   );
 
-  constructor() {
-    effect(() => this.promotions.ensure(this.storeSlug()));
-  }
 
   protected close(): void {
     this.preview.close();
