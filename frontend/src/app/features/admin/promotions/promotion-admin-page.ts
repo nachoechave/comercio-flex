@@ -46,7 +46,7 @@ interface Category {
         <div>
           <p class="eyebrow">VENTAS</p>
           <h1>Promociones</h1>
-          <p>Creá promos para un producto, varios productos o una categoría completa.</p>
+          <p>Creá promos por cantidad o combos con un producto de cada grupo.</p>
         </div>
         <button type="button" class="primary" (click)="newPromotion()">Nueva promoción</button>
       </header>
@@ -89,7 +89,7 @@ interface Category {
                     <option [value]="product.id">{{ product.name }}</option>
                   }
                 </select>
-                <small>Mantené Ctrl/Cmd para seleccionar varios. Elegí al menos dos productos.</small>
+                <small>{{ form.controls.scopeType.value === 'COMBO' ? 'Elegí uno o más productos para el grupo 1.' : 'Mantené Ctrl/Cmd para seleccionar varios. Elegí al menos dos productos.' }}</small>
               </label>
             }
 
