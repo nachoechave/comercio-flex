@@ -25,7 +25,11 @@ public class BranchFulfillmentStockService {
     }
 
     public BigDecimal available(long branchInternalId, long variantInternalId) {
-        BigDecimal quantity = jdbcTemplate.queryForObject("SELECT COALESCE(quantity, 0.000) FROM branch_inventory_balances WHERE branch_id = ? AND variant_id = ?", BigDecimal.class, branchInternalId, variantInternalId);
+        BigDecimal quantity = jdbcTemplate.queryForObject(
+            "SELECT COALESCE((SELECT quantity FROM branch_inventory_balances WHERE branch_id = ? AND variant_id = ?), 0.000)",
+            BigDecimal.class,
+            branchInternalId,
+            variantInternalId);
         return quantity == null ? BigDecimal.ZERO : quantity;
     }
 
