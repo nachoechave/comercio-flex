@@ -77,6 +77,14 @@ export class StorefrontLayout {
     template: this.activeTemplate(),
   }));
   protected readonly fontFamily = computed(() => this.fontStack(this.branding().font));
+  protected readonly whatsappUrl = computed(() => {
+    const settings = this.context.settings();
+    const phone = settings?.contactPhone?.replace(/\D/g, '');
+    if (!settings || !phone) return null;
+
+    const message = encodeURIComponent(`Hola, quiero hacer una consulta en ${settings.storeName}.`);
+    return `https://wa.me/${phone}?text=${message}`;
+  });
 
   constructor() {
     effect(() => {
