@@ -690,3 +690,64 @@ nav {
     object-position: left center;
   }
 }
+
+
+.store-whatsapp-button {
+  position: fixed;
+  right: clamp(1rem, 2vw, 1.5rem);
+  bottom: clamp(1rem, 2vw, 1.5rem);
+  z-index: 60;
+  display: inline-flex;
+  min-height: 3.5rem;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.8rem 1.05rem;
+  border-radius: 999px;
+  color: #fff;
+  background: #25d366;
+  box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 18%);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.store-whatsapp-button:hover {
+  filter: brightness(0.96);
+  transform: translateY(-2px);
+  box-shadow: 0 0.85rem 2rem rgb(0 0 0 / 22%);
+}
+
+.store-whatsapp-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, #25d366 45%, white);
+  outline-offset: 3px;
+}
+
+.store-whatsapp-button svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  flex: 0 0 auto;
+  fill: currentColor;
+}
+
+@media (max-width: 40rem) {
+  .store-whatsapp-button {
+    width: 3.55rem;
+    min-height: 3.55rem;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .store-whatsapp-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
