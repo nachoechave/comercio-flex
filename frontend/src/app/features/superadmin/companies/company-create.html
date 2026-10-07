@@ -40,8 +40,15 @@
         }
       </label>
       <label>
-        Rubro
-        <input formControlName="industry" maxlength="100" placeholder="Indumentaria" />
+        Tipo de comercio
+        <select formControlName="industry">
+          <option value="">Seleccionar rubro</option>
+          <option value="INDUMENTARIA">Indumentaria</option>
+          <option value="CARNICERIA">Carnicería</option>
+        </select>
+        @if (form.controls.industry.touched && form.controls.industry.invalid) {
+          <small>Seleccioná el rubro de la empresa.</small>
+        }
       </label>
       <label>
         Dominio <span>(opcional)</span>
