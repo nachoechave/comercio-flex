@@ -138,16 +138,16 @@ function normalizedProductNameLength(control: AbstractControl<string>): Validati
 
 function optionalInitialStock(control: AbstractControl<string>): ValidationErrors | null {
   const value = control.value.trim();
-  return !value || /^(?:0|[1-9][0-9]{0,11})$/.test(value) ? null : { initialStock: true };
+  return !value || /^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,3})?$/.test(value) ? null : { initialStock: true };
 }
 
 function optionalStockReceipt(control: AbstractControl<string>): ValidationErrors | null {
   const value = control.value.trim();
-  return !value || /^(?:0|[1-9][0-9]{0,11})$/.test(value) ? null : { stockReceipt: true };
+  return !value || /^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,3})?$/.test(value) ? null : { stockReceipt: true };
 }
 
 function positiveStockReceipt(control: AbstractControl<string>): ValidationErrors | null {
-  return /^[1-9][0-9]{0,11}$/.test(control.value.trim()) ? null : { stockReceipt: true };
+  return /^(?:[1-9][0-9]{0,11})(?:\.[0-9]{1,3})?$|^0\.(?:0*[1-9][0-9]{0,2})$/.test(control.value.trim()) ? null : { stockReceipt: true };
 }
 
 function toThousandths(value: string): bigint {
