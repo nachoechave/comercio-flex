@@ -1,6 +1,8 @@
 package com.comercioflex.catalog.infrastructure.jdbc;
 
 import java.sql.ResultSet;
+import java.math.BigDecimal;
+import com.comercioflex.catalog.domain.SaleUnit;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -186,6 +188,7 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				product.name product_name,
 				product.slug product_slug,
 				product.description,
+                product.sale_unit, product.sale_minimum, product.sale_step, product.sale_maximum,
 				BIN_TO_UUID(category.public_id) category_public_id,
 				category.name category_name,
 				category.slug category_slug,
@@ -205,7 +208,10 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				resultSet.getString("product_slug"),
 				resultSet.getString("description"),
 				mapCategory(resultSet),
-				mapImage(resultSet)),
+				mapImage(resultSet),
+                SaleUnit.valueOf(resultSet.getString("sale_unit")),
+                resultSet.getBigDecimal("sale_minimum"), resultSet.getBigDecimal("sale_step"),
+                resultSet.getBigDecimal("sale_maximum")),
 			productSlug);
 		if (products.isEmpty()) {
 			return Optional.empty();
@@ -349,7 +355,8 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 		String slug,
 		String description,
 		PublicCategory category,
-		ProductImageReference image) {
+		ProductImageReference image,
+        SaleUnit saleUnit, BigDecimal saleMinimum, BigDecimal saleStep, BigDecimal saleMaximum) {
 
 		PublicProductDetail toDetail(List<PublicVariant> variants, List<ProductImageReference> images) {
 			return new PublicProductDetail(
@@ -359,7 +366,7 @@ public class JdbcPublicCatalogRepository implements PublicCatalogRepository {
 				description,
 				category,
 				image,
-				variants, images);
+				variants, images, saleUnit, saleMinimum, saleStep, saleMaximum);
 		}
 	}
 }
