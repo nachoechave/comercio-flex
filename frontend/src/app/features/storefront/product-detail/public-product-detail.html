@@ -71,11 +71,20 @@
             @if (promotion(); as promo) {
               <div class="promotion-callout">
                 <strong>
-                  Promo · {{ promo.bundleQuantity }} por
-                  {{ promo.bundlePrice | storefrontMoney: context.currencyCode() }}
+                  @if (promo.scopeType === 'COMBO') {
+                    Combo · {{ promo.name }} · {{ promo.bundlePrice | storefrontMoney: context.currencyCode() }}
+                  } @else {
+                    Promo · {{ promo.bundleQuantity }} por
+                    {{ promo.bundlePrice | storefrontMoney: context.currencyCode() }}
+                  }
                 </strong>
-                <span>{{ promo.name }}</span>
-                <small>Podés combinar variantes del mismo producto.</small>
+                @if (promo.scopeType === 'COMBO') {
+                  <span>Incluye 1 producto del primer grupo + 1 del segundo grupo.</span>
+                  <small>No se aplica llevando dos productos de un mismo grupo. Elegí ambos para activar el descuento en el carrito.</small>
+                } @else {
+                  <span>{{ promo.name }}</span>
+                  <small>Podés combinar variantes de los productos participantes.</small>
+                }
               </div>
             }
             @if (
