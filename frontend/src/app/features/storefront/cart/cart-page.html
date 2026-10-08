@@ -95,8 +95,13 @@
 
               @if (promotionFor(line); as promo) {
                 <p class="line-promotion">
-                  Promo: {{ promo.bundleQuantity }} por
-                  {{ promo.bundlePrice | storefrontMoney: context.currencyCode() }}
+                  @if (promo.scopeType === 'COMBO') {
+                    Combo · {{ promo.name }} · {{ promo.bundlePrice | storefrontMoney: context.currencyCode() }}
+                    (requiere 1 producto de cada grupo)
+                  } @else {
+                    Promo: {{ promo.bundleQuantity }} por
+                    {{ promo.bundlePrice | storefrontMoney: context.currencyCode() }}
+                  }
                 </p>
               }
 
