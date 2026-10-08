@@ -15,6 +15,10 @@ export interface CartLine {
   options: VariantOptionValue[];
   unitPrice: string;
   quantity: number;
+  saleUnit?: 'UNIT' | 'KG';
+  saleMinimum?: number;
+  saleStep?: number;
+  saleMaximum?: number;
 
   // Stock disponible confirmado actualmente.
   // null significa que todavía no fue reconciliado con el backend.
