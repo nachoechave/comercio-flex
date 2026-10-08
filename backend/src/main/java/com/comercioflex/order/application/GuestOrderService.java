@@ -207,6 +207,9 @@ public class GuestOrderService {
     for (OrderItemCommand requested : requestedItems) {
       LockedOrderVariant variant =
           repository.lockVariant(requested.variantId()).orElseThrow(OrderUnavailableException::new);
+      if (!variant.saleRules().accepts(requested.quantity())) {
+        throw new InvalidGuestOrderException("La cantidad no respeta el mínimo o incremento de venta del producto.");
+      }
       if (!variant.sellable()
           || variant
                   .physicalQuantity()
@@ -380,12 +383,11 @@ public class GuestOrderService {
     try {
       quantity = Objects.requireNonNull(item.quantity()).setScale(3, RoundingMode.UNNECESSARY);
     } catch (NullPointerException | ArithmeticException exception) {
-      throw new InvalidGuestOrderException("La cantidad debe ser un número entero.");
+      throw new InvalidGuestOrderException("La cantidad debe tener como máximo tres decimales.");
     }
-    if (quantity.stripTrailingZeros().scale() > 0
-        || quantity.compareTo(BigDecimal.ONE) < 0
+    if (quantity.compareTo(new BigDecimal("0.500")) < 0
         || quantity.compareTo(new BigDecimal("99")) > 0) {
-      throw new InvalidGuestOrderException("Cada cantidad debe ser un entero entre 1 y 99.");
+      throw new InvalidGuestOrderException("Cada cantidad debe estar entre 0,5 y 99.");
     }
     return new OrderItemCommand(item.variantId(), quantity);
   }
