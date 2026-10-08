@@ -27,8 +27,12 @@
           COMBO · {{ promo.name }} · {{ promo.bundlePrice | storefrontMoney: currencyCode() }}
           <small>1 producto de cada grupo</small>
         } @else {
-          Promo · {{ promo.bundleQuantity }} por
-          {{ promo.bundlePrice | storefrontMoney: currencyCode() }}
+          @if (promo.name) {
+            Promo · {{ promo.name }} · {{ promo.bundlePrice | storefrontMoney: currencyCode() }}
+          } @else {
+            Promo · {{ promo.bundleQuantity }} por
+            {{ promo.bundlePrice | storefrontMoney: currencyCode() }}
+          }
         }
       </p>
     }
