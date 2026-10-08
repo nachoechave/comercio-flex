@@ -82,6 +82,9 @@ export class PublicProductDetail {
   protected readonly selectedVariantId = signal<string | null>(null);
   protected readonly selectedOptions = signal<Record<string, string>>({});
   protected readonly quantity = signal(1);
+  protected readonly saleMinimum = computed(() => this.product()?.saleMinimum ?? 1);
+  protected readonly saleStep = computed(() => this.product()?.saleStep ?? 1);
+  protected readonly weightSale = computed(() => this.product()?.saleUnit === "KG");
   protected readonly cartMessage = signal('');
   protected readonly available = computed(
     () => this.product()?.variants.some((variant) => variant.available) ?? false,
@@ -132,7 +135,10 @@ export class PublicProductDetail {
       return 0;
     }
 
-    return Math.max(0, Math.floor(availableQuantity));
+    const max = Math.min(this.product()?.saleMaximum ?? 99, availableQuantity);
+    const min = this.saleMinimum();
+    const step = this.saleStep();
+    return max < min ? 0 : Math.round((min + Math.floor((max - min) / step) * step) * 1000) / 1000;
   });
   protected readonly canAddToCart = computed(
     () => this.selectedVariant()?.available === true && this.maxQuantity() > 0,
@@ -170,6 +176,7 @@ export class PublicProductDetail {
       const subscription = this.api.getProduct(storeSlug, productSlug).subscribe({
         next: (product) => {
           this.product.set(product);
+          this.quantity.set(product.saleMinimum ?? 1);
           this.analytics.trackProductView(product.id);
           const onlyVariant = product.variants.length === 1 ? product.variants[0] : null;
           if (onlyVariant?.available && this.variantOptions(onlyVariant).length === 0) {
@@ -246,15 +253,15 @@ export class PublicProductDetail {
   }
 
   protected decreaseQuantity(): void {
-    if (this.quantity() > 1) {
-      this.quantity.update((value) => value - 1);
+    if (this.quantity() > this.saleMinimum()) {
+      this.quantity.update((value) => Math.round((value - this.saleStep()) * 1000) / 1000);
       this.cartMessage.set('');
     }
   }
 
   protected increaseQuantity(): void {
     if (this.quantity() < this.maxQuantity()) {
-      this.quantity.update((value) => value + 1);
+      this.quantity.update((value) => Math.round((value + this.saleStep()) * 1000) / 1000);
       this.cartMessage.set('');
     }
   }
@@ -264,7 +271,8 @@ export class PublicProductDetail {
     const value = input.valueAsNumber;
     const maxQuantity = this.maxQuantity();
 
-    if (!Number.isInteger(value) || value < 1 || value > maxQuantity) {
+    if (!Number.isFinite(value) || value < this.saleMinimum() || value > maxQuantity ||
+      Math.abs((value - this.saleMinimum()) / this.saleStep() - Math.round((value - this.saleMinimum()) / this.saleStep())) > 1e-8) {
       input.value = String(this.quantity());
 
       this.cartMessage.set(
