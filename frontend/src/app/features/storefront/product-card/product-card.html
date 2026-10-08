@@ -23,8 +23,13 @@
     <p class="category">{{ product().category.name }}</p>
     @if (promotion(); as promo) {
       <p class="promotion-badge">
-        Promo · {{ promo.bundleQuantity }} por
-        {{ promo.bundlePrice | storefrontMoney: currencyCode() }}
+        @if (promo.scopeType === 'COMBO') {
+          COMBO · {{ promo.name }} · {{ promo.bundlePrice | storefrontMoney: currencyCode() }}
+          <small>1 producto de cada grupo</small>
+        } @else {
+          Promo · {{ promo.bundleQuantity }} por
+          {{ promo.bundlePrice | storefrontMoney: currencyCode() }}
+        }
       </p>
     }
     <h2>
