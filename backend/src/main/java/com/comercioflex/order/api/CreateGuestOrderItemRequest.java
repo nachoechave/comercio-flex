@@ -11,8 +11,8 @@ public record CreateGuestOrderItemRequest(
 	@NotNull UUID variantId,
 	@NotBlank
 	@Pattern(
-		regexp = "^(?:[1-9]|[1-9][0-9])$",
-		message = "debe ser un entero entre 1 y 99")
+		regexp = "^(?:[1-9][0-9]?|0|[1-9][0-9]?\\.\\d{1,3}|0\\.\\d{1,3})$",
+		message = "debe ser una cantidad válida entre 0,5 y 99")
 	String quantity) {
 
 	public BigDecimal decimalQuantity() {
