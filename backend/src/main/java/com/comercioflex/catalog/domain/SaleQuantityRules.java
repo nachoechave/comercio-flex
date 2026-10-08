@@ -10,8 +10,8 @@ public record SaleQuantityRules(SaleUnit unit, BigDecimal minimum, BigDecimal st
                 || minimum.signum() <= 0 || step.signum() <= 0 || maximum.compareTo(minimum) < 0) {
             throw new IllegalArgumentException("Invalid sale quantity configuration");
         }
-        if (unit == SaleUnit.UNIT && (minimum.scale() > 0 && minimum.stripTrailingZeros().scale() > 0
-                || step.stripTrailingZeros().scale() > 0)) {
+        if (unit == SaleUnit.UNIT && (minimum.stripTrailingZeros().scale() > 0
+                || step.stripTrailingZeros().scale() > 0 || maximum.stripTrailingZeros().scale() > 0)) {
             throw new IllegalArgumentException("Unit quantities must be whole numbers");
         }
     }
