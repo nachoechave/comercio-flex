@@ -266,6 +266,11 @@ public class GuestOrderService {
     for (ReservedOrderItem item : items) {
       List<BigDecimal> unitPrices =
           unitPricesByProduct.computeIfAbsent(item.variant().productId(), ignored -> new ArrayList<>());
+      // Quantity promotions are defined in whole pieces, not kilograms.
+      // Never truncate fractional weights or throw on intValueExact().
+      if (item.quantity().stripTrailingZeros().scale() > 0) {
+        continue;
+      }
       int quantity = item.quantity().intValueExact();
       for (int index = 0; index < quantity; index++) {
         unitPrices.add(item.variant().unitPrice());
