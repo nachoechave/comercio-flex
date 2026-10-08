@@ -28,6 +28,6 @@ public record PublicProductDetailResponse(
 			product.variants().stream().map(PublicVariantResponse::from).toList(),
 			product.images().stream().map(image -> ProductImageResponse.publicView(storeSlug, image)).toList(),
 			product.image() == null ? null : ProductImageResponse.publicView(storeSlug, product.image()).url(),
-            SaleUnit.UNIT, BigDecimal.ONE, BigDecimal.ONE, new BigDecimal("99"));
+            product.saleUnit(), product.saleMinimum(), product.saleStep(), product.saleMaximum());
 	}
 }
