@@ -80,7 +80,7 @@
                   </h2>
                   <p>{{ optionLabel(line) }}</p>
                 </div>
-                <strong>{{ line.unitPrice | storefrontMoney: context.currencyCode() }}</strong>
+                <strong>{{ line.unitPrice | storefrontMoney: context.currencyCode() }} @if (line.saleUnit === "KG") { / kg }</strong>
               </div>
 
               @if (line.notice) {
@@ -93,7 +93,7 @@
                 </p>
               }
 
-              @if (promotionFor(line); as promo) {
+              @if (line.saleUnit !== "KG" && promotionFor(line); as promo) {
                 <p class="line-promotion">
                   Promo: {{ promo.bundleQuantity }} por
                   {{ promo.bundlePrice | storefrontMoney: context.currencyCode() }}
@@ -102,13 +102,13 @@
 
               <div class="line-actions">
                 <label>
-                  Cantidad
+                  Cantidad {{ line.saleUnit === "KG" ? "(kg)" : "" }}
                   <input
                     type="number"
-                    min="1"
-                    max="99"
-                    step="1"
-                    inputmode="numeric"
+                    [min]="line.saleMinimum ?? 1"
+                    [max]="line.saleMaximum ?? 99"
+                    [step]="line.saleStep ?? 1"
+                    [attr.inputmode]="line.saleUnit === 'KG' ? 'decimal' : 'numeric'"
                     [value]="line.quantity"
                     (change)="updateQuantity(line, $event)"
                   />
