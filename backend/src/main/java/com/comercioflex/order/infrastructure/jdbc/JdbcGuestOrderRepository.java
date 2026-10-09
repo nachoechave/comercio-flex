@@ -417,7 +417,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				)
 				VALUES (
 					?, UUID_TO_BIN(?), ?, UUID_TO_BIN(?), ?, ?, ?, ?, ?,
-					'UNIT', ?, ?, ?
+					?, ?, ?, ?
 				)
 				""",
 				orderInternalId,
@@ -429,6 +429,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				emptyOption(variant.size()),
 				emptyOption(variant.color()),
 				optionsJsonCodec.write(variant.options()),
+                variant.saleRules().unit().name(),
 				variant.unitPrice(),
 				item.quantity(),
 				item.lineTotal());
