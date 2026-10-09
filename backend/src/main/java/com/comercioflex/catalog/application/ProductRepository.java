@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.comercioflex.catalog.domain.Product;
+import com.comercioflex.catalog.domain.SaleQuantityRules;
 import com.comercioflex.catalog.domain.ProductStatus;
 import com.comercioflex.catalog.domain.ProductVariant;
 
@@ -57,6 +58,8 @@ public interface ProductRepository {
 		long internalId,
 		boolean active,
 		long expectedVersion);
+
+	boolean updateSaleRules(long internalId, SaleQuantityRules rules, long expectedVersion);
 
 	int countActiveVariants(long productInternalId);
 }
