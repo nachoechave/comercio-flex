@@ -40,6 +40,27 @@ describe('CartService', () => {
 
   afterEach(() => localStorage.clear());
 
+
+  it('sells half-kilogram increments with exact cents and stock limits', () => {
+    const meat = { ...product, id: 'meat-1', slug: 'asado', name: 'Asado', saleUnit: 'KG' as const,
+      saleMinimum: 0.5, saleStep: 0.5, saleMaximum: 3 };
+    const weighed = { ...variant, id: 'meat-variant', price: '12000.00', availableQuantity: '2.500' };
+    expect(service.add('carniceria', { product: meat, variant: weighed, quantity: 0.5 }).quantity).toBe(0.5);
+    expect(service.add('carniceria', { product: meat, variant: weighed, quantity: 1 }).quantity).toBe(1.5);
+    expect(service.availableSubtotal('carniceria')).toBe('18000.00');
+    expect(service.setQuantity('carniceria', weighed.id, 0.75)).toBe(false);
+    expect(service.setQuantity('carniceria', weighed.id, 2.5)).toBe(true);
+    expect(service.availableSubtotal('carniceria')).toBe('30000.00');
+    expect(service.setQuantity('carniceria', weighed.id, 3)).toBe(false);
+    expect(service.items('carniceria')[0].saleUnit).toBe('KG');
+  });
+
+  it('preserves whole-unit quantities for clothing', () => {
+    service.add('indumentaria', { product, variant, quantity: 2 });
+    expect(service.setQuantity('indumentaria', variant.id, 1.5)).toBe(false);
+    expect(service.availableSubtotal('indumentaria')).toBe('5000.00');
+  });
+
   it('persists and accumulates an available variant without exceeding available stock', () => {
     expect(service.add('tienda-a', { product, variant, quantity: 2 })).toEqual({
       quantity: 2,

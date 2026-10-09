@@ -95,6 +95,18 @@ public class AdminProductController {
 			body.version()), storeSlug);
 	}
 
+
+	@PatchMapping("/{productId}/sale-rules")
+	ProductDetailResponse updateSaleRules(
+			@PathVariable String storeSlug,
+			@PathVariable UUID productId,
+			@Valid @RequestBody UpdateSaleRulesRequest body,
+			HttpServletRequest request) {
+		require(request, TenantPermission.MANAGE_CATALOG);
+		return ProductDetailResponse.from(productService.updateSaleRules(
+			productId, body.rules(), body.version()), storeSlug);
+	}
+
 	@PatchMapping("/{productId}/status")
 	ProductDetailResponse changeStatus(
 			@PathVariable String storeSlug,

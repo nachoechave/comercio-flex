@@ -49,7 +49,7 @@ export class CartPage {
     this.promotions.calculateDiscount(
       this.storeSlug() ?? '',
       this.items()
-        .filter((line) => line.status === 'AVAILABLE')
+        .filter((line) => line.status === 'AVAILABLE' && line.saleUnit !== 'KG')
         .map((line) => ({
           productId: line.productId,
           unitPrice: line.unitPrice,
@@ -157,7 +157,7 @@ export class CartPage {
   protected lineTotal(line: CartLine): string {
     const [integer, fraction = ''] = line.unitPrice.split('.');
     const cents = BigInt(integer) * 100n + BigInt(fraction.padEnd(2, '0'));
-    const total = cents * BigInt(line.quantity);
+    const total = (cents * BigInt(Math.round(line.quantity * 1000)) + 500n) / 1000n;
     return `${total / 100n}.${(total % 100n).toString().padStart(2, '0')}`;
   }
 
@@ -166,7 +166,7 @@ export class CartPage {
     const quantity = input.valueAsNumber;
     if (!this.cart.setQuantity(this.storeSlug() ?? '', line.variantId, quantity)) {
       input.value = String(line.quantity);
-      this.actionMessage.set('La cantidad debe ser un número entero entre 1 y 99.');
+      this.actionMessage.set('La cantidad no respeta el mínimo, el incremento o el stock disponible.');
       return;
     }
     this.actionMessage.set(`Actualizamos la cantidad de ${line.productName}.`);

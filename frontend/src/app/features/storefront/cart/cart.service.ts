@@ -41,7 +41,7 @@ export class CartService {
       .filter((line) => line.status === 'AVAILABLE')
       .reduce(
         (total, line) =>
-          total + parseCents(line.unitPrice) * BigInt(line.quantity),
+          total + (parseCents(line.unitPrice) * BigInt(Math.round(line.quantity * 1000)) + 500n) / 1000n,
         0n,
       );
 
@@ -56,20 +56,20 @@ export class CartService {
       throw new Error('La variante no está disponible.');
     }
 
-    if (!isQuantity(item.quantity)) {
+    if (!validQuantity(item.quantity, item.product)) {
       throw new Error('La cantidad debe estar entre 1 y 99.');
     }
 
     const availableQuantity = availableUnits(
-      item.variant.availableQuantity,
+      item.variant.availableQuantity, item.product.saleUnit === "KG",
     );
 
-    if (availableQuantity < 1) {
+    if (availableQuantity < (item.product.saleMinimum ?? 1)) {
       throw new Error('La variante no tiene stock disponible.');
     }
 
     const maxQuantity = Math.min(
-      MAX_QUANTITY,
+      item.product.saleMaximum ?? MAX_QUANTITY,
       availableQuantity,
     );
 
@@ -89,7 +89,7 @@ export class CartService {
     const quantity =
       existing && existing.quantity > maxQuantity
         ? existing.quantity
-        : Math.min(requestedQuantity, maxQuantity);
+        : Math.max(item.product.saleMinimum ?? 1, Math.round(((item.product.saleMinimum ?? 1) + Math.floor((Math.min(requestedQuantity, maxQuantity) - (item.product.saleMinimum ?? 1)) / (item.product.saleStep ?? 1) + 1e-9) * (item.product.saleStep ?? 1)) * 1000) / 1000);
 
     const nextLine = toCartLine(
       item,
@@ -124,7 +124,7 @@ export class CartService {
     const slug = requireStore(storeSlug);
     this.activate(slug);
 
-    if (!isQuantity(quantity)) return false;
+    if (!Number.isFinite(quantity)) return false;
 
     let found = false;
     let accepted = false;
@@ -135,12 +135,13 @@ export class CartService {
       }
 
       found = true;
+      if (!validQuantity(quantity, line)) return line;
 
       const maxQuantity =
         line.availableQuantity === null
-          ? MAX_QUANTITY
+          ? (line.saleMaximum ?? MAX_QUANTITY)
           : Math.min(
-              MAX_QUANTITY,
+              line.saleMaximum ?? MAX_QUANTITY,
               line.availableQuantity,
             );
 
@@ -216,12 +217,12 @@ export class CartService {
       }
 
       const availableQuantity = availableUnits(
-        variant.availableQuantity,
+        variant.availableQuantity, product.saleUnit === "KG",
       );
 
       const outOfStock =
         !variant.available ||
-        availableQuantity < 1;
+        availableQuantity < (product.saleMinimum ?? 1);
 
       const exceedsStock =
         !outOfStock &&
@@ -262,6 +263,10 @@ export class CartService {
             variant.color,
           ),
         unitPrice: normalizeMoney(variant.price),
+        saleUnit: product.saleUnit ?? "UNIT",
+        saleMinimum: product.saleMinimum ?? 1,
+        saleStep: product.saleStep ?? 1,
+        saleMaximum: product.saleMaximum ?? 99,
 
         availableQuantity,
 
@@ -467,6 +472,10 @@ function toCartLine(
       item.variant.price,
     ),
     quantity,
+    saleUnit: item.product.saleUnit ?? "UNIT",
+    saleMinimum: item.product.saleMinimum ?? 1,
+    saleStep: item.product.saleStep ?? 1,
+    saleMaximum: item.product.saleMaximum ?? 99,
     availableQuantity,
 
     status: exceedsStock
@@ -536,7 +545,11 @@ function isStoredLine(
     MONEY_PATTERN.test(value['unitPrice']) &&
     parseCents(value['unitPrice']) > 0n &&
 
-    isQuantity(value['quantity']) &&
+    validQuantity(value['quantity'], value) &&
+    (value['saleUnit'] === undefined || value['saleUnit'] === 'UNIT' || value['saleUnit'] === 'KG') &&
+    (value['saleMinimum'] === undefined || typeof value['saleMinimum'] === 'number') &&
+    (value['saleStep'] === undefined || typeof value['saleStep'] === 'number') &&
+    (value['saleMaximum'] === undefined || typeof value['saleMaximum'] === 'number') &&
 
     Object.keys(value).every((key) =>
       [
@@ -550,7 +563,7 @@ function isStoredLine(
         'color',
         'options',
         'unitPrice',
-        'quantity',
+        'quantity', 'saleUnit', 'saleMinimum', 'saleStep', 'saleMaximum',
       ].includes(key),
     )
   );
@@ -646,6 +659,7 @@ function isQuantity(
  */
 function availableUnits(
   value: string | null | undefined,
+  weight = false,
 ): number {
   const quantity = Number(value);
 
@@ -656,7 +670,15 @@ function availableUnits(
     return 0;
   }
 
-  return Math.floor(quantity);
+  return weight ? Math.floor(quantity * 1000) / 1000 : Math.floor(quantity);
+}
+
+function validQuantity(value: unknown, rules: { saleUnit?: "UNIT" | "KG"; saleMinimum?: number; saleStep?: number; saleMaximum?: number }): boolean {
+  const min = rules.saleMinimum ?? (rules.saleUnit === "KG" ? 0.5 : 1);
+  const step = rules.saleStep ?? (rules.saleUnit === "KG" ? 0.5 : 1);
+  const max = rules.saleMaximum ?? 99;
+  return typeof value === "number" && Number.isFinite(value) && step > 0 && min > 0 && max >= min &&
+    value >= min && value <= max && Math.abs((value - min) / step - Math.round((value - min) / step)) < 1e-8;
 }
 
 function normalizeStoreSlug(

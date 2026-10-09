@@ -46,6 +46,7 @@ public class JdbcProductRepository implements ProductRepository {
 			product.name,
 			product.slug,
 			product.description,
+            product.sale_unit, product.sale_minimum, product.sale_step, product.sale_maximum,
 			product.status,
 			product.version,
 			product.created_at,
@@ -402,6 +403,15 @@ public class JdbcProductRepository implements ProductRepository {
 			expectedVersion) > 0;
 	}
 
+
+	@Override
+	public boolean updateSaleRules(long internalId, com.comercioflex.catalog.domain.SaleQuantityRules rules, long expectedVersion) {
+		return jdbcTemplate.update("""
+			UPDATE products SET sale_unit = ?, sale_minimum = ?, sale_step = ?, sale_maximum = ?,
+				version = version + 1 WHERE id = ? AND version = ?
+			""", rules.unit().name(), rules.minimum(), rules.step(), rules.maximum(), internalId, expectedVersion) > 0;
+	}
+
 	@Override
 	public int countActiveVariants(long productInternalId) {
 		Integer count = jdbcTemplate.queryForObject("""
@@ -459,7 +469,10 @@ public class JdbcProductRepository implements ProductRepository {
 			mapImage(resultSet),
 			resultSet.getLong("version"),
 			resultSet.getTimestamp("created_at").toInstant(),
-			resultSet.getTimestamp("updated_at").toInstant());
+			resultSet.getTimestamp("updated_at").toInstant(),
+            com.comercioflex.catalog.domain.SaleUnit.valueOf(resultSet.getString("sale_unit")),
+            resultSet.getBigDecimal("sale_minimum"), resultSet.getBigDecimal("sale_step"),
+            resultSet.getBigDecimal("sale_maximum"));
 	}
 
 	private ProductCategory mapCategory(ResultSet resultSet) throws SQLException {
@@ -674,7 +687,9 @@ public class JdbcProductRepository implements ProductRepository {
 		ProductImageReference image,
 		long version,
 		java.time.Instant createdAt,
-		java.time.Instant updatedAt) {
+		java.time.Instant updatedAt,
+        com.comercioflex.catalog.domain.SaleUnit saleUnit, java.math.BigDecimal saleMinimum,
+        java.math.BigDecimal saleStep, java.math.BigDecimal saleMaximum) {
 
 		Product toProduct(List<ProductVariant> variants, List<ProductImageReference> images) {
 			return new Product(
@@ -688,7 +703,7 @@ public class JdbcProductRepository implements ProductRepository {
 				variants,
 				version,
 				createdAt,
-				updatedAt, images);
+				updatedAt, images, saleUnit, saleMinimum, saleStep, saleMaximum);
 		}
 	}
 }

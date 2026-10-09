@@ -24,6 +24,8 @@ import com.comercioflex.order.application.ActiveQuantityPromotion;
 
 import com.comercioflex.order.application.GuestOrderRepository;
 import com.comercioflex.order.application.LockedOrderVariant;
+import com.comercioflex.catalog.domain.SaleUnit;
+import com.comercioflex.catalog.domain.SaleQuantityRules;
 import com.comercioflex.order.application.ReservedOrderItem;
 import com.comercioflex.order.application.StoredGuestOrder;
 import com.comercioflex.order.domain.FulfillmentType;
@@ -89,6 +91,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				BIN_TO_UUID(product.public_id) product_public_id,
 				BIN_TO_UUID(variant.public_id) variant_public_id,
 				product.name product_name,
+                product.sale_unit, product.sale_minimum, product.sale_step, product.sale_maximum,
 				variant.sku,
 				variant.size_value,
 				variant.color_value,
@@ -118,7 +121,10 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				resultSet.getBigDecimal("price"),
 				resultSet.getBigDecimal("physical_quantity"),
 				BigDecimal.ZERO.setScale(3),
-				resultSet.getBoolean("sellable")),
+				resultSet.getBoolean("sellable"),
+                new SaleQuantityRules(SaleUnit.valueOf(resultSet.getString("sale_unit")),
+                    resultSet.getBigDecimal("sale_minimum"), resultSet.getBigDecimal("sale_step"),
+                    resultSet.getBigDecimal("sale_maximum"))),
 			variantId.toString())
 			.stream()
 			.findFirst();
@@ -162,7 +168,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 			variant.unitPrice(),
 			variant.physicalQuantity(),
 			reservedQuantity,
-			variant.sellable()));
+			variant.sellable(), variant.saleRules()));
 	}
 
 	@Override
@@ -411,7 +417,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				)
 				VALUES (
 					?, UUID_TO_BIN(?), ?, UUID_TO_BIN(?), ?, ?, ?, ?, ?,
-					'UNIT', ?, ?, ?
+					?, ?, ?, ?
 				)
 				""",
 				orderInternalId,
@@ -423,6 +429,7 @@ public class JdbcGuestOrderRepository implements GuestOrderRepository {
 				emptyOption(variant.size()),
 				emptyOption(variant.color()),
 				optionsJsonCodec.write(variant.options()),
+                variant.saleRules().unit().name(),
 				variant.unitPrice(),
 				item.quantity(),
 				item.lineTotal());

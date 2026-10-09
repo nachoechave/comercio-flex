@@ -67,7 +67,7 @@
           <p class="eyebrow">{{ currentProduct.category.name }}</p>
           <h1 id="product-title">{{ currentProduct.name }}</h1>
           @if (featuredPrice(); as price) {
-            <p class="featured-price">{{ price | storefrontMoney: context.currencyCode() }}</p>
+            <p class="featured-price">{{ price | storefrontMoney: context.currencyCode() }} @if (weightSale()) { <small>/ kg</small> }</p>
             @if (promotion(); as promo) {
               <div class="promotion-callout">
                 <strong>
@@ -161,12 +161,12 @@
 
         <div class="purchase-panel">
           <div class="quantity-field">
-            <span class="quantity-label">Cantidad</span>
+            <span class="quantity-label">Cantidad {{ weightSale() ? '(kg)' : '' }}</span>
             <div class="quantity-control">
               <button
                 type="button"
                 aria-label="Disminuir cantidad"
-                [disabled]="quantity() === 1 || !canAddToCart()"
+                [disabled]="quantity() <= saleMinimum() || !canAddToCart()"
                 (click)="decreaseQuantity()"
               >
                 −
@@ -174,10 +174,10 @@
               <input
                 aria-label="Cantidad"
                 type="number"
-                min="1"
-                max="maxQuantity()"
-                step="1"
-                inputmode="numeric"
+                [min]="saleMinimum()"
+                [max]="maxQuantity()"
+                [step]="saleStep()"
+                [attr.inputmode]="weightSale() ? 'decimal' : 'numeric'"
                 [value]="quantity()"
                 [disabled]="!canAddToCart()"
                 (input)="updateQuantity($event)"

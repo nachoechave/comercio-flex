@@ -34,6 +34,10 @@ export interface ProductVariant {
 }
 
 export interface ProductDetail {
+  saleUnit?: "UNIT" | "KG";
+  saleMinimum?: number;
+  saleStep?: number;
+  saleMaximum?: number;
   id: string;
   name: string;
   slug: string;

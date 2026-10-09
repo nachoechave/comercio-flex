@@ -34,7 +34,12 @@ class ProductImageMigrationTests {
         Flyway.configure().dataSource(source).locations("classpath:db/migration/tenant").load().migrate();
         assertThat(jdbc.queryForMap("SELECT BIN_TO_UUID(public_id) public_id, display_storage_key, thumbnail_storage_key, created_at FROM product_images"))
             .isEqualTo(before);
-        assertThat(jdbc.queryForMap("SELECT * FROM products")).usingRecursiveComparison().isEqualTo(productBefore);
+        assertThat(jdbc.queryForMap("SELECT * FROM products"))
+            .containsAllEntriesOf(productBefore)
+            .containsEntry("sale_unit", "UNIT")
+            .containsEntry("sale_minimum", new java.math.BigDecimal("1.000"))
+            .containsEntry("sale_step", new java.math.BigDecimal("1.000"))
+            .containsEntry("sale_maximum", new java.math.BigDecimal("99.000"));
         assertThat(jdbc.queryForObject("SELECT position FROM product_images", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT is_primary FROM product_images", Boolean.class)).isTrue();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM product_images", Integer.class)).isEqualTo(1);

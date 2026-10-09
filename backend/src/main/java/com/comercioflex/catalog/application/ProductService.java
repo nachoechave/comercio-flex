@@ -106,6 +106,19 @@ public class ProductService {
 		});
 	}
 
+
+	public Product updateSaleRules(UUID productId, com.comercioflex.catalog.domain.SaleQuantityRules rules, long version) {
+		return transactionTemplate.execute(ignored -> {
+			LockedProduct product = lockProduct(productId);
+			requireVersion(product.version(), version);
+			requireEditable(product);
+			if (!repository.updateSaleRules(product.internalId(), rules, version)) {
+				throw new StaleProductVersionException();
+			}
+			return requireProduct(productId);
+		});
+	}
+
 	public Product changeStatus(UUID productId, ProductStatus target, long version) {
 		return transactionTemplate.execute(ignored -> {
 			LockedProduct product = lockProduct(productId);

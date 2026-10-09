@@ -138,16 +138,16 @@ function normalizedProductNameLength(control: AbstractControl<string>): Validati
 
 function optionalInitialStock(control: AbstractControl<string>): ValidationErrors | null {
   const value = control.value.trim();
-  return !value || /^(?:0|[1-9][0-9]{0,11})$/.test(value) ? null : { initialStock: true };
+  return !value || /^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,3})?$/.test(value) ? null : { initialStock: true };
 }
 
 function optionalStockReceipt(control: AbstractControl<string>): ValidationErrors | null {
   const value = control.value.trim();
-  return !value || /^(?:0|[1-9][0-9]{0,11})$/.test(value) ? null : { stockReceipt: true };
+  return !value || /^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,3})?$/.test(value) ? null : { stockReceipt: true };
 }
 
 function positiveStockReceipt(control: AbstractControl<string>): ValidationErrors | null {
-  return /^[1-9][0-9]{0,11}$/.test(control.value.trim()) ? null : { stockReceipt: true };
+  return /^(?:[1-9][0-9]{0,11})(?:\.[0-9]{1,3})?$|^0\.(?:0*[1-9][0-9]{0,2})$/.test(control.value.trim()) ? null : { stockReceipt: true };
 }
 
 function toThousandths(value: string): bigint {
@@ -222,6 +222,8 @@ export class ProductForm implements OnDestroy {
   readonly variantStructureCompatible = signal(true);
   readonly removedExistingVariants = signal<VariantDraft[]>([]);
   readonly archived = computed(() => this.product()?.status === 'ARCHIVED');
+  readonly saleUnit = signal<'UNIT' | 'KG'>('UNIT');
+  readonly saleRulesSaving = signal(false);
 
   readonly form = this.formBuilder.nonNullable.group({
     name: ['', [normalizedProductNameLength]],
@@ -504,6 +506,26 @@ export class ProductForm implements OnDestroy {
       const candidate = generateVariantSku(productName, options, imageAltText);
       row.controls.sku.setValue(uniqueSku(candidate, used), { emitEvent: false });
     }
+  }
+
+
+  saveSaleUnit(): void {
+    const current = this.product();
+    const slug = this.storeSlug();
+    if (!current || !slug || this.saleRulesSaving() || this.archived()) return;
+    this.saleRulesSaving.set(true);
+    this.formError.set(null);
+    const subscription = this.api.setSaleRules(slug, current.id, this.saleUnit(), current.version)
+      .pipe(finalize(() => this.saleRulesSaving.set(false)))
+      .subscribe({
+        next: (product) => {
+          this.product.set(product);
+          this.saleUnit.set(product.saleUnit ?? 'UNIT');
+          this.successMessage.set('Unidad de venta actualizada.');
+        },
+        error: (error: unknown) => this.formError.set(productErrorMessage(error, 'No se pudo actualizar la unidad de venta.')),
+      });
+    this.mutations.push(subscription);
   }
 
   submitProduct(intent: CreationIntent = 'DRAFT'): void {
@@ -1117,6 +1139,7 @@ export class ProductForm implements OnDestroy {
 
   private populate(product: ProductDetail): void {
     this.product.set(product);
+    this.saleUnit.set(product.saleUnit ?? "UNIT");
     this.form.setValue({
       name: product.name,
       description: product.description ?? '',

@@ -40,6 +40,13 @@ export class ProductApiService {
     return this.http.put<ProductDetail>(this.productUrl(storeSlug, productId), body);
   }
 
+  setSaleRules(storeSlug: string, productId: string, saleUnit: "UNIT" | "KG", version: number): Observable<ProductDetail> {
+    return this.http.patch<ProductDetail>(`${this.productUrl(storeSlug, productId)}/sale-rules`, {
+      saleUnit, saleMinimum: saleUnit === "KG" ? 0.5 : 1,
+      saleStep: saleUnit === "KG" ? 0.5 : 1, saleMaximum: 99, version,
+    });
+  }
+
   setStatus(
     storeSlug: string,
     productId: string,
