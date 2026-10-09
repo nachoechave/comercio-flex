@@ -1,6 +1,8 @@
 package com.comercioflex.catalog.api;
 
 import java.time.Instant;
+import java.math.BigDecimal;
+import com.comercioflex.catalog.domain.SaleUnit;
 import java.util.List;
 
 import com.comercioflex.catalog.domain.Product;
@@ -18,7 +20,8 @@ public record ProductDetailResponse(
 	List<ProductVariantResponse> variants,
 	long version,
 	Instant createdAt,
-	Instant updatedAt, List<ProductImageResponse> images, String imageUrl) {
+	Instant updatedAt, List<ProductImageResponse> images, String imageUrl,
+    SaleUnit saleUnit, BigDecimal saleMinimum, BigDecimal saleStep, BigDecimal saleMaximum) {
 
 	static ProductDetailResponse from(Product product, String storeSlug) {
 		return new ProductDetailResponse(
@@ -34,6 +37,7 @@ public record ProductDetailResponse(
 			product.createdAt(),
 			product.updatedAt(),
 			product.images().stream().map(image -> ProductImageResponse.admin(storeSlug, image)).toList(),
-			product.image() == null ? null : ProductImageResponse.admin(storeSlug, product.image()).url());
+			product.image() == null ? null : ProductImageResponse.admin(storeSlug, product.image()).url(),
+            product.saleUnit(), product.saleMinimum(), product.saleStep(), product.saleMaximum());
 	}
 }
