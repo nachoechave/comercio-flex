@@ -402,6 +402,15 @@ public class JdbcProductRepository implements ProductRepository {
 			expectedVersion) > 0;
 	}
 
+
+	@Override
+	public boolean updateSaleRules(long internalId, com.comercioflex.catalog.domain.SaleQuantityRules rules, long expectedVersion) {
+		return jdbcTemplate.update("""
+			UPDATE products SET sale_unit = ?, sale_minimum = ?, sale_step = ?, sale_maximum = ?,
+				version = version + 1 WHERE id = ? AND version = ?
+			""", rules.unit().name(), rules.minimum(), rules.step(), rules.maximum(), internalId, expectedVersion) > 0;
+	}
+
 	@Override
 	public int countActiveVariants(long productInternalId) {
 		Integer count = jdbcTemplate.queryForObject("""
