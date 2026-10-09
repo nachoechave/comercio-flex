@@ -72,6 +72,22 @@
       }
     </form>
 
+
+    @if (editing() && product()) {
+      <section aria-label="Modalidad de venta">
+        <h2>Unidad de venta</h2>
+        <p>Para carnicerías, elegí kilogramos. El cliente podrá comprar de a 500 gramos.</p>
+        <label for="sale-unit">Vender por</label>
+        <select id="sale-unit" [value]="saleUnit()" [disabled]="archived() || saleRulesSaving()"
+          (change)="saleUnit.set($any($event.target).value)">
+          <option value="UNIT">Unidad (indumentaria y productos individuales)</option>
+          <option value="KG">Kilogramo (incrementos de 0,5 kg)</option>
+        </select>
+        <button type="button" class="primary" [disabled]="archived() || saleRulesSaving()"
+          (click)="saveSaleUnit()">{{ saleRulesSaving() ? 'Guardando…' : 'Guardar unidad de venta' }}</button>
+      </section>
+    }
+
     <section class="image-editor" aria-labelledby="product-image-title">
       <div class="section-heading">
         <div>
