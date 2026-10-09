@@ -89,7 +89,7 @@ export class CartService {
     const quantity =
       existing && existing.quantity > maxQuantity
         ? existing.quantity
-        : Math.max(item.product.saleMinimum ?? 1, Math.round(Math.min(requestedQuantity, maxQuantity) / (item.product.saleStep ?? 1)) * (item.product.saleStep ?? 1));
+        : Math.max(item.product.saleMinimum ?? 1, Math.round(((item.product.saleMinimum ?? 1) + Math.floor((Math.min(requestedQuantity, maxQuantity) - (item.product.saleMinimum ?? 1)) / (item.product.saleStep ?? 1) + 1e-9) * (item.product.saleStep ?? 1)) * 1000) / 1000);
 
     const nextLine = toCartLine(
       item,
