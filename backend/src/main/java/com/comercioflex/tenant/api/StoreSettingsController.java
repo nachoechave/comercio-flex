@@ -1,6 +1,9 @@
 package com.comercioflex.tenant.api;
 
 import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.util.Map;
 
 import com.comercioflex.tenant.application.ResolvedTenant;
 
@@ -16,9 +19,12 @@ import com.comercioflex.tenant.application.StoreSettingsQueryService;
 public class StoreSettingsController {
 
 	private final StoreSettingsQueryService storeSettingsQueryService;
+	private final JdbcTemplate controlJdbcTemplate;
 
-	public StoreSettingsController(StoreSettingsQueryService storeSettingsQueryService) {
+	public StoreSettingsController(StoreSettingsQueryService storeSettingsQueryService,
+			@Qualifier("controlJdbcTemplate") JdbcTemplate controlJdbcTemplate) {
 		this.storeSettingsQueryService = storeSettingsQueryService;
+		this.controlJdbcTemplate = controlJdbcTemplate;
 	}
 
 	@GetMapping
@@ -27,4 +33,12 @@ public class StoreSettingsController {
 			ResolvedTenant tenant) {
 		return StoreSettingsResponse.from(slug, storeSettingsQueryService.findCurrent(), tenant.tenantType());
 	}
+	@GetMapping("/industry")
+	Map<String, String> getIndustry(
+			@RequestAttribute(TenantResolutionFilter.RESOLVED_TENANT_ATTRIBUTE) ResolvedTenant tenant) {
+		String industry = controlJdbcTemplate.queryForObject(
+			"SELECT industry FROM tenants WHERE id = ?", String.class, tenant.id());
+		return Map.of("industry", industry == null ? "" : industry);
+	}
 }
+
