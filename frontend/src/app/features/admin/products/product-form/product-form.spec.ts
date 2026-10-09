@@ -40,6 +40,7 @@ describe('ProductForm creation', () => {
     http
       .expectOne('/api/v1/stores/tienda-a/admin/categories')
       .flush([{ id: 'category-1', name: 'Remeras', active: true }]);
+    http.expectOne('/api/v1/stores/tienda-a/settings/industry').flush({ industry: 'INDUMENTARIA' });
     fixture.detectChanges();
   });
 
@@ -513,14 +514,17 @@ describe('ProductForm tenant reuse', () => {
 
   it('cancels A and reloads categories and product from B', () => {
     const categoryA = http.expectOne('/api/v1/stores/tienda-a/admin/categories');
+    const industryA = http.expectOne('/api/v1/stores/tienda-a/settings/industry');
     const productA = http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1');
 
     params.next(convertToParamMap({ storeSlug: 'tienda-b', productId: 'product-1' }));
     fixture.detectChanges();
     expect(categoryA.cancelled).toBe(true);
+    expect(industryA.cancelled).toBe(true);
     expect(productA.cancelled).toBe(true);
 
     http.expectOne('/api/v1/stores/tienda-b/admin/categories').flush([]);
+    http.expectOne('/api/v1/stores/tienda-b/settings/industry').flush({ industry: 'INDUMENTARIA' });
     http.expectOne('/api/v1/stores/tienda-b/admin/products/product-1').flush({
       id: 'product-1',
       name: 'Producto B',
@@ -542,6 +546,7 @@ describe('ProductForm tenant reuse', () => {
     http
       .expectOne('/api/v1/stores/tienda-a/admin/categories')
       .flush([{ id: 'cat-a', name: 'Categoría A', active: true }]);
+    http.expectOne('/api/v1/stores/tienda-a/settings/industry').flush({ industry: 'INDUMENTARIA' });
     http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1').flush({
       id: 'product-1',
       name: 'Producto A',
@@ -701,6 +706,7 @@ describe('ProductForm tenant reuse', () => {
     http
       .expectOne('/api/v1/stores/tienda-a/admin/categories')
       .flush([{ id: 'cat-a', name: 'Categoría A', active: true }]);
+    http.expectOne('/api/v1/stores/tienda-a/settings/industry').flush({ industry: 'INDUMENTARIA' });
     http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1').flush({
       id: 'product-1',
       name: 'Producto A',
@@ -752,6 +758,7 @@ describe('ProductForm tenant reuse', () => {
     expect(fixture.componentInstance.stockReceiptFeedback()).toEqual({});
     expect(fixture.componentInstance.bulkStockReceipt.value).toBe('');
     http.expectOne('/api/v1/stores/tienda-b/admin/categories').flush([]);
+    http.expectOne('/api/v1/stores/tienda-b/settings/industry').flush({ industry: 'INDUMENTARIA' });
     http.expectOne('/api/v1/stores/tienda-b/admin/products/product-1').flush({
       id: 'product-1',
       name: 'Producto B',
@@ -794,6 +801,7 @@ describe('ProductForm image management', () => {
     http
       .expectOne('/api/v1/stores/tienda-a/admin/categories')
       .flush([{ id: 'category-1', name: 'Remeras', active: true }]);
+    http.expectOne('/api/v1/stores/tienda-a/settings/industry').flush({ industry: 'INDUMENTARIA' });
     http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1').flush({
       id: 'product-1',
       name: 'Remera',
@@ -1015,6 +1023,7 @@ describe('ProductForm inventory editing', () => {
     http
       .expectOne('/api/v1/stores/tienda-a/admin/categories')
       .flush([{ id: 'category-1', name: 'Remeras', active: true }]);
+    http.expectOne('/api/v1/stores/tienda-a/settings/industry').flush({ industry: 'INDUMENTARIA' });
     http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1').flush({
       id: 'product-1',
       name: 'Remera',
@@ -1233,6 +1242,7 @@ describe('ProductForm generated variant editing', () => {
     http
       .expectOne('/api/v1/stores/tienda-a/admin/categories')
       .flush([{ id: 'category-1', name: 'Remeras', active: true }]);
+    http.expectOne('/api/v1/stores/tienda-a/settings/industry').flush({ industry: 'INDUMENTARIA' });
     http.expectOne('/api/v1/stores/tienda-a/admin/products/product-1').flush({
       id: 'product-1',
       name: 'Remera',

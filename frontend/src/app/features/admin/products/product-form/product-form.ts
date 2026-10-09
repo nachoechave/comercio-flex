@@ -10,6 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { HttpClient } from '@angular/common/http';
 import {
   AbstractControl,
   FormArray,
@@ -67,7 +68,7 @@ import {
 import { generateVariantSku, uniqueSku } from './sku-generator';
 
 type CreationIntent = 'DRAFT' | 'PUBLISHED';
-type SetupStep = 'image' | 'inventory' | 'publication';
+type SetupStep = 'image' | 'inventory' | 'publication' | 'saleRules';
 
 interface VariantDraft {
   id: string | null;
@@ -167,6 +168,7 @@ function fromThousandths(value: bigint): string {
 })
 export class ProductForm implements OnDestroy {
   private readonly api = inject(ProductApiService);
+  private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
@@ -223,6 +225,7 @@ export class ProductForm implements OnDestroy {
   readonly removedExistingVariants = signal<VariantDraft[]>([]);
   readonly archived = computed(() => this.product()?.status === 'ARCHIVED');
   readonly saleUnit = signal<'UNIT' | 'KG'>('UNIT');
+  readonly isButcherShop = signal(false);
   readonly saleRulesSaving = signal(false);
 
   readonly form = this.formBuilder.nonNullable.group({
@@ -262,13 +265,22 @@ export class ProductForm implements OnDestroy {
 
       const request: Observable<{
         categories: ProductCategory[];
+        industry: { industry: string };
         product?: ProductDetail;
       }> = id
-        ? forkJoin({ categories: this.api.listCategories(slug), product: this.api.get(slug, id) })
-        : this.api.listCategories(slug).pipe(map((categories) => ({ categories })));
+        ? forkJoin({
+            categories: this.api.listCategories(slug),
+            industry: this.http.get<{ industry: string }>(`/api/v1/stores/${encodeURIComponent(slug)}/settings/industry`),
+            product: this.api.get(slug, id),
+          })
+        : forkJoin({
+            categories: this.api.listCategories(slug),
+            industry: this.http.get<{ industry: string }>(`/api/v1/stores/${encodeURIComponent(slug)}/settings/industry`),
+          });
       const subscription = request.subscribe({
         next: (result) => {
           this.categories.set(result.categories);
+          this.isButcherShop.set(result.industry.industry.trim().toUpperCase() === "CARNICERIA" || result.industry.industry.trim().toUpperCase() === "CARNICERÍA");
           if (result.product) {
             this.populate(result.product);
             this.loadInventory(slug, result.product);
@@ -512,7 +524,7 @@ export class ProductForm implements OnDestroy {
   saveSaleUnit(): void {
     const current = this.product();
     const slug = this.storeSlug();
-    if (!current || !slug || this.saleRulesSaving() || this.archived()) return;
+    if (!current || !slug || !this.isButcherShop() || this.saleRulesSaving() || this.archived()) return;
     this.saleRulesSaving.set(true);
     this.formError.set(null);
     const subscription = this.api.setSaleRules(slug, current.id, this.saleUnit(), current.version)
@@ -724,6 +736,13 @@ export class ProductForm implements OnDestroy {
   ): Observable<ProductDetail> {
     return this.api.create(slug, body).pipe(
       tap((product) => this.product.set(product)),
+      switchMap((product) =>
+        this.isButcherShop() && this.saleUnit() === 'KG'
+          ? this.setupStep('saleRules', 'No pudimos configurar la venta por kilogramo.',
+              this.api.setSaleRules(slug, product.id, 'KG', product.version))
+          : of(product),
+      ),
+      tap((product) => this.product.set(product)),
       switchMap((product) => this.uploadCreationImage(slug, product)),
       switchMap((product) => this.registerInitialStock(slug, product)),
       switchMap((product) =>
@@ -822,6 +841,8 @@ export class ProductForm implements OnDestroy {
         'El producto quedó como borrador porque no se pudo guardar la imagen. Volvé a seleccionarla para continuar.',
       inventory:
         'El producto quedó como borrador porque no se pudo registrar todo el stock inicial. Verificá los movimientos antes de ajustar.',
+      saleRules:
+        'El producto se creó como borrador, pero no se pudo activar la venta por kilogramo. Editalo antes de publicarlo.',
       publication:
         'La configuración se guardó, pero el producto no pudo publicarse. Revisala y volvé a intentar.',
     };
@@ -1433,6 +1454,8 @@ export class ProductForm implements OnDestroy {
     this.bulkPrice.reset('');
     this.bulkStockReceipt.reset('');
     this.product.set(null);
+    this.isButcherShop.set(false);
+    this.saleUnit.set('UNIT');
     this.categories.set([]);
     this.loading.set(true);
     this.saving.set(false);

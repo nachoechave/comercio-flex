@@ -73,18 +73,22 @@
     </form>
 
 
-    @if (editing() && product()) {
+    @if (isButcherShop()) {
       <section aria-label="Modalidad de venta">
         <h2>Unidad de venta</h2>
-        <p>Para carnicerías, elegí kilogramos. El cliente podrá comprar de a 500 gramos.</p>
+        <p>Elegí si el producto se vende por unidad o por kilogramo. La venta por peso utiliza incrementos de 0,5 kg.</p>
         <label for="sale-unit">Vender por</label>
         <select id="sale-unit" [value]="saleUnit()" [disabled]="archived() || saleRulesSaving()"
           (change)="saleUnit.set($any($event.target).value)">
           <option value="UNIT">Unidad (indumentaria y productos individuales)</option>
           <option value="KG">Kilogramo (incrementos de 0,5 kg)</option>
         </select>
-        <button type="button" class="primary" [disabled]="archived() || saleRulesSaving()"
-          (click)="saveSaleUnit()">{{ saleRulesSaving() ? 'Guardando…' : 'Guardar unidad de venta' }}</button>
+        @if (editing()) {
+          <button type="button" class="primary" [disabled]="archived() || saleRulesSaving()"
+            (click)="saveSaleUnit()">{{ saleRulesSaving() ? 'Guardando…' : 'Guardar unidad de venta' }}</button>
+        } @else {
+          <p class="field-help">La unidad de venta se guardará al crear el producto.</p>
+        }
       </section>
     }
 
