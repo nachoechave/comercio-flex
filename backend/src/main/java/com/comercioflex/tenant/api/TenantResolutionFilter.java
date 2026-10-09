@@ -67,6 +67,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 		String storeResource = matcher.group(2);
 		return !isPublicIdentityResource(storeResource)
 			&& !storeResource.equals("/settings")
+			&& !storeResource.equals("/settings/industry")
 			&& !storeResource.equals("/payment-methods")
 			&& !storeResource.equals("/catalog")
 			&& !storeResource.startsWith("/catalog/")

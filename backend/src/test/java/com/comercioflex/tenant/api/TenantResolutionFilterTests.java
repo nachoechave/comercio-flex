@@ -31,6 +31,15 @@ class TenantResolutionFilterTests {
 	}
 
 	@Test
+	void resolvesTenantForIndustrySettings() {
+		MockHttpServletRequest request = new MockHttpServletRequest(
+			"GET",
+			"/api/v1/stores/carnes-aurora/settings/industry");
+
+		assertThat(filter.shouldNotFilter(request)).isFalse();
+	}
+
+	@Test
 	void stillSkipsUnknownStoreResources() {
 		MockHttpServletRequest request = new MockHttpServletRequest(
 			"POST",
