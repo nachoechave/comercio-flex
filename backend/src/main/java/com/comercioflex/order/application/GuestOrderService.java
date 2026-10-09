@@ -271,7 +271,8 @@ public class GuestOrderService {
           unitPricesByProduct.computeIfAbsent(item.variant().productId(), ignored -> new ArrayList<>());
       // Quantity promotions are defined in whole pieces, not kilograms.
       // Never truncate fractional weights or throw on intValueExact().
-      if (item.quantity().stripTrailingZeros().scale() > 0) {
+      if (item.variant().saleRules().unit() != com.comercioflex.catalog.domain.SaleUnit.UNIT
+          || item.quantity().stripTrailingZeros().scale() > 0) {
         continue;
       }
       int quantity = item.quantity().intValueExact();
