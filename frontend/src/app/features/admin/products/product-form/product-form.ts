@@ -270,12 +270,12 @@ export class ProductForm implements OnDestroy {
       }> = id
         ? forkJoin({
             categories: this.api.listCategories(slug),
-            industry: this.http.get<{ industry: string }>(`/api/v1/stores/${encodeURIComponent(slug)}/settings/industry`),
+            industry: this.http.get<{ industry: string }>(`/api/v1/stores/${encodeURIComponent(slug)}/settings/industry`).pipe(catchError(() => of({ industry: '' }))),
             product: this.api.get(slug, id),
           })
         : forkJoin({
             categories: this.api.listCategories(slug),
-            industry: this.http.get<{ industry: string }>(`/api/v1/stores/${encodeURIComponent(slug)}/settings/industry`),
+            industry: this.http.get<{ industry: string }>(`/api/v1/stores/${encodeURIComponent(slug)}/settings/industry`).pipe(catchError(() => of({ industry: '' }))),
           });
       const subscription = request.subscribe({
         next: (result) => {
